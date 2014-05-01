@@ -37,7 +37,7 @@ var syslogName = flag.String(
 
 var executorURL = flag.String(
 	"executorURL",
-	"http://120.0.0.1:1700",
+	"http://127.0.0.1:1700",
 	"location of executor to represent",
 )
 
