@@ -9,6 +9,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry-incubator/runtime-schema/models/executor_api"
 	"github.com/cloudfoundry/gosteno"
 	"github.com/onsi/gomega/ghttp"
 
@@ -85,16 +86,16 @@ var _ = Describe("Scheduler", func() {
 				func(w http.ResponseWriter, r *http.Request) {
 					Ω(fakeBBS.ClaimedTasks()).Should(HaveLen(0))
 				},
-				ghttp.VerifyRequest("POST", "/resource_allocations"),
+				ghttp.VerifyRequest("POST", "/containers"),
 				ghttp.VerifyJSON(`{"memory_mb":64, "disk_mb":1024, "cpu_percent":0.5, "file_descriptors": 512}`),
-				ghttp.RespondWith(http.StatusCreated, `{"executor_guid":"executor-guid","allocation_guid":"guid-123"}`))
+				ghttp.RespondWith(http.StatusCreated, `{"executor_guid":"executor-guid","guid":"guid-123"}`))
 
 			createContainerSuccessful := ghttp.CombineHandlers(
 				func(w http.ResponseWriter, r *http.Request) {
 					Ω(fakeBBS.ClaimedTasks()).Should(HaveLen(1))
 					Ω(fakeBBS.StartedTasks()).Should(HaveLen(0))
 				},
-				ghttp.VerifyRequest("POST", "/resource_allocations/guid-123/container"),
+				ghttp.VerifyRequest("POST", "/containers/guid-123/initialize"),
 				ghttp.RespondWith(http.StatusCreated, ""))
 
 			startContainerSuccessful := ghttp.CombineHandlers(
@@ -102,19 +103,19 @@ var _ = Describe("Scheduler", func() {
 					Ω(fakeBBS.StartedTasks()).Should(HaveLen(1))
 					startedTask := fakeBBS.StartedTasks()[0]
 
-					jobRequest := models.JobRequest{
-						Actions:       startedTask.Actions,
-						Metadata:      startedTask.ToJSON(),
-						CompletionURL: fmt.Sprintf("http://%s/complete/guid-123", schedulerAddr),
+					runRequest := executor_api.ContainerRunRequest{
+						Actions:     startedTask.Actions,
+						Metadata:    startedTask.ToJSON(),
+						CompleteURL: fmt.Sprintf("http://%s/complete/guid-123", schedulerAddr),
 					}
 
-					ghttp.VerifyJSONRepresenting(jobRequest)(w, r)
+					ghttp.VerifyJSONRepresenting(runRequest)(w, r)
 				},
-				ghttp.VerifyRequest("POST", "/resource_allocations/guid-123/actions"),
+				ghttp.VerifyRequest("POST", "/containers/guid-123/run"),
 				ghttp.RespondWith(http.StatusCreated, ""))
 
 			deleteAllocationSuccessful := ghttp.CombineHandlers(
-				ghttp.VerifyRequest("DELETE", "/resource_allocations/guid-123"),
+				ghttp.VerifyRequest("DELETE", "/containers/guid-123"),
 				ghttp.RespondWith(http.StatusOK, ""))
 
 			Context("and we reserve it, claim it, run it, and the task finishes", func() {
@@ -150,11 +151,9 @@ var _ = Describe("Scheduler", func() {
 							ContainerHandle: "guid-123",
 						}
 
-						body, jsonErr := json.Marshal(models.JobResponse{
-							AllocationGuid: "guid-123",
-							ExecutorGuid:   "executor-guid",
-							Result:         "42",
-							Metadata:       expectedTask.ToJSON(),
+						body, jsonErr := json.Marshal(executor_api.ContainerRunResult{
+							Result:   "42",
+							Metadata: expectedTask.ToJSON(),
 						})
 						Ω(jsonErr).ShouldNot(HaveOccurred())
 
@@ -185,12 +184,10 @@ var _ = Describe("Scheduler", func() {
 							ContainerHandle: "guid-123",
 						}
 
-						body, jsonErr := json.Marshal(models.JobResponse{
-							AllocationGuid: "guid-123",
-							ExecutorGuid:   "executor-guid",
-							Failed:         true,
-							FailureReason:  "it didn't work",
-							Metadata:       expectedTask.ToJSON(),
+						body, jsonErr := json.Marshal(executor_api.ContainerRunResult{
+							Failed:        true,
+							FailureReason: "it didn't work",
+							Metadata:      expectedTask.ToJSON(),
 						})
 						Ω(jsonErr).ShouldNot(HaveOccurred())
 
@@ -216,8 +213,8 @@ var _ = Describe("Scheduler", func() {
 					func(w http.ResponseWriter, r *http.Request) {
 						Ω(fakeBBS.ClaimedTasks()).Should(HaveLen(0))
 					},
-					ghttp.VerifyRequest("POST", "/resource_allocations"),
-					ghttp.RespondWith(http.StatusRequestEntityTooLarge, `{"executor_guid":"executor-guid","allocation_guid":"guid-123"}`))
+					ghttp.VerifyRequest("POST", "/containers"),
+					ghttp.RespondWith(http.StatusRequestEntityTooLarge, `{"executor_guid":"executor-guid","guid":"guid-123"}`))
 
 				BeforeEach(func() {
 					fakeExecutor.AppendHandlers(
@@ -258,7 +255,7 @@ var _ = Describe("Scheduler", func() {
 						Ω(fakeBBS.ClaimedTasks()).Should(HaveLen(1))
 						Ω(fakeBBS.StartedTasks()).Should(HaveLen(0))
 					},
-					ghttp.VerifyRequest("POST", "/resource_allocations/guid-123/container"),
+					ghttp.VerifyRequest("POST", "/containers/guid-123/initialize"),
 					ghttp.RespondWith(http.StatusInternalServerError, ""))
 
 				BeforeEach(func() {
