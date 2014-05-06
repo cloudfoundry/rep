@@ -67,10 +67,16 @@ func (s *Scheduler) stopServer() {
 
 func (s *Scheduler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	responseBody, err := ioutil.ReadAll(r.Body)
+	r.Body.Close()
+
 	completeResp := executor_api.ContainerRunResult{}
 	err = json.Unmarshal(responseBody, &completeResp)
 	if err != nil {
-		panic(err)
+		s.logger.Errord(map[string]interface{}{
+			"error": fmt.Sprintf("Could not unmarshal response: %s", err),
+		}, "game-scheduler.complete-callback-handler.failed")
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 	s.completeChan <- completeResp
 	w.WriteHeader(http.StatusOK)
@@ -82,7 +88,7 @@ func (s *Scheduler) Run(sigChan chan os.Signal, readyChan chan struct{}) error {
 
 	listener, err := net.Listen("tcp", s.address)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	s.listener = listener
 
@@ -124,7 +130,10 @@ func (s *Scheduler) handleRunCompletion(runResult executor_api.ContainerRunResul
 	task := models.Task{}
 	err := json.Unmarshal(runResult.Metadata, &task)
 	if err != nil {
-		panic(err)
+		s.logger.Errord(map[string]interface{}{
+			"error": fmt.Sprintf("Could not unmarshal metadata: %s", err),
+		}, "game-scheduler.complete-callback-handler.failed")
+		return
 	}
 
 	s.bbs.CompleteTask(&task, runResult.Failed, runResult.FailureReason, runResult.Result)
@@ -171,7 +180,9 @@ func (s *Scheduler) allocateContainer(task *models.Task) (container executor_api
 		FileDescriptors: task.FileDescriptors,
 	})
 	if err != nil {
-		panic(err)
+		s.logger.Errord(map[string]interface{}{
+			"error": fmt.Sprintf("Could not marshal json: %s", err),
+		}, "game-scheduler.allocation-request-json.failed")
 	}
 
 	req, err := s.reqGen.RequestForHandler(executor_api.AllocateContainer, nil, bytes.NewBuffer(reqBody))
@@ -194,26 +205,34 @@ func (s *Scheduler) allocateContainer(task *models.Task) (container executor_api
 	if response.StatusCode == http.StatusRequestEntityTooLarge {
 		s.logger.Infod(map[string]interface{}{
 			"error": "Executor out of resources",
-		}, "game-scheduler.reserve-resource-allocation.full")
+		}, "game-scheduler.allocate-container.full")
 		return
 	}
 
 	if response.StatusCode != http.StatusCreated {
 		s.logger.Errord(map[string]interface{}{
 			"error": fmt.Sprintf("Executor responded with status code %d", response.StatusCode),
-		}, "game-scheduler.reserve-resource-allocation.failed")
+		}, "game-scheduler.allocate-container.failed")
 		return
 	}
 
 	responseBody, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		panic(err)
+		s.logger.Errord(map[string]interface{}{
+			"error": fmt.Sprintf("Could not read response body: %s", err),
+		}, "game-scheduler.allocate-container.failed")
+		return
 	}
+
+	response.Body.Close()
 
 	container = executor_api.Container{}
 	err = json.Unmarshal(responseBody, &container)
 	if err != nil {
-		panic(err)
+		s.logger.Errord(map[string]interface{}{
+			"error": fmt.Sprintf("Could not unmarshal json: %s", err),
+		}, "game-scheduler.allocate-container.failed")
+		return
 	}
 
 	return container, true
