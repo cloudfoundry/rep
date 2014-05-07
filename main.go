@@ -47,12 +47,22 @@ var listenAddr = flag.String(
 	"host:port to listen on for job completion",
 )
 
+var stack = flag.String(
+	"stack",
+	"",
+	"the rep stack - must be specified",
+)
+
 func main() {
 	flag.Parse()
 
 	l, err := steno.GetLogLevel(*logLevel)
 	if err != nil {
 		log.Fatalf("Invalid loglevel: %s\n", *logLevel)
+	}
+
+	if *stack == "" {
+		log.Fatalf("A stack must be specified")
 	}
 
 	stenoConfig := steno.Config{

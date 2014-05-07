@@ -41,13 +41,14 @@ var _ = Describe("Scheduler", func() {
 		var sigChan chan os.Signal
 		var gameScheduler *scheduler.Scheduler
 		var schedulerEnded chan struct{}
+		var correctStack = "my-stack"
 
 		BeforeEach(func() {
 			fakeExecutor = ghttp.NewServer()
 			fakeBBS = fake_bbs.NewFakeExecutorBBS()
 			sigChan = make(chan os.Signal, 1)
 
-			gameScheduler = scheduler.New(fakeBBS, logger, schedulerAddr, fakeExecutor.URL())
+			gameScheduler = scheduler.New(fakeBBS, logger, correctStack, schedulerAddr, fakeExecutor.URL())
 		})
 
 		AfterEach(func() {
@@ -73,6 +74,7 @@ var _ = Describe("Scheduler", func() {
 			BeforeEach(func() {
 				task = &models.Task{
 					Guid:            "task-guid-123",
+					Stack:           correctStack,
 					MemoryMB:        64,
 					DiskMB:          1024,
 					CpuPercent:      .5,
@@ -286,7 +288,26 @@ var _ = Describe("Scheduler", func() {
 				})
 			})
 		})
-	})
 
-	Context("when task watcher throws an error", func() {})
+		Context("when the task has the wrong stack", func() {
+			var task *models.Task
+
+			BeforeEach(func() {
+				task = &models.Task{
+					Guid:            "task-guid-123",
+					Stack:           "asd;oubhasdfbuvasfb",
+					MemoryMB:        64,
+					DiskMB:          1024,
+					CpuPercent:      .5,
+					FileDescriptors: 512,
+					Actions:         []models.ExecutorAction{},
+				}
+				fakeBBS.EmitDesiredTask(task)
+			})
+
+			It("ignores the task", func() {
+				Consistently(fakeBBS.ClaimedTasks).Should(BeEmpty())
+			})
+		})
+	})
 })

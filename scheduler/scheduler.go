@@ -26,6 +26,7 @@ type Scheduler struct {
 	bbs          bbs.ExecutorBBS
 	logger       *gosteno.Logger
 	executorURL  string
+	stack        string
 	reqGen       *router.RequestGenerator
 	client       http.Client
 	listener     net.Listener
@@ -34,11 +35,12 @@ type Scheduler struct {
 	completeChan chan executor_api.ContainerRunResult
 }
 
-func New(bbs bbs.ExecutorBBS, logger *gosteno.Logger, schedulerAddress, executorURL string) *Scheduler {
+func New(bbs bbs.ExecutorBBS, logger *gosteno.Logger, stack string, schedulerAddress, executorURL string) *Scheduler {
 	return &Scheduler{
 		bbs:          bbs,
 		logger:       logger,
 		executorURL:  executorURL,
+		stack:        stack,
 		reqGen:       router.NewRequestGenerator(executorURL, executor_api.Routes),
 		client:       http.Client{},
 		address:      schedulerAddress,
@@ -141,6 +143,11 @@ func (s *Scheduler) handleRunCompletion(runResult executor_api.ContainerRunResul
 
 func (s *Scheduler) handleTaskRequest(task *models.Task) {
 	var err error
+
+	if task.Stack != s.stack {
+		return
+	}
+
 	container, succeeded := s.allocateContainer(task)
 	if !succeeded {
 		return

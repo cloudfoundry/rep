@@ -18,16 +18,18 @@ type Runner struct {
 }
 
 type Config struct {
+	stack       string
 	listenAddr  string
 	executorURL string
 	etcdCluster string
 	logLevel    string
 }
 
-func New(binPath, listenAddr, executorURL, etcdCluster, logLevel string) *Runner {
+func New(binPath, stack, listenAddr, executorURL, etcdCluster, logLevel string) *Runner {
 	return &Runner{
 		binPath: binPath,
 		config: Config{
+			stack:       stack,
 			listenAddr:  listenAddr,
 			executorURL: executorURL,
 			etcdCluster: etcdCluster,
@@ -40,6 +42,7 @@ func (r *Runner) Start() {
 	repSession, err := gexec.Start(
 		exec.Command(
 			r.binPath,
+			"-stack", r.config.stack,
 			"-listenAddr", r.config.listenAddr,
 			"-executorURL", r.config.executorURL,
 			"-etcdCluster", r.config.etcdCluster,
