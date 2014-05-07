@@ -41,8 +41,8 @@ var executorURL = flag.String(
 	"location of executor to represent",
 )
 
-var schedulerAddress = flag.String(
-	"schedulerAddress",
+var listenAddr = flag.String(
+	"listenAddr",
 	"0.0.0.0:20515",
 	"host:port to listen on for job completion",
 )
@@ -86,7 +86,7 @@ func main() {
 
 	ready := make(chan struct{})
 
-	rep := scheduler.New(bbs, logger, *schedulerAddress, *executorURL)
+	rep := scheduler.New(bbs, logger, *listenAddr, *executorURL)
 
 	go func() {
 		<-ready
