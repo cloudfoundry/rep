@@ -73,13 +73,12 @@ var _ = Describe("Scheduler", func() {
 
 			BeforeEach(func() {
 				task = &models.Task{
-					Guid:            "task-guid-123",
-					Stack:           correctStack,
-					MemoryMB:        64,
-					DiskMB:          1024,
-					CpuPercent:      .5,
-					FileDescriptors: 512,
-					Actions:         []models.ExecutorAction{},
+					Guid:       "task-guid-123",
+					Stack:      correctStack,
+					MemoryMB:   64,
+					DiskMB:     1024,
+					CpuPercent: .5,
+					Actions:    []models.ExecutorAction{},
 				}
 				fakeBBS.EmitDesiredTask(task)
 			})
@@ -89,7 +88,7 @@ var _ = Describe("Scheduler", func() {
 					Ω(fakeBBS.ClaimedTasks()).Should(HaveLen(0))
 				},
 				ghttp.VerifyRequest("POST", "/containers"),
-				ghttp.VerifyJSON(`{"memory_mb":64, "disk_mb":1024, "cpu_percent":0.5, "file_descriptors": 512}`),
+				ghttp.VerifyJSON(`{"memory_mb":64, "disk_mb":1024, "cpu_percent":0.5}`),
 				ghttp.RespondWith(http.StatusCreated, `{"executor_guid":"executor-guid","guid":"guid-123"}`))
 
 			createContainerSuccessful := ghttp.CombineHandlers(
@@ -294,13 +293,12 @@ var _ = Describe("Scheduler", func() {
 
 			BeforeEach(func() {
 				task = &models.Task{
-					Guid:            "task-guid-123",
-					Stack:           "asd;oubhasdfbuvasfb",
-					MemoryMB:        64,
-					DiskMB:          1024,
-					CpuPercent:      .5,
-					FileDescriptors: 512,
-					Actions:         []models.ExecutorAction{},
+					Guid:       "task-guid-123",
+					Stack:      "asd;oubhasdfbuvasfb",
+					MemoryMB:   64,
+					DiskMB:     1024,
+					CpuPercent: .5,
+					Actions:    []models.ExecutorAction{},
 				}
 				fakeBBS.EmitDesiredTask(task)
 			})

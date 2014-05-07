@@ -96,7 +96,7 @@ func main() {
 
 	ready := make(chan struct{})
 
-	rep := scheduler.New(bbs, logger, *listenAddr, *executorURL)
+	rep := scheduler.New(bbs, logger, *stack, *listenAddr, *executorURL)
 
 	go func() {
 		<-ready

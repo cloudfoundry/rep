@@ -181,10 +181,9 @@ func (s *Scheduler) handleTaskRequest(task *models.Task) {
 
 func (s *Scheduler) allocateContainer(task *models.Task) (container executor_api.Container, succeeded bool) {
 	reqBody, err := json.Marshal(executor_api.ContainerAllocationRequest{
-		MemoryMB:        task.MemoryMB,
-		DiskMB:          task.DiskMB,
-		CpuPercent:      task.CpuPercent,
-		FileDescriptors: task.FileDescriptors,
+		MemoryMB:   task.MemoryMB,
+		DiskMB:     task.DiskMB,
+		CpuPercent: task.CpuPercent,
 	})
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
