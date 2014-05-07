@@ -9,7 +9,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/cloudfoundry-incubator/representative/scheduler"
+	"github.com/cloudfoundry-incubator/rep/scheduler"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider"
@@ -65,7 +65,7 @@ func main() {
 	}
 
 	steno.Init(&stenoConfig)
-	logger := steno.NewLogger("representative")
+	logger := steno.NewLogger("rep")
 
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
 		strings.Split(*etcdCluster, ","),
@@ -77,7 +77,7 @@ func main() {
 	if err != nil {
 		logger.Errord(map[string]interface{}{
 			"error": err,
-		}, "representative.etcd-connect.failed")
+		}, "rep.etcd-connect.failed")
 		os.Exit(1)
 	}
 
@@ -97,7 +97,7 @@ func main() {
 	if err != nil {
 		logger.Errord(map[string]interface{}{
 			"error": err,
-		}, "representative.run.failed")
+		}, "rep.run.failed")
 		os.Exit(1)
 	}
 }

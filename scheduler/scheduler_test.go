@@ -16,7 +16,7 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/cloudfoundry-incubator/representative/scheduler"
+	"github.com/cloudfoundry-incubator/rep/scheduler"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
