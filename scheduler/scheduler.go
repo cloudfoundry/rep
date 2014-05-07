@@ -184,6 +184,7 @@ func (s *Scheduler) allocateContainer(task *models.Task) (container executor_api
 		MemoryMB:   task.MemoryMB,
 		DiskMB:     task.DiskMB,
 		CpuPercent: task.CpuPercent,
+		Log:        task.Log,
 	})
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
