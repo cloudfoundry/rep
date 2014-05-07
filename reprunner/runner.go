@@ -36,8 +36,8 @@ func New(binPath, listenAddr, executorURL, etcdCluster, logLevel string) *Runner
 	}
 }
 
-func (r *Runner) Start(convergenceInterval, timeToClaim time.Duration) {
-	convergerSession, err := gexec.Start(
+func (r *Runner) Start() {
+	repSession, err := gexec.Start(
 		exec.Command(
 			r.binPath,
 			"-listenAddr", r.config.listenAddr,
@@ -50,7 +50,7 @@ func (r *Runner) Start(convergenceInterval, timeToClaim time.Duration) {
 	)
 
 	Ω(err).ShouldNot(HaveOccurred())
-	r.Session = convergerSession
+	r.Session = repSession
 	Eventually(r.Session.Buffer()).Should(gbytes.Say("started"))
 }
 
