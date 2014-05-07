@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/cloudfoundry-incubator/representative",
+	"ImportPath": "github.com/cloudfoundry-incubator/rep",
 	"GoVersion": "go1.2.1",
 	"Packages": [
 		"./..."
@@ -11,11 +11,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "cbde8fae258e6486bbbe2469433af075642bf291"
+			"Rev": "312b2d58584b08d543024be4e7f802b3ca72c2ca"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "cbde8fae258e6486bbbe2469433af075642bf291"
+			"Rev": "312b2d58584b08d543024be4e7f802b3ca72c2ca"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -45,7 +45,7 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "d53f20ed6065e75dd459ceb4904b3e0a5cadbf0d"
+			"Rev": "f5533d435ebfcf4fa0463202dc0e966b983618b8"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/router",

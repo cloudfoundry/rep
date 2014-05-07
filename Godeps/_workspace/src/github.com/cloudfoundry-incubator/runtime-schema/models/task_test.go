@@ -31,7 +31,6 @@ var _ = Describe("Task", func() {
 		"result": "turboencabulated",
 		"failed":true,
 		"failure_reason":"because i said so",
-		"file_descriptors":9001,
 		"memory_mb":256,
 		"disk_mb":1024,
 		"cpu_percent": 42.25,
@@ -42,7 +41,8 @@ var _ = Describe("Task", func() {
 		},
 		"created_at": 1393371971000000000,
 		"updated_at": 1393371971000000010,
-		"state": 1
+		"state": 1,
+		"annotation": "[{\"anything\": \"you want!\"}]... dude"
 	}`
 
 	BeforeEach(func() {
@@ -71,13 +71,13 @@ var _ = Describe("Task", func() {
 			Result:          "turboencabulated",
 			Failed:          true,
 			FailureReason:   "because i said so",
-			FileDescriptors: 9001,
 			MemoryMB:        256,
 			DiskMB:          1024,
 			CpuPercent:      42.25,
 			CreatedAt:       time.Date(2014, time.February, 25, 23, 46, 11, 00, time.UTC).UnixNano(),
 			UpdatedAt:       time.Date(2014, time.February, 25, 23, 46, 11, 10, time.UTC).UnixNano(),
 			State:           TaskStatePending,
+			Annotation:      `[{"anything": "you want!"}]... dude`,
 		}
 	})
 
