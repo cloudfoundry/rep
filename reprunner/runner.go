@@ -38,6 +38,10 @@ func New(binPath, stack, listenAddr, executorURL, etcdCluster, logLevel string) 
 }
 
 func (r *Runner) Start() {
+	if r.Session != nil {
+		panic("starting more than one rep!!!")
+	}
+
 	repSession, err := gexec.Start(
 		exec.Command(
 			r.binPath,
