@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/cloudfoundry-incubator/executor/client"
 	"io/ioutil"
@@ -81,7 +82,7 @@ func (s *Scheduler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *Scheduler) Run(sigChan chan os.Signal, readyChan chan struct{}) error {
 	s.logger.Info("executor.watching-for-desired-task")
-	tasks, _, _ := s.bbs.WatchForDesiredTask()
+	tasks, stopChan, errChan := s.bbs.WatchForDesiredTask()
 
 	listener, err := net.Listen("tcp", s.address)
 	if err != nil {
@@ -97,7 +98,19 @@ func (s *Scheduler) Run(sigChan chan os.Signal, readyChan chan struct{}) error {
 
 	for {
 		select {
-		case task := <-tasks:
+		case err := <-errChan:
+			s.logger.Errord(map[string]interface{}{
+				"error": err.Error(),
+			}, "game-scheduler.watch-desired.restart")
+			tasks, stopChan, errChan = s.bbs.WatchForDesiredTask()
+
+		case task, ok := <-tasks:
+			if !ok {
+				s.logger.Errord(map[string]interface{}{
+					"error": errors.New("task channel closed. This is very unexpected, we did not intented to exit like this."),
+				}, "game-scheduler.watch-desired.task-chan-closed")
+				return nil
+			}
 			s.inFlight.Add(1)
 			go func() {
 				s.handleTaskRequest(task)
@@ -116,6 +129,7 @@ func (s *Scheduler) Run(sigChan chan os.Signal, readyChan chan struct{}) error {
 			case syscall.SIGINT, syscall.SIGTERM:
 				s.stopServer()
 				s.inFlight.Wait()
+				close(stopChan)
 				return nil
 			}
 		}
