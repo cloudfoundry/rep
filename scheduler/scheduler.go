@@ -296,7 +296,7 @@ func (s *Scheduler) runActions(allocationGuid string, task *models.Task) {
 			"error": err.Error(),
 		}, "game-scheduler.run-actions-request.failed")
 	}
-	if response.StatusCode != http.StatusOK {
+	if response.StatusCode != http.StatusCreated {
 		s.logger.Errord(map[string]interface{}{
 			"error": fmt.Sprintf("Executor responded with status code %d", response.StatusCode),
 		}, "game-scheduler.run-actions.failed")
