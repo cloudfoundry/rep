@@ -2,7 +2,6 @@ package reprunner
 
 import (
 	"os/exec"
-	"syscall"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -59,13 +58,14 @@ func (r *Runner) Start() {
 
 func (r *Runner) Stop() {
 	if r.Session != nil {
-		r.Session.Command.Process.Signal(syscall.SIGTERM)
-		r.Session.Wait(5 * time.Second)
+		r.Session.Interrupt().Wait(5 * time.Second)
+		r.Session = nil
 	}
 }
 
 func (r *Runner) KillWithFire() {
 	if r.Session != nil {
-		r.Session.Command.Process.Kill()
+		r.Session.Kill().Wait()
+		r.Session = nil
 	}
 }
