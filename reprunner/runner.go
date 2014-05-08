@@ -2,7 +2,6 @@ package reprunner
 
 import (
 	"os/exec"
-	"syscall"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -39,6 +38,10 @@ func New(binPath, stack, listenAddr, executorURL, etcdCluster, logLevel string) 
 }
 
 func (r *Runner) Start() {
+	if r.Session != nil {
+		panic("starting more than one rep!!!")
+	}
+
 	repSession, err := gexec.Start(
 		exec.Command(
 			r.binPath,
@@ -59,13 +62,14 @@ func (r *Runner) Start() {
 
 func (r *Runner) Stop() {
 	if r.Session != nil {
-		r.Session.Command.Process.Signal(syscall.SIGTERM)
-		r.Session.Wait(5 * time.Second)
+		r.Session.Interrupt().Wait(5 * time.Second)
+		r.Session = nil
 	}
 }
 
 func (r *Runner) KillWithFire() {
 	if r.Session != nil {
-		r.Session.Command.Process.Kill()
+		r.Session.Kill().Wait()
+		r.Session = nil
 	}
 }

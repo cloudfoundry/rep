@@ -74,10 +74,12 @@ var _ = Describe("Scheduler", func() {
 		})
 
 		Context("when a staging task is desired", func() {
-			var task *models.Task
+			var task models.Task
 
 			BeforeEach(func() {
-				task = &models.Task{
+				index := 0
+
+				task = models.Task{
 					Guid:       "task-guid-123",
 					Stack:      correctStack,
 					MemoryMB:   64,
@@ -92,6 +94,11 @@ var _ = Describe("Scheduler", func() {
 							},
 						},
 					},
+					Log: models.LogConfig{
+						Guid:       "some-guid",
+						SourceName: "XYZ",
+						Index:      &index,
+					},
 				}
 				fakeBBS.EmitDesiredTask(task)
 			})
@@ -105,12 +112,15 @@ var _ = Describe("Scheduler", func() {
 					deletedContainerGuid = ""
 
 					fakeClient.WhenAllocatingContainer = func(req client.ContainerRequest) (client.ContainerResponse, error) {
+						defer GinkgoRecover()
+
 						allocateCalled = true
 						Ω(fakeBBS.ClaimedTasks()).Should(HaveLen(0))
 						Ω(req.MemoryMB).Should(Equal(64))
 						Ω(req.DiskMB).Should(Equal(1024))
 						Ω(req.CpuPercent).Should(Equal(0.5))
-						return client.ContainerResponse{ExecutorGuid: "executor-guid", Guid: "guid-123", ContainerRequest: req}, nil
+						Ω(req.LogConfig).Should(Equal(task.Log))
+						return client.ContainerResponse{ExecutorGuid: "the-executor-guid", Guid: "guid-123", ContainerRequest: req}, nil
 					}
 
 					fakeClient.WhenDeletingContainer = func(allocationGuid string) error {
@@ -127,6 +137,8 @@ var _ = Describe("Scheduler", func() {
 							initCalled = false
 
 							fakeClient.WhenInitializingContainer = func(allocationGuid string) error {
+								defer GinkgoRecover()
+
 								initCalled = true
 								Ω(allocationGuid).Should(Equal("guid-123"))
 								Ω(fakeBBS.ClaimedTasks()).Should(HaveLen(1))
@@ -147,11 +159,16 @@ var _ = Describe("Scheduler", func() {
 								runCalled = false
 
 								fakeClient.WhenRunning = func(allocationGuid string, req client.RunRequest) error {
+									defer GinkgoRecover()
+
 									runCalled = true
 
-									// claimed tasks?
 									Ω(fakeBBS.StartedTasks()).Should(HaveLen(1))
-									Ω(fakeBBS.StartedTasks()[0]).Should(Equal(task))
+
+									expectedTask := task
+									expectedTask.ExecutorID = "the-executor-guid"
+									expectedTask.ContainerHandle = "guid-123"
+									Ω(fakeBBS.StartedTasks()[0]).Should(Equal(expectedTask))
 
 									Ω(allocationGuid).Should(Equal("guid-123"))
 									Ω(req.Actions).Should(Equal(task.Actions))
@@ -190,7 +207,7 @@ var _ = Describe("Scheduler", func() {
 								It("records the job result", func() {
 									task.Result = "42"
 									Eventually(fakeBBS.CompletedTasks).Should(HaveLen(1))
-									Ω(fakeBBS.CompletedTasks()[0]).Should(Equal(task))
+									Ω(fakeBBS.CompletedTasks()[0].Guid).Should(Equal(task.Guid))
 								})
 							})
 
@@ -215,13 +232,14 @@ var _ = Describe("Scheduler", func() {
 								})
 
 								It("records the job failure", func() {
-									task.Failed = true
-									task.FailureReason = "it didn't work"
-									task.ContainerHandle = "guid-123"
-									task.ExecutorID = "executor-guid"
+									expectedTask := task
+									expectedTask.ContainerHandle = "guid-123"
+									expectedTask.ExecutorID = "the-executor-guid"
+									expectedTask.Failed = true
+									expectedTask.FailureReason = "it didn't work"
 
 									Eventually(fakeBBS.CompletedTasks).Should(HaveLen(1))
-									Ω(fakeBBS.CompletedTasks()[0]).Should(Equal(task))
+									Ω(fakeBBS.CompletedTasks()[0]).Should(Equal(expectedTask))
 								})
 							})
 						})
@@ -292,10 +310,10 @@ var _ = Describe("Scheduler", func() {
 		})
 
 		Context("when the task has the wrong stack", func() {
-			var task *models.Task
+			var task models.Task
 
 			BeforeEach(func() {
-				task = &models.Task{
+				task = models.Task{
 					Guid:       "task-guid-123",
 					Stack:      "asd;oubhasdfbuvasfb",
 					MemoryMB:   64,
