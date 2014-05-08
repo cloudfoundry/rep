@@ -72,6 +72,8 @@ var _ = Describe("Scheduler", func() {
 			var task *models.Task
 
 			BeforeEach(func() {
+				index := 0
+
 				task = &models.Task{
 					Guid:       "task-guid-123",
 					Stack:      correctStack,
@@ -79,6 +81,11 @@ var _ = Describe("Scheduler", func() {
 					DiskMB:     1024,
 					CpuPercent: .5,
 					Actions:    []models.ExecutorAction{},
+					Log: models.LogConfig{
+						Guid:       "some-guid",
+						SourceName: "XYZ",
+						Index:      &index,
+					},
 				}
 				fakeBBS.EmitDesiredTask(task)
 			})
@@ -88,7 +95,7 @@ var _ = Describe("Scheduler", func() {
 					Ω(fakeBBS.ClaimedTasks()).Should(HaveLen(0))
 				},
 				ghttp.VerifyRequest("POST", "/containers"),
-				ghttp.VerifyJSON(`{"memory_mb":64, "disk_mb":1024, "cpu_percent":0.5}`),
+				ghttp.VerifyJSON(`{"memory_mb":64, "disk_mb":1024, "cpu_percent":0.5,"log":{"guid":"some-guid","source_name":"XYZ","index":0}}`),
 				ghttp.RespondWith(http.StatusCreated, `{"executor_guid":"executor-guid","guid":"guid-123"}`))
 
 			createContainerSuccessful := ghttp.CombineHandlers(
