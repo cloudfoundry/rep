@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/cloudfoundry-incubator/rep.svg?branch=master)](https://travis-ci.org/cloudfoundry-incubator/rep)
+
 The Rep
 ==============
 
