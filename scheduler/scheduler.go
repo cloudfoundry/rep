@@ -1,9 +1,9 @@
 package scheduler
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/cloudfoundry-incubator/executor/client"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -17,7 +17,6 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/executor_api"
 	"github.com/cloudfoundry/gosteno"
-	"github.com/tedsuo/router"
 )
 
 const ServerCloseErrMsg = "use of closed network connection"
@@ -25,24 +24,20 @@ const ServerCloseErrMsg = "use of closed network connection"
 type Scheduler struct {
 	bbs          bbs.ExecutorBBS
 	logger       *gosteno.Logger
-	executorURL  string
 	stack        string
-	reqGen       *router.RequestGenerator
-	client       http.Client
+	client       client.Client
 	listener     net.Listener
 	address      string
 	inFlight     *sync.WaitGroup
 	completeChan chan executor_api.ContainerRunResult
 }
 
-func New(bbs bbs.ExecutorBBS, logger *gosteno.Logger, stack string, schedulerAddress, executorURL string) *Scheduler {
+func New(bbs bbs.ExecutorBBS, logger *gosteno.Logger, stack, schedulerAddress string, executorClient client.Client) *Scheduler {
 	return &Scheduler{
 		bbs:          bbs,
 		logger:       logger,
-		executorURL:  executorURL,
 		stack:        stack,
-		reqGen:       router.NewRequestGenerator(executorURL, executor_api.Routes),
-		client:       http.Client{},
+		client:       executorClient,
 		address:      schedulerAddress,
 		inFlight:     &sync.WaitGroup{},
 		completeChan: make(chan executor_api.ContainerRunResult),
@@ -123,7 +118,6 @@ func (s *Scheduler) Run(sigChan chan os.Signal, readyChan chan struct{}) error {
 				s.inFlight.Wait()
 				return nil
 			}
-
 		}
 	}
 }
@@ -148,8 +142,15 @@ func (s *Scheduler) handleTaskRequest(task *models.Task) {
 		return
 	}
 
-	container, succeeded := s.allocateContainer(task)
-	if !succeeded {
+	container, err := s.client.AllocateContainer(client.ContainerRequest{
+		DiskMB:     task.DiskMB,
+		MemoryMB:   task.MemoryMB,
+		CpuPercent: task.CpuPercent,
+	})
+	if err != nil {
+		s.logger.Errord(map[string]interface{}{
+			"error": err.Error(),
+		}, "game-scheduler.allocation-request.failed")
 		return
 	}
 
@@ -157,13 +158,19 @@ func (s *Scheduler) handleTaskRequest(task *models.Task) {
 
 	err = s.bbs.ClaimTask(task, container.ExecutorGuid)
 	if err != nil {
-		s.deleteAllocation(container.Guid)
+		s.logger.Errord(map[string]interface{}{
+			"error": err.Error(),
+		}, "game-scheduler.claim-task.failed")
+		s.client.DeleteContainer(container.Guid)
 		return
 	}
 
-	succeeded = s.initializeContainer(container.Guid)
-	if !succeeded {
-		s.deleteAllocation(container.Guid)
+	err = s.client.InitializeContainer(container.Guid)
+	if err != nil {
+		s.logger.Errord(map[string]interface{}{
+			"error": err.Error(),
+		}, "game-scheduler.initialize-container-request.failed")
+		s.client.DeleteContainer(container.Guid)
 		return
 	}
 
@@ -172,157 +179,19 @@ func (s *Scheduler) handleTaskRequest(task *models.Task) {
 		s.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
 		}, "game-scheduler.start-task.failed")
-		s.deleteAllocation(container.Guid)
+		s.client.DeleteContainer(container.Guid)
 		return
 	}
 
-	s.runActions(container.Guid, task)
-}
-
-func (s *Scheduler) allocateContainer(task *models.Task) (container executor_api.Container, succeeded bool) {
-	reqBody, err := json.Marshal(executor_api.ContainerAllocationRequest{
-		MemoryMB:   task.MemoryMB,
-		DiskMB:     task.DiskMB,
-		CpuPercent: task.CpuPercent,
+	err = s.client.Run(container.Guid, client.RunRequest{
+		Actions:       task.Actions,
+		CompletionURL: fmt.Sprintf("http://%s/complete/%s", s.address, container.Guid),
+		Metadata:      task.ToJSON(),
 	})
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
-			"error": fmt.Sprintf("Could not marshal json: %s", err),
-		}, "game-scheduler.allocation-request-json.failed")
-	}
-
-	req, err := s.reqGen.RequestForHandler(executor_api.AllocateContainer, nil, bytes.NewBuffer(reqBody))
-	if err != nil {
-		s.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
-		}, "game-scheduler.allocation-request-generation.failed")
-		return
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	response, err := s.client.Do(req)
-	if err != nil {
-		s.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "game-scheduler.allocation-request.failed")
-		return
-	}
-
-	if response.StatusCode == http.StatusRequestEntityTooLarge {
-		s.logger.Infod(map[string]interface{}{
-			"error": "Executor out of resources",
-		}, "game-scheduler.allocate-container.full")
-		return
-	}
-
-	if response.StatusCode != http.StatusCreated {
-		s.logger.Errord(map[string]interface{}{
-			"error": fmt.Sprintf("Executor responded with status code %d", response.StatusCode),
-		}, "game-scheduler.allocate-container.failed")
-		return
-	}
-
-	responseBody, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		s.logger.Errord(map[string]interface{}{
-			"error": fmt.Sprintf("Could not read response body: %s", err),
-		}, "game-scheduler.allocate-container.failed")
-		return
-	}
-
-	response.Body.Close()
-
-	container = executor_api.Container{}
-	err = json.Unmarshal(responseBody, &container)
-	if err != nil {
-		s.logger.Errord(map[string]interface{}{
-			"error": fmt.Sprintf("Could not unmarshal json: %s", err),
-		}, "game-scheduler.allocate-container.failed")
-		return
-	}
-
-	return container, true
-}
-
-func (s *Scheduler) initializeContainer(allocationGuid string) bool {
-	req, err := s.reqGen.RequestForHandler(executor_api.InitializeContainer, router.Params{"guid": allocationGuid}, nil)
-	if err != nil {
-		s.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "game-scheduler.initialize-request-generation.failed")
-		return false
-	}
-
-	response, err := s.client.Do(req)
-	if err != nil {
-		s.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "game-scheduler.initialize-container-request.failed")
-		return false
-	}
-	if response.StatusCode != http.StatusCreated {
-		s.logger.Errord(map[string]interface{}{
-			"error": fmt.Sprintf("Executor responded with status code %d", response.StatusCode),
-		}, "game-scheduler.initialize-container.failed")
-		return false
-	}
-	return true
-}
-
-func (s *Scheduler) runActions(allocationGuid string, task *models.Task) {
-	reqBody, err := json.Marshal(executor_api.ContainerRunRequest{
-		Actions:     task.Actions,
-		Metadata:    task.ToJSON(),
-		CompleteURL: "http://" + s.address + "/complete/" + allocationGuid,
-	})
-
-	req, err := s.reqGen.RequestForHandler(
-		executor_api.RunActions,
-		router.Params{"guid": allocationGuid},
-		bytes.NewReader(reqBody),
-	)
-	if err != nil {
-		s.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "game-scheduler.run-actions-request-generation.failed")
-		return
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	response, err := s.client.Do(req)
-	if err != nil {
-		s.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "game-scheduler.run-actions-request.failed")
-	}
-	if response.StatusCode != http.StatusOK {
-		s.logger.Errord(map[string]interface{}{
-			"error": fmt.Sprintf("Executor responded with status code %d", response.StatusCode),
 		}, "game-scheduler.run-actions.failed")
-	}
-}
-
-func (s *Scheduler) deleteAllocation(allocationGuid string) {
-	req, err := s.reqGen.RequestForHandler(executor_api.DeleteContainer, router.Params{"guid": allocationGuid}, nil)
-	if err != nil {
-		s.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "game-scheduler.delete-container-request.failed")
-		return
-	}
-
-	response, err := s.client.Do(req)
-	if err != nil {
-		s.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "game-scheduler.delete-contatiner-request.failed")
-		return
-	}
-
-	if response.StatusCode != http.StatusOK {
-		s.logger.Errord(map[string]interface{}{
-			"error": fmt.Sprintf("Executor responded with status code %d", response.StatusCode),
-		}, "game-scheduler.delete-container.failed")
 	}
 }
 

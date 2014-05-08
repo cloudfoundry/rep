@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/cloudfoundry-incubator/executor/client"
 	"net/http"
+	"reflect"
 
+	"github.com/cloudfoundry-incubator/executor/client/fake_client"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/executor_api"
@@ -42,13 +45,15 @@ var _ = Describe("Scheduler", func() {
 		var gameScheduler *scheduler.Scheduler
 		var schedulerEnded chan struct{}
 		var correctStack = "my-stack"
+		var fakeClient *fake_client.FakeClient
 
 		BeforeEach(func() {
+			fakeClient = fake_client.New()
 			fakeExecutor = ghttp.NewServer()
 			fakeBBS = fake_bbs.NewFakeExecutorBBS()
 			sigChan = make(chan os.Signal, 1)
 
-			gameScheduler = scheduler.New(fakeBBS, logger, correctStack, schedulerAddr, fakeExecutor.URL())
+			gameScheduler = scheduler.New(fakeBBS, logger, correctStack, schedulerAddr, fakeClient)
 		})
 
 		AfterEach(func() {
@@ -78,153 +83,202 @@ var _ = Describe("Scheduler", func() {
 					MemoryMB:   64,
 					DiskMB:     1024,
 					CpuPercent: .5,
-					Actions:    []models.ExecutorAction{},
+					Actions: []models.ExecutorAction{
+						{
+							Action: models.RunAction{
+								Script:  "the-script",
+								Env:     []models.EnvironmentVariable{{Key: "PATH", Value: "the-path"}},
+								Timeout: 500,
+							},
+						},
+					},
 				}
 				fakeBBS.EmitDesiredTask(task)
 			})
 
-			reserveContainerSuccessful := ghttp.CombineHandlers(
-				func(w http.ResponseWriter, r *http.Request) {
-					Ω(fakeBBS.ClaimedTasks()).Should(HaveLen(0))
-				},
-				ghttp.VerifyRequest("POST", "/containers"),
-				ghttp.VerifyJSON(`{"memory_mb":64, "disk_mb":1024, "cpu_percent":0.5}`),
-				ghttp.RespondWith(http.StatusCreated, `{"executor_guid":"executor-guid","guid":"guid-123"}`))
+			Context("when reserving the container succeeds", func() {
+				var allocateCalled bool
+				var deletedContainerGuid string
 
-			createContainerSuccessful := ghttp.CombineHandlers(
-				func(w http.ResponseWriter, r *http.Request) {
-					Ω(fakeBBS.ClaimedTasks()).Should(HaveLen(1))
-					Ω(fakeBBS.StartedTasks()).Should(HaveLen(0))
-				},
-				ghttp.VerifyRequest("POST", "/containers/guid-123/initialize"),
-				ghttp.RespondWith(http.StatusCreated, ""))
+				BeforeEach(func() {
+					allocateCalled = false
+					deletedContainerGuid = ""
 
-			startContainerSuccessful := ghttp.CombineHandlers(
-				func(w http.ResponseWriter, r *http.Request) {
-					Ω(fakeBBS.StartedTasks()).Should(HaveLen(1))
-					startedTask := fakeBBS.StartedTasks()[0]
-
-					runRequest := executor_api.ContainerRunRequest{
-						Actions:     startedTask.Actions,
-						Metadata:    startedTask.ToJSON(),
-						CompleteURL: fmt.Sprintf("http://%s/complete/guid-123", schedulerAddr),
+					fakeClient.WhenAllocatingContainer = func(req client.ContainerRequest) (client.ContainerResponse, error) {
+						allocateCalled = true
+						Ω(fakeBBS.ClaimedTasks()).Should(HaveLen(0))
+						Ω(req.MemoryMB).Should(Equal(64))
+						Ω(req.DiskMB).Should(Equal(1024))
+						Ω(req.CpuPercent).Should(Equal(0.5))
+						return client.ContainerResponse{ExecutorGuid: "executor-guid", Guid: "guid-123", ContainerRequest: req}, nil
 					}
 
-					ghttp.VerifyJSONRepresenting(runRequest)(w, r)
-				},
-				ghttp.VerifyRequest("POST", "/containers/guid-123/run"),
-				ghttp.RespondWith(http.StatusCreated, ""))
-
-			deleteAllocationSuccessful := ghttp.CombineHandlers(
-				ghttp.VerifyRequest("DELETE", "/containers/guid-123"),
-				ghttp.RespondWith(http.StatusOK, ""))
-
-			Context("and we reserve it, claim it, run it, and the task finishes", func() {
-				BeforeEach(func() {
-					fakeExecutor.AppendHandlers(
-						reserveContainerSuccessful,
-						createContainerSuccessful,
-						startContainerSuccessful,
-					)
+					fakeClient.WhenDeletingContainer = func(allocationGuid string) error {
+						deletedContainerGuid = allocationGuid
+						return nil
+					}
 				})
 
-				It("completes all calls to the executor", func() {
-					Eventually(fakeExecutor.ReceivedRequests).Should(HaveLen(3))
-				})
+				Context("when claiming the task succeeds", func() {
+					Context("when initializing the container succeeds", func() {
+						var initCalled bool
 
-				It("marks the job as Claimed", func() {
-					Eventually(fakeBBS.ClaimedTasks).Should(HaveLen(1))
-				})
+						BeforeEach(func() {
+							initCalled = false
 
-				It("marks the job as Started", func() {
-					Eventually(fakeBBS.StartedTasks).Should(HaveLen(1))
-				})
-
-				Describe("and the task succeeds", func() {
-					var resp *http.Response
-					var err error
-					var expectedTask *models.Task
-
-					JustBeforeEach(func() {
-						expectedTask = &models.Task{
-							Guid:            "task-guid-123",
-							ExecutorID:      "executor-id",
-							ContainerHandle: "guid-123",
-						}
-
-						body, jsonErr := json.Marshal(executor_api.ContainerRunResult{
-							Result:   "42",
-							Metadata: expectedTask.ToJSON(),
+							fakeClient.WhenInitializingContainer = func(allocationGuid string) error {
+								initCalled = true
+								Ω(allocationGuid).Should(Equal("guid-123"))
+								Ω(fakeBBS.ClaimedTasks()).Should(HaveLen(1))
+								Ω(fakeBBS.StartedTasks()).Should(HaveLen(0))
+								return nil
+							}
 						})
-						Ω(jsonErr).ShouldNot(HaveOccurred())
 
-						resp, err = http.Post(fmt.Sprintf("http://%s/complete", schedulerAddr), "application/json", bytes.NewReader(body))
+						Context("and the executor successfully starts running the task", func() {
+							var (
+								completionURL string
+								sentMetadata  []byte
+								runCalled     bool
+							)
+
+							BeforeEach(func() {
+								completionURL = ""
+								runCalled = false
+
+								fakeClient.WhenRunning = func(allocationGuid string, req client.RunRequest) error {
+									runCalled = true
+
+									// claimed tasks?
+									Ω(fakeBBS.StartedTasks()).Should(HaveLen(1))
+									Ω(fakeBBS.StartedTasks()[0]).Should(Equal(task))
+
+									Ω(allocationGuid).Should(Equal("guid-123"))
+									Ω(req.Actions).Should(Equal(task.Actions))
+									sentMetadata = req.Metadata
+									completionURL = req.CompletionURL
+									return nil
+								}
+							})
+
+							It("makes all calls to the executor", func() {
+								Eventually(ValueOf(&allocateCalled)).Should(BeTrue())
+								Eventually(ValueOf(&initCalled)).Should(BeTrue())
+								Eventually(ValueOf(&runCalled)).Should(BeTrue())
+							})
+
+							Describe("and the task succeeds", func() {
+								var resp *http.Response
+								var err error
+
+								JustBeforeEach(func() {
+									body, jsonErr := json.Marshal(executor_api.ContainerRunResult{
+										Result:   "42",
+										Metadata: sentMetadata,
+									})
+									Ω(jsonErr).ShouldNot(HaveOccurred())
+
+									Eventually(ValueOf(&completionURL)).ShouldNot(BeEmpty())
+									resp, err = http.Post(completionURL, "application/json", bytes.NewReader(body))
+								})
+
+								It("responds to the onComplete hook", func() {
+									Ω(err).ShouldNot(HaveOccurred())
+									Ω(resp.StatusCode).Should(Equal(http.StatusOK))
+								})
+
+								It("records the job result", func() {
+									task.Result = "42"
+									Eventually(fakeBBS.CompletedTasks).Should(HaveLen(1))
+									Ω(fakeBBS.CompletedTasks()[0]).Should(Equal(task))
+								})
+							})
+
+							Describe("and the task fails", func() {
+								var resp *http.Response
+								var err error
+
+								JustBeforeEach(func() {
+									body, jsonErr := json.Marshal(executor_api.ContainerRunResult{
+										Failed:        true,
+										FailureReason: "it didn't work",
+										Metadata:      sentMetadata,
+									})
+									Ω(jsonErr).ShouldNot(HaveOccurred())
+
+									resp, err = http.Post(fmt.Sprintf("http://%s/complete", schedulerAddr), "application/json", bytes.NewReader(body))
+								})
+
+								It("responds to the onComplete hook", func() {
+									Ω(err).ShouldNot(HaveOccurred())
+									Ω(resp.StatusCode).Should(Equal(http.StatusOK))
+								})
+
+								It("records the job failure", func() {
+									task.Failed = true
+									task.FailureReason = "it didn't work"
+									task.ContainerHandle = "guid-123"
+									task.ExecutorID = "executor-guid"
+
+									Eventually(fakeBBS.CompletedTasks).Should(HaveLen(1))
+									Ω(fakeBBS.CompletedTasks()[0]).Should(Equal(task))
+								})
+							})
+						})
+
+						Context("but starting the task fails", func() {
+							BeforeEach(func() {
+								fakeBBS.SetStartTaskErr(errors.New("kerpow"))
+							})
+
+							It("deletes the container", func() {
+								Eventually(ValueOf(&deletedContainerGuid)).Should(Equal("guid-123"))
+							})
+						})
 					})
 
-					It("responds to the onComplete hook", func() {
-						Ω(err).ShouldNot(HaveOccurred())
-						Ω(resp.StatusCode).Should(Equal(http.StatusOK))
-					})
+					Context("but initializing the container fails", func() {
+						BeforeEach(func() {
+							fakeClient.WhenInitializingContainer = func(allocationGuid string) error {
+								return errors.New("Can't initialize")
+							}
+						})
 
-					It("records the job result", func() {
-						expectedTask.Result = "42"
-						Eventually(fakeBBS.CompletedTasks).Should(HaveLen(1))
-						Ω(fakeBBS.CompletedTasks()[0]).Should(Equal(expectedTask))
+						It("does not mark the job as started", func() {
+							Eventually(fakeBBS.StartedTasks).Should(HaveLen(0))
+						})
+
+						It("deletes the container", func() {
+							Eventually(ValueOf(&deletedContainerGuid)).Should(Equal("guid-123"))
+						})
 					})
 				})
 
-				Describe("and the task fails", func() {
-					var resp *http.Response
-					var err error
-					var expectedTask *models.Task
-
-					JustBeforeEach(func() {
-						expectedTask = &models.Task{
-							Guid:            "task-guid-123",
-							ExecutorID:      "executor-id",
-							ContainerHandle: "guid-123",
-						}
-
-						body, jsonErr := json.Marshal(executor_api.ContainerRunResult{
-							Failed:        true,
-							FailureReason: "it didn't work",
-							Metadata:      expectedTask.ToJSON(),
-						})
-						Ω(jsonErr).ShouldNot(HaveOccurred())
-
-						resp, err = http.Post(fmt.Sprintf("http://%s/complete", schedulerAddr), "application/json", bytes.NewReader(body))
+				Context("but claiming the task fails", func() {
+					BeforeEach(func() {
+						fakeBBS.SetClaimTaskErr(errors.New("data store went away."))
 					})
 
-					It("responds to the onComplete hook", func() {
-						Ω(err).ShouldNot(HaveOccurred())
-						Ω(resp.StatusCode).Should(Equal(http.StatusOK))
-					})
-
-					It("records the job failure", func() {
-						expectedTask.Failed = true
-						expectedTask.FailureReason = "it didn't work"
-						Eventually(fakeBBS.CompletedTasks).Should(HaveLen(1))
-						Ω(fakeBBS.CompletedTasks()[0]).Should(Equal(expectedTask))
+					It("deletes the resource allocation on the executor", func() {
+						Eventually(ValueOf(&deletedContainerGuid)).Should(Equal("guid-123"))
 					})
 				})
 			})
 
-			Context("and we can't reserve it", func() {
-				var reserveContainerFailed = ghttp.CombineHandlers(
-					func(w http.ResponseWriter, r *http.Request) {
-						Ω(fakeBBS.ClaimedTasks()).Should(HaveLen(0))
-					},
-					ghttp.VerifyRequest("POST", "/containers"),
-					ghttp.RespondWith(http.StatusRequestEntityTooLarge, `{"executor_guid":"executor-guid","guid":"guid-123"}`))
+			Context("when reserving the container fails", func() {
+				var allocatedContainer bool
 
 				BeforeEach(func() {
-					fakeExecutor.AppendHandlers(
-						reserveContainerFailed,
-					)
+					allocatedContainer = false
+
+					fakeClient.WhenAllocatingContainer = func(req client.ContainerRequest) (client.ContainerResponse, error) {
+						allocatedContainer = true
+						return client.ContainerResponse{}, errors.New("Something went wrong")
+					}
 				})
 
-				It("completes the resource allocation request", func() {
-					Eventually(fakeExecutor.ReceivedRequests).Should(HaveLen(1))
+				It("makes the resource allocation request", func() {
+					Eventually(ValueOf(&allocatedContainer)).Should(BeTrue())
 				})
 
 				It("does not mark the job as Claimed", func() {
@@ -233,57 +287,6 @@ var _ = Describe("Scheduler", func() {
 
 				It("does not mark the job as Started", func() {
 					Eventually(fakeBBS.StartedTasks).Should(HaveLen(0))
-				})
-			})
-
-			Context("and we reserve it but can't claim it", func() {
-				BeforeEach(func() {
-					fakeExecutor.AppendHandlers(
-						reserveContainerSuccessful,
-						deleteAllocationSuccessful,
-					)
-					fakeBBS.SetClaimTaskErr(errors.New("data store went away."))
-				})
-
-				It("deletes the resource allocation on the executor", func() {
-					Eventually(fakeExecutor.ReceivedRequests).Should(HaveLen(2))
-				})
-			})
-
-			Context("and we reserve it, claim it, but can't create the container (resources go away between reserve and run)", func() {
-				createContainerFailed := ghttp.CombineHandlers(
-					func(w http.ResponseWriter, r *http.Request) {
-						Ω(fakeBBS.ClaimedTasks()).Should(HaveLen(1))
-						Ω(fakeBBS.StartedTasks()).Should(HaveLen(0))
-					},
-					ghttp.VerifyRequest("POST", "/containers/guid-123/initialize"),
-					ghttp.RespondWith(http.StatusInternalServerError, ""))
-
-				BeforeEach(func() {
-					fakeExecutor.AppendHandlers(
-						reserveContainerSuccessful,
-						createContainerFailed,
-						deleteAllocationSuccessful,
-					)
-				})
-
-				It("does not mark the job as started", func() {
-					Eventually(fakeBBS.StartedTasks).Should(HaveLen(0))
-				})
-			})
-
-			Context("and we reserve it, claim it, create container, but can't mark it as started", func() {
-				BeforeEach(func() {
-					fakeBBS.SetStartTaskErr(errors.New("kerpow"))
-					fakeExecutor.AppendHandlers(
-						reserveContainerSuccessful,
-						createContainerSuccessful,
-						deleteAllocationSuccessful,
-					)
-				})
-
-				It("deletes the allocation", func() {
-					Eventually(fakeExecutor.ReceivedRequests).Should(HaveLen(3))
 				})
 			})
 		})
@@ -309,3 +312,7 @@ var _ = Describe("Scheduler", func() {
 		})
 	})
 })
+
+func ValueOf(p interface{}) func() interface{} {
+	return func() interface{} { return reflect.Indirect(reflect.ValueOf(p)).Interface() }
+}
