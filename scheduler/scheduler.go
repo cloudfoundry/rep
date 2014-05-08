@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cloudfoundry-incubator/executor/client"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -14,9 +13,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cloudfoundry-incubator/executor/client"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry-incubator/runtime-schema/models/executor_api"
 	"github.com/cloudfoundry/gosteno"
 )
 
@@ -30,7 +29,7 @@ type Scheduler struct {
 	listener     net.Listener
 	address      string
 	inFlight     *sync.WaitGroup
-	completeChan chan executor_api.ContainerRunResult
+	completeChan chan client.ContainerRunResult
 }
 
 func New(bbs bbs.ExecutorBBS, logger *gosteno.Logger, stack, schedulerAddress string, executorClient client.Client) *Scheduler {
@@ -41,7 +40,7 @@ func New(bbs bbs.ExecutorBBS, logger *gosteno.Logger, stack, schedulerAddress st
 		client:       executorClient,
 		address:      schedulerAddress,
 		inFlight:     &sync.WaitGroup{},
-		completeChan: make(chan executor_api.ContainerRunResult),
+		completeChan: make(chan client.ContainerRunResult),
 	}
 }
 
@@ -67,8 +66,7 @@ func (s *Scheduler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	responseBody, err := ioutil.ReadAll(r.Body)
 	r.Body.Close()
 
-	completeResp := executor_api.ContainerRunResult{}
-	err = json.Unmarshal(responseBody, &completeResp)
+	completeResp, err := client.NewContainerRunResultFromJSON(responseBody)
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
 			"error": fmt.Sprintf("Could not unmarshal response: %s", err),
@@ -76,6 +74,7 @@ func (s *Scheduler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
 	s.completeChan <- completeResp
 	w.WriteHeader(http.StatusOK)
 }
@@ -136,7 +135,7 @@ func (s *Scheduler) Run(sigChan chan os.Signal, readyChan chan struct{}) error {
 	}
 }
 
-func (s *Scheduler) handleRunCompletion(runResult executor_api.ContainerRunResult) {
+func (s *Scheduler) handleRunCompletion(runResult client.ContainerRunResult) {
 	task := models.Task{}
 	err := json.Unmarshal(runResult.Metadata, &task)
 	if err != nil {

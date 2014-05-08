@@ -2,7 +2,6 @@ package scheduler_test
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/cloudfoundry-incubator/executor/client"
@@ -12,7 +11,6 @@ import (
 	"github.com/cloudfoundry-incubator/executor/client/fake_client"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry-incubator/runtime-schema/models/executor_api"
 	"github.com/cloudfoundry/gosteno"
 	"github.com/onsi/gomega/ghttp"
 
@@ -157,6 +155,7 @@ var _ = Describe("Scheduler", func() {
 							BeforeEach(func() {
 								completionURL = ""
 								runCalled = false
+								sentMetadata = []byte{}
 
 								fakeClient.WhenRunning = func(allocationGuid string, req client.RunRequest) error {
 									defer GinkgoRecover()
@@ -172,7 +171,9 @@ var _ = Describe("Scheduler", func() {
 
 									Ω(allocationGuid).Should(Equal("guid-123"))
 									Ω(req.Actions).Should(Equal(task.Actions))
+
 									sentMetadata = req.Metadata
+
 									completionURL = req.CompletionURL
 									return nil
 								}
@@ -188,23 +189,32 @@ var _ = Describe("Scheduler", func() {
 								var resp *http.Response
 								var err error
 
-								JustBeforeEach(func() {
-									body, jsonErr := json.Marshal(executor_api.ContainerRunResult{
+								sendCompletionCallback := func() {
+									body, jsonErr := fake_client.MarshalContainerRunResult(client.ContainerRunResult{
 										Result:   "42",
 										Metadata: sentMetadata,
 									})
+
 									Ω(jsonErr).ShouldNot(HaveOccurred())
 
 									Eventually(ValueOf(&completionURL)).ShouldNot(BeEmpty())
 									resp, err = http.Post(completionURL, "application/json", bytes.NewReader(body))
-								})
+								}
 
 								It("responds to the onComplete hook", func() {
+									Eventually(ValueOf(&runCalled)).Should(BeTrue())
+
+									sendCompletionCallback()
+
 									Ω(err).ShouldNot(HaveOccurred())
 									Ω(resp.StatusCode).Should(Equal(http.StatusOK))
 								})
 
 								It("records the job result", func() {
+									Eventually(ValueOf(&runCalled)).Should(BeTrue())
+
+									sendCompletionCallback()
+
 									task.Result = "42"
 									Eventually(fakeBBS.CompletedTasks).Should(HaveLen(1))
 									Ω(fakeBBS.CompletedTasks()[0].Guid).Should(Equal(task.Guid))
@@ -215,8 +225,8 @@ var _ = Describe("Scheduler", func() {
 								var resp *http.Response
 								var err error
 
-								JustBeforeEach(func() {
-									body, jsonErr := json.Marshal(executor_api.ContainerRunResult{
+								sendCompletionCallback := func() {
+									body, jsonErr := fake_client.MarshalContainerRunResult(client.ContainerRunResult{
 										Failed:        true,
 										FailureReason: "it didn't work",
 										Metadata:      sentMetadata,
@@ -224,14 +234,22 @@ var _ = Describe("Scheduler", func() {
 									Ω(jsonErr).ShouldNot(HaveOccurred())
 
 									resp, err = http.Post(fmt.Sprintf("http://%s/complete", schedulerAddr), "application/json", bytes.NewReader(body))
-								})
+								}
 
 								It("responds to the onComplete hook", func() {
+									Eventually(ValueOf(&runCalled)).Should(BeTrue())
+
+									sendCompletionCallback()
+
 									Ω(err).ShouldNot(HaveOccurred())
 									Ω(resp.StatusCode).Should(Equal(http.StatusOK))
 								})
 
 								It("records the job failure", func() {
+									Eventually(ValueOf(&runCalled)).Should(BeTrue())
+
+									sendCompletionCallback()
+
 									expectedTask := task
 									expectedTask.ContainerHandle = "guid-123"
 									expectedTask.ExecutorID = "the-executor-guid"
