@@ -138,10 +138,10 @@ func (s *Scheduler) handleRunCompletion(runResult executor_api.ContainerRunResul
 		return
 	}
 
-	s.bbs.CompleteTask(&task, runResult.Failed, runResult.FailureReason, runResult.Result)
+	s.bbs.CompleteTask(task, runResult.Failed, runResult.FailureReason, runResult.Result)
 }
 
-func (s *Scheduler) handleTaskRequest(task *models.Task) {
+func (s *Scheduler) handleTaskRequest(task models.Task) {
 	var err error
 
 	if task.Stack != s.stack {
@@ -155,7 +155,7 @@ func (s *Scheduler) handleTaskRequest(task *models.Task) {
 
 	s.sleepForARandomInterval()
 
-	err = s.bbs.ClaimTask(task, container.ExecutorGuid)
+	task, err = s.bbs.ClaimTask(task, container.ExecutorGuid)
 	if err != nil {
 		s.deleteAllocation(container.Guid)
 		return
@@ -167,7 +167,7 @@ func (s *Scheduler) handleTaskRequest(task *models.Task) {
 		return
 	}
 
-	err = s.bbs.StartTask(task, container.Guid)
+	task, err = s.bbs.StartTask(task, container.Guid)
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
@@ -179,7 +179,7 @@ func (s *Scheduler) handleTaskRequest(task *models.Task) {
 	s.runActions(container.Guid, task)
 }
 
-func (s *Scheduler) allocateContainer(task *models.Task) (container executor_api.Container, succeeded bool) {
+func (s *Scheduler) allocateContainer(task models.Task) (container executor_api.Container, succeeded bool) {
 	reqBody, err := json.Marshal(executor_api.ContainerAllocationRequest{
 		MemoryMB:   task.MemoryMB,
 		DiskMB:     task.DiskMB,
@@ -270,7 +270,7 @@ func (s *Scheduler) initializeContainer(allocationGuid string) bool {
 	return true
 }
 
-func (s *Scheduler) runActions(allocationGuid string, task *models.Task) {
+func (s *Scheduler) runActions(allocationGuid string, task models.Task) {
 	reqBody, err := json.Marshal(executor_api.ContainerRunRequest{
 		Actions:     task.Actions,
 		Metadata:    task.ToJSON(),

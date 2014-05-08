@@ -69,12 +69,12 @@ var _ = Describe("Scheduler", func() {
 		})
 
 		Context("when a staging task is desired", func() {
-			var task *models.Task
+			var task models.Task
 
 			BeforeEach(func() {
 				index := 0
 
-				task = &models.Task{
+				task = models.Task{
 					Guid:       "task-guid-123",
 					Stack:      correctStack,
 					MemoryMB:   64,
@@ -150,10 +150,10 @@ var _ = Describe("Scheduler", func() {
 				Describe("and the task succeeds", func() {
 					var resp *http.Response
 					var err error
-					var expectedTask *models.Task
+					var expectedTask models.Task
 
 					JustBeforeEach(func() {
-						expectedTask = &models.Task{
+						expectedTask = models.Task{
 							Guid:            "task-guid-123",
 							ExecutorID:      "executor-id",
 							ContainerHandle: "guid-123",
@@ -183,10 +183,10 @@ var _ = Describe("Scheduler", func() {
 				Describe("and the task fails", func() {
 					var resp *http.Response
 					var err error
-					var expectedTask *models.Task
+					var expectedTask models.Task
 
 					JustBeforeEach(func() {
-						expectedTask = &models.Task{
+						expectedTask = models.Task{
 							Guid:            "task-guid-123",
 							ExecutorID:      "executor-id",
 							ContainerHandle: "guid-123",
@@ -296,10 +296,10 @@ var _ = Describe("Scheduler", func() {
 		})
 
 		Context("when the task has the wrong stack", func() {
-			var task *models.Task
+			var task models.Task
 
 			BeforeEach(func() {
-				task = &models.Task{
+				task = models.Task{
 					Guid:       "task-guid-123",
 					Stack:      "asd;oubhasdfbuvasfb",
 					MemoryMB:   64,
