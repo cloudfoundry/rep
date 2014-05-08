@@ -3,7 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/cloudfoundry-incubator/executor/client"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -96,7 +98,9 @@ func main() {
 
 	ready := make(chan struct{})
 
-	rep := scheduler.New(bbs, logger, *stack, *listenAddr, *executorURL)
+	executorClient := client.New(http.DefaultClient, *executorURL)
+
+	rep := scheduler.New(bbs, logger, *stack, *listenAddr, executorClient)
 
 	go func() {
 		<-ready
