@@ -108,6 +108,7 @@ func (s *Scheduler) Run(sigChan chan os.Signal, readyChan chan struct{}) error {
 				s.logger.Errord(map[string]interface{}{
 					"error": errors.New("task channel closed. This is very unexpected, we did not intented to exit like this."),
 				}, "game-scheduler.watch-desired.task-chan-closed")
+				s.gracefulShutdown()
 				return nil
 			}
 			s.inFlight.Add(1)
@@ -126,13 +127,17 @@ func (s *Scheduler) Run(sigChan chan os.Signal, readyChan chan struct{}) error {
 		case sig := <-sigChan:
 			switch sig {
 			case syscall.SIGINT, syscall.SIGTERM:
-				s.stopServer()
-				s.inFlight.Wait()
+				s.gracefulShutdown()
 				close(stopChan)
 				return nil
 			}
 		}
 	}
+}
+
+func (s *Scheduler) gracefulShutdown() {
+	s.stopServer()
+	s.inFlight.Wait()
 }
 
 func (s *Scheduler) handleRunCompletion(runResult client.ContainerRunResult) {

@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/cloudfoundry-incubator/executor/client"
 	"net/http"
-	"reflect"
+	"time"
+
+	"github.com/cloudfoundry-incubator/executor/client"
 
 	"github.com/cloudfoundry-incubator/executor/client/fake_client"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
@@ -102,17 +103,17 @@ var _ = Describe("Scheduler", func() {
 			})
 
 			Context("when reserving the container succeeds", func() {
-				var allocateCalled bool
-				var deletedContainerGuid string
+				var allocateCalled chan struct{}
+				var deletedContainerGuid chan string
 
 				BeforeEach(func() {
-					allocateCalled = false
-					deletedContainerGuid = ""
+					allocateCalled = make(chan struct{}, 1)
+					deletedContainerGuid = make(chan string, 1)
 
 					fakeClient.WhenAllocatingContainer = func(req client.ContainerRequest) (client.ContainerResponse, error) {
 						defer GinkgoRecover()
 
-						allocateCalled = true
+						allocateCalled <- struct{}{}
 						Ω(fakeBBS.ClaimedTasks()).Should(HaveLen(0))
 						Ω(req.MemoryMB).Should(Equal(64))
 						Ω(req.DiskMB).Should(Equal(1024))
@@ -122,22 +123,22 @@ var _ = Describe("Scheduler", func() {
 					}
 
 					fakeClient.WhenDeletingContainer = func(allocationGuid string) error {
-						deletedContainerGuid = allocationGuid
+						deletedContainerGuid <- allocationGuid
 						return nil
 					}
 				})
 
 				Context("when claiming the task succeeds", func() {
 					Context("when initializing the container succeeds", func() {
-						var initCalled bool
+						var initCalled chan struct{}
 
 						BeforeEach(func() {
-							initCalled = false
+							initCalled = make(chan struct{}, 1)
 
 							fakeClient.WhenInitializingContainer = func(allocationGuid string) error {
 								defer GinkgoRecover()
 
-								initCalled = true
+								initCalled <- struct{}{}
 								Ω(allocationGuid).Should(Equal("guid-123"))
 								Ω(fakeBBS.ClaimedTasks()).Should(HaveLen(1))
 								Ω(fakeBBS.StartedTasks()).Should(HaveLen(0))
@@ -147,20 +148,14 @@ var _ = Describe("Scheduler", func() {
 
 						Context("and the executor successfully starts running the task", func() {
 							var (
-								completionURL string
-								sentMetadata  []byte
-								runCalled     bool
+								reqChan chan client.RunRequest
 							)
 
 							BeforeEach(func() {
-								completionURL = ""
-								runCalled = false
-								sentMetadata = []byte{}
+								reqChan = make(chan client.RunRequest, 1)
 
 								fakeClient.WhenRunning = func(allocationGuid string, req client.RunRequest) error {
 									defer GinkgoRecover()
-
-									runCalled = true
 
 									Ω(fakeBBS.StartedTasks()).Should(HaveLen(1))
 
@@ -172,52 +167,36 @@ var _ = Describe("Scheduler", func() {
 									Ω(allocationGuid).Should(Equal("guid-123"))
 									Ω(req.Actions).Should(Equal(task.Actions))
 
-									sentMetadata = req.Metadata
-
-									completionURL = req.CompletionURL
+									reqChan <- req
 									return nil
 								}
 							})
 
 							It("makes all calls to the executor", func() {
-								Eventually(ValueOf(&allocateCalled)).Should(BeTrue())
-								Eventually(ValueOf(&initCalled)).Should(BeTrue())
-								Eventually(ValueOf(&runCalled)).Should(BeTrue())
+								Eventually(allocateCalled).Should(Receive())
+								Eventually(initCalled).Should(Receive())
+								Eventually(reqChan).Should(Receive())
 							})
 
 							Describe("and the task succeeds", func() {
 								var resp *http.Response
 								var err error
 
-								sendCompletionCallback := func() {
-									body, jsonErr := fake_client.MarshalContainerRunResult(client.ContainerRunResult{
-										Result:   "42",
-										Metadata: sentMetadata,
+								JustBeforeEach(func() {
+									resp, err = sendCompletionCallback(reqChan, client.ContainerRunResult{
+										Result: "42",
 									})
-
-									Ω(jsonErr).ShouldNot(HaveOccurred())
-
-									Eventually(ValueOf(&completionURL)).ShouldNot(BeEmpty())
-									resp, err = http.Post(completionURL, "application/json", bytes.NewReader(body))
-								}
+								})
 
 								It("responds to the onComplete hook", func() {
-									Eventually(ValueOf(&runCalled)).Should(BeTrue())
-
-									sendCompletionCallback()
-
-									Ω(err).ShouldNot(HaveOccurred())
 									Ω(resp.StatusCode).Should(Equal(http.StatusOK))
+									Ω(err).ShouldNot(HaveOccurred())
 								})
 
 								It("records the job result", func() {
-									Eventually(ValueOf(&runCalled)).Should(BeTrue())
-
-									sendCompletionCallback()
-
-									task.Result = "42"
 									Eventually(fakeBBS.CompletedTasks).Should(HaveLen(1))
 									Ω(fakeBBS.CompletedTasks()[0].Guid).Should(Equal(task.Guid))
+									Ω(fakeBBS.CompletedTasks()[0].Result).Should(Equal("42"))
 								})
 							})
 
@@ -225,31 +204,19 @@ var _ = Describe("Scheduler", func() {
 								var resp *http.Response
 								var err error
 
-								sendCompletionCallback := func() {
-									body, jsonErr := fake_client.MarshalContainerRunResult(client.ContainerRunResult{
+								JustBeforeEach(func() {
+									resp, err = sendCompletionCallback(reqChan, client.ContainerRunResult{
 										Failed:        true,
 										FailureReason: "it didn't work",
-										Metadata:      sentMetadata,
 									})
-									Ω(jsonErr).ShouldNot(HaveOccurred())
-
-									resp, err = http.Post(fmt.Sprintf("http://%s/complete", schedulerAddr), "application/json", bytes.NewReader(body))
-								}
+								})
 
 								It("responds to the onComplete hook", func() {
-									Eventually(ValueOf(&runCalled)).Should(BeTrue())
-
-									sendCompletionCallback()
-
 									Ω(err).ShouldNot(HaveOccurred())
 									Ω(resp.StatusCode).Should(Equal(http.StatusOK))
 								})
 
 								It("records the job failure", func() {
-									Eventually(ValueOf(&runCalled)).Should(BeTrue())
-
-									sendCompletionCallback()
-
 									expectedTask := task
 									expectedTask.ContainerHandle = "guid-123"
 									expectedTask.ExecutorID = "the-executor-guid"
@@ -268,7 +235,7 @@ var _ = Describe("Scheduler", func() {
 							})
 
 							It("deletes the container", func() {
-								Eventually(ValueOf(&deletedContainerGuid)).Should(Equal("guid-123"))
+								Eventually(deletedContainerGuid).Should(Receive(Equal("guid-123")))
 							})
 						})
 					})
@@ -285,7 +252,7 @@ var _ = Describe("Scheduler", func() {
 						})
 
 						It("deletes the container", func() {
-							Eventually(ValueOf(&deletedContainerGuid)).Should(Equal("guid-123"))
+							Eventually(deletedContainerGuid).Should(Receive(Equal("guid-123")))
 						})
 					})
 				})
@@ -296,25 +263,25 @@ var _ = Describe("Scheduler", func() {
 					})
 
 					It("deletes the resource allocation on the executor", func() {
-						Eventually(ValueOf(&deletedContainerGuid)).Should(Equal("guid-123"))
+						Eventually(deletedContainerGuid).Should(Receive(Equal("guid-123")))
 					})
 				})
 			})
 
 			Context("when reserving the container fails", func() {
-				var allocatedContainer bool
+				var allocatedContainer chan struct{}
 
 				BeforeEach(func() {
-					allocatedContainer = false
+					allocatedContainer = make(chan struct{}, 1)
 
 					fakeClient.WhenAllocatingContainer = func(req client.ContainerRequest) (client.ContainerResponse, error) {
-						allocatedContainer = true
+						allocatedContainer <- struct{}{}
 						return client.ContainerResponse{}, errors.New("Something went wrong")
 					}
 				})
 
 				It("makes the resource allocation request", func() {
-					Eventually(ValueOf(&allocatedContainer)).Should(BeTrue())
+					Eventually(allocatedContainer).Should(Receive())
 				})
 
 				It("does not mark the job as Claimed", func() {
@@ -349,6 +316,19 @@ var _ = Describe("Scheduler", func() {
 	})
 })
 
-func ValueOf(p interface{}) func() interface{} {
-	return func() interface{} { return reflect.Indirect(reflect.ValueOf(p)).Interface() }
+func sendCompletionCallback(reqChan chan client.RunRequest, resp client.ContainerRunResult) (*http.Response, error) {
+	var req client.RunRequest
+
+	select {
+	case req = <-reqChan:
+	case <-time.After(2 * time.Second):
+		Fail("request timeout exceeded")
+	}
+
+	resp.Metadata = req.Metadata
+
+	body, jsonErr := fake_client.MarshalContainerRunResult(resp)
+	Ω(jsonErr).ShouldNot(HaveOccurred())
+
+	return http.Post(req.CompletionURL, "application/json", bytes.NewReader(body))
 }
