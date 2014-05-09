@@ -32,7 +32,7 @@ func New(bbs bbs.ExecutorBBS, logger *gosteno.Logger, executorClient client.Clie
 
 func (s *LrpScheduler) Run(sigChan chan os.Signal, readyChan chan struct{}) error {
 	s.logger.Info("executor.watching-for-desired-lrp")
-	lrps, _, errChan := s.bbs.WatchForDesiredTransitionalLongRunningProcess()
+	lrps, stopChan, errChan := s.bbs.WatchForDesiredTransitionalLongRunningProcess()
 
 	if readyChan != nil {
 		close(readyChan)
@@ -44,7 +44,7 @@ func (s *LrpScheduler) Run(sigChan chan os.Signal, readyChan chan struct{}) erro
 			s.logger.Errord(map[string]interface{}{
 				"error": err.Error(),
 			}, "game-scheduler.watch-desired.restart")
-			lrps, _, errChan = s.bbs.WatchForDesiredTransitionalLongRunningProcess()
+			lrps, stopChan, errChan = s.bbs.WatchForDesiredTransitionalLongRunningProcess()
 
 		case lrp, ok := <-lrps:
 			if !ok {
@@ -63,10 +63,7 @@ func (s *LrpScheduler) Run(sigChan chan os.Signal, readyChan chan struct{}) erro
 			switch sig {
 			case syscall.SIGINT, syscall.SIGTERM:
 				s.inFlight.Wait()
-
-				// TODO
-				// close(stopChan)
-
+				close(stopChan)
 				return nil
 			}
 		}
@@ -77,12 +74,6 @@ func (s *LrpScheduler) handleLrpRequest(lrp models.TransitionalLongRunningProces
 	var err error
 
 	container, err := s.client.AllocateContainer(client.ContainerRequest{
-
-		// TODO
-		// DiskMB:     lrp.DiskMB,
-		// MemoryMB:   lrp.MemoryMB,
-		// CpuPercent: lrp.CpuPercent,
-
 		LogConfig: lrp.Log,
 	})
 	if err != nil {

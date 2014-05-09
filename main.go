@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/cloudfoundry-incubator/executor/client"
+	"github.com/cloudfoundry-incubator/rep/lrp_scheduler"
 	"log"
 	"net/http"
 	"os"
@@ -96,22 +97,39 @@ func main() {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT)
 
-	ready := make(chan struct{})
-
 	executorClient := client.New(http.DefaultClient, *executorURL)
 
-	rep := scheduler.New(bbs, logger, *stack, *listenAddr, executorClient)
+	taskRep := scheduler.New(bbs, logger, *stack, *listenAddr, executorClient)
+	lrpRep := lrp_scheduler.New(bbs, logger, executorClient)
+
+	taskSchedulerReady := make(chan struct{})
+	lrpSchedulerReady := make(chan struct{})
 
 	go func() {
-		<-ready
+		<-taskSchedulerReady
+		<-lrpSchedulerReady
 		fmt.Println("representative started")
 	}()
 
-	err = rep.Run(signals, ready)
-	if err != nil {
-		logger.Errord(map[string]interface{}{
-			"error": err,
-		}, "rep.run.failed")
-		os.Exit(1)
-	}
+	go func() {
+		err := taskRep.Run(signals, taskSchedulerReady)
+		if err != nil {
+			logger.Errord(map[string]interface{}{
+				"error": err,
+			}, "rep.task-scheduler.failed")
+			os.Exit(1)
+		}
+	}()
+
+	go func() {
+		err := lrpRep.Run(signals, lrpSchedulerReady)
+		if err != nil {
+			logger.Errord(map[string]interface{}{
+				"error": err,
+			}, "rep.lrp-scheduler.failed")
+			os.Exit(1)
+		}
+	}()
+
+	select {}
 }
