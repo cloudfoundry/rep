@@ -15,9 +15,6 @@ import (
 	"github.com/cloudfoundry/gosteno"
 	"github.com/onsi/gomega/ghttp"
 
-	"os"
-	"syscall"
-
 	"github.com/cloudfoundry-incubator/rep/scheduler"
 
 	. "github.com/onsi/ginkgo"
@@ -40,9 +37,7 @@ var _ = Describe("Scheduler", func() {
 		var fakeExecutor *ghttp.Server
 		var fakeBBS *fake_bbs.FakeExecutorBBS
 		var schedulerAddr = fmt.Sprintf("127.0.0.1:%d", 12001+config.GinkgoConfig.ParallelNode)
-		var sigChan chan os.Signal
 		var gameScheduler *scheduler.Scheduler
-		var schedulerEnded chan struct{}
 		var correctStack = "my-stack"
 		var fakeClient *fake_client.FakeClient
 
@@ -50,25 +45,19 @@ var _ = Describe("Scheduler", func() {
 			fakeClient = fake_client.New()
 			fakeExecutor = ghttp.NewServer()
 			fakeBBS = fake_bbs.NewFakeExecutorBBS()
-			sigChan = make(chan os.Signal, 1)
 
 			gameScheduler = scheduler.New(fakeBBS, logger, correctStack, schedulerAddr, fakeClient)
 		})
 
 		AfterEach(func() {
-			sigChan <- syscall.SIGINT
-			<-schedulerEnded
+			gameScheduler.Stop()
 			fakeExecutor.Close()
 		})
 
 		JustBeforeEach(func() {
 			readyChan := make(chan struct{})
-			schedulerEnded = make(chan struct{})
-			go func() {
-				err := gameScheduler.Run(sigChan, readyChan)
-				Ω(err).ShouldNot(HaveOccurred())
-				close(schedulerEnded)
-			}()
+			err := gameScheduler.Run(readyChan)
+			Ω(err).ShouldNot(HaveOccurred())
 			<-readyChan
 		})
 

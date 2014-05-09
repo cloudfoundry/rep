@@ -2,15 +2,14 @@ package lrp_scheduler_test
 
 import (
 	"errors"
+	"time"
+
 	"github.com/cloudfoundry-incubator/executor/client"
 	"github.com/cloudfoundry-incubator/executor/client/fake_client"
 	. "github.com/cloudfoundry-incubator/rep/lrp_scheduler"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gosteno"
-	"os"
-	"syscall"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -29,32 +28,22 @@ var _ = Describe("Scheduler", func() {
 
 	Context("when a game scheduler is running", func() {
 		var fakeBBS *fake_bbs.FakeExecutorBBS
-		var sigChan chan os.Signal
 		var lrpScheduler *LrpScheduler
-		var schedulerEnded chan struct{}
 		var fakeClient *fake_client.FakeClient
 
 		BeforeEach(func() {
 			fakeClient = fake_client.New()
 			fakeBBS = fake_bbs.NewFakeExecutorBBS()
-			sigChan = make(chan os.Signal, 1)
-
 			lrpScheduler = New(fakeBBS, logger, fakeClient)
 		})
 
 		AfterEach(func() {
-			sigChan <- syscall.SIGINT
-			<-schedulerEnded
+			lrpScheduler.Stop()
 		})
 
 		JustBeforeEach(func() {
 			readyChan := make(chan struct{})
-			schedulerEnded = make(chan struct{})
-			go func() {
-				err := lrpScheduler.Run(sigChan, readyChan)
-				Ω(err).ShouldNot(HaveOccurred())
-				close(schedulerEnded)
-			}()
+			lrpScheduler.Run(readyChan)
 			<-readyChan
 		})
 

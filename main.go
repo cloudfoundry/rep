@@ -111,25 +111,23 @@ func main() {
 		fmt.Println("representative started")
 	}()
 
-	go func() {
-		err := taskRep.Run(signals, taskSchedulerReady)
-		if err != nil {
-			logger.Errord(map[string]interface{}{
-				"error": err,
-			}, "rep.task-scheduler.failed")
-			os.Exit(1)
-		}
-	}()
+	err = taskRep.Run(taskSchedulerReady)
+	if err != nil {
+		logger.Errord(map[string]interface{}{
+			"error": err,
+		}, "rep.task-scheduler.failed")
+		os.Exit(1)
+	}
 
-	go func() {
-		err := lrpRep.Run(signals, lrpSchedulerReady)
-		if err != nil {
-			logger.Errord(map[string]interface{}{
-				"error": err,
-			}, "rep.lrp-scheduler.failed")
-			os.Exit(1)
-		}
-	}()
+	lrpRep.Run(lrpSchedulerReady)
 
-	select {}
+	for {
+		sig := <-signals
+		switch sig {
+		case syscall.SIGINT, syscall.SIGTERM:
+			taskRep.Stop()
+			lrpRep.Stop()
+			os.Exit(0)
+		}
+	}
 }

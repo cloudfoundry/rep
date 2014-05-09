@@ -38,7 +38,7 @@ func New(binPath, stack, listenAddr, executorURL, etcdCluster, logLevel string) 
 }
 
 func (r *Runner) Start() {
-	if r.Session != nil {
+	if r.Session != nil && r.Session.ExitCode() == -1 {
 		panic("starting more than one rep!!!")
 	}
 
@@ -63,13 +63,11 @@ func (r *Runner) Start() {
 func (r *Runner) Stop() {
 	if r.Session != nil {
 		r.Session.Interrupt().Wait(5 * time.Second)
-		r.Session = nil
 	}
 }
 
 func (r *Runner) KillWithFire() {
 	if r.Session != nil {
 		r.Session.Kill().Wait()
-		r.Session = nil
 	}
 }

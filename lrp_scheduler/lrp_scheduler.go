@@ -3,9 +3,7 @@ package lrp_scheduler
 import (
 	"errors"
 	"math/rand"
-	"os"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/cloudfoundry-incubator/executor/client"
@@ -15,10 +13,12 @@ import (
 )
 
 type LrpScheduler struct {
-	bbs      bbs.ExecutorBBS
-	logger   *gosteno.Logger
-	client   client.Client
-	inFlight *sync.WaitGroup
+	bbs            bbs.ExecutorBBS
+	logger         *gosteno.Logger
+	client         client.Client
+	inFlight       *sync.WaitGroup
+	exitChan       chan struct{}
+	terminatedChan chan struct{}
 }
 
 func New(bbs bbs.ExecutorBBS, logger *gosteno.Logger, executorClient client.Client) *LrpScheduler {
@@ -30,43 +30,53 @@ func New(bbs bbs.ExecutorBBS, logger *gosteno.Logger, executorClient client.Clie
 	}
 }
 
-func (s *LrpScheduler) Run(sigChan chan os.Signal, readyChan chan struct{}) error {
+func (s *LrpScheduler) Run(readyChan chan struct{}) {
+	s.terminatedChan = make(chan struct{})
+	s.exitChan = make(chan struct{})
 	s.logger.Info("executor.watching-for-desired-lrp")
-	lrps, stopChan, errChan := s.bbs.WatchForDesiredTransitionalLongRunningProcess()
 
-	if readyChan != nil {
-		close(readyChan)
-	}
-
-	for {
-		select {
-		case err := <-errChan:
-			s.logger.Errord(map[string]interface{}{
-				"error": err.Error(),
-			}, "game-scheduler.watch-desired.restart")
-			lrps, stopChan, errChan = s.bbs.WatchForDesiredTransitionalLongRunningProcess()
-
-		case lrp, ok := <-lrps:
-			if !ok {
+	go func() {
+		lrps, stopChan, errChan := s.bbs.WatchForDesiredTransitionalLongRunningProcess()
+		if readyChan != nil {
+			close(readyChan)
+		}
+		for {
+			select {
+			case err := <-errChan:
 				s.logger.Errord(map[string]interface{}{
-					"error": errors.New("lrp channel closed. This is very unexpected, we did not intented to exit like this."),
-				}, "game-scheduler.watch-desired.lrp-chan-closed")
-				return nil
-			}
-			s.inFlight.Add(1)
-			go func() {
-				s.handleLrpRequest(lrp)
-				s.inFlight.Done()
-			}()
+					"error": err.Error(),
+				}, "game-scheduler.watch-desired.restart")
+				lrps, stopChan, errChan = s.bbs.WatchForDesiredTransitionalLongRunningProcess()
 
-		case sig := <-sigChan:
-			switch sig {
-			case syscall.SIGINT, syscall.SIGTERM:
+			case lrp, ok := <-lrps:
+				if !ok {
+					s.logger.Errord(map[string]interface{}{
+						"error": errors.New("lrp channel closed. This is very unexpected, we did not intented to exit like this."),
+					}, "game-scheduler.watch-desired.lrp-chan-closed")
+					close(s.terminatedChan)
+					return
+				}
+				s.inFlight.Add(1)
+				go func() {
+					s.handleLrpRequest(lrp)
+					s.inFlight.Done()
+				}()
+
+			case <-s.exitChan:
 				s.inFlight.Wait()
 				close(stopChan)
-				return nil
+				close(s.terminatedChan)
+				return
 			}
 		}
+	}()
+
+}
+
+func (s *LrpScheduler) Stop() {
+	if s.exitChan != nil {
+		close(s.exitChan)
+		<-s.terminatedChan
 	}
 }
 

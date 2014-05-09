@@ -53,6 +53,16 @@ var _ = Describe("Main", func() {
 		etcdRunner.Stop()
 	})
 
+	Describe("when a kill signal is send to the representative", func() {
+		BeforeEach(func() {
+			runner.Stop()
+		})
+
+		It("should die", func() {
+			Eventually(runner.Session.ExitCode).Should(Equal(0))
+		})
+	})
+
 	Describe("when a task is written to the BBS", func() {
 		BeforeEach(func() {
 			fakeExecutor.AppendHandlers(ghttp.CombineHandlers(

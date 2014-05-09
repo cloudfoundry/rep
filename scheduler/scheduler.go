@@ -8,9 +8,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"os"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/cloudfoundry-incubator/executor/client"
@@ -22,14 +20,16 @@ import (
 const ServerCloseErrMsg = "use of closed network connection"
 
 type Scheduler struct {
-	bbs          bbs.ExecutorBBS
-	logger       *gosteno.Logger
-	stack        string
-	client       client.Client
-	listener     net.Listener
-	address      string
-	inFlight     *sync.WaitGroup
-	completeChan chan client.ContainerRunResult
+	bbs            bbs.ExecutorBBS
+	logger         *gosteno.Logger
+	stack          string
+	client         client.Client
+	listener       net.Listener
+	address        string
+	inFlight       *sync.WaitGroup
+	completeChan   chan client.ContainerRunResult
+	exitChan       chan struct{}
+	terminatedChan chan struct{}
 }
 
 func New(bbs bbs.ExecutorBBS, logger *gosteno.Logger, stack, schedulerAddress string, executorClient client.Client) *Scheduler {
@@ -79,9 +79,10 @@ func (s *Scheduler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Scheduler) Run(sigChan chan os.Signal, readyChan chan struct{}) error {
+func (s *Scheduler) Run(readyChan chan struct{}) error {
+	s.exitChan = make(chan struct{})
+	s.terminatedChan = make(chan struct{})
 	s.logger.Info("executor.watching-for-desired-task")
-	tasks, stopChan, errChan := s.bbs.WatchForDesiredTask()
 
 	listener, err := net.Listen("tcp", s.address)
 	if err != nil {
@@ -89,49 +90,60 @@ func (s *Scheduler) Run(sigChan chan os.Signal, readyChan chan struct{}) error {
 	}
 	s.listener = listener
 
-	if readyChan != nil {
-		close(readyChan)
-	}
-
 	go s.startServer()
 
-	for {
-		select {
-		case err := <-errChan:
-			s.logger.Errord(map[string]interface{}{
-				"error": err.Error(),
-			}, "game-scheduler.watch-desired.restart")
-			tasks, stopChan, errChan = s.bbs.WatchForDesiredTask()
+	go func() {
+		tasks, stopChan, errChan := s.bbs.WatchForDesiredTask()
 
-		case task, ok := <-tasks:
-			if !ok {
+		if readyChan != nil {
+			close(readyChan)
+		}
+
+		for {
+			select {
+			case err := <-errChan:
 				s.logger.Errord(map[string]interface{}{
-					"error": errors.New("task channel closed. This is very unexpected, we did not intented to exit like this."),
-				}, "game-scheduler.watch-desired.task-chan-closed")
-				s.gracefulShutdown()
-				return nil
-			}
-			s.inFlight.Add(1)
-			go func() {
-				s.handleTaskRequest(task)
-				s.inFlight.Done()
-			}()
+					"error": err.Error(),
+				}, "game-scheduler.watch-desired.restart")
+				tasks, stopChan, errChan = s.bbs.WatchForDesiredTask()
 
-		case runResult := <-s.completeChan:
-			s.inFlight.Add(1)
-			go func() {
-				s.handleRunCompletion(runResult)
-				s.inFlight.Done()
-			}()
+			case task, ok := <-tasks:
+				if !ok {
+					s.logger.Errord(map[string]interface{}{
+						"error": errors.New("task channel closed. This is very unexpected, we did not intented to exit like this."),
+					}, "game-scheduler.watch-desired.task-chan-closed")
+					s.gracefulShutdown()
+					close(s.terminatedChan)
+					return
+				}
+				s.inFlight.Add(1)
+				go func() {
+					s.handleTaskRequest(task)
+					s.inFlight.Done()
+				}()
 
-		case sig := <-sigChan:
-			switch sig {
-			case syscall.SIGINT, syscall.SIGTERM:
+			case runResult := <-s.completeChan:
+				s.inFlight.Add(1)
+				go func() {
+					s.handleRunCompletion(runResult)
+					s.inFlight.Done()
+				}()
+
+			case <-s.exitChan:
 				s.gracefulShutdown()
 				close(stopChan)
-				return nil
+				close(s.terminatedChan)
+				return
 			}
 		}
+	}()
+	return nil
+}
+
+func (s *Scheduler) Stop() {
+	if s.exitChan != nil {
+		close(s.exitChan)
+		<-s.terminatedChan
 	}
 }
 
