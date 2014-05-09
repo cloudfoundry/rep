@@ -18,7 +18,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep/scheduler"
 
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 )
 
@@ -36,12 +35,13 @@ var _ = Describe("Scheduler", func() {
 	Context("when a game scheduler is running", func() {
 		var fakeExecutor *ghttp.Server
 		var fakeBBS *fake_bbs.FakeExecutorBBS
-		var schedulerAddr = fmt.Sprintf("127.0.0.1:%d", 12001+config.GinkgoConfig.ParallelNode)
+		var schedulerAddr string
 		var gameScheduler *scheduler.Scheduler
 		var correctStack = "my-stack"
 		var fakeClient *fake_client.FakeClient
 
 		BeforeEach(func() {
+			schedulerAddr = fmt.Sprintf("127.0.0.1:%d", 12000+GinkgoParallelNode())
 			fakeClient = fake_client.New()
 			fakeExecutor = ghttp.NewServer()
 			fakeBBS = fake_bbs.NewFakeExecutorBBS()

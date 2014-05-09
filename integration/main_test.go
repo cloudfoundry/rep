@@ -29,6 +29,7 @@ var _ = Describe("Main", func() {
 	BeforeEach(func() {
 		fakeExecutor = ghttp.NewServer()
 		etcdPort := 5001 + GinkgoParallelNode()
+		schedulerPort := 56000 + GinkgoParallelNode()
 
 		etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
 		etcdRunner.Start()
@@ -38,7 +39,7 @@ var _ = Describe("Main", func() {
 		runner = reprunner.New(
 			representativePath,
 			"the-stack",
-			"127.0.0.1:56789",
+			fmt.Sprintf("127.0.0.1:%d", schedulerPort),
 			fakeExecutor.URL(),
 			fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
 			"info",
