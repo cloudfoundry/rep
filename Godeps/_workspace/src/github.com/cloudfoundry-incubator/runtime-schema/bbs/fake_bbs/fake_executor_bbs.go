@@ -15,7 +15,9 @@ type FakeExecutorBBS struct {
 	desiredTaskStopChan chan bool
 	desiredTaskErrChan  chan error
 
-	desiredLrpChan chan models.TransitionalLongRunningProcess
+	desiredLrpChan     chan models.TransitionalLongRunningProcess
+	desiredLrpStopChan chan bool
+	desiredLrpErrChan  chan error
 
 	maintainConvergeInterval      time.Duration
 	maintainConvergeExecutorID    string
@@ -56,6 +58,8 @@ func NewFakeExecutorBBS() *FakeExecutorBBS {
 	fakeBBS.desiredTaskStopChan = make(chan bool)
 	fakeBBS.desiredTaskErrChan = make(chan error)
 	fakeBBS.desiredLrpChan = make(chan models.TransitionalLongRunningProcess, 1)
+	fakeBBS.desiredLrpStopChan = make(chan bool)
+	fakeBBS.desiredLrpErrChan = make(chan error)
 	return fakeBBS
 }
 
@@ -89,7 +93,7 @@ func (fakeBBS *FakeExecutorBBS) WatchForDesiredTask() (<-chan models.Task, chan<
 }
 
 func (fakeBBS *FakeExecutorBBS) WatchForDesiredTransitionalLongRunningProcess() (<-chan models.TransitionalLongRunningProcess, chan<- bool, <-chan error) {
-	return fakeBBS.desiredLrpChan, nil, nil
+	return fakeBBS.desiredLrpChan, fakeBBS.desiredLrpStopChan, fakeBBS.desiredLrpErrChan
 }
 
 func (fakeBBS *FakeExecutorBBS) EmitDesiredTask(task models.Task) {
