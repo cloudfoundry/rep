@@ -1,4 +1,4 @@
-package executor_api
+package api
 
 import "github.com/cloudfoundry-incubator/runtime-schema/models"
 

@@ -96,6 +96,10 @@ func (fakeBBS *FakeExecutorBBS) EmitDesiredTask(task models.Task) {
 	fakeBBS.desiredTaskChan <- task
 }
 
+func (fakeBBS *FakeExecutorBBS) EmitDesiredLrp(lrp models.TransitionalLongRunningProcess) {
+	fakeBBS.desiredLrpChan <- lrp
+}
+
 func (fakeBBS *FakeExecutorBBS) ClaimTask(task models.Task, executorID string) (models.Task, error) {
 	task.ExecutorID = executorID
 
@@ -175,11 +179,28 @@ func (fakeBBS *FakeExecutorBBS) StartedTasks() []models.Task {
 	return started
 }
 
+func (fakeBBS *FakeExecutorBBS) StartedLongRunningProcesses() []models.TransitionalLongRunningProcess {
+	fakeBBS.RLock()
+	defer fakeBBS.RUnlock()
+
+	started := make([]models.TransitionalLongRunningProcess, len(fakeBBS.startedLrps))
+	copy(started, fakeBBS.startedLrps)
+
+	return started
+}
+
 func (fakeBBS *FakeExecutorBBS) SetStartTaskErr(err error) {
 	fakeBBS.Lock()
 	defer fakeBBS.Unlock()
 
 	fakeBBS.startTaskErr = err
+}
+
+func (fakeBBS *FakeExecutorBBS) SetStartLrpErr(err error) {
+	fakeBBS.Lock()
+	defer fakeBBS.Unlock()
+
+	fakeBBS.startLrpErr = err
 }
 
 func (fakeBBS *FakeExecutorBBS) CompleteTask(task models.Task, failed bool, failureReason string, result string) (models.Task, error) {
