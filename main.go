@@ -3,14 +3,15 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/cloudfoundry-incubator/executor/client"
-	"github.com/cloudfoundry-incubator/rep/lrp_scheduler"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+
+	"github.com/cloudfoundry-incubator/executor/client"
+	"github.com/cloudfoundry-incubator/rep/lrp_scheduler"
 
 	"github.com/cloudfoundry-incubator/rep/scheduler"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
@@ -100,7 +101,7 @@ func main() {
 	executorClient := client.New(http.DefaultClient, *executorURL)
 
 	taskRep := scheduler.New(bbs, logger, *stack, *listenAddr, executorClient)
-	lrpRep := lrp_scheduler.New(bbs, logger, executorClient)
+	lrpRep := lrp_scheduler.New(bbs, logger, *stack, executorClient)
 
 	taskSchedulerReady := make(chan struct{})
 	lrpSchedulerReady := make(chan struct{})

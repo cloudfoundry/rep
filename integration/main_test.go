@@ -2,12 +2,13 @@ package integration_test
 
 import (
 	"fmt"
+	"net/http"
+	"testing"
+
 	"github.com/cloudfoundry-incubator/rep/reprunner"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/onsi/gomega/ghttp"
-	"net/http"
-	"testing"
 
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
@@ -88,7 +89,9 @@ var _ = Describe("Main", func() {
 				ghttp.RespondWith(http.StatusCreated, `{"executor_guid":"executor-guid","guid":"guid-123"}`)),
 			)
 
-			bbs.DesireTransitionalLongRunningProcess(models.TransitionalLongRunningProcess{})
+			bbs.DesireTransitionalLongRunningProcess(models.TransitionalLongRunningProcess{
+				Stack: "the-stack",
+			})
 		})
 
 		It("makes a request to the executor", func() {

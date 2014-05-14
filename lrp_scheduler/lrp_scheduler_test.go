@@ -29,62 +29,65 @@ var _ = Describe("Scheduler", func() {
 	Context("when a game scheduler is running", func() {
 		var fakeBBS *fake_bbs.FakeExecutorBBS
 		var lrpScheduler *LrpScheduler
+		var correctStack = "correct-stack"
 		var fakeClient *fake_client.FakeClient
+
+		var lrp models.TransitionalLongRunningProcess
 
 		BeforeEach(func() {
 			fakeClient = fake_client.New()
 			fakeBBS = fake_bbs.NewFakeExecutorBBS()
-			lrpScheduler = New(fakeBBS, logger, fakeClient)
+
+			zero := 0
+			lrp = models.TransitionalLongRunningProcess{
+				Guid:  "app-guid-app-version",
+				Stack: correctStack,
+				Actions: []models.ExecutorAction{
+					{
+						Action: models.DownloadAction{
+							From:     "http://droplet.url",
+							To:       "/app",
+							Extract:  true,
+							CacheKey: "droplet-app-guid-app-version",
+						},
+					},
+					{
+						Action: models.RunAction{
+							Script: "the-script",
+							Env: []models.EnvironmentVariable{
+								{
+									Key:   "THE_KEY",
+									Value: "THE_VALUE",
+								},
+							},
+							Timeout:        time.Second,
+							ResourceLimits: models.ResourceLimits{},
+						},
+					},
+				},
+				Log: models.LogConfig{
+					Guid:       "app-guid",
+					SourceName: "APP",
+					Index:      &zero,
+				},
+				State: models.TransitionalLRPStateDesired,
+			}
+
+			lrpScheduler = New(fakeBBS, logger, correctStack, fakeClient)
 		})
 
 		AfterEach(func() {
 			lrpScheduler.Stop()
 		})
 
-		JustBeforeEach(func() {
+		BeforeEach(func() {
 			readyChan := make(chan struct{})
 			lrpScheduler.Run(readyChan)
 			<-readyChan
 		})
 
-		Context("when a staging task is desired", func() {
-			var lrp models.TransitionalLongRunningProcess
-
-			BeforeEach(func() {
-				zero := 0
-				lrp = models.TransitionalLongRunningProcess{
-					Guid: "app-guid-app-version",
-					Actions: []models.ExecutorAction{
-						{
-							Action: models.DownloadAction{
-								From:     "http://droplet.url",
-								To:       "/app",
-								Extract:  true,
-								CacheKey: "droplet-app-guid-app-version",
-							},
-						},
-						{
-							Action: models.RunAction{
-								Script: "the-script",
-								Env: []models.EnvironmentVariable{
-									{
-										Key:   "THE_KEY",
-										Value: "THE_VALUE",
-									},
-								},
-								Timeout:        time.Second,
-								ResourceLimits: models.ResourceLimits{},
-							},
-						},
-					},
-					Log: models.LogConfig{
-						Guid:       "app-guid",
-						SourceName: "APP",
-						Index:      &zero,
-					},
-					State: models.TransitionalLRPStateDesired,
-				}
-
+		Context("when a LRP is desired", func() {
+			JustBeforeEach(func() {
 				fakeBBS.EmitDesiredLrp(lrp)
 			})
 
@@ -185,6 +188,19 @@ var _ = Describe("Scheduler", func() {
 					It("deletes the resource allocation on the executor", func() {
 						Eventually(deletedContainerGuids).Should(Receive(Equal(containerGuid)))
 					})
+				})
+			})
+
+			Context("with a mismatched stack", func() {
+				BeforeEach(func() {
+					mismatchedLRP := lrp
+					mismatchedLRP.Stack = "some-bogus-stack"
+
+					lrp = mismatchedLRP
+				})
+
+				It("does not try to start it", func() {
+					Consistently(fakeBBS.StartedLongRunningProcesses).Should(BeEmpty())
 				})
 			})
 

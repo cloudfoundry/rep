@@ -13,19 +13,23 @@ import (
 )
 
 type LrpScheduler struct {
-	bbs            bbs.ExecutorBBS
-	logger         *gosteno.Logger
-	client         client.Client
+	bbs    bbs.ExecutorBBS
+	logger *gosteno.Logger
+	stack  string
+	client client.Client
+
 	inFlight       *sync.WaitGroup
 	exitChan       chan struct{}
 	terminatedChan chan struct{}
 }
 
-func New(bbs bbs.ExecutorBBS, logger *gosteno.Logger, executorClient client.Client) *LrpScheduler {
+func New(bbs bbs.ExecutorBBS, logger *gosteno.Logger, stack string, executorClient client.Client) *LrpScheduler {
 	return &LrpScheduler{
-		bbs:      bbs,
-		logger:   logger,
-		client:   executorClient,
+		bbs:    bbs,
+		logger: logger,
+		stack:  stack,
+		client: executorClient,
+
 		inFlight: &sync.WaitGroup{},
 	}
 }
@@ -33,6 +37,7 @@ func New(bbs bbs.ExecutorBBS, logger *gosteno.Logger, executorClient client.Clie
 func (s *LrpScheduler) Run(readyChan chan struct{}) {
 	s.terminatedChan = make(chan struct{})
 	s.exitChan = make(chan struct{})
+
 	s.logger.Info("executor.watching-for-desired-lrp")
 
 	go func() {
@@ -83,9 +88,14 @@ func (s *LrpScheduler) Stop() {
 func (s *LrpScheduler) handleLrpRequest(lrp models.TransitionalLongRunningProcess) {
 	var err error
 
+	if lrp.Stack != s.stack {
+		return
+	}
+
 	container, err := s.client.AllocateContainer(client.ContainerRequest{
 		LogConfig: lrp.Log,
 	})
+
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
