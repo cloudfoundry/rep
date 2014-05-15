@@ -14,6 +14,7 @@ import (
 
 	. "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	. "github.com/cloudfoundry/storeadapter/storenodematchers"
 )
 
 var _ = Describe("Executor BBS", func() {
@@ -54,7 +55,7 @@ var _ = Describe("Executor BBS", func() {
 				node, err := etcdClient.Get("/v1/task/some-guid")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Ω(node).Should(Equal(storeadapter.StoreNode{
+				Ω(node).Should(MatchStoreNode(storeadapter.StoreNode{
 					Key:   "/v1/task/some-guid",
 					Value: task.ToJSON(),
 				}))
@@ -102,7 +103,7 @@ var _ = Describe("Executor BBS", func() {
 
 				node, err := etcdClient.Get("/v1/task/some-guid")
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(node).Should(Equal(storeadapter.StoreNode{
+				Ω(node).Should(MatchStoreNode(storeadapter.StoreNode{
 					Key:   "/v1/task/some-guid",
 					Value: task.ToJSON(),
 				}))
@@ -155,7 +156,7 @@ var _ = Describe("Executor BBS", func() {
 
 				node, err := etcdClient.Get("/v1/task/some-guid")
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(node).Should(Equal(storeadapter.StoreNode{
+				Ω(node).Should(MatchStoreNode(storeadapter.StoreNode{
 					Key:   "/v1/task/some-guid",
 					Value: task.ToJSON(),
 				}))
@@ -270,7 +271,7 @@ var _ = Describe("Executor BBS", func() {
 			close(done)
 		})
 
-		It("should send an event down the pipe for sets", func(done Done) {
+		It("should send an event down the pipe when the converge is run", func(done Done) {
 			task, err = bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
@@ -278,8 +279,7 @@ var _ = Describe("Executor BBS", func() {
 
 			Expect(e).To(Equal(task))
 
-			task, err = bbs.DesireTask(task)
-			Ω(err).ShouldNot(HaveOccurred())
+			bbs.ConvergeTask(time.Second)
 
 			Expect(<-events).To(Equal(task))
 
@@ -735,7 +735,7 @@ var _ = Describe("Executor BBS", func() {
 
 				node, err := etcdClient.Get("/v1/transitional_lrp/the-lrp-guid")
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(node).Should(Equal(storeadapter.StoreNode{
+				Ω(node).Should(MatchStoreNode(storeadapter.StoreNode{
 					Key:   "/v1/transitional_lrp/the-lrp-guid",
 					Value: expectedLrp.ToJSON(),
 				}))
