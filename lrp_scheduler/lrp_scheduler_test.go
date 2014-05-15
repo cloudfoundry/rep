@@ -38,10 +38,13 @@ var _ = Describe("Scheduler", func() {
 			fakeClient = fake_client.New()
 			fakeBBS = fake_bbs.NewFakeExecutorBBS()
 
+			numFiles := uint64(16)
 			zero := 0
 			lrp = models.TransitionalLongRunningProcess{
-				Guid:  "app-guid-app-version",
-				Stack: correctStack,
+				Guid:     "app-guid-app-version",
+				Stack:    correctStack,
+				MemoryMB: 128,
+				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
 					{
 						Action: models.DownloadAction{
@@ -60,8 +63,10 @@ var _ = Describe("Scheduler", func() {
 									Value: "THE_VALUE",
 								},
 							},
-							Timeout:        time.Second,
-							ResourceLimits: models.ResourceLimits{},
+							Timeout: time.Second,
+							ResourceLimits: models.ResourceLimits{
+								Nofile: &numFiles,
+							},
 						},
 					},
 				},
@@ -107,6 +112,8 @@ var _ = Describe("Scheduler", func() {
 						close(allocateCalled)
 						Ω(fakeBBS.StartedLongRunningProcesses()).Should(HaveLen(0))
 						Ω(req.LogConfig).Should(Equal(lrp.Log))
+						Ω(req.MemoryMB).Should(Equal(128))
+						Ω(req.DiskMB).Should(Equal(1024))
 						return client.ContainerResponse{ExecutorGuid: "the-executor-guid", Guid: containerGuid, ContainerRequest: req}, nil
 					}
 

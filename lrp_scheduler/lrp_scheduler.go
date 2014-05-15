@@ -94,6 +94,8 @@ func (s *LrpScheduler) handleLrpRequest(lrp models.TransitionalLongRunningProces
 
 	container, err := s.client.AllocateContainer(client.ContainerRequest{
 		LogConfig: lrp.Log,
+		MemoryMB:  lrp.MemoryMB,
+		DiskMB:    lrp.DiskMB,
 	})
 
 	if err != nil {
