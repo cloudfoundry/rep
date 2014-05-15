@@ -12,8 +12,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/executor/client"
 	"github.com/cloudfoundry-incubator/rep/lrp_scheduler"
-
-	"github.com/cloudfoundry-incubator/rep/scheduler"
+	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider"
@@ -100,7 +99,7 @@ func main() {
 
 	executorClient := client.New(http.DefaultClient, *executorURL)
 
-	taskRep := scheduler.New(bbs, logger, *stack, *listenAddr, executorClient)
+	taskRep := task_scheduler.New(bbs, logger, *stack, *listenAddr, executorClient)
 	lrpRep := lrp_scheduler.New(bbs, logger, *stack, executorClient)
 
 	taskSchedulerReady := make(chan struct{})

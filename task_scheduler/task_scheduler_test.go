@@ -1,4 +1,4 @@
-package scheduler_test
+package task_scheduler_test
 
 import (
 	"bytes"
@@ -10,18 +10,17 @@ import (
 	"github.com/cloudfoundry-incubator/executor/client"
 
 	"github.com/cloudfoundry-incubator/executor/client/fake_client"
+	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gosteno"
 	"github.com/onsi/gomega/ghttp"
 
-	"github.com/cloudfoundry-incubator/rep/scheduler"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Scheduler", func() {
+var _ = Describe("TaskScheduler", func() {
 	var logger *gosteno.Logger
 
 	BeforeSuite(func() {
@@ -36,7 +35,7 @@ var _ = Describe("Scheduler", func() {
 		var fakeExecutor *ghttp.Server
 		var fakeBBS *fake_bbs.FakeRepBBS
 		var schedulerAddr string
-		var gameScheduler *scheduler.Scheduler
+		var taskScheduler *task_scheduler.TaskScheduler
 		var correctStack = "my-stack"
 		var fakeClient *fake_client.FakeClient
 
@@ -46,17 +45,17 @@ var _ = Describe("Scheduler", func() {
 			fakeExecutor = ghttp.NewServer()
 			fakeBBS = fake_bbs.NewFakeRepBBS()
 
-			gameScheduler = scheduler.New(fakeBBS, logger, correctStack, schedulerAddr, fakeClient)
+			taskScheduler = task_scheduler.New(fakeBBS, logger, correctStack, schedulerAddr, fakeClient)
 		})
 
 		AfterEach(func() {
-			gameScheduler.Stop()
+			taskScheduler.Stop()
 			fakeExecutor.Close()
 		})
 
 		JustBeforeEach(func() {
 			readyChan := make(chan struct{})
-			err := gameScheduler.Run(readyChan)
+			err := taskScheduler.Run(readyChan)
 			Ω(err).ShouldNot(HaveOccurred())
 			<-readyChan
 		})

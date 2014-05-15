@@ -1,4 +1,4 @@
-package scheduler
+package task_scheduler
 
 import (
 	"encoding/json"
@@ -19,7 +19,7 @@ import (
 
 const ServerCloseErrMsg = "use of closed network connection"
 
-type Scheduler struct {
+type TaskScheduler struct {
 	bbs            bbs.RepBBS
 	logger         *gosteno.Logger
 	stack          string
@@ -32,8 +32,8 @@ type Scheduler struct {
 	terminatedChan chan struct{}
 }
 
-func New(bbs bbs.RepBBS, logger *gosteno.Logger, stack, schedulerAddress string, executorClient client.Client) *Scheduler {
-	return &Scheduler{
+func New(bbs bbs.RepBBS, logger *gosteno.Logger, stack, schedulerAddress string, executorClient client.Client) *TaskScheduler {
+	return &TaskScheduler{
 		bbs:          bbs,
 		logger:       logger,
 		stack:        stack,
@@ -44,7 +44,7 @@ func New(bbs bbs.RepBBS, logger *gosteno.Logger, stack, schedulerAddress string,
 	}
 }
 
-func (s *Scheduler) startServer() {
+func (s *TaskScheduler) startServer() {
 	err := http.Serve(s.listener, s)
 	if err != nil && err.Error() != ServerCloseErrMsg {
 		s.logger.Errord(map[string]interface{}{
@@ -53,7 +53,7 @@ func (s *Scheduler) startServer() {
 	}
 }
 
-func (s *Scheduler) stopServer() {
+func (s *TaskScheduler) stopServer() {
 	err := s.listener.Close()
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
@@ -62,7 +62,7 @@ func (s *Scheduler) stopServer() {
 	}
 }
 
-func (s *Scheduler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *TaskScheduler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	responseBody, err := ioutil.ReadAll(r.Body)
 	r.Body.Close()
 
@@ -79,7 +79,7 @@ func (s *Scheduler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Scheduler) Run(readyChan chan struct{}) error {
+func (s *TaskScheduler) Run(readyChan chan struct{}) error {
 	s.exitChan = make(chan struct{})
 	s.terminatedChan = make(chan struct{})
 	s.logger.Info("executor.watching-for-desired-task")
@@ -140,19 +140,19 @@ func (s *Scheduler) Run(readyChan chan struct{}) error {
 	return nil
 }
 
-func (s *Scheduler) Stop() {
+func (s *TaskScheduler) Stop() {
 	if s.exitChan != nil {
 		close(s.exitChan)
 		<-s.terminatedChan
 	}
 }
 
-func (s *Scheduler) gracefulShutdown() {
+func (s *TaskScheduler) gracefulShutdown() {
 	s.stopServer()
 	s.inFlight.Wait()
 }
 
-func (s *Scheduler) handleRunCompletion(runResult client.ContainerRunResult) {
+func (s *TaskScheduler) handleRunCompletion(runResult client.ContainerRunResult) {
 	task := models.Task{}
 	err := json.Unmarshal(runResult.Metadata, &task)
 	if err != nil {
@@ -165,7 +165,7 @@ func (s *Scheduler) handleRunCompletion(runResult client.ContainerRunResult) {
 	s.bbs.CompleteTask(task, runResult.Failed, runResult.FailureReason, runResult.Result)
 }
 
-func (s *Scheduler) handleTaskRequest(task models.Task) {
+func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	var err error
 
 	if task.Stack != s.stack {
@@ -226,7 +226,7 @@ func (s *Scheduler) handleTaskRequest(task models.Task) {
 	}
 }
 
-func (s *Scheduler) sleepForARandomInterval() {
+func (s *TaskScheduler) sleepForARandomInterval() {
 	interval := rand.New(rand.NewSource(time.Now().UnixNano())).Intn(100)
 	time.Sleep(time.Duration(interval) * time.Millisecond)
 }

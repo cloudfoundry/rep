@@ -1,4 +1,4 @@
-package scheduler_test
+package task_scheduler_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestScheduler(t *testing.T) {
+func TestTaskScheduler(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Scheduler Suite")
+	RunSpecs(t, "Task Scheduler Suite")
 }
