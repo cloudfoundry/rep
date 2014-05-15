@@ -27,7 +27,7 @@ var _ = Describe("Scheduler", func() {
 	})
 
 	Context("when a game scheduler is running", func() {
-		var fakeBBS *fake_bbs.FakeExecutorBBS
+		var fakeBBS *fake_bbs.FakeRepBBS
 		var lrpScheduler *LrpScheduler
 		var correctStack = "correct-stack"
 		var fakeClient *fake_client.FakeClient
@@ -36,7 +36,7 @@ var _ = Describe("Scheduler", func() {
 
 		BeforeEach(func() {
 			fakeClient = fake_client.New()
-			fakeBBS = fake_bbs.NewFakeExecutorBBS()
+			fakeBBS = fake_bbs.NewFakeRepBBS()
 
 			numFiles := uint64(16)
 			zero := 0

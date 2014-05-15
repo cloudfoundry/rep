@@ -13,17 +13,16 @@ import (
 )
 
 type LrpScheduler struct {
-	bbs    bbs.ExecutorBBS
-	logger *gosteno.Logger
-	stack  string
-	client client.Client
-
+	stack          string
+	bbs            bbs.RepBBS
+	logger         *gosteno.Logger
+	client         client.Client
 	inFlight       *sync.WaitGroup
 	exitChan       chan struct{}
 	terminatedChan chan struct{}
 }
 
-func New(bbs bbs.ExecutorBBS, logger *gosteno.Logger, stack string, executorClient client.Client) *LrpScheduler {
+func New(bbs bbs.RepBBS, logger *gosteno.Logger, stack string, executorClient client.Client) *LrpScheduler {
 	return &LrpScheduler{
 		bbs:    bbs,
 		logger: logger,

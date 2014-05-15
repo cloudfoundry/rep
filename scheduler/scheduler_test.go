@@ -34,7 +34,7 @@ var _ = Describe("Scheduler", func() {
 
 	Context("when a game scheduler is running", func() {
 		var fakeExecutor *ghttp.Server
-		var fakeBBS *fake_bbs.FakeExecutorBBS
+		var fakeBBS *fake_bbs.FakeRepBBS
 		var schedulerAddr string
 		var gameScheduler *scheduler.Scheduler
 		var correctStack = "my-stack"
@@ -44,7 +44,7 @@ var _ = Describe("Scheduler", func() {
 			schedulerAddr = fmt.Sprintf("127.0.0.1:%d", 12000+GinkgoParallelNode())
 			fakeClient = fake_client.New()
 			fakeExecutor = ghttp.NewServer()
-			fakeBBS = fake_bbs.NewFakeExecutorBBS()
+			fakeBBS = fake_bbs.NewFakeRepBBS()
 
 			gameScheduler = scheduler.New(fakeBBS, logger, correctStack, schedulerAddr, fakeClient)
 		})

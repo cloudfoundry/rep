@@ -35,7 +35,7 @@ var _ = Describe("Main", func() {
 		etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
 		etcdRunner.Start()
 
-		bbs = Bbs.New(etcdRunner.Adapter(), timeprovider.NewTimeProvider())
+		bbs = Bbs.NewBBS(etcdRunner.Adapter(), timeprovider.NewTimeProvider())
 
 		runner = reprunner.New(
 			representativePath,

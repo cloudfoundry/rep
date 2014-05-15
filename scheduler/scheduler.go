@@ -20,7 +20,7 @@ import (
 const ServerCloseErrMsg = "use of closed network connection"
 
 type Scheduler struct {
-	bbs            bbs.ExecutorBBS
+	bbs            bbs.RepBBS
 	logger         *gosteno.Logger
 	stack          string
 	client         client.Client
@@ -32,7 +32,7 @@ type Scheduler struct {
 	terminatedChan chan struct{}
 }
 
-func New(bbs bbs.ExecutorBBS, logger *gosteno.Logger, stack, schedulerAddress string, executorClient client.Client) *Scheduler {
+func New(bbs bbs.RepBBS, logger *gosteno.Logger, stack, schedulerAddress string, executorClient client.Client) *Scheduler {
 	return &Scheduler{
 		bbs:          bbs,
 		logger:       logger,
