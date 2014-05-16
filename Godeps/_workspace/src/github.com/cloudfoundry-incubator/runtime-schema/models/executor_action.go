@@ -40,6 +40,19 @@ type TryAction struct {
 	Action ExecutorAction `json:"action"`
 }
 
+type MonitorAction struct {
+	Check              *json.RawMessage `json:"check"`
+	Interval           time.Duration    `json:"interval_in_nanoseconds"`
+	HealthyHook        string           `json:"healthy_hook"`
+	UnhealthyHook      string           `json:"unhealthy_hook"`
+	HealthyThreshold   uint             `json:"healthy_threshold"`
+	UnhealthyThreshold uint             `json:"unhealthy_threshold"`
+}
+
+type ParallelAction struct {
+	Actions []ExecutorAction `json:"actions"`
+}
+
 type EmitProgressAction struct {
 	Action         ExecutorAction `json:"action"`
 	StartMessage   string         `json:"start_message"`
@@ -62,6 +75,14 @@ func Try(action ExecutorAction) ExecutorAction {
 	return ExecutorAction{
 		TryAction{
 			Action: action,
+		},
+	}
+}
+
+func Parallel(actions ...ExecutorAction) ExecutorAction {
+	return ExecutorAction{
+		ParallelAction{
+			Actions: actions,
 		},
 	}
 }
@@ -97,6 +118,10 @@ func (a ExecutorAction) MarshalJSON() ([]byte, error) {
 		envelope.Name = "emit_progress"
 	case TryAction:
 		envelope.Name = "try"
+	case MonitorAction:
+		envelope.Name = "monitor"
+	case ParallelAction:
+		envelope.Name = "parallel"
 	default:
 		return nil, InvalidActionConversion
 	}
@@ -116,29 +141,37 @@ func (a *ExecutorAction) UnmarshalJSON(bytes []byte) error {
 
 	switch envelope.Name {
 	case "download":
-		downloadAction := DownloadAction{}
-		err = json.Unmarshal(*envelope.ActionPayload, &downloadAction)
-		a.Action = downloadAction
+		action := DownloadAction{}
+		err = json.Unmarshal(*envelope.ActionPayload, &action)
+		a.Action = action
 	case "run":
-		runAction := RunAction{}
-		err = json.Unmarshal(*envelope.ActionPayload, &runAction)
-		a.Action = runAction
+		action := RunAction{}
+		err = json.Unmarshal(*envelope.ActionPayload, &action)
+		a.Action = action
 	case "upload":
-		uploadAction := UploadAction{}
-		err = json.Unmarshal(*envelope.ActionPayload, &uploadAction)
-		a.Action = uploadAction
+		action := UploadAction{}
+		err = json.Unmarshal(*envelope.ActionPayload, &action)
+		a.Action = action
 	case "fetch_result":
-		fetchResultAction := FetchResultAction{}
-		err = json.Unmarshal(*envelope.ActionPayload, &fetchResultAction)
-		a.Action = fetchResultAction
+		action := FetchResultAction{}
+		err = json.Unmarshal(*envelope.ActionPayload, &action)
+		a.Action = action
 	case "emit_progress":
-		emitProgressAction := EmitProgressAction{}
-		err = json.Unmarshal(*envelope.ActionPayload, &emitProgressAction)
-		a.Action = emitProgressAction
+		action := EmitProgressAction{}
+		err = json.Unmarshal(*envelope.ActionPayload, &action)
+		a.Action = action
 	case "try":
-		tryAction := TryAction{}
-		err = json.Unmarshal(*envelope.ActionPayload, &tryAction)
-		a.Action = tryAction
+		action := TryAction{}
+		err = json.Unmarshal(*envelope.ActionPayload, &action)
+		a.Action = action
+	case "monitor":
+		action := MonitorAction{}
+		err = json.Unmarshal(*envelope.ActionPayload, &action)
+		a.Action = action
+	case "parallel":
+		action := ParallelAction{}
+		err = json.Unmarshal(*envelope.ActionPayload, &action)
+		a.Action = action
 	default:
 		err = InvalidActionConversion
 	}

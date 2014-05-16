@@ -126,7 +126,7 @@ var _ = Describe("ExecutorAction", func() {
 				}
 			}`,
 			ExecutorAction{
-				Action: FetchResultAction{
+				FetchResultAction{
 					File: "/tmp/foo",
 				},
 			},
@@ -180,6 +180,77 @@ var _ = Describe("ExecutorAction", func() {
 			Try(ExecutorAction{
 				RunAction{Script: "echo"},
 			}),
+		)
+	})
+
+	Describe("Monitor", func() {
+		checkPayload := json.RawMessage(`{ "type": "port", "args": { "port": "1234" } }`)
+
+		itSerializesAndDeserializes(
+			`{
+				"action": "monitor",
+				"args": {
+					"check": { "type": "port", "args": { "port": "1234" } },
+					"interval_in_nanoseconds": 10000000000,
+					"healthy_hook": "bogus_healthy_hook",
+					"unhealthy_hook": "bogus_unhealthy_hook",
+					"healthy_threshold": 2,
+					"unhealthy_threshold": 5
+				}
+			}`,
+			ExecutorAction{
+				MonitorAction{
+					Check:              &checkPayload,
+					Interval:           10 * time.Second,
+					HealthyHook:        "bogus_healthy_hook",
+					UnhealthyHook:      "bogus_unhealthy_hook",
+					HealthyThreshold:   2,
+					UnhealthyThreshold: 5,
+				},
+			},
+		)
+	})
+
+	Describe("Parallel", func() {
+		itSerializesAndDeserializes(
+			`{
+        "action": "parallel",
+        "args": {
+          "actions": [
+            {
+              "args": {
+                "extract": true,
+                "cache_key": "elephant",
+                "to": "local_location",
+                "from": "web_location"
+              },
+              "action": "download"
+            },
+            {
+              "args": {
+                "resource_limits": {},
+                "env": null,
+                "timeout": 0,
+                "script": "echo"
+              },
+              "action": "run"
+            }
+          ]
+        }
+      }`,
+			Parallel(
+				ExecutorAction{
+					DownloadAction{
+						From:     "web_location",
+						To:       "local_location",
+						Extract:  true,
+						CacheKey: "elephant",
+					},
+				},
+				ExecutorAction{
+					RunAction{Script: "echo"},
+				},
+			),
 		)
 	})
 })

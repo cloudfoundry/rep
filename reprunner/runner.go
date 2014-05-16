@@ -17,22 +17,24 @@ type Runner struct {
 }
 
 type Config struct {
-	stack       string
-	listenAddr  string
-	executorURL string
-	etcdCluster string
-	logLevel    string
+	stack             string
+	listenAddr        string
+	executorURL       string
+	etcdCluster       string
+	logLevel          string
+	heartbeatInterval time.Duration
 }
 
-func New(binPath, stack, listenAddr, executorURL, etcdCluster, logLevel string) *Runner {
+func New(binPath, stack, listenAddr, executorURL, etcdCluster, logLevel string, heartbeatInterval time.Duration) *Runner {
 	return &Runner{
 		binPath: binPath,
 		config: Config{
-			stack:       stack,
-			listenAddr:  listenAddr,
-			executorURL: executorURL,
-			etcdCluster: etcdCluster,
-			logLevel:    logLevel,
+			stack:             stack,
+			listenAddr:        listenAddr,
+			executorURL:       executorURL,
+			etcdCluster:       etcdCluster,
+			logLevel:          logLevel,
+			heartbeatInterval: heartbeatInterval,
 		},
 	}
 }
@@ -50,6 +52,7 @@ func (r *Runner) Start() {
 			"-executorURL", r.config.executorURL,
 			"-etcdCluster", r.config.etcdCluster,
 			"-logLevel", r.config.logLevel,
+			"-heartbeatInterval", r.config.heartbeatInterval.String(),
 		),
 		GinkgoWriter,
 		GinkgoWriter,

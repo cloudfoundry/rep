@@ -9,15 +9,19 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/cloudfoundry-incubator/executor/client"
 	"github.com/cloudfoundry-incubator/rep/lrp_scheduler"
+	"github.com/cloudfoundry-incubator/rep/maintain"
 	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
+	"github.com/nu7hatch/gouuid"
 )
 
 var etcdCluster = flag.String(
@@ -36,6 +40,12 @@ var syslogName = flag.String(
 	"syslogName",
 	"",
 	"syslog name",
+)
+
+var heartbeatInterval = flag.Duration(
+	"heartbeatInterval",
+	60*time.Second,
+	"the interval, in seconds, between heartbeats for maintaining presence",
 )
 
 var executorURL = flag.String(
@@ -104,10 +114,13 @@ func main() {
 
 	taskSchedulerReady := make(chan struct{})
 	lrpSchedulerReady := make(chan struct{})
+	maintainReady := make(chan struct{})
 
 	go func() {
+		<-maintainReady
 		<-taskSchedulerReady
 		<-lrpSchedulerReady
+
 		fmt.Println("representative started")
 	}()
 
@@ -121,12 +134,45 @@ func main() {
 
 	lrpRep.Run(lrpSchedulerReady)
 
+	////
+
+	uuid, err := uuid.NewV4()
+	if err != nil {
+		panic("Failed to generate a random guid....:" + err.Error())
+	}
+	repID := uuid.String()
+
+	maintainSignals := make(chan os.Signal, 1)
+	signal.Notify(maintainSignals, syscall.SIGTERM, syscall.SIGINT, syscall.SIGUSR1)
+
+	repPresence := models.RepPresence{
+		RepID: repID,
+		Stack: *stack,
+	}
+	maintainer := maintain.New(repPresence, bbs, logger, *heartbeatInterval)
+
+	go func() {
+		//keep maintaining forever, dont do anything if we fail to maintain
+		for {
+			err := maintainer.Run(maintainSignals, maintainReady)
+			if err != nil {
+				logger.Errorf("failed to start maintaining presence: %s", err.Error())
+				maintainReady = make(chan struct{})
+			} else {
+				break
+			}
+		}
+	}()
+
+	///
+
 	for {
 		sig := <-signals
 		switch sig {
 		case syscall.SIGINT, syscall.SIGTERM:
 			taskRep.Stop()
 			lrpRep.Stop()
+			maintainSignals <- sig
 			os.Exit(0)
 		}
 	}

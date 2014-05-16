@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/cloudfoundry-incubator/rep/reprunner"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -44,6 +45,7 @@ var _ = Describe("Main", func() {
 			fakeExecutor.URL(),
 			fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
 			"info",
+			time.Second,
 		)
 
 		runner.Start()
@@ -62,6 +64,35 @@ var _ = Describe("Main", func() {
 
 		It("should die", func() {
 			Eventually(runner.Session.ExitCode).Should(Equal(0))
+		})
+	})
+
+	Describe("maintaining presence", func() {
+		var repPresence models.RepPresence
+		BeforeEach(func() {
+			Eventually(bbs.GetAllReps).Should(HaveLen(1))
+			reps, err := bbs.GetAllReps()
+			Ω(err).ShouldNot(HaveOccurred())
+			repPresence = reps[0]
+		})
+
+		It("should maintain presence", func() {
+			Ω(repPresence.Stack).Should(Equal("the-stack"))
+			Ω(repPresence.RepID).ShouldNot(BeZero())
+		})
+
+		Context("when the presence fails to be maintained", func() {
+			It("should not exit, but keep trying to maintain presence at the same ID", func() {
+				etcdRunner.Stop()
+				etcdRunner.Start()
+
+				Eventually(bbs.GetAllReps).Should(HaveLen(1))
+				reps, err := bbs.GetAllReps()
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(reps[0]).Should(Equal(repPresence))
+
+				Ω(runner.Session).ShouldNot(gexec.Exit())
+			})
 		})
 	})
 
