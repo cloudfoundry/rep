@@ -1,15 +1,13 @@
 package task_scheduler_test
 
 import (
-	"bytes"
 	"errors"
-	"fmt"
-	"net/http"
-	"time"
 
 	"github.com/cloudfoundry-incubator/executor/client"
+	"github.com/tedsuo/router"
 
 	"github.com/cloudfoundry-incubator/executor/client/fake_client"
+	"github.com/cloudfoundry-incubator/rep/routes"
 	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -34,18 +32,25 @@ var _ = Describe("TaskScheduler", func() {
 	Context("when a game scheduler is running", func() {
 		var fakeExecutor *ghttp.Server
 		var fakeBBS *fake_bbs.FakeRepBBS
-		var schedulerAddr string
 		var taskScheduler *task_scheduler.TaskScheduler
 		var correctStack = "my-stack"
 		var fakeClient *fake_client.FakeClient
 
 		BeforeEach(func() {
-			schedulerAddr = fmt.Sprintf("127.0.0.1:%d", 12000+GinkgoParallelNode())
 			fakeClient = fake_client.New()
 			fakeExecutor = ghttp.NewServer()
 			fakeBBS = fake_bbs.NewFakeRepBBS()
 
-			taskScheduler = task_scheduler.New(fakeBBS, logger, correctStack, schedulerAddr, fakeClient)
+			taskScheduler = task_scheduler.New(
+				router.NewRequestGenerator(
+					routes.TaskCompleted,
+					routes.Routes,
+				),
+				fakeBBS,
+				logger,
+				correctStack,
+				fakeClient,
+			)
 		})
 
 		AfterEach(func() {
@@ -87,6 +92,7 @@ var _ = Describe("TaskScheduler", func() {
 						Index:      &index,
 					},
 				}
+
 				fakeBBS.EmitDesiredTask(task)
 			})
 
@@ -165,56 +171,6 @@ var _ = Describe("TaskScheduler", func() {
 								Eventually(allocateCalled).Should(Receive())
 								Eventually(initCalled).Should(Receive())
 								Eventually(reqChan).Should(Receive())
-							})
-
-							Describe("and the task succeeds", func() {
-								var resp *http.Response
-								var err error
-
-								JustBeforeEach(func() {
-									resp, err = sendCompletionCallback(reqChan, client.ContainerRunResult{
-										Result: "42",
-									})
-								})
-
-								It("responds to the onComplete hook", func() {
-									Ω(resp.StatusCode).Should(Equal(http.StatusOK))
-									Ω(err).ShouldNot(HaveOccurred())
-								})
-
-								It("records the job result", func() {
-									Eventually(fakeBBS.CompletedTasks).Should(HaveLen(1))
-									Ω(fakeBBS.CompletedTasks()[0].Guid).Should(Equal(task.Guid))
-									Ω(fakeBBS.CompletedTasks()[0].Result).Should(Equal("42"))
-								})
-							})
-
-							Describe("and the task fails", func() {
-								var resp *http.Response
-								var err error
-
-								JustBeforeEach(func() {
-									resp, err = sendCompletionCallback(reqChan, client.ContainerRunResult{
-										Failed:        true,
-										FailureReason: "it didn't work",
-									})
-								})
-
-								It("responds to the onComplete hook", func() {
-									Ω(err).ShouldNot(HaveOccurred())
-									Ω(resp.StatusCode).Should(Equal(http.StatusOK))
-								})
-
-								It("records the job failure", func() {
-									expectedTask := task
-									expectedTask.ContainerHandle = task.Guid
-									expectedTask.ExecutorID = "the-executor-guid"
-									expectedTask.Failed = true
-									expectedTask.FailureReason = "it didn't work"
-
-									Eventually(fakeBBS.CompletedTasks).Should(HaveLen(1))
-									Ω(fakeBBS.CompletedTasks()[0]).Should(Equal(expectedTask))
-								})
 							})
 						})
 
@@ -304,20 +260,3 @@ var _ = Describe("TaskScheduler", func() {
 		})
 	})
 })
-
-func sendCompletionCallback(reqChan chan client.RunRequest, resp client.ContainerRunResult) (*http.Response, error) {
-	var req client.RunRequest
-
-	select {
-	case req = <-reqChan:
-	case <-time.After(2 * time.Second):
-		Fail("request timeout exceeded")
-	}
-
-	resp.Metadata = req.Metadata
-
-	body, jsonErr := fake_client.MarshalContainerRunResult(resp)
-	Ω(jsonErr).ShouldNot(HaveOccurred())
-
-	return http.Post(req.CompletionURL, "application/json", bytes.NewReader(body))
-}

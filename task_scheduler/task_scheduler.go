@@ -1,96 +1,56 @@
 package task_scheduler
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
-	"io/ioutil"
 	"math/rand"
-	"net"
-	"net/http"
 	"sync"
 	"time"
 
 	"github.com/cloudfoundry-incubator/executor/client"
+	"github.com/cloudfoundry-incubator/rep/routes"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gosteno"
+	"github.com/tedsuo/router"
 )
 
 const ServerCloseErrMsg = "use of closed network connection"
 
 type TaskScheduler struct {
+	callbackGenerator *router.RequestGenerator
+
 	bbs            bbs.RepBBS
 	logger         *gosteno.Logger
 	stack          string
 	client         client.Client
-	listener       net.Listener
-	address        string
 	inFlight       *sync.WaitGroup
-	completeChan   chan client.ContainerRunResult
 	exitChan       chan struct{}
 	terminatedChan chan struct{}
 }
 
-func New(bbs bbs.RepBBS, logger *gosteno.Logger, stack, schedulerAddress string, executorClient client.Client) *TaskScheduler {
+func New(
+	callbackGenerator *router.RequestGenerator,
+	bbs bbs.RepBBS,
+	logger *gosteno.Logger,
+	stack string,
+	executorClient client.Client,
+) *TaskScheduler {
 	return &TaskScheduler{
-		bbs:          bbs,
-		logger:       logger,
-		stack:        stack,
-		client:       executorClient,
-		address:      schedulerAddress,
-		inFlight:     &sync.WaitGroup{},
-		completeChan: make(chan client.ContainerRunResult),
+		callbackGenerator: callbackGenerator,
+
+		bbs:    bbs,
+		logger: logger,
+		stack:  stack,
+		client: executorClient,
+
+		inFlight: &sync.WaitGroup{},
 	}
-}
-
-func (s *TaskScheduler) startServer() {
-	err := http.Serve(s.listener, s)
-	if err != nil && err.Error() != ServerCloseErrMsg {
-		s.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "task-scheduler.server.failed")
-	}
-}
-
-func (s *TaskScheduler) stopServer() {
-	err := s.listener.Close()
-	if err != nil {
-		s.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "task-scheduler.server-close.failed")
-	}
-}
-
-func (s *TaskScheduler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	responseBody, err := ioutil.ReadAll(r.Body)
-	r.Body.Close()
-
-	completeResp, err := client.NewContainerRunResultFromJSON(responseBody)
-	if err != nil {
-		s.logger.Errord(map[string]interface{}{
-			"error": fmt.Sprintf("Could not unmarshal response: %s", err),
-		}, "task-scheduler.complete-callback-handler.failed")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	s.completeChan <- completeResp
-	w.WriteHeader(http.StatusOK)
 }
 
 func (s *TaskScheduler) Run(readyChan chan struct{}) error {
 	s.exitChan = make(chan struct{})
 	s.terminatedChan = make(chan struct{})
 	s.logger.Info("executor.watching-for-desired-task")
-
-	listener, err := net.Listen("tcp", s.address)
-	if err != nil {
-		return err
-	}
-	s.listener = listener
-
-	go s.startServer()
 
 	go func() {
 		tasks, stopChan, errChan := s.bbs.WatchForDesiredTask()
@@ -105,6 +65,7 @@ func (s *TaskScheduler) Run(readyChan chan struct{}) error {
 				s.logger.Errord(map[string]interface{}{
 					"error": err.Error(),
 				}, "task-scheduler.watch-desired.restart")
+
 				tasks, stopChan, errChan = s.bbs.WatchForDesiredTask()
 
 			case task, ok := <-tasks:
@@ -112,20 +73,15 @@ func (s *TaskScheduler) Run(readyChan chan struct{}) error {
 					s.logger.Errord(map[string]interface{}{
 						"error": errors.New("task channel closed. This is very unexpected, we did not intented to exit like this."),
 					}, "task-scheduler.watch-desired.task-chan-closed")
+
 					s.gracefulShutdown()
 					close(s.terminatedChan)
 					return
 				}
+
 				s.inFlight.Add(1)
 				go func() {
 					s.handleTaskRequest(task)
-					s.inFlight.Done()
-				}()
-
-			case runResult := <-s.completeChan:
-				s.inFlight.Add(1)
-				go func() {
-					s.handleRunCompletion(runResult)
 					s.inFlight.Done()
 				}()
 
@@ -148,21 +104,7 @@ func (s *TaskScheduler) Stop() {
 }
 
 func (s *TaskScheduler) gracefulShutdown() {
-	s.stopServer()
 	s.inFlight.Wait()
-}
-
-func (s *TaskScheduler) handleRunCompletion(runResult client.ContainerRunResult) {
-	task := models.Task{}
-	err := json.Unmarshal(runResult.Metadata, &task)
-	if err != nil {
-		s.logger.Errord(map[string]interface{}{
-			"error": fmt.Sprintf("Could not unmarshal metadata: %s", err),
-		}, "task-scheduler.complete-callback-handler.failed")
-		return
-	}
-
-	s.bbs.CompleteTask(task, runResult.Failed, runResult.FailureReason, runResult.Result)
 }
 
 func (s *TaskScheduler) handleTaskRequest(task models.Task) {
@@ -214,9 +156,18 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		return
 	}
 
+	callbackRequest, err := s.callbackGenerator.RequestForHandler(routes.TaskCompleted, router.Params{
+		"guid": container.Guid,
+	}, nil)
+	if err != nil {
+		s.logger.Errord(map[string]interface{}{
+			"error": err.Error(),
+		}, "game-scheduler.callback-generator.failed")
+	}
+
 	err = s.client.Run(container.Guid, client.RunRequest{
 		Actions:       task.Actions,
-		CompletionURL: fmt.Sprintf("http://%s/complete/%s", s.address, container.Guid),
+		CompletionURL: callbackRequest.URL.String(),
 		Metadata:      task.ToJSON(),
 	})
 	if err != nil {

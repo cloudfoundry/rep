@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,17 +12,23 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/nu7hatch/gouuid"
+	"github.com/tedsuo/router"
+
 	"github.com/cloudfoundry-incubator/executor/client"
-	"github.com/cloudfoundry-incubator/rep/lrp_scheduler"
-	"github.com/cloudfoundry-incubator/rep/maintain"
-	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
-	"github.com/nu7hatch/gouuid"
+
+	"github.com/cloudfoundry-incubator/rep/api"
+	"github.com/cloudfoundry-incubator/rep/api/taskcomplete"
+	"github.com/cloudfoundry-incubator/rep/lrp_scheduler"
+	"github.com/cloudfoundry-incubator/rep/maintain"
+	"github.com/cloudfoundry-incubator/rep/routes"
+	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 )
 
 var etcdCluster = flag.String(
@@ -109,8 +116,21 @@ func main() {
 
 	executorClient := client.New(http.DefaultClient, *executorURL)
 
-	taskRep := task_scheduler.New(bbs, logger, *stack, *listenAddr, executorClient)
+	callbackGenerator := router.NewRequestGenerator(
+		"http://"+*listenAddr,
+		routes.Routes,
+	)
+
+	taskRep := task_scheduler.New(callbackGenerator, bbs, logger, *stack, executorClient)
 	lrpRep := lrp_scheduler.New(bbs, logger, *stack, executorClient)
+
+	apiHandler, err := api.NewServer(taskcomplete.NewHandler(bbs, logger), nil)
+	if err != nil {
+		logger.Errord(map[string]interface{}{
+			"error": err,
+		}, "rep.api-server-initialize.failed")
+		os.Exit(1)
+	}
 
 	taskSchedulerReady := make(chan struct{})
 	lrpSchedulerReady := make(chan struct{})
@@ -123,6 +143,16 @@ func main() {
 
 		fmt.Println("representative started")
 	}()
+
+	apiListener, err := net.Listen("tcp", *listenAddr)
+	if err != nil {
+		logger.Errord(map[string]interface{}{
+			"error": err,
+		}, "rep.listening.failed")
+		os.Exit(1)
+	}
+
+	go http.Serve(apiListener, apiHandler)
 
 	err = taskRep.Run(taskSchedulerReady)
 	if err != nil {
@@ -163,8 +193,6 @@ func main() {
 			}
 		}
 	}()
-
-	///
 
 	for {
 		sig := <-signals

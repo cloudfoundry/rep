@@ -30,6 +30,10 @@ var _ = Describe("Main", func() {
 
 	BeforeEach(func() {
 		fakeExecutor = ghttp.NewServer()
+
+		// these tests only look for the start of a sequence of requests
+		fakeExecutor.AllowUnhandledRequests = true
+
 		etcdPort := 5001 + GinkgoParallelNode()
 		schedulerPort := 56000 + GinkgoParallelNode()
 
@@ -69,6 +73,7 @@ var _ = Describe("Main", func() {
 
 	Describe("maintaining presence", func() {
 		var repPresence models.RepPresence
+
 		BeforeEach(func() {
 			Eventually(bbs.GetAllReps).Should(HaveLen(1))
 			reps, err := bbs.GetAllReps()
