@@ -102,11 +102,10 @@ var _ = Describe("Scheduler", func() {
 				var containerGuid string
 
 				BeforeEach(func() {
-					containerGuid = "the-container-guid"
 					allocateCalled = make(chan struct{})
 					deletedContainerGuids = make(chan string, 1)
 
-					fakeClient.WhenAllocatingContainer = func(req client.ContainerRequest) (client.ContainerResponse, error) {
+					fakeClient.WhenAllocatingContainer = func(guid string, req client.ContainerRequest) (client.ContainerResponse, error) {
 						defer GinkgoRecover()
 
 						close(allocateCalled)
@@ -114,6 +113,10 @@ var _ = Describe("Scheduler", func() {
 						Ω(req.LogConfig).Should(Equal(lrp.Log))
 						Ω(req.MemoryMB).Should(Equal(128))
 						Ω(req.DiskMB).Should(Equal(1024))
+
+						containerGuid = guid
+						Ω(guid).ShouldNot(BeZero())
+
 						return client.ContainerResponse{ExecutorGuid: "the-executor-guid", Guid: containerGuid, ContainerRequest: req}, nil
 					}
 
@@ -182,7 +185,9 @@ var _ = Describe("Scheduler", func() {
 						})
 
 						It("deletes the container", func() {
-							Eventually(deletedContainerGuids).Should(Receive(Equal(containerGuid)))
+							var deletedGuid string
+							Eventually(deletedContainerGuids).Should(Receive(&deletedGuid))
+							Ω(deletedGuid).Should(Equal(containerGuid))
 						})
 					})
 				})
@@ -193,7 +198,9 @@ var _ = Describe("Scheduler", func() {
 					})
 
 					It("deletes the resource allocation on the executor", func() {
-						Eventually(deletedContainerGuids).Should(Receive(Equal(containerGuid)))
+						var deletedGuid string
+						Eventually(deletedContainerGuids).Should(Receive(&deletedGuid))
+						Ω(deletedGuid).Should(Equal(containerGuid))
 					})
 				})
 			})
@@ -217,7 +224,7 @@ var _ = Describe("Scheduler", func() {
 				BeforeEach(func() {
 					allocatedContainer = make(chan struct{})
 
-					fakeClient.WhenAllocatingContainer = func(req client.ContainerRequest) (client.ContainerResponse, error) {
+					fakeClient.WhenAllocatingContainer = func(guid string, req client.ContainerRequest) (client.ContainerResponse, error) {
 						close(allocatedContainer)
 						return client.ContainerResponse{}, errors.New("Something went wrong")
 					}

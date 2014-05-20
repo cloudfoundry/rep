@@ -41,12 +41,17 @@ type TryAction struct {
 }
 
 type MonitorAction struct {
-	Check              *json.RawMessage `json:"check"`
-	Interval           time.Duration    `json:"interval_in_nanoseconds"`
-	HealthyHook        string           `json:"healthy_hook"`
-	UnhealthyHook      string           `json:"unhealthy_hook"`
-	HealthyThreshold   uint             `json:"healthy_threshold"`
-	UnhealthyThreshold uint             `json:"unhealthy_threshold"`
+	Action             ExecutorAction `json:"action"`
+	Interval           time.Duration  `json:"interval_in_nanoseconds"`
+	HealthyHook        HealthRequest  `json:"healthy_hook"`
+	UnhealthyHook      HealthRequest  `json:"unhealthy_hook"`
+	HealthyThreshold   uint           `json:"healthy_threshold"`
+	UnhealthyThreshold uint           `json:"unhealthy_threshold"`
+}
+
+type HealthRequest struct {
+	Method string `json:"method"`
+	URL    string `json:"url"`
 }
 
 type ParallelAction struct {

@@ -98,7 +98,7 @@ var _ = Describe("TaskScheduler", func() {
 					allocateCalled = make(chan struct{}, 1)
 					deletedContainerGuid = make(chan string, 1)
 
-					fakeClient.WhenAllocatingContainer = func(req client.ContainerRequest) (client.ContainerResponse, error) {
+					fakeClient.WhenAllocatingContainer = func(containerGuid string, req client.ContainerRequest) (client.ContainerResponse, error) {
 						defer GinkgoRecover()
 
 						allocateCalled <- struct{}{}
@@ -107,7 +107,8 @@ var _ = Describe("TaskScheduler", func() {
 						Ω(req.DiskMB).Should(Equal(1024))
 						Ω(req.CpuPercent).Should(Equal(0.5))
 						Ω(req.LogConfig).Should(Equal(task.Log))
-						return client.ContainerResponse{ExecutorGuid: "the-executor-guid", Guid: "guid-123", ContainerRequest: req}, nil
+						Ω(containerGuid).Should(Equal(task.Guid))
+						return client.ContainerResponse{ExecutorGuid: "the-executor-guid", Guid: containerGuid, ContainerRequest: req}, nil
 					}
 
 					fakeClient.WhenDeletingContainer = func(allocationGuid string) error {
@@ -127,7 +128,7 @@ var _ = Describe("TaskScheduler", func() {
 								defer GinkgoRecover()
 
 								initCalled <- struct{}{}
-								Ω(allocationGuid).Should(Equal("guid-123"))
+								Ω(allocationGuid).Should(Equal(task.Guid))
 								Ω(fakeBBS.ClaimedTasks()).Should(HaveLen(1))
 								Ω(fakeBBS.StartedTasks()).Should(HaveLen(0))
 								return nil
@@ -149,10 +150,10 @@ var _ = Describe("TaskScheduler", func() {
 
 									expectedTask := task
 									expectedTask.ExecutorID = "the-executor-guid"
-									expectedTask.ContainerHandle = "guid-123"
+									expectedTask.ContainerHandle = allocationGuid
 									Ω(fakeBBS.StartedTasks()[0]).Should(Equal(expectedTask))
 
-									Ω(allocationGuid).Should(Equal("guid-123"))
+									Ω(allocationGuid).Should(Equal(task.Guid))
 									Ω(req.Actions).Should(Equal(task.Actions))
 
 									reqChan <- req
@@ -206,7 +207,7 @@ var _ = Describe("TaskScheduler", func() {
 
 								It("records the job failure", func() {
 									expectedTask := task
-									expectedTask.ContainerHandle = "guid-123"
+									expectedTask.ContainerHandle = task.Guid
 									expectedTask.ExecutorID = "the-executor-guid"
 									expectedTask.Failed = true
 									expectedTask.FailureReason = "it didn't work"
@@ -223,7 +224,7 @@ var _ = Describe("TaskScheduler", func() {
 							})
 
 							It("deletes the container", func() {
-								Eventually(deletedContainerGuid).Should(Receive(Equal("guid-123")))
+								Eventually(deletedContainerGuid).Should(Receive(Equal(task.Guid)))
 							})
 						})
 					})
@@ -240,7 +241,7 @@ var _ = Describe("TaskScheduler", func() {
 						})
 
 						It("deletes the container", func() {
-							Eventually(deletedContainerGuid).Should(Receive(Equal("guid-123")))
+							Eventually(deletedContainerGuid).Should(Receive(Equal(task.Guid)))
 						})
 					})
 				})
@@ -251,7 +252,7 @@ var _ = Describe("TaskScheduler", func() {
 					})
 
 					It("deletes the resource allocation on the executor", func() {
-						Eventually(deletedContainerGuid).Should(Receive(Equal("guid-123")))
+						Eventually(deletedContainerGuid).Should(Receive(Equal(task.Guid)))
 					})
 				})
 			})
@@ -262,7 +263,7 @@ var _ = Describe("TaskScheduler", func() {
 				BeforeEach(func() {
 					allocatedContainer = make(chan struct{}, 1)
 
-					fakeClient.WhenAllocatingContainer = func(req client.ContainerRequest) (client.ContainerResponse, error) {
+					fakeClient.WhenAllocatingContainer = func(guid string, req client.ContainerRequest) (client.ContainerResponse, error) {
 						allocatedContainer <- struct{}{}
 						return client.ContainerResponse{}, errors.New("Something went wrong")
 					}

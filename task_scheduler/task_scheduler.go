@@ -49,7 +49,7 @@ func (s *TaskScheduler) startServer() {
 	if err != nil && err.Error() != ServerCloseErrMsg {
 		s.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
-		}, "game-scheduler.server.failed")
+		}, "task-scheduler.server.failed")
 	}
 }
 
@@ -58,7 +58,7 @@ func (s *TaskScheduler) stopServer() {
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
-		}, "game-scheduler.server-close.failed")
+		}, "task-scheduler.server-close.failed")
 	}
 }
 
@@ -70,7 +70,7 @@ func (s *TaskScheduler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
 			"error": fmt.Sprintf("Could not unmarshal response: %s", err),
-		}, "game-scheduler.complete-callback-handler.failed")
+		}, "task-scheduler.complete-callback-handler.failed")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -104,14 +104,14 @@ func (s *TaskScheduler) Run(readyChan chan struct{}) error {
 			case err := <-errChan:
 				s.logger.Errord(map[string]interface{}{
 					"error": err.Error(),
-				}, "game-scheduler.watch-desired.restart")
+				}, "task-scheduler.watch-desired.restart")
 				tasks, stopChan, errChan = s.bbs.WatchForDesiredTask()
 
 			case task, ok := <-tasks:
 				if !ok {
 					s.logger.Errord(map[string]interface{}{
 						"error": errors.New("task channel closed. This is very unexpected, we did not intented to exit like this."),
-					}, "game-scheduler.watch-desired.task-chan-closed")
+					}, "task-scheduler.watch-desired.task-chan-closed")
 					s.gracefulShutdown()
 					close(s.terminatedChan)
 					return
@@ -158,7 +158,7 @@ func (s *TaskScheduler) handleRunCompletion(runResult client.ContainerRunResult)
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
 			"error": fmt.Sprintf("Could not unmarshal metadata: %s", err),
-		}, "game-scheduler.complete-callback-handler.failed")
+		}, "task-scheduler.complete-callback-handler.failed")
 		return
 	}
 
@@ -172,7 +172,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		return
 	}
 
-	container, err := s.client.AllocateContainer(client.ContainerRequest{
+	container, err := s.client.AllocateContainer(task.Guid, client.ContainerRequest{
 		DiskMB:     task.DiskMB,
 		MemoryMB:   task.MemoryMB,
 		CpuPercent: task.CpuPercent,
@@ -181,7 +181,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
-		}, "game-scheduler.allocation-request.failed")
+		}, "task-scheduler.allocation-request.failed")
 		return
 	}
 
@@ -191,7 +191,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
-		}, "game-scheduler.claim-task.failed")
+		}, "task-scheduler.claim-task.failed")
 		s.client.DeleteContainer(container.Guid)
 		return
 	}
@@ -200,7 +200,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
-		}, "game-scheduler.initialize-container-request.failed")
+		}, "task-scheduler.initialize-container-request.failed")
 		s.client.DeleteContainer(container.Guid)
 		return
 	}
@@ -209,7 +209,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
-		}, "game-scheduler.start-task.failed")
+		}, "task-scheduler.start-task.failed")
 		s.client.DeleteContainer(container.Guid)
 		return
 	}
@@ -222,7 +222,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
-		}, "game-scheduler.run-actions.failed")
+		}, "task-scheduler.run-actions.failed")
 	}
 }
 

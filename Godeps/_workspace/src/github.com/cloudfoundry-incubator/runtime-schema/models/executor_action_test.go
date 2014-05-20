@@ -184,26 +184,44 @@ var _ = Describe("ExecutorAction", func() {
 	})
 
 	Describe("Monitor", func() {
-		checkPayload := json.RawMessage(`{ "type": "port", "args": { "port": "1234" } }`)
-
 		itSerializesAndDeserializes(
 			`{
 				"action": "monitor",
 				"args": {
-					"check": { "type": "port", "args": { "port": "1234" } },
+					"action": {
+						"action": "run",
+						"args": {
+							"resource_limits": {},
+							"env": null,
+							"timeout": 0,
+							"script": "echo"
+						}
+					},
 					"interval_in_nanoseconds": 10000000000,
-					"healthy_hook": "bogus_healthy_hook",
-					"unhealthy_hook": "bogus_unhealthy_hook",
+					"healthy_hook": {
+						"method": "POST",
+						"url": "bogus_healthy_hook"
+					},
+					"unhealthy_hook": {
+						"method": "DELETE",
+						"url": "bogus_unhealthy_hook"
+					},
 					"healthy_threshold": 2,
 					"unhealthy_threshold": 5
 				}
 			}`,
 			ExecutorAction{
 				MonitorAction{
-					Check:              &checkPayload,
-					Interval:           10 * time.Second,
-					HealthyHook:        "bogus_healthy_hook",
-					UnhealthyHook:      "bogus_unhealthy_hook",
+					Action:   ExecutorAction{RunAction{Script: "echo"}},
+					Interval: 10 * time.Second,
+					HealthyHook: HealthRequest{
+						Method: "POST",
+						URL:    "bogus_healthy_hook",
+					},
+					UnhealthyHook: HealthRequest{
+						Method: "DELETE",
+						URL:    "bogus_unhealthy_hook",
+					},
 					HealthyThreshold:   2,
 					UnhealthyThreshold: 5,
 				},
@@ -218,22 +236,22 @@ var _ = Describe("ExecutorAction", func() {
         "args": {
           "actions": [
             {
+              "action": "download",
               "args": {
                 "extract": true,
                 "cache_key": "elephant",
                 "to": "local_location",
                 "from": "web_location"
-              },
-              "action": "download"
+              }
             },
             {
+              "action": "run",
               "args": {
                 "resource_limits": {},
                 "env": null,
                 "timeout": 0,
                 "script": "echo"
-              },
-              "action": "run"
+              }
             }
           ]
         }

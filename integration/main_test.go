@@ -99,11 +99,12 @@ var _ = Describe("Main", func() {
 	Describe("when a task is written to the BBS", func() {
 		BeforeEach(func() {
 			fakeExecutor.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("POST", "/containers"),
+				ghttp.VerifyRequest("POST", "/containers/the-task-guid"),
 				ghttp.RespondWith(http.StatusCreated, `{"executor_guid":"executor-guid","guid":"guid-123"}`)),
 			)
 
 			bbs.DesireTask(models.Task{
+				Guid:  "the-task-guid",
 				Stack: "the-stack",
 			})
 		})
@@ -116,7 +117,10 @@ var _ = Describe("Main", func() {
 	Describe("when an LRP is written to the BBS", func() {
 		BeforeEach(func() {
 			fakeExecutor.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("POST", "/containers"),
+				func(w http.ResponseWriter, req *http.Request) {
+					Ω(req.Method).Should(Equal("POST"), "Method mismatch")
+					Ω(req.URL.Path).Should(MatchRegexp("/containers/.*"), "Path mismatch")
+				},
 				ghttp.RespondWith(http.StatusCreated, `{"executor_guid":"executor-guid","guid":"guid-123"}`)),
 			)
 

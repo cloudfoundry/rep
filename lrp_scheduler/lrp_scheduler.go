@@ -10,6 +10,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gosteno"
+	"github.com/nu7hatch/gouuid"
 )
 
 type LrpScheduler struct {
@@ -91,7 +92,15 @@ func (s *LrpScheduler) handleLrpRequest(lrp models.TransitionalLongRunningProces
 		return
 	}
 
-	container, err := s.client.AllocateContainer(client.ContainerRequest{
+	guid, err := uuid.NewV4()
+	if err != nil {
+		s.logger.Errord(map[string]interface{}{
+			"error": err.Error(),
+		}, "lrp-scheduler.generate-guid.failed")
+		return
+	}
+
+	container, err := s.client.AllocateContainer(guid.String(), client.ContainerRequest{
 		LogConfig: lrp.Log,
 		MemoryMB:  lrp.MemoryMB,
 		DiskMB:    lrp.DiskMB,
