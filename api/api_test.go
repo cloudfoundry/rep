@@ -6,9 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	"github.com/cloudfoundry-incubator/executor/client"
 	"github.com/cloudfoundry-incubator/executor/client/fake_client"
 	"github.com/cloudfoundry-incubator/rep/api"
@@ -16,6 +13,8 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gosteno"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Callback API", func() {
@@ -23,13 +22,18 @@ var _ = Describe("Callback API", func() {
 	var logger *gosteno.Logger
 
 	var server *httptest.Server
+	var httpClient *http.Client
 
 	BeforeSuite(func() {
 		gosteno.EnterTestMode(gosteno.LOG_DEBUG)
 		logger = gosteno.NewLogger("test-logger")
+
+		httpClient = &http.Client{
+			Transport: &http.Transport{},
+		}
 	})
 
-	Describe("POST /task_completed/:guid", func() {
+	Describe("PUT /task_completed/:guid", func() {
 		var task models.Task
 		var result client.ContainerRunResult
 
@@ -84,7 +88,10 @@ var _ = Describe("Callback API", func() {
 			body, err := fake_client.MarshalContainerRunResult(result)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			resp, err = http.Post(server.URL+"/task_completed/"+task.Guid, "application/json", bytes.NewReader(body))
+			request, err := http.NewRequest("PUT", server.URL+"/task_completed/"+task.Guid, bytes.NewReader(body))
+			Ω(err).ShouldNot(HaveOccurred())
+
+			resp, err = httpClient.Do(request)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
