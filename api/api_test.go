@@ -6,8 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/cloudfoundry-incubator/executor/client"
-	"github.com/cloudfoundry-incubator/executor/client/fake_client"
+	executorAPI "github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/rep/api"
 	"github.com/cloudfoundry-incubator/rep/api/taskcomplete"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
@@ -35,7 +34,7 @@ var _ = Describe("Callback API", func() {
 
 	Describe("PUT /task_completed/:guid", func() {
 		var task models.Task
-		var result client.ContainerRunResult
+		var result executorAPI.ContainerRunResult
 
 		var resp *http.Response
 
@@ -79,13 +78,13 @@ var _ = Describe("Callback API", func() {
 			marshalledTask, err := json.Marshal(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			result = client.ContainerRunResult{
+			result = executorAPI.ContainerRunResult{
 				Metadata: marshalledTask,
 			}
 		})
 
 		JustBeforeEach(func() {
-			body, err := fake_client.MarshalContainerRunResult(result)
+			body, err := json.Marshal(result)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			request, err := http.NewRequest("PUT", server.URL+"/task_completed/"+task.Guid, bytes.NewReader(body))

@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/executor/client"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -100,10 +101,10 @@ func (s *LrpScheduler) handleLrpRequest(lrp models.TransitionalLongRunningProces
 		return
 	}
 
-	container, err := s.client.AllocateContainer(guid.String(), client.ContainerRequest{
-		LogConfig: lrp.Log,
-		MemoryMB:  lrp.MemoryMB,
-		DiskMB:    lrp.DiskMB,
+	container, err := s.client.AllocateContainer(guid.String(), api.ContainerAllocationRequest{
+		Log:      lrp.Log,
+		MemoryMB: lrp.MemoryMB,
+		DiskMB:   lrp.DiskMB,
 	})
 
 	if err != nil {
@@ -133,7 +134,7 @@ func (s *LrpScheduler) handleLrpRequest(lrp models.TransitionalLongRunningProces
 		return
 	}
 
-	err = s.client.Run(container.Guid, client.RunRequest{
+	err = s.client.Run(container.Guid, api.ContainerRunRequest{
 		Actions: lrp.Actions,
 	})
 	if err != nil {

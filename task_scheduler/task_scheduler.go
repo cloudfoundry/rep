@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/executor/client"
 	"github.com/cloudfoundry-incubator/rep/routes"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
@@ -114,11 +115,11 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		return
 	}
 
-	container, err := s.client.AllocateContainer(task.Guid, client.ContainerRequest{
+	container, err := s.client.AllocateContainer(task.Guid, api.ContainerAllocationRequest{
 		DiskMB:     task.DiskMB,
 		MemoryMB:   task.MemoryMB,
 		CpuPercent: task.CpuPercent,
-		LogConfig:  task.Log,
+		Log:        task.Log,
 	})
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
@@ -165,10 +166,10 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		}, "game-scheduler.callback-generator.failed")
 	}
 
-	err = s.client.Run(container.Guid, client.RunRequest{
-		Actions:       task.Actions,
-		CompletionURL: callbackRequest.URL.String(),
-		Metadata:      task.ToJSON(),
+	err = s.client.Run(container.Guid, api.ContainerRunRequest{
+		Actions:     task.Actions,
+		CompleteURL: callbackRequest.URL.String(),
+		Metadata:    task.ToJSON(),
 	})
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{

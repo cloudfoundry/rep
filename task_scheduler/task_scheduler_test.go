@@ -3,7 +3,7 @@ package task_scheduler_test
 import (
 	"errors"
 
-	"github.com/cloudfoundry-incubator/executor/client"
+	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/tedsuo/router"
 
 	"github.com/cloudfoundry-incubator/executor/client/fake_client"
@@ -104,7 +104,7 @@ var _ = Describe("TaskScheduler", func() {
 					allocateCalled = make(chan struct{}, 1)
 					deletedContainerGuid = make(chan string, 1)
 
-					fakeClient.WhenAllocatingContainer = func(containerGuid string, req client.ContainerRequest) (client.ContainerResponse, error) {
+					fakeClient.WhenAllocatingContainer = func(containerGuid string, req api.ContainerAllocationRequest) (api.Container, error) {
 						defer GinkgoRecover()
 
 						allocateCalled <- struct{}{}
@@ -112,9 +112,9 @@ var _ = Describe("TaskScheduler", func() {
 						Ω(req.MemoryMB).Should(Equal(64))
 						Ω(req.DiskMB).Should(Equal(1024))
 						Ω(req.CpuPercent).Should(Equal(0.5))
-						Ω(req.LogConfig).Should(Equal(task.Log))
+						Ω(req.Log).Should(Equal(task.Log))
 						Ω(containerGuid).Should(Equal(task.Guid))
-						return client.ContainerResponse{ExecutorGuid: "the-executor-guid", Guid: containerGuid, ContainerRequest: req}, nil
+						return api.Container{ExecutorGuid: "the-executor-guid", Guid: containerGuid}, nil
 					}
 
 					fakeClient.WhenDeletingContainer = func(allocationGuid string) error {
@@ -143,13 +143,13 @@ var _ = Describe("TaskScheduler", func() {
 
 						Context("and the executor successfully starts running the task", func() {
 							var (
-								reqChan chan client.RunRequest
+								reqChan chan api.ContainerRunRequest
 							)
 
 							BeforeEach(func() {
-								reqChan = make(chan client.RunRequest, 1)
+								reqChan = make(chan api.ContainerRunRequest, 1)
 
-								fakeClient.WhenRunning = func(allocationGuid string, req client.RunRequest) error {
+								fakeClient.WhenRunning = func(allocationGuid string, req api.ContainerRunRequest) error {
 									defer GinkgoRecover()
 
 									Ω(fakeBBS.StartedTasks()).Should(HaveLen(1))
@@ -219,9 +219,9 @@ var _ = Describe("TaskScheduler", func() {
 				BeforeEach(func() {
 					allocatedContainer = make(chan struct{}, 1)
 
-					fakeClient.WhenAllocatingContainer = func(guid string, req client.ContainerRequest) (client.ContainerResponse, error) {
+					fakeClient.WhenAllocatingContainer = func(guid string, req api.ContainerAllocationRequest) (api.Container, error) {
 						allocatedContainer <- struct{}{}
-						return client.ContainerResponse{}, errors.New("Something went wrong")
+						return api.Container{}, errors.New("Something went wrong")
 					}
 				})
 

@@ -3,10 +3,8 @@ package taskcomplete
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-
-	"github.com/cloudfoundry-incubator/executor/client"
+	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gosteno"
@@ -25,10 +23,9 @@ func NewHandler(bbs bbs.RepBBS, logger *gosteno.Logger) http.Handler {
 }
 
 func (handler *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	requestBody, err := ioutil.ReadAll(r.Body)
-	r.Body.Close()
-
-	runResult, err := client.NewContainerRunResultFromJSON(requestBody)
+	defer r.Body.Close()
+	var runResult api.ContainerRunResult
+	err := json.NewDecoder(r.Body).Decode(&runResult)
 	if err != nil {
 		handler.logger.Errord(map[string]interface{}{
 			"error": fmt.Sprintf("Could not unmarshal response: %s", err),

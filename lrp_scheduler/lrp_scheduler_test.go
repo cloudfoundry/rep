@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/cloudfoundry-incubator/executor/client"
+	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/executor/client/fake_client"
 	. "github.com/cloudfoundry-incubator/rep/lrp_scheduler"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
@@ -105,19 +105,19 @@ var _ = Describe("Scheduler", func() {
 					allocateCalled = make(chan struct{})
 					deletedContainerGuids = make(chan string, 1)
 
-					fakeClient.WhenAllocatingContainer = func(guid string, req client.ContainerRequest) (client.ContainerResponse, error) {
+					fakeClient.WhenAllocatingContainer = func(guid string, req api.ContainerAllocationRequest) (api.Container, error) {
 						defer GinkgoRecover()
 
 						close(allocateCalled)
 						Ω(fakeBBS.StartedLongRunningProcesses()).Should(HaveLen(0))
-						Ω(req.LogConfig).Should(Equal(lrp.Log))
+						Ω(req.Log).Should(Equal(lrp.Log))
 						Ω(req.MemoryMB).Should(Equal(128))
 						Ω(req.DiskMB).Should(Equal(1024))
 
 						containerGuid = guid
 						Ω(guid).ShouldNot(BeZero())
 
-						return client.ContainerResponse{ExecutorGuid: "the-executor-guid", Guid: containerGuid, ContainerRequest: req}, nil
+						return api.Container{ExecutorGuid: "the-executor-guid", Guid: containerGuid}, nil
 					}
 
 					fakeClient.WhenDeletingContainer = func(allocationGuid string) error {
@@ -150,7 +150,7 @@ var _ = Describe("Scheduler", func() {
 							BeforeEach(func() {
 								runCalled = make(chan struct{})
 
-								fakeClient.WhenRunning = func(allocationGuid string, req client.RunRequest) error {
+								fakeClient.WhenRunning = func(allocationGuid string, req api.ContainerRunRequest) error {
 									defer GinkgoRecover()
 
 									close(runCalled)
@@ -224,9 +224,9 @@ var _ = Describe("Scheduler", func() {
 				BeforeEach(func() {
 					allocatedContainer = make(chan struct{})
 
-					fakeClient.WhenAllocatingContainer = func(guid string, req client.ContainerRequest) (client.ContainerResponse, error) {
+					fakeClient.WhenAllocatingContainer = func(guid string, req api.ContainerAllocationRequest) (api.Container, error) {
 						close(allocatedContainer)
-						return client.ContainerResponse{}, errors.New("Something went wrong")
+						return api.Container{}, errors.New("Something went wrong")
 					}
 				})
 
