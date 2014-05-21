@@ -45,6 +45,7 @@ var _ = Describe("Main", func() {
 		runner = reprunner.New(
 			representativePath,
 			"the-stack",
+			"the-lrp-host",
 			fmt.Sprintf("127.0.0.1:%d", schedulerPort),
 			fakeExecutor.URL(),
 			fmt.Sprintf("http://127.0.0.1:%d", etcdPort),

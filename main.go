@@ -24,6 +24,7 @@ import (
 	"github.com/cloudfoundry/storeadapter/workerpool"
 
 	"github.com/cloudfoundry-incubator/rep/api"
+	"github.com/cloudfoundry-incubator/rep/api/lrprunning"
 	"github.com/cloudfoundry-incubator/rep/api/taskcomplete"
 	"github.com/cloudfoundry-incubator/rep/lrp_scheduler"
 	"github.com/cloudfoundry-incubator/rep/maintain"
@@ -61,6 +62,12 @@ var executorURL = flag.String(
 	"location of executor to represent",
 )
 
+var lrpHost = flag.String(
+	"lrpHost",
+	"",
+	"address to route traffic to for LRP access",
+)
+
 var listenAddr = flag.String(
 	"listenAddr",
 	"0.0.0.0:20515",
@@ -82,7 +89,11 @@ func main() {
 	}
 
 	if *stack == "" {
-		log.Fatalf("A stack must be specified")
+		log.Fatalf("-stack must be specified")
+	}
+
+	if *lrpHost == "" {
+		log.Fatalf("-lrpHost must be specified")
 	}
 
 	stenoConfig := steno.Config{
@@ -124,7 +135,10 @@ func main() {
 	taskRep := task_scheduler.New(callbackGenerator, bbs, logger, *stack, executorClient)
 	lrpRep := lrp_scheduler.New(bbs, logger, *stack, executorClient)
 
-	apiHandler, err := api.NewServer(taskcomplete.NewHandler(bbs, logger), nil)
+	taskCompleteHandler := taskcomplete.NewHandler(bbs, logger)
+	lrpRunningHandler := lrprunning.NewHandler(bbs, executorClient, *lrpHost, logger)
+
+	apiHandler, err := api.NewServer(taskCompleteHandler, lrpRunningHandler)
 	if err != nil {
 		logger.Errord(map[string]interface{}{
 			"error": err,

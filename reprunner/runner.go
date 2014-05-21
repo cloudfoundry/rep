@@ -18,6 +18,7 @@ type Runner struct {
 
 type Config struct {
 	stack             string
+	lrpHost           string
 	listenAddr        string
 	executorURL       string
 	etcdCluster       string
@@ -25,11 +26,12 @@ type Config struct {
 	heartbeatInterval time.Duration
 }
 
-func New(binPath, stack, listenAddr, executorURL, etcdCluster, logLevel string, heartbeatInterval time.Duration) *Runner {
+func New(binPath, stack, lrpHost, listenAddr, executorURL, etcdCluster, logLevel string, heartbeatInterval time.Duration) *Runner {
 	return &Runner{
 		binPath: binPath,
 		config: Config{
 			stack:             stack,
+			lrpHost:           lrpHost,
 			listenAddr:        listenAddr,
 			executorURL:       executorURL,
 			etcdCluster:       etcdCluster,
@@ -48,6 +50,7 @@ func (r *Runner) Start() {
 		exec.Command(
 			r.binPath,
 			"-stack", r.config.stack,
+			"-lrpHost", r.config.lrpHost,
 			"-listenAddr", r.config.listenAddr,
 			"-executorURL", r.config.executorURL,
 			"-etcdCluster", r.config.etcdCluster,
