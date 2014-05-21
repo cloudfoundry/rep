@@ -200,6 +200,13 @@ var _ = Describe("TaskScheduler", func() {
 						It("deletes the container", func() {
 							Eventually(deletedContainerGuid).Should(Receive(Equal(task.Guid)))
 						})
+
+						It("marks the task as failed", func() {
+							Eventually(fakeBBS.CompletedTasks).Should(HaveLen(1))
+							task := fakeBBS.CompletedTasks()[0]
+							Ω(task.Failed).Should(BeTrue())
+							Ω(task.FailureReason).Should(ContainSubstring("Failed to initialize container - Can't initialize"))
+						})
 					})
 				})
 

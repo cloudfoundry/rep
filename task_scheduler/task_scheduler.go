@@ -136,6 +136,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	if err != nil {
 		s.logError("task-scheduler.initialize-container-request.failed", err)
 		s.client.DeleteContainer(container.Guid)
+		s.markTaskAsFailed(task, err)
 		return
 	}
 
@@ -160,6 +161,13 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	})
 	if err != nil {
 		s.logError("task-scheduler.run-actions.failed", err)
+	}
+}
+
+func (s *TaskScheduler) markTaskAsFailed(task models.Task, err error) {
+	_, err := s.bbs.CompleteTask(task, true, "Failed to initialize container - "+err.Error(), "")
+	if err != nil {
+		s.logError("task-scheduler.mark-task-as-failed.failed", err)
 	}
 }
 
