@@ -1,4 +1,4 @@
-package lrp_scheduler_test
+package auction_delegate_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestLrpScheduler(t *testing.T) {
+func TestAuctionDelegate(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "LrpScheduler Suite")
+	RunSpecs(t, "AuctionDelegate Suite")
 }

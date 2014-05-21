@@ -12,30 +12,49 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/nu7hatch/gouuid"
-	"github.com/tedsuo/router"
-
+	"github.com/cloudfoundry-incubator/auction/auctionrep"
+	"github.com/cloudfoundry-incubator/auction/communication/nats/repnatsserver"
 	"github.com/cloudfoundry-incubator/executor/client"
+	"github.com/cloudfoundry-incubator/rep/api"
+	"github.com/cloudfoundry-incubator/rep/api/lrprunning"
+	"github.com/cloudfoundry-incubator/rep/api/taskcomplete"
+	"github.com/cloudfoundry-incubator/rep/auction_delegate"
+	"github.com/cloudfoundry-incubator/rep/maintain"
+	"github.com/cloudfoundry-incubator/rep/routes"
+	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
-
-	"github.com/cloudfoundry-incubator/rep/api"
-	"github.com/cloudfoundry-incubator/rep/api/lrprunning"
-	"github.com/cloudfoundry-incubator/rep/api/taskcomplete"
-	"github.com/cloudfoundry-incubator/rep/lrp_scheduler"
-	"github.com/cloudfoundry-incubator/rep/maintain"
-	"github.com/cloudfoundry-incubator/rep/routes"
-	"github.com/cloudfoundry-incubator/rep/task_scheduler"
+	"github.com/cloudfoundry/yagnats"
+	"github.com/nu7hatch/gouuid"
+	"github.com/tedsuo/router"
 )
 
 var etcdCluster = flag.String(
 	"etcdCluster",
 	"http://127.0.0.1:4001",
 	"comma-separated list of etcd addresses (http://ip:port)",
+)
+
+var natsAddresses = flag.String(
+	"natsAddresses",
+	"127.0.0.1:4222",
+	"comma-separated list of NATS addresses (ip:port)",
+)
+
+var natsUsername = flag.String(
+	"natsUsername",
+	"nats",
+	"Username to connect to nats",
+)
+
+var natsPassword = flag.String(
+	"natsPassword",
+	"nats",
+	"Password for nats user",
 )
 
 var logLevel = flag.String(
@@ -82,18 +101,58 @@ var stack = flag.String(
 
 func main() {
 	flag.Parse()
-
-	l, err := steno.GetLogLevel(*logLevel)
-	if err != nil {
-		log.Fatalf("Invalid loglevel: %s\n", *logLevel)
-	}
-
 	if *stack == "" {
 		log.Fatalf("-stack must be specified")
 	}
 
 	if *lrpHost == "" {
 		log.Fatalf("-lrpHost must be specified")
+	}
+
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT)
+
+	repID := generateRepID()
+
+	logger := initializeLogger()
+	bbs := initializeRepBBS(logger)
+	executorClient := client.New(http.DefaultClient, *executorURL)
+
+	taskSchedulerReady := make(chan struct{})
+	maintainReady := make(chan struct{})
+	repNatsServerReady := make(chan struct{})
+
+	go func() {
+		<-maintainReady
+		<-taskSchedulerReady
+		<-repNatsServerReady
+
+		fmt.Println("representative started")
+	}()
+
+	taskRep := initializeAndStartTaskRep(bbs, logger, executorClient, taskSchedulerReady)
+	startHandlers(bbs, logger, executorClient)
+
+	maintainSignals := make(chan os.Signal, 1)
+	maintainPresence(repID, bbs, logger, maintainSignals, maintainReady)
+
+	startAuctionNatsServer(repID, executorClient, logger, repNatsServerReady)
+
+	for {
+		sig := <-signals
+		switch sig {
+		case syscall.SIGINT, syscall.SIGTERM:
+			taskRep.Stop()
+			maintainSignals <- sig
+			os.Exit(0)
+		}
+	}
+}
+
+func initializeLogger() *steno.Logger {
+	l, err := steno.GetLogLevel(*logLevel)
+	if err != nil {
+		log.Fatalf("Invalid loglevel: %s\n", *logLevel)
 	}
 
 	stenoConfig := steno.Config{
@@ -106,35 +165,54 @@ func main() {
 	}
 
 	steno.Init(&stenoConfig)
-	logger := steno.NewLogger("rep")
+	return steno.NewLogger("rep")
+}
 
+func initializeRepBBS(logger *steno.Logger) Bbs.RepBBS {
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
 		strings.Split(*etcdCluster, ","),
 		workerpool.NewWorkerPool(10),
 	)
 
 	bbs := Bbs.NewRepBBS(etcdAdapter, timeprovider.NewTimeProvider())
-	err = etcdAdapter.Connect()
+	err := etcdAdapter.Connect()
 	if err != nil {
 		logger.Errord(map[string]interface{}{
 			"error": err,
 		}, "rep.etcd-connect.failed")
 		os.Exit(1)
 	}
+	return bbs
+}
 
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT)
-
-	executorClient := client.New(http.DefaultClient, *executorURL)
-
+func initializeAndStartTaskRep(bbs Bbs.RepBBS, logger *steno.Logger, executorClient client.Client, ready chan struct{}) *task_scheduler.TaskScheduler {
 	callbackGenerator := router.NewRequestGenerator(
 		"http://"+*listenAddr,
 		routes.Routes,
 	)
 
 	taskRep := task_scheduler.New(callbackGenerator, bbs, logger, *stack, executorClient)
-	lrpRep := lrp_scheduler.New(bbs, logger, *stack, executorClient)
 
+	err := taskRep.Run(ready)
+	if err != nil {
+		logger.Errord(map[string]interface{}{
+			"error": err,
+		}, "rep.task-scheduler.failed")
+		os.Exit(1)
+	}
+
+	return taskRep
+}
+
+func generateRepID() string {
+	uuid, err := uuid.NewV4()
+	if err != nil {
+		panic("Failed to generate a random guid....:" + err.Error())
+	}
+	return uuid.String()
+}
+
+func startHandlers(bbs Bbs.RepBBS, logger *steno.Logger, executorClient client.Client) {
 	taskCompleteHandler := taskcomplete.NewHandler(bbs, logger)
 	lrpRunningHandler := lrprunning.NewHandler(bbs, executorClient, *lrpHost, logger)
 
@@ -146,18 +224,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	taskSchedulerReady := make(chan struct{})
-	lrpSchedulerReady := make(chan struct{})
-	maintainReady := make(chan struct{})
-
-	go func() {
-		<-maintainReady
-		<-taskSchedulerReady
-		<-lrpSchedulerReady
-
-		fmt.Println("representative started")
-	}()
-
 	apiListener, err := net.Listen("tcp", *listenAddr)
 	if err != nil {
 		logger.Errord(map[string]interface{}{
@@ -167,26 +233,9 @@ func main() {
 	}
 
 	go http.Serve(apiListener, apiHandler)
+}
 
-	err = taskRep.Run(taskSchedulerReady)
-	if err != nil {
-		logger.Errord(map[string]interface{}{
-			"error": err,
-		}, "rep.task-scheduler.failed")
-		os.Exit(1)
-	}
-
-	lrpRep.Run(lrpSchedulerReady)
-
-	////
-
-	uuid, err := uuid.NewV4()
-	if err != nil {
-		panic("Failed to generate a random guid....:" + err.Error())
-	}
-	repID := uuid.String()
-
-	maintainSignals := make(chan os.Signal, 1)
+func maintainPresence(repID string, bbs Bbs.RepBBS, logger *steno.Logger, maintainSignals chan os.Signal, ready chan struct{}) {
 	signal.Notify(maintainSignals, syscall.SIGTERM, syscall.SIGINT, syscall.SIGUSR1)
 
 	repPresence := models.RepPresence{
@@ -198,24 +247,43 @@ func main() {
 	go func() {
 		//keep maintaining forever, dont do anything if we fail to maintain
 		for {
-			err := maintainer.Run(maintainSignals, maintainReady)
+			err := maintainer.Run(maintainSignals, ready)
 			if err != nil {
 				logger.Errorf("failed to start maintaining presence: %s", err.Error())
-				maintainReady = make(chan struct{})
+				ready = make(chan struct{})
 			} else {
 				break
 			}
 		}
 	}()
+}
 
-	for {
-		sig := <-signals
-		switch sig {
-		case syscall.SIGINT, syscall.SIGTERM:
-			taskRep.Stop()
-			lrpRep.Stop()
-			maintainSignals <- sig
-			os.Exit(0)
-		}
+func initializeNatsClient(logger *steno.Logger) yagnats.NATSClient {
+	natsClient := yagnats.NewClient()
+
+	natsMembers := []yagnats.ConnectionProvider{}
+	for _, addr := range strings.Split(*natsAddresses, ",") {
+		natsMembers = append(
+			natsMembers,
+			&yagnats.ConnectionInfo{addr, *natsUsername, *natsPassword},
+		)
 	}
+
+	err := natsClient.Connect(&yagnats.ConnectionCluster{
+		Members: natsMembers,
+	})
+
+	if err != nil {
+		logger.Fatalf("Error connecting to NATS: %s\n", err)
+	}
+
+	return natsClient
+}
+
+func startAuctionNatsServer(repID string, executorClient client.Client, logger *steno.Logger, ready chan struct{}) {
+	auctionDelegate := auction_delegate.New(executorClient, logger)
+	auctionRep := auctionrep.New(repID, auctionDelegate)
+	natsClient := initializeNatsClient(logger)
+	repnatsserver.Start(natsClient, auctionRep)
+	close(ready)
 }

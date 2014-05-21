@@ -6,8 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cloudfoundry-incubator/auction/auctiontypes"
+	"github.com/cloudfoundry-incubator/auction/communication/nats/repnatsclient"
+	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/rep/reprunner"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry/gunk/natsrunner"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/onsi/gomega/ghttp"
 
@@ -20,6 +24,7 @@ import (
 
 var representativePath string
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
+var natsRunner *natsrunner.NATSRunner
 var runner *reprunner.Runner
 
 var _ = Describe("Main", func() {
@@ -29,6 +34,7 @@ var _ = Describe("Main", func() {
 	)
 
 	BeforeEach(func() {
+		natsRunner = natsrunner.NewNATSRunner(4001)
 		fakeExecutor = ghttp.NewServer()
 
 		// these tests only look for the start of a sequence of requests
@@ -40,6 +46,8 @@ var _ = Describe("Main", func() {
 		etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
 		etcdRunner.Start()
 
+		natsRunner.Start()
+
 		bbs = Bbs.NewBBS(etcdRunner.Adapter(), timeprovider.NewTimeProvider())
 
 		runner = reprunner.New(
@@ -49,6 +57,7 @@ var _ = Describe("Main", func() {
 			fmt.Sprintf("127.0.0.1:%d", schedulerPort),
 			fakeExecutor.URL(),
 			fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
+			"127.0.0.1:4001",
 			"info",
 			time.Second,
 		)
@@ -60,6 +69,7 @@ var _ = Describe("Main", func() {
 		runner.KillWithFire()
 		fakeExecutor.Close()
 		etcdRunner.Stop()
+		natsRunner.Stop()
 	})
 
 	Describe("when a kill signal is send to the representative", func() {
@@ -120,23 +130,31 @@ var _ = Describe("Main", func() {
 		})
 	})
 
-	Describe("when an LRP is written to the BBS", func() {
+	Describe("acting as an auction representative", func() {
 		BeforeEach(func() {
 			fakeExecutor.AppendHandlers(ghttp.CombineHandlers(
-				func(w http.ResponseWriter, req *http.Request) {
-					Ω(req.Method).Should(Equal("POST"), "Method mismatch")
-					Ω(req.URL.Path).Should(MatchRegexp("/containers/.*"), "Path mismatch")
-				},
-				ghttp.RespondWith(http.StatusCreated, `{"executor_guid":"executor-guid","guid":"guid-123"}`)),
+				ghttp.VerifyRequest("GET", "/resources/total"),
+				ghttp.RespondWithJSONEncoded(http.StatusOK, api.ExecutorResources{
+					MemoryMB:   1024,
+					DiskMB:     2048,
+					Containers: 4,
+				})),
 			)
-
-			bbs.DesireTransitionalLongRunningProcess(models.TransitionalLongRunningProcess{
-				Stack: "the-stack",
-			})
 		})
 
 		It("makes a request to the executor", func() {
-			Eventually(fakeExecutor.ReceivedRequests).Should(HaveLen(1))
+			Eventually(bbs.GetAllReps).Should(HaveLen(1))
+			reps, err := bbs.GetAllReps()
+			Ω(err).ShouldNot(HaveOccurred())
+			repID := reps[0].RepID
+
+			client := repnatsclient.New(natsRunner.MessageBus, time.Second)
+			resources := client.TotalResources(repID)
+			Ω(resources).Should(Equal(auctiontypes.Resources{
+				MemoryMB:   1024,
+				DiskMB:     2048,
+				Containers: 4,
+			}))
 		})
 	})
 })

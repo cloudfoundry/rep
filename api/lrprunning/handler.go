@@ -48,8 +48,8 @@ func (handler *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ports := []models.PortMapping{}
 	for _, portMapping := range container.Ports {
 		ports = append(ports, models.PortMapping{
-			ContainerPort: int(portMapping.ContainerPort),
-			HostPort:      int(portMapping.HostPort),
+			ContainerPort: portMapping.ContainerPort,
+			HostPort:      portMapping.HostPort,
 		})
 	}
 
