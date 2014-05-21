@@ -102,7 +102,6 @@ func (s *LrpScheduler) handleLrpRequest(lrp models.TransitionalLongRunningProces
 	}
 
 	container, err := s.client.AllocateContainer(guid.String(), api.ContainerAllocationRequest{
-		Log:      lrp.Log,
 		MemoryMB: lrp.MemoryMB,
 		DiskMB:   lrp.DiskMB,
 	})
@@ -125,7 +124,9 @@ func (s *LrpScheduler) handleLrpRequest(lrp models.TransitionalLongRunningProces
 		return
 	}
 
-	err = s.client.InitializeContainer(container.Guid)
+	err = s.client.InitializeContainer(container.Guid, api.ContainerInitializationRequest{
+		Log: lrp.Log,
+	})
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
 			"error": err.Error(),

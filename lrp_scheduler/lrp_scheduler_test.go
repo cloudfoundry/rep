@@ -110,7 +110,6 @@ var _ = Describe("Scheduler", func() {
 
 						close(allocateCalled)
 						Ω(fakeBBS.StartedLongRunningProcesses()).Should(HaveLen(0))
-						Ω(req.Log).Should(Equal(lrp.Log))
 						Ω(req.MemoryMB).Should(Equal(128))
 						Ω(req.DiskMB).Should(Equal(1024))
 
@@ -133,11 +132,12 @@ var _ = Describe("Scheduler", func() {
 						BeforeEach(func() {
 							initCalled = make(chan struct{})
 
-							fakeClient.WhenInitializingContainer = func(allocationGuid string) error {
+							fakeClient.WhenInitializingContainer = func(allocationGuid string, req api.ContainerInitializationRequest) error {
 								defer GinkgoRecover()
 
 								close(initCalled)
 								Ω(allocationGuid).Should(Equal(containerGuid))
+								Ω(req.Log).Should(Equal(lrp.Log))
 								Ω(fakeBBS.StartedLongRunningProcesses()).Should(HaveLen(1))
 								Ω(fakeBBS.StartedLongRunningProcesses()[0]).Should(Equal(lrp))
 								return nil
@@ -175,7 +175,7 @@ var _ = Describe("Scheduler", func() {
 
 					Context("but initializing the container fails", func() {
 						BeforeEach(func() {
-							fakeClient.WhenInitializingContainer = func(allocationGuid string) error {
+							fakeClient.WhenInitializingContainer = func(allocationGuid string, req api.ContainerInitializationRequest) error {
 								return errors.New("Can't initialize")
 							}
 						})

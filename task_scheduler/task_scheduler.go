@@ -116,10 +116,8 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	}
 
 	container, err := s.client.AllocateContainer(task.Guid, api.ContainerAllocationRequest{
-		DiskMB:     task.DiskMB,
-		MemoryMB:   task.MemoryMB,
-		CpuPercent: task.CpuPercent,
-		Log:        task.Log,
+		DiskMB:   task.DiskMB,
+		MemoryMB: task.MemoryMB,
 	})
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
@@ -139,7 +137,10 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		return
 	}
 
-	err = s.client.InitializeContainer(container.Guid)
+	err = s.client.InitializeContainer(container.Guid, api.ContainerInitializationRequest{
+		CpuPercent: task.CpuPercent,
+		Log:        task.Log,
+	})
 	if err != nil {
 		s.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
