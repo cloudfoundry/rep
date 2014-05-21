@@ -63,17 +63,13 @@ func (s *TaskScheduler) Run(readyChan chan struct{}) error {
 		for {
 			select {
 			case err := <-errChan:
-				s.logger.Errord(map[string]interface{}{
-					"error": err.Error(),
-				}, "task-scheduler.watch-desired.restart")
-
+				s.logError("task-scheduler.watch-desired.restart", err)
 				tasks, stopChan, errChan = s.bbs.WatchForDesiredTask()
 
 			case task, ok := <-tasks:
 				if !ok {
-					s.logger.Errord(map[string]interface{}{
-						"error": errors.New("task channel closed. This is very unexpected, we did not intented to exit like this."),
-					}, "task-scheduler.watch-desired.task-chan-closed")
+					err := errors.New("task channel closed. This is very unexpected, we did not intented to exit like this.")
+					s.logError("task-scheduler.watch-desired.task-chan-closed", err)
 
 					s.gracefulShutdown()
 					close(s.terminatedChan)
@@ -120,9 +116,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		MemoryMB: task.MemoryMB,
 	})
 	if err != nil {
-		s.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "task-scheduler.allocation-request.failed")
+		s.logError("task-scheduler.allocation-request.failed", err)
 		return
 	}
 
@@ -130,9 +124,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 
 	task, err = s.bbs.ClaimTask(task, container.ExecutorGuid)
 	if err != nil {
-		s.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "task-scheduler.claim-task.failed")
+		s.logError("task-scheduler.claim-task.failed", err)
 		s.client.DeleteContainer(container.Guid)
 		return
 	}
@@ -142,18 +134,14 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		Log:        task.Log,
 	})
 	if err != nil {
-		s.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "task-scheduler.initialize-container-request.failed")
+		s.logError("task-scheduler.initialize-container-request.failed", err)
 		s.client.DeleteContainer(container.Guid)
 		return
 	}
 
 	task, err = s.bbs.StartTask(task, container.Guid)
 	if err != nil {
-		s.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "task-scheduler.start-task.failed")
+		s.logError("task-scheduler.start-task.failed", err)
 		s.client.DeleteContainer(container.Guid)
 		return
 	}
@@ -162,9 +150,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		"guid": container.Guid,
 	}, nil)
 	if err != nil {
-		s.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "game-scheduler.callback-generator.failed")
+		s.logError("task-scheduler.callback-generator.failed", err)
 	}
 
 	err = s.client.Run(container.Guid, api.ContainerRunRequest{
@@ -173,10 +159,12 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		Metadata:    task.ToJSON(),
 	})
 	if err != nil {
-		s.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "task-scheduler.run-actions.failed")
+		s.logError("task-scheduler.run-actions.failed", err)
 	}
+}
+
+func (s *TaskScheduler) logError(topic string, err error) {
+	s.logger.Errord(map[string]interface{}{"error": err.Error()}, topic)
 }
 
 func (s *TaskScheduler) sleepForARandomInterval() {
