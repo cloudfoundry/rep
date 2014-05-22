@@ -165,7 +165,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 }
 
 func (s *TaskScheduler) markTaskAsFailed(task models.Task, err error) {
-	_, err := s.bbs.CompleteTask(task, true, "Failed to initialize container - "+err.Error(), "")
+	_, err = s.bbs.CompleteTask(task, true, "Failed to initialize container - "+err.Error(), "")
 	if err != nil {
 		s.logError("task-scheduler.mark-task-as-failed.failed", err)
 	}
