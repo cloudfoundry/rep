@@ -9,10 +9,12 @@ import (
 type FakeAppManagerBBS struct {
 	FileServerGetter
 
-	desiredLrps        []models.TransitionalLongRunningProcess
 	lrpStartAuctions   []models.LRPStartAuction
-	DesireLrpErr       error
 	LRPStartAuctionErr error
+
+	desiredLRPs  []models.DesiredLRP
+	DesireLRPErr error
+
 	sync.RWMutex
 }
 
@@ -20,20 +22,19 @@ func NewFakeAppManagerBBS() *FakeAppManagerBBS {
 	return &FakeAppManagerBBS{}
 }
 
-func (fakeBBS *FakeAppManagerBBS) DesireTransitionalLongRunningProcess(lrp models.TransitionalLongRunningProcess) error {
+func (fakeBBS *FakeAppManagerBBS) DesireLongRunningProcess(lrp models.DesiredLRP) error {
 	fakeBBS.Lock()
 	defer fakeBBS.Unlock()
-	fakeBBS.desiredLrps = append(fakeBBS.desiredLrps, lrp)
-	return fakeBBS.DesireLrpErr
+
+	fakeBBS.desiredLRPs = append(fakeBBS.desiredLRPs, lrp)
+	return fakeBBS.DesireLRPErr
 }
 
-func (fakeBBS *FakeAppManagerBBS) DesiredLrps() []models.TransitionalLongRunningProcess {
+func (fakeBBS *FakeAppManagerBBS) DesiredLRPs() []models.DesiredLRP {
 	fakeBBS.RLock()
 	defer fakeBBS.RUnlock()
-	return fakeBBS.desiredLrps
+	return fakeBBS.desiredLRPs
 }
-
-///////////////////////
 
 func (fakeBBS *FakeAppManagerBBS) RequestLRPStartAuction(lrp models.LRPStartAuction) error {
 	fakeBBS.Lock()

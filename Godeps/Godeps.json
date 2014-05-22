@@ -10,25 +10,49 @@
 			"Rev": "48be7df2c27e1cec821a3284a683ce6ef90d9052"
 		},
 		{
+			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctionrep",
+			"Rev": "f64b67df7a34ee2597321d8877974e050cf35777"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctiontypes",
+			"Rev": "f64b67df7a34ee2597321d8877974e050cf35777"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats/repnatsclient",
+			"Rev": "f64b67df7a34ee2597321d8877974e050cf35777"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats/repnatsserver",
+			"Rev": "f64b67df7a34ee2597321d8877974e050cf35777"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry-incubator/auction/util",
+			"Rev": "f64b67df7a34ee2597321d8877974e050cf35777"
+		},
+		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/api",
-			"Rev": "72be3458767abe44fdf8a618adbd26e04790ea0c"
+			"Rev": "19560244fb2bad5afbb950725798de26ad464418"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/client",
-			"Rev": "72be3458767abe44fdf8a618adbd26e04790ea0c"
+			"Rev": "19560244fb2bad5afbb950725798de26ad464418"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "f23b0928daff47f8bcbd25f748da28b11e4c2bfc"
+			"Rev": "f4ccd84ffb364e6d27e30d9e0677729986b94dcc"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "f23b0928daff47f8bcbd25f748da28b11e4c2bfc"
+			"Rev": "f4ccd84ffb364e6d27e30d9e0677729986b94dcc"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
 			"Comment": "scotty_09012012-40-g5eb8c6e",
 			"Rev": "5eb8c6e554f0dfc39d6468813b8ac19ec28fe74f"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
+			"Rev": "21adc866d245fff747352415cc036b5ec3c3d4f5"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/timeprovider",
@@ -37,6 +61,10 @@
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
 			"Rev": "c21b707184aa2b2b4a8c8a25e90bc36011dd147d"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/yagnats",
+			"Rev": "0a1eb23c2029f690cd5cb35280180a2e47e54af0"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-etcd/etcd",

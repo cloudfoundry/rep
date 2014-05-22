@@ -2,48 +2,9 @@ package models
 
 import "encoding/json"
 
-type TransitionalLRPState int
-
-const (
-	TransitionalLRPStateInvalid TransitionalLRPState = iota
-	TransitionalLRPStateDesired
-	TransitionalLRPStateRunning
-)
-
-type TransitionalLongRunningProcess struct {
-	Guid     string               `json:"guid"`
-	Stack    string               `json:"stack"`
-	Actions  []ExecutorAction     `json:"actions"`
-	Log      LogConfig            `json:"log"`
-	State    TransitionalLRPState `json:"state"`
-	MemoryMB int                  `json:"memory_mb"`
-	DiskMB   int                  `json:"disk_mb"`
-	Ports    []PortMapping        `json:"ports"`
-}
-
 type PortMapping struct {
-	ContainerPort int `json:"container_port"`
-	HostPort      int `json:"host_port,omitempty"`
-}
-
-func NewTransitionalLongRunningProcessFromJSON(payload []byte) (TransitionalLongRunningProcess, error) {
-	var task TransitionalLongRunningProcess
-
-	err := json.Unmarshal(payload, &task)
-	if err != nil {
-		return TransitionalLongRunningProcess{}, err
-	}
-
-	return task, nil
-}
-
-func (self TransitionalLongRunningProcess) ToJSON() []byte {
-	bytes, err := json.Marshal(self)
-	if err != nil {
-		panic(err)
-	}
-
-	return bytes
+	ContainerPort uint32 `json:"container_port"`
+	HostPort      uint32 `json:"host_port,omitempty"`
 }
 
 ///
@@ -117,6 +78,37 @@ func NewLRPFromJSON(payload []byte) (LRP, error) {
 }
 
 func (self LRP) ToJSON() []byte {
+	bytes, err := json.Marshal(self)
+	if err != nil {
+		panic(err)
+	}
+
+	return bytes
+}
+
+///
+
+type DesiredLRP struct {
+	ProcessGuid string   `json:"process_guid"`
+	Instances   int      `json:"instances"`
+	Stack       string   `json:"stack"`
+	MemoryMB    int      `json:"memory_mb"`
+	DiskMB      int      `json:"disk_mb"`
+	Routes      []string `json:"routes"`
+}
+
+func NewDesiredLRPFromJSON(payload []byte) (DesiredLRP, error) {
+	var task DesiredLRP
+
+	err := json.Unmarshal(payload, &task)
+	if err != nil {
+		return DesiredLRP{}, err
+	}
+
+	return task, nil
+}
+
+func (self DesiredLRP) ToJSON() []byte {
 	bytes, err := json.Marshal(self)
 	if err != nil {
 		panic(err)

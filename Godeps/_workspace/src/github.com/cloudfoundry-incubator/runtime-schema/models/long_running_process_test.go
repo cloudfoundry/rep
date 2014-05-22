@@ -153,89 +153,50 @@ var _ = Describe("LongRunningProcess", func() {
 		})
 	})
 
-	Describe("Transitional LRP", func() {
-		var longRunningProcess TransitionalLongRunningProcess
+	Describe("DesiredLRP", func() {
+		var lrp DesiredLRP
 
-		longRunningProcessPayload := `{
-    "guid":"some-guid",
-    "stack":"some-stack",
-    "memory_mb" : 128,
-    "disk_mb" : 512,
-    "ports": [
-      { "container_port": 8080 },
-      { "container_port": 8081, "host_port": 1234 }
-    ],
-    "actions":[
-      {
-        "action":"download",
-        "args":{
-          "from":"old_location",
-          "to":"new_location",
-          "cache_key":"the-cache-key",
-          "extract":true
-        }
-      }
-    ],
-    "log": {
-      "guid": "123",
-      "source_name": "APP",
-      "index": 42
-    },
-    "state": 1
+		lrpPayload := `{
+    "process_guid":"some-guid",
+    "instances":5,
+		"stack":"some-stack",
+		"memory_mb":1024,
+		"disk_mb":512,
+		"routes":["route-1","route-2"]
   }`
 
 		BeforeEach(func() {
-			index := 42
-
-			longRunningProcess = TransitionalLongRunningProcess{
-				Guid:     "some-guid",
-				Stack:    "some-stack",
-				MemoryMB: 128,
-				DiskMB:   512,
-				Ports: []PortMapping{
-					{ContainerPort: 8080},
-					{ContainerPort: 8081, HostPort: 1234},
-				},
-				Actions: []ExecutorAction{
-					{
-						Action: DownloadAction{
-							From:     "old_location",
-							To:       "new_location",
-							CacheKey: "the-cache-key",
-							Extract:  true,
-						},
-					},
-				},
-				Log: LogConfig{
-					Guid:       "123",
-					SourceName: "APP",
-					Index:      &index,
-				},
-				State: TransitionalLRPStateDesired,
+			lrp = DesiredLRP{
+				ProcessGuid: "some-guid",
+				Instances:   5,
+				Stack:       "some-stack",
+				MemoryMB:    1024,
+				DiskMB:      512,
+				Routes:      []string{"route-1", "route-2"},
 			}
 		})
 
 		Describe("ToJSON", func() {
 			It("should JSONify", func() {
-				json := longRunningProcess.ToJSON()
-				Ω(string(json)).Should(MatchJSON(longRunningProcessPayload))
+				json := lrp.ToJSON()
+				Ω(string(json)).Should(MatchJSON(lrpPayload))
 			})
 		})
 
-		Describe("NewTransitionalLongRunningProcessFromJSON", func() {
-			It("returns a LongRunningProcess with correct fields", func() {
-				decodedLongRunningProcess, err := NewTransitionalLongRunningProcessFromJSON([]byte(longRunningProcessPayload))
+		Describe("NewDesiredLRPFromJSON", func() {
+			It("returns a LRP with correct fields", func() {
+				decodedStartAuction, err := NewDesiredLRPFromJSON([]byte(lrpPayload))
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Ω(decodedLongRunningProcess).Should(Equal(longRunningProcess))
+				Ω(decodedStartAuction).Should(Equal(lrp))
 			})
 
 			Context("with an invalid payload", func() {
 				It("returns the error", func() {
-					decodedLongRunningProcess, err := NewTransitionalLongRunningProcessFromJSON([]byte("butts lol"))
+					decodedStartAuction, err := NewDesiredLRPFromJSON([]byte("butts lol"))
 					Ω(err).Should(HaveOccurred())
 
-					Ω(decodedLongRunningProcess).Should(BeZero())
+					Ω(decodedStartAuction).Should(BeZero())
 				})
 			})
 		})
