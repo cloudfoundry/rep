@@ -17,18 +17,20 @@ var TimeoutError = errors.New("timeout")
 var RequestFailedError = errors.New("request failed")
 
 type RepNatsClient struct {
-	client  yagnats.NATSClient
-	timeout time.Duration
+	client     yagnats.NATSClient
+	timeout    time.Duration
+	runTimeout time.Duration
 }
 
-func New(client yagnats.NATSClient, timeout time.Duration) *RepNatsClient {
+func New(client yagnats.NATSClient, timeout time.Duration, runTimeout time.Duration) *RepNatsClient {
 	return &RepNatsClient{
-		client:  client,
-		timeout: timeout,
+		client:     client,
+		timeout:    timeout,
+		runTimeout: runTimeout,
 	}
 }
 
-func (rep *RepNatsClient) publishWithTimeout(guid string, subject string, req interface{}, resp interface{}) (err error) {
+func (rep *RepNatsClient) publishWithTimeout(guid string, subject string, req interface{}, resp interface{}, timeout time.Duration) (err error) {
 	replyTo := util.RandomGuid()
 	c := make(chan []byte, 1)
 
@@ -62,46 +64,12 @@ func (rep *RepNatsClient) publishWithTimeout(guid string, subject string, req in
 
 		return nil
 
-	case <-time.After(rep.timeout):
+	case <-time.After(timeout):
 		return TimeoutError
 	}
 }
 
-func (rep *RepNatsClient) TotalResources(guid string) auctiontypes.Resources {
-	var totalResources auctiontypes.Resources
-	err := rep.publishWithTimeout(guid, "total_resources", nil, &totalResources)
-	if err != nil {
-		panic(err)
-	}
-
-	return totalResources
-}
-
-func (rep *RepNatsClient) LRPAuctionInfos(guid string) []auctiontypes.LRPAuctionInfo {
-	var instances []auctiontypes.LRPAuctionInfo
-	err := rep.publishWithTimeout(guid, "lrp_auction_infos", nil, &instances)
-	if err != nil {
-		panic(err)
-	}
-
-	return instances
-}
-
-func (rep *RepNatsClient) Reset(guid string) {
-	err := rep.publishWithTimeout(guid, "reset", nil, nil)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func (rep *RepNatsClient) SetLRPAuctionInfos(guid string, instances []auctiontypes.LRPAuctionInfo) {
-	err := rep.publishWithTimeout(guid, "set_lrp_auction_infos", instances, nil)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func (rep *RepNatsClient) batch(subject string, guids []string, instance auctiontypes.LRPAuctionInfo) auctiontypes.ScoreResults {
+func (rep *RepNatsClient) Score(guids []string, instance auctiontypes.LRPAuctionInfo) auctiontypes.ScoreResults {
 	replyTo := util.RandomGuid()
 
 	allReceived := new(sync.WaitGroup)
@@ -130,7 +98,7 @@ func (rep *RepNatsClient) batch(subject string, guids []string, instance auction
 	payload, _ := json.Marshal(instance)
 
 	for _, guid := range guids {
-		rep.client.PublishWithReplyTo(guid+"."+subject, replyTo, payload)
+		rep.client.PublishWithReplyTo(guid+".score", replyTo, payload)
 	}
 
 	done := make(chan struct{})
@@ -142,7 +110,7 @@ func (rep *RepNatsClient) batch(subject string, guids []string, instance auction
 	select {
 	case <-done:
 	case <-time.After(rep.timeout):
-		println("TIMING OUT!!")
+		log.Println("timed out fetching scores")
 	}
 
 	results := auctiontypes.ScoreResults{}
@@ -159,52 +127,89 @@ func (rep *RepNatsClient) batch(subject string, guids []string, instance auction
 	return results
 }
 
-func (rep *RepNatsClient) Score(guids []string, instance auctiontypes.LRPAuctionInfo) auctiontypes.ScoreResults {
-	return rep.batch("score", guids, instance)
-}
-
 func (rep *RepNatsClient) ScoreThenTentativelyReserve(guids []string, instance auctiontypes.LRPAuctionInfo) auctiontypes.ScoreResults {
-	return rep.batch("score_then_tentatively_reserve", guids, instance)
+	resultChan := make(chan auctiontypes.ScoreResult, 0)
+	for _, guid := range guids {
+		go func(guid string) {
+			result := auctiontypes.ScoreResult{}
+			err := rep.publishWithTimeout(guid, "score_then_tentatively_reserve", instance, &result, rep.timeout)
+			if err != nil {
+				log.Println("errored getting a reservation:", err.Error())
+				result = auctiontypes.ScoreResult{Error: err.Error()}
+				rep.publishWithTimeout(guid, "release-reservation", instance, nil, rep.timeout)
+			}
+			resultChan <- result
+		}(guid)
+	}
+
+	results := auctiontypes.ScoreResults{}
+	for _ = range guids {
+		results = append(results, <-resultChan)
+	}
+
+	return results
 }
 
 func (rep *RepNatsClient) ReleaseReservation(guids []string, instance auctiontypes.LRPAuctionInfo) {
-	replyTo := util.RandomGuid()
-
 	allReceived := new(sync.WaitGroup)
 	allReceived.Add(len(guids))
 
-	subscriptionID, err := rep.client.Subscribe(replyTo, func(msg *yagnats.Message) {
-		allReceived.Done()
-	})
-
-	if err != nil {
-		return
-	}
-
-	defer rep.client.Unsubscribe(subscriptionID)
-
-	payload, _ := json.Marshal(instance)
-
 	for _, guid := range guids {
-		rep.client.PublishWithReplyTo(guid+".release-reservation", replyTo, payload)
+		go func(guid string) {
+			err := rep.publishWithTimeout(guid, "release-reservation", instance, nil, rep.timeout)
+			if err != nil {
+				log.Println("errored releasing a rservation:", err.Error())
+			}
+			allReceived.Done()
+		}(guid)
 	}
 
-	done := make(chan struct{})
-	go func() {
-		allReceived.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-	case <-time.After(rep.timeout):
-		println("TIMING OUT!!")
-	}
+	allReceived.Wait()
 }
 
 func (rep *RepNatsClient) Run(guid string, instance models.LRPStartAuction) {
-	err := rep.publishWithTimeout(guid, "run", instance, nil)
+	err := rep.publishWithTimeout(guid, "run", instance, nil, rep.runTimeout)
 	if err != nil {
-		log.Println("failed to run:", err)
+		log.Println("failed to run:", err.Error())
+	}
+}
+
+//SIMULATION ONLY METHODS:
+
+func (rep *RepNatsClient) TotalResources(guid string) auctiontypes.Resources {
+	var totalResources auctiontypes.Resources
+	err := rep.publishWithTimeout(guid, "total_resources", nil, &totalResources, rep.timeout)
+	if err != nil {
+		//test only, so panic is OK
+		panic(err)
+	}
+
+	return totalResources
+}
+
+func (rep *RepNatsClient) LRPAuctionInfos(guid string) []auctiontypes.LRPAuctionInfo {
+	var instances []auctiontypes.LRPAuctionInfo
+	err := rep.publishWithTimeout(guid, "lrp_auction_infos", nil, &instances, rep.timeout)
+	if err != nil {
+		//test only, so panic is OK
+		panic(err)
+	}
+
+	return instances
+}
+
+func (rep *RepNatsClient) Reset(guid string) {
+	err := rep.publishWithTimeout(guid, "reset", nil, nil, rep.timeout)
+	if err != nil {
+		//test only, so panic is OK
+		panic(err)
+	}
+}
+
+func (rep *RepNatsClient) SetLRPAuctionInfos(guid string, instances []auctiontypes.LRPAuctionInfo) {
+	err := rep.publishWithTimeout(guid, "set_lrp_auction_infos", instances, nil, rep.timeout)
+	if err != nil {
+		//test only, so panic is OK
+		panic(err)
 	}
 }

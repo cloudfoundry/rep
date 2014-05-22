@@ -261,7 +261,7 @@ var _ = Describe("AuctionDelegate", func() {
 			calledInitialize, calledRun, deleteCalled = false, false, false
 
 			startAuction = models.LRPStartAuction{
-				Guid:         "app-guid",
+				ProcessGuid:  "app-guid",
 				InstanceGuid: "instance-guid",
 				Actions: []models.ExecutorAction{
 					{

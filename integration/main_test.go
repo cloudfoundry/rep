@@ -148,7 +148,7 @@ var _ = Describe("Main", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			repID := reps[0].RepID
 
-			client := repnatsclient.New(natsRunner.MessageBus, time.Second)
+			client := repnatsclient.New(natsRunner.MessageBus, time.Second, 10*time.Second)
 			resources := client.TotalResources(repID)
 			Ω(resources).Should(Equal(auctiontypes.Resources{
 				MemoryMB:   1024,

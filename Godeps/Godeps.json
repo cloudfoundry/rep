@@ -11,39 +11,39 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctionrep",
-			"Rev": "f64b67df7a34ee2597321d8877974e050cf35777"
+			"Rev": "31831b85fcc383c7fb5ac5a25990ed83d318a1b9"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctiontypes",
-			"Rev": "f64b67df7a34ee2597321d8877974e050cf35777"
+			"Rev": "31831b85fcc383c7fb5ac5a25990ed83d318a1b9"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats/repnatsclient",
-			"Rev": "f64b67df7a34ee2597321d8877974e050cf35777"
+			"Rev": "31831b85fcc383c7fb5ac5a25990ed83d318a1b9"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats/repnatsserver",
-			"Rev": "f64b67df7a34ee2597321d8877974e050cf35777"
+			"Rev": "31831b85fcc383c7fb5ac5a25990ed83d318a1b9"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/util",
-			"Rev": "f64b67df7a34ee2597321d8877974e050cf35777"
+			"Rev": "31831b85fcc383c7fb5ac5a25990ed83d318a1b9"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/api",
-			"Rev": "19560244fb2bad5afbb950725798de26ad464418"
+			"Rev": "521c3fa4a91b82c801c9234b31ddc6e57413f059"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/client",
-			"Rev": "19560244fb2bad5afbb950725798de26ad464418"
+			"Rev": "521c3fa4a91b82c801c9234b31ddc6e57413f059"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "f4ccd84ffb364e6d27e30d9e0677729986b94dcc"
+			"Rev": "c841d6a44bd454e5a97a5b05a9833c979b4affc3"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "f4ccd84ffb364e6d27e30d9e0677729986b94dcc"
+			"Rev": "c841d6a44bd454e5a97a5b05a9833c979b4affc3"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -52,11 +52,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
-			"Rev": "21adc866d245fff747352415cc036b5ec3c3d4f5"
+			"Rev": "7961fb4a446e96ef5a35fee37aa4b4945dca6745"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/timeprovider",
-			"Rev": "21adc866d245fff747352415cc036b5ec3c3d4f5"
+			"Rev": "7961fb4a446e96ef5a35fee37aa4b4945dca6745"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
