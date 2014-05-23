@@ -8,6 +8,7 @@ import (
 	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/executor/client/fake_client"
 	. "github.com/cloudfoundry-incubator/rep/auction_delegate"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	steno "github.com/cloudfoundry/gosteno"
 
@@ -19,10 +20,12 @@ var _ = Describe("AuctionDelegate", func() {
 	var delegate auctionrep.AuctionRepDelegate
 	var client *fake_client.FakeClient
 	var clientFetchError error
+	var bbs *fake_bbs.FakeRepBBS
 
 	BeforeEach(func() {
 		client = fake_client.New()
-		delegate = New(client, steno.NewLogger("test"))
+		bbs = fake_bbs.NewFakeRepBBS()
+		delegate = New(bbs, client, steno.NewLogger("test"))
 		clientFetchError = errors.New("Failed to fetch")
 	})
 
@@ -255,6 +258,7 @@ var _ = Describe("AuctionDelegate", func() {
 		var startAuction models.LRPStartAuction
 		var initializeError, runError error
 		var calledInitialize, calledRun, deleteCalled bool
+		var err error
 
 		BeforeEach(func() {
 			initializeError, runError = nil, nil
@@ -307,12 +311,43 @@ var _ = Describe("AuctionDelegate", func() {
 				Ω(allocationGuid).Should(Equal(startAuction.InstanceGuid))
 				return nil
 			}
+		})
 
+		JustBeforeEach(func() {
+			err = delegate.Run(startAuction)
 		})
 
 		Context("when the initialize succeeds", func() {
 			BeforeEach(func() {
 				initializeError = nil
+			})
+
+			It("should mark the instance as STARTING in etcd", func() {
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(bbs.StartingLongRunningProcesses()).Should(HaveLen(1))
+				Ω(bbs.StartingLongRunningProcesses()[0]).Should(Equal(models.LRP{
+					ProcessGuid:  startAuction.ProcessGuid,
+					InstanceGuid: startAuction.InstanceGuid,
+					Index:        startAuction.Index,
+				}))
+			})
+
+			Context("when marking the instance as STARTING fails", func() {
+				BeforeEach(func() {
+					bbs.SetStartingError(errors.New("kaboom"))
+				})
+
+				It("should fail", func() {
+					Ω(err).Should(Equal(errors.New("kaboom")))
+				})
+
+				It("should delete the container", func() {
+					Ω(deleteCalled).Should(BeTrue())
+				})
+
+				It("should not have run", func() {
+					Ω(calledRun).Should(BeFalse())
+				})
 			})
 
 			Context("when run succeeds", func() {
@@ -321,7 +356,6 @@ var _ = Describe("AuctionDelegate", func() {
 				})
 
 				It("should succeed", func() {
-					err := delegate.Run(startAuction)
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(calledInitialize).Should(BeTrue())
 					Ω(calledRun).Should(BeTrue())
@@ -334,15 +368,18 @@ var _ = Describe("AuctionDelegate", func() {
 					runError = errors.New("Failed to run")
 				})
 
+				It("should have remove the STARTING LRP from etcd", func() {
+					Ω(bbs.StartingLongRunningProcesses()).Should(HaveLen(1))
+					Ω(bbs.RemovedLongRunningProcesses()).Should(HaveLen(1))
+				})
+
 				It("should fail", func() {
-					err := delegate.Run(startAuction)
 					Ω(err).Should(Equal(runError))
 					Ω(calledInitialize).Should(BeTrue())
 					Ω(calledRun).Should(BeTrue())
 				})
 
 				It("should delete the container", func() {
-					delegate.Run(startAuction)
 					Ω(deleteCalled).Should(BeTrue())
 				})
 			})
@@ -353,8 +390,13 @@ var _ = Describe("AuctionDelegate", func() {
 				initializeError = errors.New("Failed to initialize")
 			})
 
+			It("should not mark the task as starting", func() {
+				Ω(err).Should(Equal(initializeError))
+
+				Ω(bbs.StartingLongRunningProcesses()).Should(BeEmpty())
+			})
+
 			It("should not call run and should return an error", func() {
-				err := delegate.Run(startAuction)
 				Ω(err).Should(Equal(initializeError))
 				Ω(calledInitialize).Should(BeTrue())
 				Ω(calledRun).Should(BeFalse())

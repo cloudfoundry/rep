@@ -111,7 +111,8 @@ var _ = Describe("LongRunningProcess", func() {
       { "container_port": 8080 },
       { "container_port": 8081, "host_port": 1234 }
     ],
-    "index": 2
+    "index": 2,
+    "state": 0
   }`
 
 		BeforeEach(func() {

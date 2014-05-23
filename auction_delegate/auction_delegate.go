@@ -4,6 +4,7 @@ import (
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/executor/client"
+	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	steno "github.com/cloudfoundry/gosteno"
 )
@@ -11,12 +12,14 @@ import (
 const ProcessGuidMetadataKey = "process-guid"
 
 type AuctionDelegate struct {
+	bbs    Bbs.RepBBS
 	client client.Client
 	logger *steno.Logger
 }
 
-func New(client client.Client, logger *steno.Logger) *AuctionDelegate {
+func New(bbs Bbs.RepBBS, client client.Client, logger *steno.Logger) *AuctionDelegate {
 	return &AuctionDelegate{
+		bbs:    bbs,
 		client: client,
 		logger: logger,
 	}
@@ -107,6 +110,21 @@ func (a *AuctionDelegate) Run(instance models.LRPStartAuction) error {
 		return err
 	}
 
+	lrp := models.LRP{
+		ProcessGuid:  instance.ProcessGuid,
+		InstanceGuid: instance.InstanceGuid,
+		Index:        instance.Index,
+	}
+	err = a.bbs.ReportActualLongRunningProcessAsStarting(lrp)
+
+	if err != nil {
+		a.logger.Errord(map[string]interface{}{
+			"error": err.Error(),
+		}, "auction-delegate.mark-starting.failed")
+		a.client.DeleteContainer(instance.InstanceGuid)
+		return err
+	}
+
 	err = a.client.Run(instance.InstanceGuid, api.ContainerRunRequest{
 		Actions: instance.Actions,
 	})
@@ -115,6 +133,7 @@ func (a *AuctionDelegate) Run(instance models.LRPStartAuction) error {
 			"error": err.Error(),
 		}, "auction-delegate.run-actions.failed")
 		a.client.DeleteContainer(instance.InstanceGuid)
+		a.bbs.RemoveActualLongRunningProcess(lrp)
 		return err
 	}
 

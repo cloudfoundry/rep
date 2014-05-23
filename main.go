@@ -136,7 +136,7 @@ func main() {
 	maintainSignals := make(chan os.Signal, 1)
 	maintainPresence(repID, bbs, logger, maintainSignals, maintainReady)
 
-	startAuctionNatsServer(repID, executorClient, logger, repNatsServerReady)
+	startAuctionNatsServer(repID, bbs, executorClient, logger, repNatsServerReady)
 
 	for {
 		sig := <-signals
@@ -280,8 +280,8 @@ func initializeNatsClient(logger *steno.Logger) yagnats.NATSClient {
 	return natsClient
 }
 
-func startAuctionNatsServer(repID string, executorClient client.Client, logger *steno.Logger, ready chan struct{}) {
-	auctionDelegate := auction_delegate.New(executorClient, logger)
+func startAuctionNatsServer(repID string, bbs Bbs.RepBBS, executorClient client.Client, logger *steno.Logger, ready chan struct{}) {
+	auctionDelegate := auction_delegate.New(bbs, executorClient, logger)
 	auctionRep := auctionrep.New(repID, auctionDelegate)
 	natsClient := initializeNatsClient(logger)
 	repnatsserver.Start(natsClient, auctionRep)

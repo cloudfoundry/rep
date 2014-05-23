@@ -32,8 +32,10 @@ type RepBBS interface {
 	StartTask(task models.Task, containerHandle string) (models.Task, error)
 	CompleteTask(task models.Task, failed bool, failureReason string, result string) (models.Task, error)
 
-	///
-	ReportLongRunningProcessAsRunning(lrp models.LRP) error
+	///lrp
+	ReportActualLongRunningProcessAsStarting(lrp models.LRP) error
+	ReportActualLongRunningProcessAsRunning(lrp models.LRP) error
+	RemoveActualLongRunningProcess(lrp models.LRP) error
 }
 
 type ConvergerBBS interface {
@@ -93,10 +95,12 @@ type FileServerBBS interface {
 
 type LRPRouterBBS interface {
 	// lrp
-	WatchForDesiredLongRunningProcesses() (<-chan models.DesiredLRP, chan<- bool, <-chan error)
+	WatchForDesiredLRPChanges() (<-chan models.DesiredLRPChange, chan<- bool, <-chan error)
 	WatchForActualLongRunningProcesses() (<-chan models.LRP, chan<- bool, <-chan error)
 	GetAllDesiredLongRunningProcesses() ([]models.DesiredLRP, error)
 	GetAllActualLongRunningProcesses() ([]models.LRP, error)
+	GetDesiredLRP(processGuid string) (models.DesiredLRP, error)
+	GetActualLRPs(processGuid string) ([]models.LRP, error)
 }
 
 func NewExecutorBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider) ExecutorBBS {
