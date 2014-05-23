@@ -112,7 +112,7 @@ func (fakeBBS *FakeRepBBS) StartTask(task models.Task, containerHandle string) (
 	return task, nil
 }
 
-func (fakeBBS *FakeRepBBS) ReportActualLongRunningProcessAsStarting(lrp models.LRP) error {
+func (fakeBBS *FakeRepBBS) ReportActualLRPAsStarting(lrp models.LRP) error {
 	fakeBBS.RLock()
 	err := fakeBBS.startingLrpErr
 	fakeBBS.RUnlock()
@@ -128,7 +128,7 @@ func (fakeBBS *FakeRepBBS) ReportActualLongRunningProcessAsStarting(lrp models.L
 	return nil
 }
 
-func (fakeBBS *FakeRepBBS) StartingLongRunningProcesses() []models.LRP {
+func (fakeBBS *FakeRepBBS) StartingLRPs() []models.LRP {
 	fakeBBS.RLock()
 	defer fakeBBS.RUnlock()
 
@@ -145,7 +145,7 @@ func (fakeBBS *FakeRepBBS) SetStartingError(err error) {
 	fakeBBS.startingLrpErr = err
 }
 
-func (fakeBBS *FakeRepBBS) ReportActualLongRunningProcessAsRunning(lrp models.LRP) error {
+func (fakeBBS *FakeRepBBS) ReportActualLRPAsRunning(lrp models.LRP) error {
 	fakeBBS.RLock()
 	err := fakeBBS.runningLrpErr
 	fakeBBS.RUnlock()
@@ -161,7 +161,7 @@ func (fakeBBS *FakeRepBBS) ReportActualLongRunningProcessAsRunning(lrp models.LR
 	return nil
 }
 
-func (fakeBBS *FakeRepBBS) RunningLongRunningProcesses() []models.LRP {
+func (fakeBBS *FakeRepBBS) RunningLRPs() []models.LRP {
 	fakeBBS.RLock()
 	defer fakeBBS.RUnlock()
 
@@ -178,7 +178,7 @@ func (fakeBBS *FakeRepBBS) SetRunningError(err error) {
 	fakeBBS.runningLrpErr = err
 }
 
-func (fakeBBS *FakeRepBBS) RemoveActualLongRunningProcess(lrp models.LRP) error {
+func (fakeBBS *FakeRepBBS) RemoveActualLRP(lrp models.LRP) error {
 	fakeBBS.Lock()
 	fakeBBS.removedLrps = append(fakeBBS.removedLrps, lrp)
 	fakeBBS.Unlock()
@@ -186,7 +186,7 @@ func (fakeBBS *FakeRepBBS) RemoveActualLongRunningProcess(lrp models.LRP) error 
 	return nil
 }
 
-func (fakeBBS *FakeRepBBS) RemovedLongRunningProcesses() []models.LRP {
+func (fakeBBS *FakeRepBBS) RemovedLRPs() []models.LRP {
 	fakeBBS.RLock()
 	defer fakeBBS.RUnlock()
 

@@ -324,8 +324,8 @@ var _ = Describe("AuctionDelegate", func() {
 
 			It("should mark the instance as STARTING in etcd", func() {
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(bbs.StartingLongRunningProcesses()).Should(HaveLen(1))
-				Ω(bbs.StartingLongRunningProcesses()[0]).Should(Equal(models.LRP{
+				Ω(bbs.StartingLRPs()).Should(HaveLen(1))
+				Ω(bbs.StartingLRPs()[0]).Should(Equal(models.LRP{
 					ProcessGuid:  startAuction.ProcessGuid,
 					InstanceGuid: startAuction.InstanceGuid,
 					Index:        startAuction.Index,
@@ -369,8 +369,8 @@ var _ = Describe("AuctionDelegate", func() {
 				})
 
 				It("should have remove the STARTING LRP from etcd", func() {
-					Ω(bbs.StartingLongRunningProcesses()).Should(HaveLen(1))
-					Ω(bbs.RemovedLongRunningProcesses()).Should(HaveLen(1))
+					Ω(bbs.StartingLRPs()).Should(HaveLen(1))
+					Ω(bbs.RemovedLRPs()).Should(HaveLen(1))
 				})
 
 				It("should fail", func() {
@@ -393,7 +393,7 @@ var _ = Describe("AuctionDelegate", func() {
 			It("should not mark the task as starting", func() {
 				Ω(err).Should(Equal(initializeError))
 
-				Ω(bbs.StartingLongRunningProcesses()).Should(BeEmpty())
+				Ω(bbs.StartingLRPs()).Should(BeEmpty())
 			})
 
 			It("should not call run and should return an error", func() {

@@ -7,9 +7,9 @@ type FakeLRPRouterBBS struct {
 	desiredLRPStopChan   chan bool
 	desiredLRPErrChan    chan error
 
-	ActualLRPChan     chan models.LRP
-	actualLRPStopChan chan bool
-	actualLRPErrChan  chan error
+	ActualLRPChangeChan chan models.ActualLRPChange
+	actualLRPStopChan   chan bool
+	actualLRPErrChan    chan error
 
 	AllDesiredLRPs []models.DesiredLRP
 	AllActualLRPs  []models.LRP
@@ -17,8 +17,8 @@ type FakeLRPRouterBBS struct {
 	DesiredLRP models.DesiredLRP
 	ActualLRPs []models.LRP
 
-	WhenGettingAllActualLongRunningProcesses  func() ([]models.LRP, error)
-	WhenGettingAllDesiredLongRunningProcesses func() ([]models.DesiredLRP, error)
+	WhenGettingRunningActualLRPs func() ([]models.LRP, error)
+	WhenGettingAllDesiredLRPs    func() ([]models.DesiredLRP, error)
 }
 
 func NewFakeLRPRouterBBS() *FakeLRPRouterBBS {
@@ -27,9 +27,9 @@ func NewFakeLRPRouterBBS() *FakeLRPRouterBBS {
 		desiredLRPStopChan:   make(chan bool),
 		desiredLRPErrChan:    make(chan error),
 
-		ActualLRPChan:     make(chan models.LRP, 1),
-		actualLRPStopChan: make(chan bool),
-		actualLRPErrChan:  make(chan error),
+		ActualLRPChangeChan: make(chan models.ActualLRPChange, 1),
+		actualLRPStopChan:   make(chan bool),
+		actualLRPErrChan:    make(chan error),
 	}
 }
 
@@ -37,28 +37,28 @@ func (fakeBBS *FakeLRPRouterBBS) WatchForDesiredLRPChanges() (<-chan models.Desi
 	return fakeBBS.DesiredLRPChangeChan, fakeBBS.desiredLRPStopChan, fakeBBS.desiredLRPErrChan
 }
 
-func (fakeBBS *FakeLRPRouterBBS) WatchForActualLongRunningProcesses() (<-chan models.LRP, chan<- bool, <-chan error) {
-	return fakeBBS.ActualLRPChan, fakeBBS.actualLRPStopChan, fakeBBS.actualLRPErrChan
+func (fakeBBS *FakeLRPRouterBBS) WatchForActualLRPChanges() (<-chan models.ActualLRPChange, chan<- bool, <-chan error) {
+	return fakeBBS.ActualLRPChangeChan, fakeBBS.actualLRPStopChan, fakeBBS.actualLRPErrChan
 }
 
-func (fakeBBS *FakeLRPRouterBBS) GetAllDesiredLongRunningProcesses() ([]models.DesiredLRP, error) {
-	if fakeBBS.WhenGettingAllDesiredLongRunningProcesses != nil {
-		return fakeBBS.WhenGettingAllDesiredLongRunningProcesses()
+func (fakeBBS *FakeLRPRouterBBS) GetAllDesiredLRPs() ([]models.DesiredLRP, error) {
+	if fakeBBS.WhenGettingAllDesiredLRPs != nil {
+		return fakeBBS.WhenGettingAllDesiredLRPs()
 	}
 	return fakeBBS.AllDesiredLRPs, nil
 }
 
-func (fakeBBS *FakeLRPRouterBBS) GetAllActualLongRunningProcesses() ([]models.LRP, error) {
-	if fakeBBS.WhenGettingAllActualLongRunningProcesses != nil {
-		return fakeBBS.WhenGettingAllActualLongRunningProcesses()
+func (fakeBBS *FakeLRPRouterBBS) GetRunningActualLRPs() ([]models.LRP, error) {
+	if fakeBBS.WhenGettingRunningActualLRPs != nil {
+		return fakeBBS.WhenGettingRunningActualLRPs()
 	}
 	return fakeBBS.AllActualLRPs, nil
 }
 
-func (fakeBBS *FakeLRPRouterBBS) GetDesiredLRP(processGuid string) (models.DesiredLRP, error) {
+func (fakeBBS *FakeLRPRouterBBS) GetDesiredLRPByProcessGuid(processGuid string) (models.DesiredLRP, error) {
 	return fakeBBS.DesiredLRP, nil
 }
 
-func (fakeBBS *FakeLRPRouterBBS) GetActualLRPs(processGuid string) ([]models.LRP, error) {
+func (fakeBBS *FakeLRPRouterBBS) GetRunningActualLRPsByProcessGuid(processGuid string) ([]models.LRP, error) {
 	return fakeBBS.ActualLRPs, nil
 }

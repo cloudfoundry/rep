@@ -12,6 +12,11 @@ type DesiredLRPChange struct {
 	After  *DesiredLRP
 }
 
+type ActualLRPChange struct {
+	Before *LRP
+	After  *LRP
+}
+
 ///
 
 type LRPStartAuctionState int

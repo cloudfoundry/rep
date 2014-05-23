@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("LongRunningProcess", func() {
+var _ = Describe("LRP", func() {
 	Describe("LRPStartAuction", func() {
 		var startAuction LRPStartAuction
 
@@ -82,7 +82,7 @@ var _ = Describe("LongRunningProcess", func() {
 		})
 
 		Describe("NewLRPStartAuctionFromJSON", func() {
-			It("returns a LongRunningProcess with correct fields", func() {
+			It("returns a LRP with correct fields", func() {
 				decodedStartAuction, err := NewLRPStartAuctionFromJSON([]byte(startAuctionPayload))
 				Ω(err).ShouldNot(HaveOccurred())
 

@@ -33,9 +33,9 @@ type RepBBS interface {
 	CompleteTask(task models.Task, failed bool, failureReason string, result string) (models.Task, error)
 
 	///lrp
-	ReportActualLongRunningProcessAsStarting(lrp models.LRP) error
-	ReportActualLongRunningProcessAsRunning(lrp models.LRP) error
-	RemoveActualLongRunningProcess(lrp models.LRP) error
+	ReportActualLRPAsStarting(lrp models.LRP) error
+	ReportActualLRPAsRunning(lrp models.LRP) error
+	RemoveActualLRP(lrp models.LRP) error
 }
 
 type ConvergerBBS interface {
@@ -48,7 +48,7 @@ type ConvergerBBS interface {
 
 type AppManagerBBS interface {
 	//lrp
-	DesireLongRunningProcess(models.DesiredLRP) error
+	DesireLRP(models.DesiredLRP) error
 	RequestLRPStartAuction(models.LRPStartAuction) error
 
 	//services
@@ -96,11 +96,11 @@ type FileServerBBS interface {
 type LRPRouterBBS interface {
 	// lrp
 	WatchForDesiredLRPChanges() (<-chan models.DesiredLRPChange, chan<- bool, <-chan error)
-	WatchForActualLongRunningProcesses() (<-chan models.LRP, chan<- bool, <-chan error)
-	GetAllDesiredLongRunningProcesses() ([]models.DesiredLRP, error)
-	GetAllActualLongRunningProcesses() ([]models.LRP, error)
-	GetDesiredLRP(processGuid string) (models.DesiredLRP, error)
-	GetActualLRPs(processGuid string) ([]models.LRP, error)
+	WatchForActualLRPChanges() (<-chan models.ActualLRPChange, chan<- bool, <-chan error)
+	GetAllDesiredLRPs() ([]models.DesiredLRP, error)
+	GetRunningActualLRPs() ([]models.LRP, error)
+	GetDesiredLRPByProcessGuid(processGuid string) (models.DesiredLRP, error)
+	GetRunningActualLRPsByProcessGuid(processGuid string) ([]models.LRP, error)
 }
 
 func NewExecutorBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider) ExecutorBBS {
@@ -141,16 +141,16 @@ func NewLRPRouterBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.
 
 func NewBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider) *BBS {
 	return &BBS{
-		LockBBS:               lock_bbs.New(store),
-		LongRunningProcessBBS: lrp_bbs.New(store),
-		ServicesBBS:           services_bbs.New(store),
-		TaskBBS:               task_bbs.New(store, timeProvider),
+		LockBBS:     lock_bbs.New(store),
+		LRPBBS:      lrp_bbs.New(store),
+		ServicesBBS: services_bbs.New(store),
+		TaskBBS:     task_bbs.New(store, timeProvider),
 	}
 }
 
 type BBS struct {
 	*lock_bbs.LockBBS
-	*lrp_bbs.LongRunningProcessBBS
+	*lrp_bbs.LRPBBS
 	*services_bbs.ServicesBBS
 	*task_bbs.TaskBBS
 }

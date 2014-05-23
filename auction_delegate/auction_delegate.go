@@ -115,7 +115,7 @@ func (a *AuctionDelegate) Run(instance models.LRPStartAuction) error {
 		InstanceGuid: instance.InstanceGuid,
 		Index:        instance.Index,
 	}
-	err = a.bbs.ReportActualLongRunningProcessAsStarting(lrp)
+	err = a.bbs.ReportActualLRPAsStarting(lrp)
 
 	if err != nil {
 		a.logger.Errord(map[string]interface{}{
@@ -133,7 +133,7 @@ func (a *AuctionDelegate) Run(instance models.LRPStartAuction) error {
 			"error": err.Error(),
 		}, "auction-delegate.run-actions.failed")
 		a.client.DeleteContainer(instance.InstanceGuid)
-		a.bbs.RemoveActualLongRunningProcess(lrp)
+		a.bbs.RemoveActualLRP(lrp)
 		return err
 	}
 
