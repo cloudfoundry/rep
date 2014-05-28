@@ -168,7 +168,7 @@ func initializeRepBBS(logger *steno.Logger) Bbs.RepBBS {
 		workerpool.NewWorkerPool(10),
 	)
 
-	bbs := Bbs.NewRepBBS(etcdAdapter, timeprovider.NewTimeProvider())
+	bbs := Bbs.NewRepBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
 	err := etcdAdapter.Connect()
 	if err != nil {
 		logger.Errord(map[string]interface{}{
