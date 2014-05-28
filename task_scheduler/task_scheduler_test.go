@@ -2,8 +2,10 @@ package task_scheduler_test
 
 import (
 	"errors"
+	"syscall"
 
 	"github.com/cloudfoundry-incubator/executor/api"
+	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/router"
 
 	"github.com/cloudfoundry-incubator/executor/client/fake_client"
@@ -32,7 +34,7 @@ var _ = Describe("TaskScheduler", func() {
 	Context("when a game scheduler is running", func() {
 		var fakeExecutor *ghttp.Server
 		var fakeBBS *fake_bbs.FakeRepBBS
-		var taskScheduler *task_scheduler.TaskScheduler
+		var taskScheduler ifrit.Process
 		var correctStack = "my-stack"
 		var fakeClient *fake_client.FakeClient
 
@@ -40,8 +42,10 @@ var _ = Describe("TaskScheduler", func() {
 			fakeClient = fake_client.New()
 			fakeExecutor = ghttp.NewServer()
 			fakeBBS = fake_bbs.NewFakeRepBBS()
+		})
 
-			taskScheduler = task_scheduler.New(
+		JustBeforeEach(func() {
+			taskScheduler = ifrit.Envoke(task_scheduler.New(
 				router.NewRequestGenerator(
 					routes.TaskCompleted,
 					routes.Routes,
@@ -50,19 +54,13 @@ var _ = Describe("TaskScheduler", func() {
 				logger,
 				correctStack,
 				fakeClient,
-			)
+			))
 		})
 
 		AfterEach(func() {
-			taskScheduler.Stop()
+			taskScheduler.Signal(syscall.SIGTERM)
+			<-taskScheduler.Wait()
 			fakeExecutor.Close()
-		})
-
-		JustBeforeEach(func() {
-			readyChan := make(chan struct{})
-			err := taskScheduler.Run(readyChan)
-			Ω(err).ShouldNot(HaveOccurred())
-			<-readyChan
 		})
 
 		Context("when a staging task is desired", func() {

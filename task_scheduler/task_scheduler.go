@@ -3,6 +3,7 @@ package task_scheduler
 import (
 	"errors"
 	"math/rand"
+	"os"
 	"sync"
 	"time"
 
@@ -20,13 +21,11 @@ const ServerCloseErrMsg = "use of closed network connection"
 type TaskScheduler struct {
 	callbackGenerator *router.RequestGenerator
 
-	bbs            bbs.RepBBS
-	logger         *gosteno.Logger
-	stack          string
-	client         client.Client
-	inFlight       *sync.WaitGroup
-	exitChan       chan struct{}
-	terminatedChan chan struct{}
+	bbs      bbs.RepBBS
+	logger   *gosteno.Logger
+	stack    string
+	client   client.Client
+	inFlight *sync.WaitGroup
 }
 
 func New(
@@ -48,55 +47,38 @@ func New(
 	}
 }
 
-func (s *TaskScheduler) Run(readyChan chan struct{}) error {
-	s.exitChan = make(chan struct{})
-	s.terminatedChan = make(chan struct{})
+func (s *TaskScheduler) Run(signals <-chan os.Signal, readyChan chan<- struct{}) error {
+	tasks, stopChan, errChan := s.bbs.WatchForDesiredTask()
 	s.logger.Info("executor.watching-for-desired-task")
 
-	go func() {
-		tasks, stopChan, errChan := s.bbs.WatchForDesiredTask()
+	close(readyChan)
 
-		if readyChan != nil {
-			close(readyChan)
-		}
+	for {
+		select {
+		case err := <-errChan:
+			s.logError("task-scheduler.watch-desired.restart", err)
+			tasks, stopChan, errChan = s.bbs.WatchForDesiredTask()
 
-		for {
-			select {
-			case err := <-errChan:
-				s.logError("task-scheduler.watch-desired.restart", err)
-				tasks, stopChan, errChan = s.bbs.WatchForDesiredTask()
+		case task, ok := <-tasks:
+			if !ok {
+				err := errors.New("task channel closed. This is very unexpected, we did not intented to exit like this.")
+				s.logError("task-scheduler.watch-desired.task-chan-closed", err)
 
-			case task, ok := <-tasks:
-				if !ok {
-					err := errors.New("task channel closed. This is very unexpected, we did not intented to exit like this.")
-					s.logError("task-scheduler.watch-desired.task-chan-closed", err)
-
-					s.gracefulShutdown()
-					close(s.terminatedChan)
-					return
-				}
-
-				s.inFlight.Add(1)
-				go func() {
-					s.handleTaskRequest(task)
-					s.inFlight.Done()
-				}()
-
-			case <-s.exitChan:
 				s.gracefulShutdown()
-				close(stopChan)
-				close(s.terminatedChan)
-				return
+				return nil
 			}
-		}
-	}()
-	return nil
-}
 
-func (s *TaskScheduler) Stop() {
-	if s.exitChan != nil {
-		close(s.exitChan)
-		<-s.terminatedChan
+			s.inFlight.Add(1)
+			go func() {
+				defer s.inFlight.Done()
+				s.handleTaskRequest(task)
+			}()
+
+		case <-signals:
+			s.gracefulShutdown()
+			close(stopChan)
+			return nil
+		}
 	}
 }
 

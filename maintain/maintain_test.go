@@ -9,6 +9,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	steno "github.com/cloudfoundry/gosteno"
+	"github.com/tedsuo/ifrit"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -22,7 +23,7 @@ var _ = Describe("Maintain Presence", func() {
 	var sigChan chan os.Signal
 	var logger *steno.Logger
 
-	var maintainer *maintain.Maintainer
+	var maintainer ifrit.Process
 
 	BeforeSuite(func() {
 		steno.EnterTestMode(steno.LOG_DEBUG)
@@ -36,45 +37,32 @@ var _ = Describe("Maintain Presence", func() {
 		fakeBBS = fake_bbs.NewFakeRepBBS()
 		logger = steno.NewLogger("test-logger")
 		sigChan = make(chan os.Signal, 1)
-		maintainer = maintain.New(repPresence, fakeBBS, logger, heartbeatInterval)
+	})
+
+	JustBeforeEach(func() {
+		maintainer = ifrit.Envoke(maintain.New(repPresence, fakeBBS, logger, heartbeatInterval))
 	})
 
 	AfterEach(func() {
-		sigChan <- syscall.SIGTERM
+		maintainer.Signal(syscall.SIGTERM)
+		<-maintainer.Wait()
 	})
 
 	Context("when maintaining presence", func() {
-		BeforeEach(func() {
-			go func() {
-				err := maintainer.Run(sigChan, nil)
-				Ω(err).ShouldNot(HaveOccurred())
-			}()
-		})
 		It("should maintain presence", func() {
 			Eventually(fakeBBS.GetMaintainRepPresence).Should(Equal(repPresence))
 		})
 	})
 
 	Context("when we fail to maintain our presence", func() {
-		var err error
-
 		BeforeEach(func() {
 			fakeBBS.MaintainRepPresenceOutput.Presence = &fake_bbs.FakePresence{
 				MaintainStatus: false,
 			}
-
-			errChan := make(chan error, 1)
-			runToEnd := func() bool {
-				errChan <- maintainer.Run(sigChan, nil)
-				return true
-			}
-
-			Eventually(runToEnd, 1).Should(BeTrue())
-			err = <-errChan
 		})
 
-		It("sends an error to the given error channel", func() {
-			Ω(err).ShouldNot(BeNil())
+		It("continues to retry", func() {
+			Consistently(maintainer.Wait()).ShouldNot(Receive())
 		})
 
 		It("logs an error message", func() {
@@ -92,7 +80,7 @@ var _ = Describe("Maintain Presence", func() {
 				}
 
 				return ""
-			}, 1.0, 0.1).Should(Equal("rep.maintain_presence.failed"))
+			}, 1.0, 0.1).Should(Equal("rep.maintain_presence.lost-lock"))
 
 			Ω(records[lockMessageIndex].Level).Should(Equal(steno.LOG_ERROR))
 		})

@@ -4,10 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
-	"os/signal"
 	"strings"
 	"syscall"
 	"time"
@@ -30,6 +28,10 @@ import (
 	"github.com/cloudfoundry/storeadapter/workerpool"
 	"github.com/cloudfoundry/yagnats"
 	"github.com/nu7hatch/gouuid"
+	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/grouper"
+	"github.com/tedsuo/ifrit/http_server"
+	"github.com/tedsuo/ifrit/sigmon"
 	"github.com/tedsuo/router"
 )
 
@@ -109,41 +111,33 @@ func main() {
 		log.Fatalf("-lrpHost must be specified")
 	}
 
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT)
-
 	repID := generateRepID()
-
 	logger := initializeLogger()
 	bbs := initializeRepBBS(logger)
 	executorClient := client.New(http.DefaultClient, *executorURL)
 
-	taskSchedulerReady := make(chan struct{})
-	maintainReady := make(chan struct{})
-	repNatsServerReady := make(chan struct{})
+	group := grouper.EnvokeGroup(grouper.RunGroup{
+		"maintainer":     initializeMaintainer(repID, bbs, logger),
+		"task-rep":       initializeTaskRep(bbs, logger, executorClient),
+		"api-server":     initializeAPIServer(bbs, logger, executorClient),
+		"auction-server": initializeAuctionNatsServer(repID, bbs, executorClient, logger),
+	})
+	monitor := ifrit.Envoke(sigmon.New(group))
 
-	go func() {
-		<-maintainReady
-		<-taskSchedulerReady
-		<-repNatsServerReady
+	fmt.Println("representative started")
 
-		fmt.Println("representative started")
-	}()
-
-	taskRep := initializeAndStartTaskRep(bbs, logger, executorClient, taskSchedulerReady)
-	startHandlers(bbs, logger, executorClient)
-
-	maintainSignals := make(chan os.Signal, 1)
-	maintainPresence(repID, bbs, logger, maintainSignals, maintainReady)
-
-	startAuctionNatsServer(repID, bbs, executorClient, logger, repNatsServerReady)
+	workerExited := group.Exits()
+	monitorExited := monitor.Wait()
 
 	for {
-		sig := <-signals
-		switch sig {
-		case syscall.SIGINT, syscall.SIGTERM:
-			taskRep.Stop()
-			maintainSignals <- sig
+		select {
+		case member := <-workerExited:
+			logger.Infof("%s exited", member.Name)
+			monitor.Signal(syscall.SIGTERM)
+		case err := <-monitorExited:
+			if err != nil {
+				logger.Fatalf("rep existed with error: %s", err)
+			}
 			os.Exit(0)
 		}
 	}
@@ -185,23 +179,13 @@ func initializeRepBBS(logger *steno.Logger) Bbs.RepBBS {
 	return bbs
 }
 
-func initializeAndStartTaskRep(bbs Bbs.RepBBS, logger *steno.Logger, executorClient client.Client, ready chan struct{}) *task_scheduler.TaskScheduler {
+func initializeTaskRep(bbs Bbs.RepBBS, logger *steno.Logger, executorClient client.Client) *task_scheduler.TaskScheduler {
 	callbackGenerator := router.NewRequestGenerator(
 		"http://"+*listenAddr,
 		routes.Routes,
 	)
 
-	taskRep := task_scheduler.New(callbackGenerator, bbs, logger, *stack, executorClient)
-
-	err := taskRep.Run(ready)
-	if err != nil {
-		logger.Errord(map[string]interface{}{
-			"error": err,
-		}, "rep.task-scheduler.failed")
-		os.Exit(1)
-	}
-
-	return taskRep
+	return task_scheduler.New(callbackGenerator, bbs, logger, *stack, executorClient)
 }
 
 func generateRepID() string {
@@ -212,50 +196,24 @@ func generateRepID() string {
 	return uuid.String()
 }
 
-func startHandlers(bbs Bbs.RepBBS, logger *steno.Logger, executorClient client.Client) {
+func initializeAPIServer(bbs Bbs.RepBBS, logger *steno.Logger, executorClient client.Client) ifrit.Runner {
 	taskCompleteHandler := taskcomplete.NewHandler(bbs, logger)
 	lrpRunningHandler := lrprunning.NewHandler(bbs, executorClient, *lrpHost, logger)
 
 	apiHandler, err := api.NewServer(taskCompleteHandler, lrpRunningHandler)
 	if err != nil {
-		logger.Errord(map[string]interface{}{
-			"error": err,
-		}, "rep.api-server-initialize.failed")
-		os.Exit(1)
+		panic("failed to initialize api server: " + err.Error())
 	}
-
-	apiListener, err := net.Listen("tcp", *listenAddr)
-	if err != nil {
-		logger.Errord(map[string]interface{}{
-			"error": err,
-		}, "rep.listening.failed")
-		os.Exit(1)
-	}
-
-	go http.Serve(apiListener, apiHandler)
+	return http_server.New(*listenAddr, apiHandler)
 }
 
-func maintainPresence(repID string, bbs Bbs.RepBBS, logger *steno.Logger, maintainSignals chan os.Signal, ready chan struct{}) {
-	signal.Notify(maintainSignals, syscall.SIGTERM, syscall.SIGINT, syscall.SIGUSR1)
-
+func initializeMaintainer(repID string, bbs Bbs.RepBBS, logger *steno.Logger) *maintain.Maintainer {
 	repPresence := models.RepPresence{
 		RepID: repID,
 		Stack: *stack,
 	}
-	maintainer := maintain.New(repPresence, bbs, logger, *heartbeatInterval)
 
-	go func() {
-		//keep maintaining forever, dont do anything if we fail to maintain
-		for {
-			err := maintainer.Run(maintainSignals, ready)
-			if err != nil {
-				logger.Errorf("failed to start maintaining presence: %s", err.Error())
-				ready = make(chan struct{})
-			} else {
-				break
-			}
-		}
-	}()
+	return maintain.New(repPresence, bbs, logger, *heartbeatInterval)
 }
 
 func initializeNatsClient(logger *steno.Logger) yagnats.NATSClient {
@@ -280,10 +238,9 @@ func initializeNatsClient(logger *steno.Logger) yagnats.NATSClient {
 	return natsClient
 }
 
-func startAuctionNatsServer(repID string, bbs Bbs.RepBBS, executorClient client.Client, logger *steno.Logger, ready chan struct{}) {
+func initializeAuctionNatsServer(repID string, bbs Bbs.RepBBS, executorClient client.Client, logger *steno.Logger) *repnatsserver.RepNatsServer {
 	auctionDelegate := auction_delegate.New(bbs, executorClient, logger)
 	auctionRep := auctionrep.New(repID, auctionDelegate)
 	natsClient := initializeNatsClient(logger)
-	repnatsserver.Start(natsClient, auctionRep)
-	close(ready)
+	return repnatsserver.New(natsClient, auctionRep)
 }

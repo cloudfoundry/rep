@@ -1,7 +1,6 @@
 package maintain
 
 import (
-	"errors"
 	"os"
 	"syscall"
 	"time"
@@ -27,7 +26,7 @@ func New(repPresence models.RepPresence, bbs Bbs.RepBBS, logger *steno.Logger, h
 	}
 }
 
-func (m *Maintainer) Run(sigChan chan os.Signal, ready chan struct{}) error {
+func (m *Maintainer) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error {
 	for {
 		presence, status, err := m.bbs.MaintainRepPresence(m.heartbeatInterval, m.repPresence)
 		if err != nil {
@@ -55,8 +54,7 @@ func (m *Maintainer) Run(sigChan chan os.Signal, ready chan struct{}) error {
 				}
 
 				if !locked {
-					m.logger.Error("rep.maintain_presence.failed")
-					return errors.New("Failed to maintain presence")
+					m.logger.Error("rep.maintain_presence.lost-lock")
 				}
 			}
 		}
