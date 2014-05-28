@@ -63,6 +63,9 @@ type AuctioneerBBS interface {
 	WatchForLRPStartAuction() (<-chan models.LRPStartAuction, chan<- bool, <-chan error)
 	ClaimLRPStartAuction(models.LRPStartAuction) error
 	ResolveLRPStartAuction(models.LRPStartAuction) error
+
+	//lock
+	MaintainAuctioneerLock(interval time.Duration, auctioneerID string) (<-chan bool, chan<- chan bool, error)
 }
 
 type StagerBBS interface {

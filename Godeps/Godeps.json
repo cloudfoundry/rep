@@ -11,39 +11,35 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctionrep",
-			"Rev": "31831b85fcc383c7fb5ac5a25990ed83d318a1b9"
+			"Rev": "84a9d7c2760404c4fc078deeeb4943c63c1cbe65"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctiontypes",
-			"Rev": "31831b85fcc383c7fb5ac5a25990ed83d318a1b9"
+			"Rev": "84a9d7c2760404c4fc078deeeb4943c63c1cbe65"
 		},
 		{
-			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats/repnatsclient",
-			"Rev": "31831b85fcc383c7fb5ac5a25990ed83d318a1b9"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats/repnatsserver",
-			"Rev": "31831b85fcc383c7fb5ac5a25990ed83d318a1b9"
+			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats",
+			"Rev": "84a9d7c2760404c4fc078deeeb4943c63c1cbe65"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/util",
-			"Rev": "31831b85fcc383c7fb5ac5a25990ed83d318a1b9"
+			"Rev": "84a9d7c2760404c4fc078deeeb4943c63c1cbe65"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/api",
-			"Rev": "a32773b0b4ad9d6896e02da8f50cde4a04e7a94c"
+			"Rev": "c545e6a9ca353c9583c1ed415d00c575441f35e8"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/client",
-			"Rev": "a32773b0b4ad9d6896e02da8f50cde4a04e7a94c"
+			"Rev": "c545e6a9ca353c9583c1ed415d00c575441f35e8"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "89f8d3b9af9e15729c19bd05137a0691c8fca5a8"
+			"Rev": "64dda0340995d0e7274e7faf53f44906d19db58b"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "89f8d3b9af9e15729c19bd05137a0691c8fca5a8"
+			"Rev": "64dda0340995d0e7274e7faf53f44906d19db58b"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -77,11 +73,16 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Rev": "51ddbbc2ace9f9ad4cf06ba63442ea2ef2019837"
+			"Comment": "v1.0.0-2-g4cf6831",
+			"Rev": "4cf683101c36426dc975f4db4d7f01d9c071f31a"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "f5533d435ebfcf4fa0463202dc0e966b983618b8"
+			"Rev": "50bea9a608004800126b3fddab0c3608d87c0ca9"
+		},
+		{
+			"ImportPath": "github.com/tedsuo/ifrit",
+			"Rev": "8f57c1dcd12fc1cf91eea3f7704e348f3023f834"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/router",
