@@ -110,7 +110,7 @@ func (a *AuctionDelegate) Run(instance models.LRPStartAuction) error {
 		return err
 	}
 
-	lrp := models.LRP{
+	lrp := models.ActualLRP{
 		ProcessGuid:  instance.ProcessGuid,
 		InstanceGuid: instance.InstanceGuid,
 		Index:        instance.Index,

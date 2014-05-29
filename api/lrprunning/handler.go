@@ -53,7 +53,7 @@ func (handler *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	lrp := models.LRP{
+	lrp := models.ActualLRP{
 		ProcessGuid:  processGuid,
 		Index:        index,
 		InstanceGuid: instanceGuid,

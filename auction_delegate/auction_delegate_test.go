@@ -325,7 +325,7 @@ var _ = Describe("AuctionDelegate", func() {
 			It("should mark the instance as STARTING in etcd", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(bbs.StartingLRPs()).Should(HaveLen(1))
-				Ω(bbs.StartingLRPs()[0]).Should(Equal(models.LRP{
+				Ω(bbs.StartingLRPs()[0]).Should(Equal(models.ActualLRP{
 					ProcessGuid:  startAuction.ProcessGuid,
 					InstanceGuid: startAuction.InstanceGuid,
 					Index:        startAuction.Index,

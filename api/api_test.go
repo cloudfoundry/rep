@@ -189,7 +189,7 @@ var _ = Describe("Callback API", func() {
 			})
 
 			It("reports the LRP as running", func() {
-				Ω(fakeBBS.RunningLRPs()).Should(Equal([]models.LRP{
+				Ω(fakeBBS.RunningLRPs()).Should(Equal([]models.ActualLRP{
 					{
 						ProcessGuid:  "some-process-guid",
 						Index:        2,
