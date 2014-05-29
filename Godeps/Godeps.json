@@ -27,19 +27,19 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/api",
-			"Rev": "40e6f3447bdc11f5340ed304a312a38b81b82dd9"
+			"Rev": "68274d098462feb7c90245c0a00ee28ce59b14cd"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/client",
-			"Rev": "40e6f3447bdc11f5340ed304a312a38b81b82dd9"
+			"Rev": "68274d098462feb7c90245c0a00ee28ce59b14cd"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "6cd833ad6c7343deb7f0e7b8424225999c7176fe"
+			"Rev": "8fb024ad82be1cfcd2557eaaf9c03ff04877bb64"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "6cd833ad6c7343deb7f0e7b8424225999c7176fe"
+			"Rev": "8fb024ad82be1cfcd2557eaaf9c03ff04877bb64"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
