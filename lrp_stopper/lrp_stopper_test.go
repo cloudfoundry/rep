@@ -1,7 +1,7 @@
 package lrp_stopper_test
 
 import (
-	"fmt"
+	"errors"
 	"os"
 
 	"github.com/cloudfoundry-incubator/executor/api"
@@ -51,25 +51,30 @@ var _ = Describe("LRP Stopper", func() {
 	})
 
 	Context("when a StopLRPInstance request comes down the pipe", func() {
+		var didDelete chan struct{}
+		var getError, deleteError error
+		JustBeforeEach(func(done Done) {
+			client.WhenGettingContainer = func(allocationGuid string) (api.Container, error) {
+				Ω(allocationGuid).Should(Equal(stopInstance.InstanceGuid))
+				return api.Container{Guid: stopInstance.InstanceGuid}, getError
+			}
+
+			didDelete = make(chan struct{})
+			client.WhenDeletingContainer = func(allocationGuid string) error {
+				Ω(allocationGuid).Should(Equal(stopInstance.InstanceGuid))
+				close(didDelete)
+				return deleteError
+			}
+
+			bbs.EmitStopLRPInstance(stopInstance)
+			close(done)
+		})
+
+		BeforeEach(func() {
+			getError, deleteError = nil, nil
+		})
+
 		Context("when the instance is one that is running on the executor", func() {
-			var didDelete chan struct{}
-			BeforeEach(func(done Done) {
-				client.WhenGettingContainer = func(allocationGuid string) (api.Container, error) {
-					Ω(allocationGuid).Should(Equal(stopInstance.InstanceGuid))
-					return api.Container{Guid: stopInstance.InstanceGuid}, nil
-				}
-
-				didDelete = make(chan struct{})
-				client.WhenDeletingContainer = func(allocationGuid string) error {
-					Ω(allocationGuid).Should(Equal(stopInstance.InstanceGuid))
-					close(didDelete)
-					return nil
-				}
-
-				bbs.EmitStopLRPInstance(stopInstance)
-				close(done)
-			})
-
 			It("should stop the instance", func() {
 				Eventually(didDelete).Should(BeClosed())
 			})
@@ -77,24 +82,21 @@ var _ = Describe("LRP Stopper", func() {
 			It("should resolve the StopLRPInstance", func() {
 				Eventually(bbs.ResolvedStopLRPInstances).Should(ContainElement(stopInstance))
 			})
+
+			Context("when deleting the container fails", func() {
+				BeforeEach(func() {
+					deleteError = errors.New("oops")
+				})
+
+				It("should not resolve the StopLRPInstance", func() {
+					Consistently(bbs.ResolvedStopLRPInstances).Should(BeEmpty())
+				})
+			})
 		})
 
 		Context("when the instance is not running on the executor", func() {
-			var didDelete chan struct{}
-			BeforeEach(func(done Done) {
-				client.WhenGettingContainer = func(allocationGuid string) (api.Container, error) {
-					Ω(allocationGuid).Should(Equal(stopInstance.InstanceGuid))
-					return api.Container{}, fmt.Errorf("nope")
-				}
-
-				didDelete = make(chan struct{})
-				client.WhenDeletingContainer = func(allocationGuid string) error {
-					close(didDelete)
-					return nil
-				}
-
-				bbs.EmitStopLRPInstance(stopInstance)
-				close(done)
+			BeforeEach(func() {
+				getError = errors.New("nope")
 			})
 
 			It("should do nothing", func() {

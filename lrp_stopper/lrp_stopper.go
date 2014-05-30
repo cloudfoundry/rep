@@ -2,7 +2,6 @@ package lrp_stopper
 
 import (
 	"os"
-	"syscall"
 
 	"github.com/cloudfoundry-incubator/executor/client"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
@@ -26,6 +25,7 @@ func New(bbs Bbs.RepBBS, client client.Client, logger *steno.Logger) *LRPStopper
 
 func (stopper *LRPStopper) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	stopInstancesChan, stopChan, errChan := stopper.bbs.WatchForStopLRPInstance()
+	stopper.logger.Info("rep.lrp-stopper.watching-for-stops")
 
 	if ready != nil {
 		close(ready)
@@ -38,19 +38,21 @@ func (stopper *LRPStopper) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 		select {
 		case stopInstance, ok := <-stopInstancesChan:
 			if !ok {
+				stopper.logger.Error("rep.lrp-stopper.watch-closed")
 				stopInstancesChan = nil
 				break
 			}
 			go stopper.handleStopInstance(stopInstance)
 
-		case sig := <-signals:
-			switch sig {
-			case syscall.SIGTERM, syscall.SIGINT:
-				close(stopChan)
-				return nil
-			}
+		case <-signals:
+			stopper.logger.Info("rep.lrp-stopper.shutting-down")
+			close(stopChan)
+			return nil
 
-		case _ = <-errChan:
+		case err := <-errChan:
+			stopper.logger.Errord(map[string]interface{}{
+				"error": err.Error(),
+			}, "rep.lrp-stopper.received-watch-error")
 			stopInstancesChan = nil
 		}
 	}
@@ -59,12 +61,33 @@ func (stopper *LRPStopper) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 }
 
 func (stopper *LRPStopper) handleStopInstance(stopInstance models.StopLRPInstance) {
+	stopper.logger.Debugd(map[string]interface{}{
+		"stop-instance": stopInstance,
+	}, "rep.lrp-stopper.received-stop-instance")
+
 	_, err := stopper.client.GetContainer(stopInstance.InstanceGuid)
 	if err != nil {
 		return
 	}
-	stopper.client.DeleteContainer(stopInstance.InstanceGuid)
 
-	stopper.bbs.ResolveStopLRPInstance(stopInstance)
+	stopper.logger.Infod(map[string]interface{}{
+		"stop-instance": stopInstance,
+	}, "rep.lrp-stopper.stopping-instance")
 
+	err = stopper.client.DeleteContainer(stopInstance.InstanceGuid)
+	if err != nil {
+		stopper.logger.Infod(map[string]interface{}{
+			"stop-instance": stopInstance,
+			"error":         err.Error(),
+		}, "rep.lrp-stopper.delete-container-failed")
+		return
+	}
+
+	err = stopper.bbs.ResolveStopLRPInstance(stopInstance)
+	if err != nil {
+		stopper.logger.Infod(map[string]interface{}{
+			"stop-instance": stopInstance,
+			"error":         err.Error(),
+		}, "rep.lrp-stopper.resolve-stop-lrp-failed")
+	}
 }

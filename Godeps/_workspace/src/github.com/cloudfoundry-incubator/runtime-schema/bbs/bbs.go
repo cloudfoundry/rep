@@ -52,6 +52,7 @@ type ConvergerBBS interface {
 type AppManagerBBS interface {
 	//lrp
 	DesireLRP(models.DesiredLRP) error
+	RemoveDesiredLRPByProcessGuid(guid string) error
 	GetActualLRPsByProcessGuid(string) ([]models.ActualLRP, error)
 	RequestLRPStartAuction(models.LRPStartAuction) error
 	RequestStopLRPInstance(stopInstance models.StopLRPInstance) error

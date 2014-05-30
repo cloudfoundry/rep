@@ -47,7 +47,11 @@ func ActualLRPSchemaPath(lrp models.ActualLRP) string {
 }
 
 func DesiredLRPSchemaPath(lrp models.DesiredLRP) string {
-	return path.Join(DesiredLRPSchemaRoot, lrp.ProcessGuid)
+	return DesiredLRPSchemaPathByProcessGuid(lrp.ProcessGuid)
+}
+
+func DesiredLRPSchemaPathByProcessGuid(processGuid string) string {
+	return path.Join(DesiredLRPSchemaRoot, processGuid)
 }
 
 func TaskSchemaPath(task models.Task) string {
