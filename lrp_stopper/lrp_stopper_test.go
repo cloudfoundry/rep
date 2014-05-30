@@ -52,7 +52,7 @@ var _ = Describe("LRP Stopper", func() {
 
 	Context("when a StopLRPInstance request comes down the pipe", func() {
 		var didDelete chan struct{}
-		var getError, deleteError error
+		var getError error
 		JustBeforeEach(func(done Done) {
 			client.WhenGettingContainer = func(allocationGuid string) (api.Container, error) {
 				Ω(allocationGuid).Should(Equal(stopInstance.InstanceGuid))
@@ -63,7 +63,7 @@ var _ = Describe("LRP Stopper", func() {
 			client.WhenDeletingContainer = func(allocationGuid string) error {
 				Ω(allocationGuid).Should(Equal(stopInstance.InstanceGuid))
 				close(didDelete)
-				return deleteError
+				return nil
 			}
 
 			bbs.EmitStopLRPInstance(stopInstance)
@@ -71,7 +71,7 @@ var _ = Describe("LRP Stopper", func() {
 		})
 
 		BeforeEach(func() {
-			getError, deleteError = nil, nil
+			getError = nil
 		})
 
 		Context("when the instance is one that is running on the executor", func() {
@@ -83,13 +83,13 @@ var _ = Describe("LRP Stopper", func() {
 				Eventually(bbs.ResolvedStopLRPInstances).Should(ContainElement(stopInstance))
 			})
 
-			Context("when deleting the container fails", func() {
+			Context("when resolving the container fails", func() {
 				BeforeEach(func() {
-					deleteError = errors.New("oops")
+					bbs.SetResolveStopLRPInstanceError(errors.New("oops"))
 				})
 
-				It("should not resolve the StopLRPInstance", func() {
-					Consistently(bbs.ResolvedStopLRPInstances).Should(BeEmpty())
+				It("should not delete the container", func() {
+					Consistently(didDelete).ShouldNot(BeClosed())
 				})
 			})
 		})

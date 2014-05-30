@@ -74,20 +74,20 @@ func (stopper *LRPStopper) handleStopInstance(stopInstance models.StopLRPInstanc
 		"stop-instance": stopInstance,
 	}, "rep.lrp-stopper.stopping-instance")
 
-	err = stopper.client.DeleteContainer(stopInstance.InstanceGuid)
-	if err != nil {
-		stopper.logger.Infod(map[string]interface{}{
-			"stop-instance": stopInstance,
-			"error":         err.Error(),
-		}, "rep.lrp-stopper.delete-container-failed")
-		return
-	}
-
 	err = stopper.bbs.ResolveStopLRPInstance(stopInstance)
 	if err != nil {
 		stopper.logger.Infod(map[string]interface{}{
 			"stop-instance": stopInstance,
 			"error":         err.Error(),
 		}, "rep.lrp-stopper.resolve-stop-lrp-failed")
+		return
+	}
+
+	err = stopper.client.DeleteContainer(stopInstance.InstanceGuid)
+	if err != nil {
+		stopper.logger.Infod(map[string]interface{}{
+			"stop-instance": stopInstance,
+			"error":         err.Error(),
+		}, "rep.lrp-stopper.delete-container-failed")
 	}
 }
