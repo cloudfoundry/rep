@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -126,7 +125,7 @@ func main() {
 	})
 	monitor := ifrit.Envoke(sigmon.New(group))
 
-	fmt.Println("representative started")
+	logger.Info("representative started")
 
 	workerExited := group.Exits()
 	monitorExited := monitor.Wait()

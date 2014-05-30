@@ -11,9 +11,10 @@ import (
 )
 
 type Runner struct {
-	binPath string
-	Session *gexec.Session
-	config  Config
+	binPath      string
+	Session      *gexec.Session
+	config       Config
+	lastExitCode int
 }
 
 type Config struct {
@@ -40,11 +41,12 @@ func New(binPath, stack, lrpHost, listenAddr, executorURL, etcdCluster, natsAddr
 			logLevel:          logLevel,
 			heartbeatInterval: heartbeatInterval,
 		},
+		lastExitCode: -1,
 	}
 }
 
 func (r *Runner) Start() {
-	if r.Session != nil && r.Session.ExitCode() == -1 {
+	if r.Session != nil {
 		panic("starting more than one rep!!!")
 	}
 
@@ -69,14 +71,21 @@ func (r *Runner) Start() {
 	Eventually(r.Session.Buffer()).Should(gbytes.Say("started"))
 }
 
+func (r *Runner) LastExitCode() int {
+	return r.lastExitCode
+}
+
 func (r *Runner) Stop() {
 	if r.Session != nil {
 		r.Session.Interrupt().Wait(5 * time.Second)
+		r.lastExitCode = r.Session.ExitCode()
+		r.Session = nil
 	}
 }
 
 func (r *Runner) KillWithFire() {
 	if r.Session != nil {
 		r.Session.Kill().Wait()
+		r.Session = nil
 	}
 }

@@ -62,7 +62,7 @@ var _ = Describe("The Rep", func() {
 		})
 
 		It("should die", func() {
-			Eventually(runner.Session.ExitCode).Should(Equal(0))
+			Eventually(runner.LastExitCode).Should(Equal(0))
 		})
 	})
 
