@@ -35,11 +35,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "8fb024ad82be1cfcd2557eaaf9c03ff04877bb64"
+			"Rev": "64baf4b396abef568b765497b19b212db6b8df45"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "8fb024ad82be1cfcd2557eaaf9c03ff04877bb64"
+			"Rev": "64baf4b396abef568b765497b19b212db6b8df45"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",

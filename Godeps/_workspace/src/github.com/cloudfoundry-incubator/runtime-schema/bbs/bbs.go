@@ -38,7 +38,7 @@ type RepBBS interface {
 	ReportActualLRPAsRunning(lrp models.ActualLRP) error
 	RemoveActualLRP(lrp models.ActualLRP) error
 	WatchForStopLRPInstance() (<-chan models.StopLRPInstance, chan<- bool, <-chan error)
-	RemoveStopLRPInstance(stopInstance models.StopLRPInstance) error
+	ResolveStopLRPInstance(stopInstance models.StopLRPInstance) error
 }
 
 type ConvergerBBS interface {

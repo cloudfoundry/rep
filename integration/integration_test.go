@@ -3,7 +3,6 @@ package integration_test
 import (
 	"fmt"
 	"net/http"
-	"testing"
 	"time"
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
@@ -11,53 +10,30 @@ import (
 	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/rep/reprunner"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	steno "github.com/cloudfoundry/gosteno"
-	"github.com/cloudfoundry/gunk/natsrunner"
 	"github.com/cloudfoundry/gunk/timeprovider"
-	"github.com/onsi/gomega/ghttp"
 
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
+	steno "github.com/cloudfoundry/gosteno"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/onsi/gomega/ghttp"
 )
 
-var representativePath string
-var etcdRunner *etcdstorerunner.ETCDClusterRunner
-var natsRunner *natsrunner.NATSRunner
 var runner *reprunner.Runner
 
-var _ = Describe("Main", func() {
+var _ = Describe("The Rep", func() {
 	var (
 		fakeExecutor *ghttp.Server
 		bbs          *Bbs.BBS
 	)
 
 	BeforeEach(func() {
-		natsRunner = natsrunner.NewNATSRunner(4001)
 		fakeExecutor = ghttp.NewServer()
-
 		// these tests only look for the start of a sequence of requests
 		fakeExecutor.AllowUnhandledRequests = true
 
-		etcdPort := 5001 + GinkgoParallelNode()
-		schedulerPort := 56000 + GinkgoParallelNode()
-
-		etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
-		etcdRunner.Start()
-
-		natsRunner.Start()
-
-		logSink := steno.NewTestingSink()
-
-		steno.Init(&steno.Config{
-			Sinks: []steno.Sink{logSink},
-		})
-
-		logger := steno.NewLogger("the-logger")
-		steno.EnterTestMode()
-		bbs = Bbs.NewBBS(etcdRunner.Adapter(), timeprovider.NewTimeProvider(), logger)
+		bbs = Bbs.NewBBS(etcdRunner.Adapter(), timeprovider.NewTimeProvider(), steno.NewLogger("the-logger"))
 
 		runner = reprunner.New(
 			representativePath,
@@ -74,14 +50,13 @@ var _ = Describe("Main", func() {
 		runner.Start()
 	})
 
-	AfterEach(func() {
+	AfterEach(func(done Done) {
 		runner.KillWithFire()
 		fakeExecutor.Close()
-		etcdRunner.Stop()
-		natsRunner.Stop()
+		close(done)
 	})
 
-	Describe("when a kill signal is send to the representative", func() {
+	Describe("when an interrupt signal is send to the representative", func() {
 		BeforeEach(func() {
 			runner.Stop()
 		})
@@ -166,25 +141,39 @@ var _ = Describe("Main", func() {
 			}))
 		})
 	})
-})
 
-func TestRepresentativeMain(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Integration Suite")
-}
+	Describe("when a StopLRPInstance request comes in", func() {
+		BeforeEach(func() {
+			fakeExecutor.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/containers/some-instance-guid"),
+					ghttp.RespondWithJSONEncoded(http.StatusOK, api.Container{
+						Guid: "some-instance-guid",
+					}),
+				),
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("DELETE", "/containers/some-instance-guid"),
+					ghttp.RespondWith(http.StatusOK, nil),
+				),
+			)
 
-var _ = BeforeSuite(func() {
-	var err error
-	representativePath, err = gexec.Build("github.com/cloudfoundry-incubator/rep", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-})
+			bbs.ReportActualLRPAsRunning(models.ActualLRP{
+				ProcessGuid:  "some-process-guid",
+				InstanceGuid: "some-instance-guid",
+				Index:        3,
+			})
 
-var _ = AfterSuite(func() {
-	gexec.CleanupBuildArtifacts()
-	if etcdRunner != nil {
-		etcdRunner.Stop()
-	}
-	if runner != nil {
-		runner.KillWithFire()
-	}
+			bbs.RequestStopLRPInstance(models.StopLRPInstance{
+				ProcessGuid:  "some-process-guid",
+				InstanceGuid: "some-instance-guid",
+				Index:        3,
+			})
+		})
+
+		It("should delete the container and resolve the StopLRPInstance", func() {
+			Eventually(fakeExecutor.ReceivedRequests).Should(HaveLen(2))
+			Eventually(bbs.GetAllActualLRPs).Should(BeEmpty())
+			Eventually(bbs.GetAllStopLRPInstances).Should(BeEmpty())
+		})
+	})
 })

@@ -17,6 +17,7 @@ import (
 	"github.com/cloudfoundry-incubator/rep/api/lrprunning"
 	"github.com/cloudfoundry-incubator/rep/api/taskcomplete"
 	"github.com/cloudfoundry-incubator/rep/auction_delegate"
+	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
 	"github.com/cloudfoundry-incubator/rep/routes"
 	"github.com/cloudfoundry-incubator/rep/task_scheduler"
@@ -119,6 +120,7 @@ func main() {
 	group := grouper.EnvokeGroup(grouper.RunGroup{
 		"maintainer":     initializeMaintainer(repID, bbs, logger),
 		"task-rep":       initializeTaskRep(bbs, logger, executorClient),
+		"lrp-stopper":    initializeLRPStopper(bbs, executorClient, logger),
 		"api-server":     initializeAPIServer(bbs, logger, executorClient),
 		"auction-server": initializeAuctionNatsServer(repID, bbs, executorClient, logger),
 	})
@@ -194,6 +196,10 @@ func generateRepID() string {
 		panic("Failed to generate a random guid....:" + err.Error())
 	}
 	return uuid.String()
+}
+
+func initializeLRPStopper(bbs Bbs.RepBBS, executorClient client.Client, logger *steno.Logger) ifrit.Runner {
+	return lrp_stopper.New(bbs, executorClient, logger)
 }
 
 func initializeAPIServer(bbs Bbs.RepBBS, logger *steno.Logger, executorClient client.Client) ifrit.Runner {
