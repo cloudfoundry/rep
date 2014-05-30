@@ -78,8 +78,8 @@ func (fakeBBS *FakeAppManagerBBS) GetActualLRPsByProcessGuid(string) ([]models.A
 }
 
 func (fakeBBS *FakeAppManagerBBS) RemoveDesiredLRPByProcessGuid(processGuid string) error {
-	fakeBBS.RLock()
-	defer fakeBBS.RUnlock()
+	fakeBBS.Lock()
+	defer fakeBBS.Unlock()
 	fakeBBS.removeDesiredLRPProcessGuids = append(fakeBBS.removeDesiredLRPProcessGuids, processGuid)
 	return fakeBBS.removeDesiredLRPProcessGuidsErr
 }
