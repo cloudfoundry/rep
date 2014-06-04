@@ -52,7 +52,6 @@ var _ = Describe("LRP Stopper", func() {
 	})
 
 	Context("when waiting for a StopLRPInstance fails", func() {
-
 		var getContainerTimeChan chan time.Time
 		var errorTime time.Time
 
@@ -66,15 +65,30 @@ var _ = Describe("LRP Stopper", func() {
 
 			errorTime = time.Now()
 			bbs.WatchForStopLRPInstanceError(errors.New("failed to watch for LRPStopInstance."))
-			bbs.EmitStopLRPInstance(stopInstance)
 		})
 
-		It("should wait for 3 seconds and retry", func() {
-			var getContainerTime time.Time
-			Eventually(getContainerTimeChan).Should(Receive(&getContainerTime))
-			Ω(getContainerTime.Sub(errorTime)).Should(BeNumerically("~", 3*time.Second, 200*time.Millisecond))
+		Context("and a stop event comes in", func() {
+			BeforeEach(func() {
+				bbs.EmitStopLRPInstance(stopInstance)
+			})
+
+			It("should wait for 3 seconds and retry", func() {
+
+				var getContainerTime time.Time
+				Eventually(getContainerTimeChan).Should(Receive(&getContainerTime))
+				Ω(getContainerTime.Sub(errorTime)).Should(BeNumerically("~", 3*time.Second, 200*time.Millisecond))
+			})
 		})
 
+		Context("and SIGINT is received", func() {
+			BeforeEach(func() {
+				process.Signal(os.Interrupt)
+			})
+
+			It("should exit quickly", func() {
+				Eventually(process.Wait()).Should(Receive())
+			})
+		})
 	})
 
 	Context("when a StopLRPInstance request comes down the pipe", func() {

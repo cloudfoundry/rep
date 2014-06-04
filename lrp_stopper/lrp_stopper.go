@@ -28,39 +28,40 @@ func (stopper *LRPStopper) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 	stopInstancesChan, stopChan, errChan := stopper.bbs.WatchForStopLRPInstance()
 	stopper.logger.Info("rep.lrp-stopper.watching-for-stops")
 
-	if ready != nil {
-		close(ready)
-	}
+	close(ready)
+
+	var reWatchChan <-chan time.Time
 
 	for {
-		if stopInstancesChan == nil {
-			time.Sleep(3 * time.Second)
-			stopInstancesChan, stopChan, errChan = stopper.bbs.WatchForStopLRPInstance()
-		}
-
 		select {
 		case stopInstance, ok := <-stopInstancesChan:
-			if ok {
-				go stopper.handleStopInstance(stopInstance)
-			} else {
+			if !ok {
 				stopper.logger.Error("rep.lrp-stopper.watch-closed")
 				stopInstancesChan = nil
 				break
 			}
 
+			go stopper.handleStopInstance(stopInstance)
+
+		case <-reWatchChan:
+			reWatchChan = nil
+
+			stopInstancesChan, stopChan, errChan = stopper.bbs.WatchForStopLRPInstance()
+
+		case err := <-errChan:
+			stopper.logger.Errord(map[string]interface{}{
+				"error": err.Error(),
+			}, "rep.lrp-stopper.received-watch-error")
+
+			stopInstancesChan = nil
+			errChan = nil
+
+			reWatchChan = time.After(3 * time.Second)
+
 		case <-signals:
 			stopper.logger.Info("rep.lrp-stopper.shutting-down")
 			close(stopChan)
 			return nil
-
-		case err, ok := <-errChan:
-			if ok {
-				stopper.logger.Errord(map[string]interface{}{
-					"error": err.Error(),
-				}, "rep.lrp-stopper.received-watch-error")
-			}
-			stopInstancesChan = nil
-
 		}
 	}
 
