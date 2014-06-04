@@ -1,7 +1,6 @@
 package lrp_bbs_test
 
 import (
-	. "github.com/cloudfoundry-incubator/runtime-schema/bbs/lrp_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 
 	. "github.com/onsi/ginkgo"
@@ -9,11 +8,9 @@ import (
 )
 
 var _ = Describe("StopInstance", func() {
-	var bbs *LRPBBS
 	var stopInstance models.StopLRPInstance
 
 	BeforeEach(func() {
-		bbs = New(etcdClient)
 		stopInstance = models.StopLRPInstance{
 			ProcessGuid:  "some-process-guid",
 			InstanceGuid: "some-instance-guid",

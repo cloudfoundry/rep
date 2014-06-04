@@ -1,7 +1,6 @@
 package lrp_bbs_test
 
 import (
-	. "github.com/cloudfoundry-incubator/runtime-schema/bbs/lrp_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
 	. "github.com/onsi/ginkgo"
@@ -9,12 +8,6 @@ import (
 )
 
 var _ = Describe("LRP", func() {
-	var bbs *LRPBBS
-
-	BeforeEach(func() {
-		bbs = New(etcdClient)
-	})
-
 	Describe("Adding and removing DesireLRP", func() {
 		var lrp models.DesiredLRP
 
@@ -94,6 +87,7 @@ var _ = Describe("LRP", func() {
 
 				expectedLRP := lrp
 				expectedLRP.State = models.ActualLRPStateStarting
+				expectedLRP.Since = timeProvider.Time().UnixNano()
 				Ω(node.Value).Should(MatchJSON(expectedLRP.ToJSON()))
 			})
 
@@ -114,6 +108,7 @@ var _ = Describe("LRP", func() {
 
 				expectedLRP := lrp
 				expectedLRP.State = models.ActualLRPStateRunning
+				expectedLRP.Since = timeProvider.Time().UnixNano()
 				Ω(node.Value).Should(MatchJSON(expectedLRP.ToJSON()))
 			})
 

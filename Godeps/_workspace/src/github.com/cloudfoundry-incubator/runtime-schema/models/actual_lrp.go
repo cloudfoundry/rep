@@ -25,6 +25,7 @@ type ActualLRP struct {
 	Ports []PortMapping `json:"ports"`
 
 	State ActualLRPState `json:"state"`
+	Since int64          `json:"since"`
 }
 
 func NewActualLRPFromJSON(payload []byte) (ActualLRP, error) {

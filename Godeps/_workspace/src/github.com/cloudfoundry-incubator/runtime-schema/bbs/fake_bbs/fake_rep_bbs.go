@@ -66,6 +66,10 @@ func (fakeBBS *FakeRepBBS) WatchForDesiredTask() (<-chan models.Task, chan<- boo
 	return fakeBBS.desiredTaskChan, fakeBBS.desiredTaskStopChan, fakeBBS.desiredTaskErrChan
 }
 
+func (fakeBBS *FakeRepBBS) WatchForDesiredTaskError(err error) {
+	fakeBBS.desiredTaskErrChan <- err
+}
+
 func (fakeBBS *FakeRepBBS) EmitDesiredTask(task models.Task) {
 	fakeBBS.desiredTaskChan <- task
 }
@@ -209,6 +213,10 @@ func (fakeBBS *FakeRepBBS) RemovedLRPs() []models.ActualLRP {
 
 func (fakeBBS *FakeRepBBS) WatchForStopLRPInstance() (<-chan models.StopLRPInstance, chan<- bool, <-chan error) {
 	return fakeBBS.stopLRPInstanceChan, fakeBBS.stopLRPInstanceStopChan, fakeBBS.stopLRPInstanceErrChan
+}
+
+func (fakeBBS *FakeRepBBS) WatchForStopLRPInstanceError(err error) {
+	fakeBBS.stopLRPInstanceErrChan <- err
 }
 
 func (fakeBBS *FakeRepBBS) EmitStopLRPInstance(stopInstance models.StopLRPInstance) {

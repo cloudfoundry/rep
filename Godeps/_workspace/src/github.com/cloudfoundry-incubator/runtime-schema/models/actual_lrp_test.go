@@ -19,7 +19,8 @@ var _ = Describe("ActualLRP", func() {
       { "container_port": 8081, "host_port": 1234 }
     ],
     "index": 2,
-    "state": 0
+    "state": 0,
+    "since": 1138
   }`
 
 	BeforeEach(func() {
@@ -32,6 +33,7 @@ var _ = Describe("ActualLRP", func() {
 				{ContainerPort: 8081, HostPort: 1234},
 			},
 			Index: 2,
+			Since: 1138,
 		}
 	})
 

@@ -1,7 +1,6 @@
 package lrp_bbs_test
 
 import (
-	. "github.com/cloudfoundry-incubator/runtime-schema/bbs/lrp_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 
@@ -10,12 +9,6 @@ import (
 )
 
 var _ = Describe("LrpWatchers", func() {
-	var bbs *LRPBBS
-
-	BeforeEach(func() {
-		bbs = New(etcdClient)
-	})
-
 	Describe("WatchForDesiredLRPChanges", func() {
 		var (
 			events <-chan models.DesiredLRPChange
@@ -89,11 +82,11 @@ var _ = Describe("LrpWatchers", func() {
 			events <-chan models.ActualLRPChange
 			stop   chan<- bool
 			errors <-chan error
+			lrp    models.ActualLRP
 		)
 
-		lrp := models.ActualLRP{ProcessGuid: "some-process-guid", State: models.ActualLRPStateStarting}
-
 		BeforeEach(func() {
+			lrp = models.ActualLRP{ProcessGuid: "some-process-guid", State: models.ActualLRPStateStarting, Since: timeProvider.Time().UnixNano()}
 			events, stop, errors = bbs.WatchForActualLRPChanges()
 		})
 
