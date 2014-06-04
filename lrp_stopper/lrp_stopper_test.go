@@ -3,6 +3,7 @@ package lrp_stopper_test
 import (
 	"errors"
 	"os"
+	"time"
 
 	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/executor/client/fake_client"
@@ -50,28 +51,56 @@ var _ = Describe("LRP Stopper", func() {
 		close(done)
 	})
 
+	Context("when waiting for a StopLRPInstance fails", func() {
+
+		var getContainerTimeChan chan time.Time
+		var errorTime time.Time
+
+		BeforeEach(func() {
+			getContainerTimeChan = make(chan time.Time)
+
+			client.WhenGettingContainer = func(allocationGuid string) (api.Container, error) {
+				getContainerTimeChan <- time.Now()
+				return api.Container{}, errors.New("oops")
+			}
+
+			errorTime = time.Now()
+			bbs.WatchForStopLRPInstanceError(errors.New("failed to watch for LRPStopInstance."))
+			bbs.EmitStopLRPInstance(stopInstance)
+		})
+
+		It("should wait for 3 seconds and retry", func() {
+			var getContainerTime time.Time
+			Eventually(getContainerTimeChan).Should(Receive(&getContainerTime))
+			Ω(getContainerTime.Sub(errorTime)).Should(BeNumerically("~", 3*time.Second, 200*time.Millisecond))
+		})
+
+	})
+
 	Context("when a StopLRPInstance request comes down the pipe", func() {
 		var didDelete chan struct{}
 		var getError error
+
+		BeforeEach(func() {
+			getError = nil
+		})
+
 		JustBeforeEach(func(done Done) {
 			client.WhenGettingContainer = func(allocationGuid string) (api.Container, error) {
 				Ω(allocationGuid).Should(Equal(stopInstance.InstanceGuid))
 				return api.Container{Guid: stopInstance.InstanceGuid}, getError
 			}
 
-			didDelete = make(chan struct{})
+			localDidDelete := make(chan struct{})
+			didDelete = localDidDelete
 			client.WhenDeletingContainer = func(allocationGuid string) error {
 				Ω(allocationGuid).Should(Equal(stopInstance.InstanceGuid))
-				close(didDelete)
+				close(localDidDelete)
 				return nil
 			}
 
 			bbs.EmitStopLRPInstance(stopInstance)
 			close(done)
-		})
-
-		BeforeEach(func() {
-			getError = nil
 		})
 
 		Context("when the instance is one that is running on the executor", func() {

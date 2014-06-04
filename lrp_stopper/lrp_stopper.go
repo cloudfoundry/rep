@@ -2,6 +2,7 @@ package lrp_stopper
 
 import (
 	"os"
+	"time"
 
 	"github.com/cloudfoundry-incubator/executor/client"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
@@ -32,9 +33,6 @@ func (stopper *LRPStopper) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 	}
 
 	for {
-		if stopInstancesChan == nil {
-			stopInstancesChan, stopChan, errChan = stopper.bbs.WatchForStopLRPInstance()
-		}
 		select {
 		case stopInstance, ok := <-stopInstancesChan:
 			if !ok {
@@ -53,7 +51,10 @@ func (stopper *LRPStopper) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 			stopper.logger.Errord(map[string]interface{}{
 				"error": err.Error(),
 			}, "rep.lrp-stopper.received-watch-error")
-			stopInstancesChan = nil
+
+			time.Sleep(3 * time.Second)
+
+			stopInstancesChan, stopChan, errChan = stopper.bbs.WatchForStopLRPInstance()
 		}
 	}
 

@@ -3,6 +3,7 @@ package task_scheduler_test
 import (
 	"errors"
 	"syscall"
+	"time"
 
 	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/tedsuo/ifrit"
@@ -37,14 +38,40 @@ var _ = Describe("TaskScheduler", func() {
 		var taskScheduler ifrit.Process
 		var correctStack = "my-stack"
 		var fakeClient *fake_client.FakeClient
+		var task models.Task
 
 		BeforeEach(func() {
 			fakeClient = fake_client.New()
 			fakeExecutor = ghttp.NewServer()
 			fakeBBS = fake_bbs.NewFakeRepBBS()
+
+			index := 0
+
+			task = models.Task{
+				Guid:       "task-guid-123",
+				Stack:      correctStack,
+				MemoryMB:   64,
+				DiskMB:     1024,
+				CpuPercent: .5,
+				Actions: []models.ExecutorAction{
+					{
+						Action: models.RunAction{
+							Script:  "the-script",
+							Env:     []models.EnvironmentVariable{{Key: "PATH", Value: "the-path"}},
+							Timeout: 500,
+						},
+					},
+				},
+				Log: models.LogConfig{
+					Guid:       "some-guid",
+					SourceName: "XYZ",
+					Index:      &index,
+				},
+			}
+
 		})
 
-		JustBeforeEach(func() {
+		BeforeEach(func() {
 			taskScheduler = ifrit.Envoke(task_scheduler.New(
 				router.NewRequestGenerator(
 					routes.TaskCompleted,
@@ -63,34 +90,35 @@ var _ = Describe("TaskScheduler", func() {
 			fakeExecutor.Close()
 		})
 
-		Context("when a staging task is desired", func() {
-			var task models.Task
+		Context("when watching for desired task fails", func() {
+			var errorTime time.Time
+			var allocationTimeChan chan time.Time
 
 			BeforeEach(func() {
-				index := 0
+				allocationTimeChan = make(chan time.Time)
 
-				task = models.Task{
-					Guid:       "task-guid-123",
-					Stack:      correctStack,
-					MemoryMB:   64,
-					DiskMB:     1024,
-					CpuPercent: .5,
-					Actions: []models.ExecutorAction{
-						{
-							Action: models.RunAction{
-								Script:  "the-script",
-								Env:     []models.EnvironmentVariable{{Key: "PATH", Value: "the-path"}},
-								Timeout: 500,
-							},
-						},
-					},
-					Log: models.LogConfig{
-						Guid:       "some-guid",
-						SourceName: "XYZ",
-						Index:      &index,
-					},
+				fakeClient.WhenAllocatingContainer = func(containerGuid string, req api.ContainerAllocationRequest) (api.Container, error) {
+					allocationTimeChan <- time.Now()
+					return api.Container{}, errors.New("Failed to allocate")
 				}
+			})
 
+			JustBeforeEach(func() {
+				errorTime = time.Now()
+				fakeBBS.WatchForDesiredTaskError(errors.New("Failed to watch for task"))
+				fakeBBS.EmitDesiredTask(task)
+			})
+
+			It("should wait 3 seconds and retry", func() {
+				var allocationTime time.Time
+				Eventually(allocationTimeChan, 5).Should(Receive(&allocationTime))
+				Ω(allocationTime.Sub(errorTime)).Should(BeNumerically("~", 3*time.Second, 200*time.Millisecond))
+			})
+
+		})
+
+		Context("when a staging task is desired", func() {
+			JustBeforeEach(func() {
 				fakeBBS.EmitDesiredTask(task)
 			})
 

@@ -57,6 +57,9 @@ func (s *TaskScheduler) Run(signals <-chan os.Signal, readyChan chan<- struct{})
 		select {
 		case err := <-errChan:
 			s.logError("task-scheduler.watch-desired.restart", err)
+
+			time.Sleep(3 * time.Second)
+
 			tasks, stopChan, errChan = s.bbs.WatchForDesiredTask()
 
 		case task, ok := <-tasks:
