@@ -33,28 +33,34 @@ func (stopper *LRPStopper) Run(signals <-chan os.Signal, ready chan<- struct{}) 
 	}
 
 	for {
+		if stopInstancesChan == nil {
+			time.Sleep(3 * time.Second)
+			stopInstancesChan, stopChan, errChan = stopper.bbs.WatchForStopLRPInstance()
+		}
+
 		select {
 		case stopInstance, ok := <-stopInstancesChan:
-			if !ok {
+			if ok {
+				go stopper.handleStopInstance(stopInstance)
+			} else {
 				stopper.logger.Error("rep.lrp-stopper.watch-closed")
 				stopInstancesChan = nil
 				break
 			}
-			go stopper.handleStopInstance(stopInstance)
 
 		case <-signals:
 			stopper.logger.Info("rep.lrp-stopper.shutting-down")
 			close(stopChan)
 			return nil
 
-		case err := <-errChan:
-			stopper.logger.Errord(map[string]interface{}{
-				"error": err.Error(),
-			}, "rep.lrp-stopper.received-watch-error")
+		case err, ok := <-errChan:
+			if ok {
+				stopper.logger.Errord(map[string]interface{}{
+					"error": err.Error(),
+				}, "rep.lrp-stopper.received-watch-error")
+			}
+			stopInstancesChan = nil
 
-			time.Sleep(3 * time.Second)
-
-			stopInstancesChan, stopChan, errChan = stopper.bbs.WatchForStopLRPInstance()
 		}
 	}
 
