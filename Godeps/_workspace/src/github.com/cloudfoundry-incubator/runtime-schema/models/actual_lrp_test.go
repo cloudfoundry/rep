@@ -20,7 +20,8 @@ var _ = Describe("ActualLRP", func() {
     ],
     "index": 2,
     "state": 0,
-    "since": 1138
+    "since": 1138,
+    "executor_id":"some-executor-id"
   }`
 
 	BeforeEach(func() {
@@ -32,8 +33,9 @@ var _ = Describe("ActualLRP", func() {
 				{ContainerPort: 8080},
 				{ContainerPort: 8081, HostPort: 1234},
 			},
-			Index: 2,
-			Since: 1138,
+			Index:      2,
+			Since:      1138,
+			ExecutorID: "some-executor-id",
 		}
 	})
 
@@ -54,7 +56,7 @@ var _ = Describe("ActualLRP", func() {
 
 		Context("with an invalid payload", func() {
 			It("returns the error", func() {
-				decodedStartAuction, err := NewActualLRPFromJSON([]byte("butts lol"))
+				decodedStartAuction, err := NewActualLRPFromJSON([]byte("something lol"))
 				Ω(err).Should(HaveOccurred())
 
 				Ω(decodedStartAuction).Should(BeZero())

@@ -180,6 +180,7 @@ var _ = Describe("Callback API", func() {
 			BeforeEach(func() {
 				fakeExecutor.WhenGettingContainer = func(guid string) (executorAPI.Container, error) {
 					return executorAPI.Container{
+						ExecutorGuid: "some-executor-id",
 						Ports: []executorAPI.PortMapping{
 							{ContainerPort: 8080, HostPort: 1234},
 							{ContainerPort: 8081, HostPort: 1235},
@@ -203,6 +204,8 @@ var _ = Describe("Callback API", func() {
 						},
 					},
 				}))
+
+				Ω(fakeBBS.RunningLRPsExecutorIDs()).Should(Equal([]string{"some-executor-id"}))
 			})
 
 			It("returns 200", func() {

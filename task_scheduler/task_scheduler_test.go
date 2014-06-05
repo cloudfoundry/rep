@@ -154,7 +154,7 @@ var _ = Describe("TaskScheduler", func() {
 						BeforeEach(func() {
 							initCalled = make(chan struct{}, 1)
 
-							fakeClient.WhenInitializingContainer = func(allocationGuid string, req api.ContainerInitializationRequest) error {
+							fakeClient.WhenInitializingContainer = func(allocationGuid string, req api.ContainerInitializationRequest) (api.Container, error) {
 								defer GinkgoRecover()
 
 								initCalled <- struct{}{}
@@ -164,7 +164,7 @@ var _ = Describe("TaskScheduler", func() {
 
 								Ω(fakeBBS.ClaimedTasks()).Should(HaveLen(1))
 								Ω(fakeBBS.StartedTasks()).Should(HaveLen(0))
-								return nil
+								return api.Container{}, nil
 							}
 						})
 
@@ -214,8 +214,8 @@ var _ = Describe("TaskScheduler", func() {
 
 					Context("but initializing the container fails", func() {
 						BeforeEach(func() {
-							fakeClient.WhenInitializingContainer = func(allocationGuid string, req api.ContainerInitializationRequest) error {
-								return errors.New("Can't initialize")
+							fakeClient.WhenInitializingContainer = func(allocationGuid string, req api.ContainerInitializationRequest) (api.Container, error) {
+								return api.Container{}, errors.New("Can't initialize")
 							}
 						})
 

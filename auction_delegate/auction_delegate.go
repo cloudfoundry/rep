@@ -98,7 +98,7 @@ func (a *AuctionDelegate) Run(instance models.LRPStartAuction) error {
 		"instance": instance,
 	}, "auction-delegate.run")
 
-	err := a.client.InitializeContainer(instance.InstanceGuid, api.ContainerInitializationRequest{
+	container, err := a.client.InitializeContainer(instance.InstanceGuid, api.ContainerInitializationRequest{
 		Ports: a.convertPortMappings(instance.Ports),
 		Log:   instance.Log,
 	})
@@ -115,7 +115,7 @@ func (a *AuctionDelegate) Run(instance models.LRPStartAuction) error {
 		InstanceGuid: instance.InstanceGuid,
 		Index:        instance.Index,
 	}
-	err = a.bbs.ReportActualLRPAsStarting(lrp)
+	err = a.bbs.ReportActualLRPAsStarting(lrp, container.ExecutorGuid)
 
 	if err != nil {
 		a.logger.Errord(map[string]interface{}{

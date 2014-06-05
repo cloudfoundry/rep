@@ -114,7 +114,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		return
 	}
 
-	err = s.client.InitializeContainer(container.Guid, api.ContainerInitializationRequest{
+	_, err = s.client.InitializeContainer(container.Guid, api.ContainerInitializationRequest{
 		CpuPercent: task.CpuPercent,
 		Log:        task.Log,
 	})

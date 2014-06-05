@@ -161,7 +161,7 @@ var _ = Describe("The Rep", func() {
 				ProcessGuid:  "some-process-guid",
 				InstanceGuid: "some-instance-guid",
 				Index:        3,
-			})
+			}, "executor-guid")
 
 			bbs.RequestStopLRPInstance(models.StopLRPInstance{
 				ProcessGuid:  "some-process-guid",

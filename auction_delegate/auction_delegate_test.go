@@ -282,7 +282,7 @@ var _ = Describe("AuctionDelegate", func() {
 				Index: 2,
 			}
 
-			client.WhenInitializingContainer = func(allocationGuid string, request api.ContainerInitializationRequest) error {
+			client.WhenInitializingContainer = func(allocationGuid string, request api.ContainerInitializationRequest) (api.Container, error) {
 				Ω(allocationGuid).Should(Equal(startAuction.InstanceGuid))
 				Ω(request).Should(Equal(api.ContainerInitializationRequest{
 					Ports: []api.PortMapping{
@@ -294,7 +294,7 @@ var _ = Describe("AuctionDelegate", func() {
 					Log: startAuction.Log,
 				}))
 				calledInitialize = true
-				return initializeError
+				return api.Container{ExecutorGuid: "some-executor-id"}, initializeError
 			}
 
 			client.WhenRunning = func(allocationGuid string, request api.ContainerRunRequest) error {
@@ -330,6 +330,7 @@ var _ = Describe("AuctionDelegate", func() {
 					InstanceGuid: startAuction.InstanceGuid,
 					Index:        startAuction.Index,
 				}))
+				Ω(bbs.StartingLRPExecutorIDs()[0]).Should(Equal("some-executor-id"))
 			})
 
 			Context("when marking the instance as STARTING fails", func() {

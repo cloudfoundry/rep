@@ -28,6 +28,10 @@ func NewNATSRunner(port int) *NATSRunner {
 }
 
 func (runner *NATSRunner) Start() {
+	if runner.natsSession != nil {
+		panic("starting an already started NATS runner!!!")
+	}
+
 	_, err := exec.LookPath("gnatsd")
 	if err != nil {
 		fmt.Println("You need gnatsd installed!")
@@ -54,6 +58,10 @@ func (runner *NATSRunner) Start() {
 }
 
 func (runner *NATSRunner) Stop() {
+	runner.KillWithFire()
+}
+
+func (runner *NATSRunner) KillWithFire() {
 	if runner.natsSession != nil {
 		runner.natsSession.Kill().Wait(time.Second)
 		runner.MessageBus = nil

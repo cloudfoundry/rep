@@ -46,6 +46,45 @@ var _ = Describe("StopInstance", func() {
 		})
 	})
 
+	Describe("RequestStopLRPInstances", func() {
+		It("creates multiple /v1/stop-instance/<instance-guid> keys", func() {
+			anotherStopInstance := models.StopLRPInstance{
+				ProcessGuid:  "some-other-process-guid",
+				InstanceGuid: "some-other-instance-guid",
+				Index:        1234,
+			}
+
+			err := bbs.RequestStopLRPInstances([]models.StopLRPInstance{stopInstance, anotherStopInstance})
+			Ω(err).ShouldNot(HaveOccurred())
+
+			node, err := etcdClient.Get("/v1/stop-instance/some-instance-guid")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(node.Value).Should(Equal(stopInstance.ToJSON()))
+
+			anotherNode, err := etcdClient.Get("/v1/stop-instance/some-other-instance-guid")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(anotherNode.Value).Should(Equal(anotherStopInstance.ToJSON()))
+		})
+
+		Context("when the key already exists", func() {
+			It("sets it again", func() {
+				err := bbs.RequestStopLRPInstances([]models.StopLRPInstance{stopInstance})
+				Ω(err).ShouldNot(HaveOccurred())
+
+				err = bbs.RequestStopLRPInstances([]models.StopLRPInstance{stopInstance})
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+		})
+
+		Context("when the store is out of commission", func() {
+			itRetriesUntilStoreComesBack(func() error {
+				return bbs.RequestStopLRPInstances([]models.StopLRPInstance{stopInstance})
+			})
+		})
+	})
+
 	Describe("GetAllStopLRPInstances", func() {
 		It("gets all stop instances", func() {
 			stopInstance1 := models.StopLRPInstance{
@@ -81,7 +120,7 @@ var _ = Describe("StopInstance", func() {
 					ProcessGuid:  stopInstance.ProcessGuid,
 					InstanceGuid: stopInstance.InstanceGuid,
 					Index:        stopInstance.Index,
-				})
+				}, "executor-id")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				err = bbs.ResolveStopLRPInstance(stopInstance)
@@ -103,7 +142,7 @@ var _ = Describe("StopInstance", func() {
 					ProcessGuid:  stopInstance.ProcessGuid,
 					InstanceGuid: stopInstance.InstanceGuid,
 					Index:        stopInstance.Index,
-				})
+				}, "executor-id")
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 

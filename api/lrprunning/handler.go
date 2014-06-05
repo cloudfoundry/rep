@@ -62,7 +62,7 @@ func (handler *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Ports: ports,
 	}
 
-	err = handler.bbs.ReportActualLRPAsRunning(lrp)
+	err = handler.bbs.ReportActualLRPAsRunning(lrp, container.ExecutorGuid)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
