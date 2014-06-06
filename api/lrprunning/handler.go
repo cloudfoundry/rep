@@ -62,6 +62,10 @@ func (handler *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Ports: ports,
 	}
 
+	handler.logger.Infod(map[string]interface{}{
+		"actual":        lrp,
+		"executor-guid": container.ExecutorGuid,
+	}, "rep.lrp-running-handler.marking-actual-as-running")
 	err = handler.bbs.ReportActualLRPAsRunning(lrp, container.ExecutorGuid)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
