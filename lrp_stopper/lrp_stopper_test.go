@@ -3,6 +3,7 @@ package lrp_stopper_test
 import (
 	"errors"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/cloudfoundry-incubator/executor/api"
@@ -27,13 +28,16 @@ var _ = Describe("LRP Stopper", func() {
 		process      ifrit.Process
 		stopInstance models.StopLRPInstance
 	)
+	lock := &sync.Mutex{}
 
 	BeforeEach(func() {
+		lock.Lock()
 		stopInstance = models.StopLRPInstance{
 			ProcessGuid:  "some-process-guid",
 			InstanceGuid: "some-instance-guid",
 			Index:        1138,
 		}
+		lock.Unlock()
 
 		steno.EnterTestMode()
 		bbs = fake_bbs.NewFakeRepBBS()
@@ -45,10 +49,9 @@ var _ = Describe("LRP Stopper", func() {
 		process = ifrit.Envoke(stopper)
 	})
 
-	AfterEach(func(done Done) {
+	AfterEach(func() {
 		process.Signal(os.Interrupt)
-		<-process.Wait()
-		close(done)
+		Eventually(process.Wait()).Should(Receive())
 	})
 
 	Context("when waiting for a StopLRPInstance fails", func() {
@@ -96,13 +99,18 @@ var _ = Describe("LRP Stopper", func() {
 		var getError error
 
 		BeforeEach(func() {
+			lock.Lock()
 			getError = nil
+			lock.Unlock()
 		})
 
-		JustBeforeEach(func(done Done) {
+		JustBeforeEach(func() {
 			client.WhenGettingContainer = func(allocationGuid string) (api.Container, error) {
+				lock.Lock()
 				Ω(allocationGuid).Should(Equal(stopInstance.InstanceGuid))
-				return api.Container{Guid: stopInstance.InstanceGuid}, getError
+				err := getError
+				lock.Unlock()
+				return api.Container{Guid: stopInstance.InstanceGuid}, err
 			}
 
 			localDidDelete := make(chan struct{})
@@ -114,7 +122,6 @@ var _ = Describe("LRP Stopper", func() {
 			}
 
 			bbs.EmitStopLRPInstance(stopInstance)
-			close(done)
 		})
 
 		Context("when the instance is one that is running on the executor", func() {
@@ -139,7 +146,9 @@ var _ = Describe("LRP Stopper", func() {
 
 		Context("when the instance is not running on the executor", func() {
 			BeforeEach(func() {
+				lock.Lock()
 				getError = errors.New("nope")
+				lock.Unlock()
 			})
 
 			It("should do nothing", func() {
