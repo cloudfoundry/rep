@@ -77,6 +77,6 @@ func (r *Runner) Stop() {
 
 func (r *Runner) KillWithFire() {
 	if r.Session != nil {
-		r.Session.Kill().Wait()
+		r.Session.Kill().Wait(5 * time.Second)
 	}
 }
