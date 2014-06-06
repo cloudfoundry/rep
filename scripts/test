@@ -13,9 +13,10 @@ export PATH=$FIRST_GOPATH/bin:$PATH
 go get -u github.com/coreos/etcd
 go get github.com/dustin/goveralls
 go get code.google.com/p/go.tools/cmd/cover
+go get github.com/apcera/gnatsd
 go install github.com/onsi/ginkgo/ginkgo
 
-ginkgo -cover -r -v -failOnPending -randomizeAllSpecs -race
+ginkgo -cover -v -r -failOnPending -randomizeAllSpecs -race
 
 # don't leak coveralls token
 set +x
