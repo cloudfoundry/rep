@@ -10,10 +10,10 @@ import (
 	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/rep/reprunner"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider"
 
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	steno "github.com/cloudfoundry/gosteno"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -33,7 +33,7 @@ var _ = Describe("The Rep", func() {
 		// these tests only look for the start of a sequence of requests
 		fakeExecutor.AllowUnhandledRequests = true
 
-		bbs = Bbs.NewBBS(etcdRunner.Adapter(), timeprovider.NewTimeProvider(), steno.NewLogger("the-logger"))
+		bbs = Bbs.NewBBS(etcdRunner.Adapter(), timeprovider.NewTimeProvider(), gosteno.NewLogger("the-logger"))
 
 		runner = reprunner.New(
 			representativePath,
@@ -132,7 +132,7 @@ var _ = Describe("The Rep", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			repID := reps[0].RepID
 
-			client := repnatsclient.New(natsRunner.MessageBus, time.Second, 10*time.Second)
+			client := repnatsclient.New(natsRunner.MessageBus, time.Second, 10*time.Second, gosteno.NewLogger("the-logger"))
 			resources := client.TotalResources(repID)
 			Ω(resources).Should(Equal(auctiontypes.Resources{
 				MemoryMB:   1024,

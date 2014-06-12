@@ -248,5 +248,5 @@ func initializeAuctionNatsServer(repID string, bbs Bbs.RepBBS, executorClient cl
 	auctionDelegate := auction_delegate.New(bbs, executorClient, logger)
 	auctionRep := auctionrep.New(repID, auctionDelegate)
 	natsClient := initializeNatsClient(logger)
-	return repnatsserver.New(natsClient, auctionRep)
+	return repnatsserver.New(natsClient, auctionRep, logger)
 }
