@@ -20,6 +20,7 @@ import (
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
 	"github.com/cloudfoundry-incubator/rep/routes"
+	"github.com/cloudfoundry-incubator/rep/stop_lrp_listener"
 	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -116,13 +117,14 @@ func main() {
 	logger := initializeLogger()
 	bbs := initializeRepBBS(logger)
 	executorClient := client.New(http.DefaultClient, *executorURL)
+	lrpStopper := initializeLRPStopper(bbs, executorClient, logger)
 
 	group := grouper.EnvokeGroup(grouper.RunGroup{
-		"maintainer":     initializeMaintainer(repID, bbs, logger),
-		"task-rep":       initializeTaskRep(bbs, logger, executorClient),
-		"lrp-stopper":    initializeLRPStopper(bbs, executorClient, logger),
-		"api-server":     initializeAPIServer(bbs, logger, executorClient),
-		"auction-server": initializeAuctionNatsServer(repID, bbs, executorClient, logger),
+		"maintainer":        initializeMaintainer(repID, bbs, logger),
+		"task-rep":          initializeTaskRep(bbs, logger, executorClient),
+		"stop-lrp-listener": initializeStopLRPListener(lrpStopper, bbs, executorClient, logger),
+		"api-server":        initializeAPIServer(bbs, logger, executorClient),
+		"auction-server":    initializeAuctionNatsServer(lrpStopper, repID, bbs, executorClient, logger),
 	})
 	monitor := ifrit.Envoke(sigmon.New(group))
 
@@ -198,8 +200,12 @@ func generateRepID() string {
 	return uuid.String()
 }
 
-func initializeLRPStopper(bbs Bbs.RepBBS, executorClient client.Client, logger *steno.Logger) ifrit.Runner {
+func initializeLRPStopper(bbs Bbs.RepBBS, executorClient client.Client, logger *steno.Logger) lrp_stopper.LRPStopper {
 	return lrp_stopper.New(bbs, executorClient, logger)
+}
+
+func initializeStopLRPListener(stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, executorClient client.Client, logger *steno.Logger) ifrit.Runner {
+	return stop_lrp_listener.New(stopper, bbs, executorClient, logger)
 }
 
 func initializeAPIServer(bbs Bbs.RepBBS, logger *steno.Logger, executorClient client.Client) ifrit.Runner {
@@ -244,8 +250,8 @@ func initializeNatsClient(logger *steno.Logger) yagnats.NATSClient {
 	return natsClient
 }
 
-func initializeAuctionNatsServer(repID string, bbs Bbs.RepBBS, executorClient client.Client, logger *steno.Logger) *repnatsserver.RepNatsServer {
-	auctionDelegate := auction_delegate.New(bbs, executorClient, logger)
+func initializeAuctionNatsServer(stopper lrp_stopper.LRPStopper, repID string, bbs Bbs.RepBBS, executorClient client.Client, logger *steno.Logger) *repnatsserver.RepNatsServer {
+	auctionDelegate := auction_delegate.New(stopper, bbs, executorClient, logger)
 	auctionRep := auctionrep.New(repID, auctionDelegate)
 	natsClient := initializeNatsClient(logger)
 	return repnatsserver.New(natsClient, auctionRep, logger)

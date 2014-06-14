@@ -2,15 +2,11 @@ package lrp_stopper_test
 
 import (
 	"errors"
-	"os"
-	"sync"
-	"time"
 
 	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/executor/client/fake_client"
 	. "github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	steno "github.com/cloudfoundry/gosteno"
-	"github.com/tedsuo/ifrit"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -21,23 +17,19 @@ import (
 
 var _ = Describe("LRP Stopper", func() {
 	var (
-		stopper      *LRPStopper
+		stopper      LRPStopper
 		bbs          *fake_bbs.FakeRepBBS
 		client       *fake_client.FakeClient
 		logger       *steno.Logger
-		process      ifrit.Process
 		stopInstance models.StopLRPInstance
 	)
-	lock := &sync.Mutex{}
 
 	BeforeEach(func() {
-		lock.Lock()
 		stopInstance = models.StopLRPInstance{
 			ProcessGuid:  "some-process-guid",
 			InstanceGuid: "some-instance-guid",
 			Index:        1138,
 		}
-		lock.Unlock()
 
 		steno.EnterTestMode()
 		bbs = fake_bbs.NewFakeRepBBS()
@@ -45,92 +37,46 @@ var _ = Describe("LRP Stopper", func() {
 		logger = steno.NewLogger("steno")
 
 		stopper = New(bbs, client, logger)
-
-		process = ifrit.Envoke(stopper)
 	})
 
-	AfterEach(func() {
-		process.Signal(os.Interrupt)
-		Eventually(process.Wait()).Should(Receive())
-	})
-
-	Context("when waiting for a StopLRPInstance fails", func() {
-		var getContainerTimeChan chan time.Time
-		var errorTime time.Time
-
-		BeforeEach(func() {
-			getContainerTimeChan = make(chan time.Time)
-
-			client.WhenGettingContainer = func(allocationGuid string) (api.Container, error) {
-				getContainerTimeChan <- time.Now()
-				return api.Container{}, errors.New("oops")
-			}
-
-			errorTime = time.Now()
-			bbs.WatchForStopLRPInstanceError(errors.New("failed to watch for LRPStopInstance."))
-		})
-
-		Context("and a stop event comes in", func() {
-			BeforeEach(func() {
-				bbs.EmitStopLRPInstance(stopInstance)
-			})
-
-			It("should wait for 3 seconds and retry", func() {
-
-				var getContainerTime time.Time
-				Eventually(getContainerTimeChan).Should(Receive(&getContainerTime))
-				Ω(getContainerTime.Sub(errorTime)).Should(BeNumerically("~", 3*time.Second, 200*time.Millisecond))
-			})
-		})
-
-		Context("and SIGINT is received", func() {
-			BeforeEach(func() {
-				process.Signal(os.Interrupt)
-			})
-
-			It("should exit quickly", func() {
-				Eventually(process.Wait()).Should(Receive())
-			})
-		})
-	})
-
-	Context("when a StopLRPInstance request comes down the pipe", func() {
-		var didDelete chan struct{}
+	Context("when told to stop an instance", func() {
+		var didDelete bool
 		var getError error
+		var returnedError error
 
 		BeforeEach(func() {
-			lock.Lock()
+			didDelete = false
 			getError = nil
-			lock.Unlock()
+			returnedError = nil
 		})
 
 		JustBeforeEach(func() {
 			client.WhenGettingContainer = func(allocationGuid string) (api.Container, error) {
-				lock.Lock()
 				Ω(allocationGuid).Should(Equal(stopInstance.InstanceGuid))
 				err := getError
-				lock.Unlock()
 				return api.Container{Guid: stopInstance.InstanceGuid}, err
 			}
 
-			localDidDelete := make(chan struct{})
-			didDelete = localDidDelete
 			client.WhenDeletingContainer = func(allocationGuid string) error {
 				Ω(allocationGuid).Should(Equal(stopInstance.InstanceGuid))
-				close(localDidDelete)
+				didDelete = true
 				return nil
 			}
 
-			bbs.EmitStopLRPInstance(stopInstance)
+			returnedError = stopper.StopInstance(stopInstance)
 		})
 
 		Context("when the instance is one that is running on the executor", func() {
 			It("should stop the instance", func() {
-				Eventually(didDelete).Should(BeClosed())
+				Ω(didDelete).Should(BeTrue())
 			})
 
 			It("should resolve the StopLRPInstance", func() {
-				Eventually(bbs.ResolvedStopLRPInstances).Should(ContainElement(stopInstance))
+				Ω(bbs.ResolvedStopLRPInstances()).Should(ContainElement(stopInstance))
+			})
+
+			It("should not error", func() {
+				Ω(returnedError).ShouldNot(HaveOccurred())
 			})
 
 			Context("when resolving the container fails", func() {
@@ -139,21 +85,27 @@ var _ = Describe("LRP Stopper", func() {
 				})
 
 				It("should not delete the container", func() {
-					Consistently(didDelete).ShouldNot(BeClosed())
+					Ω(didDelete).Should(BeFalse())
+				})
+
+				It("should return an error error", func() {
+					Ω(returnedError).Should(MatchError(errors.New("oops")))
 				})
 			})
 		})
 
 		Context("when the instance is not running on the executor", func() {
 			BeforeEach(func() {
-				lock.Lock()
 				getError = errors.New("nope")
-				lock.Unlock()
 			})
 
 			It("should do nothing", func() {
-				Consistently(didDelete).ShouldNot(BeClosed())
-				Consistently(bbs.ResolvedStopLRPInstances).Should(BeEmpty())
+				Ω(didDelete).Should(BeFalse())
+				Ω(bbs.ResolvedStopLRPInstances()).Should(BeEmpty())
+			})
+
+			It("should return an error error", func() {
+				Ω(returnedError).Should(MatchError(errors.New("nope")))
 			})
 		})
 	})

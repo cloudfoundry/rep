@@ -1,176 +1,247 @@
 package auctionrep
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
-type AuctionRepDelegate interface {
-	RemainingResources() (auctiontypes.Resources, error)
-	TotalResources() (auctiontypes.Resources, error)
-	NumInstancesForAppGuid(guid string) (int, error)
-
-	Reserve(instance auctiontypes.LRPAuctionInfo) error
-	ReleaseReservation(instance auctiontypes.LRPAuctionInfo) error
-	Run(instance models.LRPStartAuction) error
-}
-
-//Used in simulation
-type SimulationAuctionRepDelegate interface {
-	AuctionRepDelegate
-	SetLRPAuctionInfos(instances []auctiontypes.LRPAuctionInfo)
-	LRPAuctionInfos() []auctiontypes.LRPAuctionInfo
-}
-
 type AuctionRep struct {
-	guid     string
-	delegate AuctionRepDelegate
+	repGuid  string
+	delegate auctiontypes.AuctionRepDelegate
 	lock     *sync.Mutex
 }
 
-func New(guid string, delegate AuctionRepDelegate) *AuctionRep {
+type StartInstanceScoreInfo struct {
+	RemainingResources         auctiontypes.Resources
+	TotalResources             auctiontypes.Resources
+	NumInstancesForProcessGuid int
+}
+
+type StopIndexScoreInfo struct {
+	InstanceScoreInfo            StartInstanceScoreInfo
+	InstanceGuidsForProcessIndex []string
+}
+
+func New(repGuid string, delegate auctiontypes.AuctionRepDelegate) *AuctionRep {
 	return &AuctionRep{
-		guid:     guid,
+		repGuid:  repGuid,
 		delegate: delegate,
 		lock:     &sync.Mutex{},
 	}
 }
 
 func (rep *AuctionRep) Guid() string {
-	return rep.guid
+	return rep.repGuid
 }
 
-func (rep *AuctionRep) Score(instance auctiontypes.LRPAuctionInfo) (float64, error) {
+// must lock here; the publicly visible operations should be atomic
+func (rep *AuctionRep) BidForStartAuction(startAuctionInfo auctiontypes.StartAuctionInfo) (float64, error) {
 	rep.lock.Lock()
 	defer rep.lock.Unlock()
 
-	remaining, err := rep.delegate.RemainingResources()
+	repInstanceScoreInfo, err := rep.repInstanceScoreInfo(startAuctionInfo.ProcessGuid)
 	if err != nil {
 		return 0, err
 	}
 
-	if !rep.hasRoomFor(instance, remaining) {
-		return 0, auctiontypes.InsufficientResources
-	}
-
-	total, err := rep.delegate.TotalResources()
-	if err != nil {
-		return 0, err
-	}
-	nInstances, err := rep.delegate.NumInstancesForAppGuid(instance.AppGuid)
+	err = rep.satisfiesConstraints(startAuctionInfo, repInstanceScoreInfo)
 	if err != nil {
 		return 0, err
 	}
 
-	return rep.score(remaining, total, nInstances), nil
+	return rep.startAuctionBid(repInstanceScoreInfo), nil
 }
 
-func (rep *AuctionRep) ScoreThenTentativelyReserve(instance auctiontypes.LRPAuctionInfo) (float64, error) {
+// must lock here; the publicly visible operations should be atomic
+func (rep *AuctionRep) BidForStopAuction(stopAuctionInfo auctiontypes.StopAuctionInfo) (float64, []string, error) {
 	rep.lock.Lock()
 	defer rep.lock.Unlock()
 
-	remaining, err := rep.delegate.RemainingResources()
+	repStopIndexScoreInfo, err := rep.repStopIndexScoreInfo(stopAuctionInfo)
 	if err != nil {
-		return 0, err
-	}
-	if !rep.hasRoomFor(instance, remaining) {
-		return 0, auctiontypes.InsufficientResources
+		return 0, nil, err
 	}
 
-	//score first
-	total, err := rep.delegate.TotalResources()
+	err = rep.isRunningProcessIndex(repStopIndexScoreInfo)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return rep.startAuctionBid(repStopIndexScoreInfo.InstanceScoreInfo), repStopIndexScoreInfo.InstanceGuidsForProcessIndex, nil
+}
+
+// must lock here; the publicly visible operations should be atomic
+func (rep *AuctionRep) RebidThenTentativelyReserve(startAuctionInfo auctiontypes.StartAuctionInfo) (float64, error) {
+	rep.lock.Lock()
+	defer rep.lock.Unlock()
+
+	repInstanceScoreInfo, err := rep.repInstanceScoreInfo(startAuctionInfo.ProcessGuid)
 	if err != nil {
 		return 0, err
 	}
-	nInstances, err := rep.delegate.NumInstancesForAppGuid(instance.AppGuid)
+
+	err = rep.satisfiesConstraints(startAuctionInfo, repInstanceScoreInfo)
 	if err != nil {
 		return 0, err
 	}
-	score := rep.score(remaining, total, nInstances)
+
+	bid := rep.startAuctionBid(repInstanceScoreInfo)
 
 	//then reserve
-	err = rep.delegate.Reserve(instance)
+	err = rep.delegate.Reserve(startAuctionInfo)
 	if err != nil {
 		return 0, err
 	}
 
-	return score, nil
+	return bid, nil
 }
 
-func (rep *AuctionRep) ReleaseReservation(instance auctiontypes.LRPAuctionInfo) error {
+// must lock here; the publicly visible operations should be atomic
+func (rep *AuctionRep) ReleaseReservation(startAuctionInfo auctiontypes.StartAuctionInfo) error {
 	rep.lock.Lock()
 	defer rep.lock.Unlock()
 
-	return rep.delegate.ReleaseReservation(instance)
+	return rep.delegate.ReleaseReservation(startAuctionInfo)
 }
 
-func (rep *AuctionRep) Run(instance models.LRPStartAuction) error {
+// must lock here; the publicly visible operations should be atomic
+func (rep *AuctionRep) Run(startAuction models.LRPStartAuction) error {
 	rep.lock.Lock()
 	defer rep.lock.Unlock()
 
-	return rep.delegate.Run(instance)
+	return rep.delegate.Run(startAuction)
 }
 
-// The following are used only in simulation
+// must lock here; the publicly visible operations should be atomic
+func (rep *AuctionRep) Stop(stopInstance models.StopLRPInstance) error {
+	rep.lock.Lock()
+	defer rep.lock.Unlock()
 
+	return rep.delegate.Stop(stopInstance)
+}
+
+// simulation-only
 func (rep *AuctionRep) TotalResources() auctiontypes.Resources {
 	totalResources, _ := rep.delegate.TotalResources()
 	return totalResources
 }
 
+// simulation-only
+// must lock here; the publicly visible operations should be atomic
 func (rep *AuctionRep) Reset() {
 	rep.lock.Lock()
 	defer rep.lock.Unlock()
 
-	simDelegate, ok := rep.delegate.(SimulationAuctionRepDelegate)
+	simDelegate, ok := rep.delegate.(auctiontypes.SimulationAuctionRepDelegate)
 	if !ok {
 		println("not reseting")
 		return
 	}
-	simDelegate.SetLRPAuctionInfos([]auctiontypes.LRPAuctionInfo{})
+	simDelegate.SetSimulatedInstances([]auctiontypes.SimulatedInstance{})
 }
 
-func (rep *AuctionRep) SetLRPAuctionInfos(instances []auctiontypes.LRPAuctionInfo) {
+// simulation-only
+// must lock here; the publicly visible operations should be atomic
+func (rep *AuctionRep) SetSimulatedInstances(instances []auctiontypes.SimulatedInstance) {
 	rep.lock.Lock()
 	defer rep.lock.Unlock()
 
-	simDelegate, ok := rep.delegate.(SimulationAuctionRepDelegate)
+	simDelegate, ok := rep.delegate.(auctiontypes.SimulationAuctionRepDelegate)
 	if !ok {
 		println("not setting instances")
 		return
 	}
-	simDelegate.SetLRPAuctionInfos(instances)
+	simDelegate.SetSimulatedInstances(instances)
 }
 
-func (rep *AuctionRep) LRPAuctionInfos() []auctiontypes.LRPAuctionInfo {
+// simulation-only
+// must lock here; the publicly visible operations should be atomic
+func (rep *AuctionRep) SimulatedInstances() []auctiontypes.SimulatedInstance {
 	rep.lock.Lock()
 	defer rep.lock.Unlock()
 
-	simDelegate, ok := rep.delegate.(SimulationAuctionRepDelegate)
+	simDelegate, ok := rep.delegate.(auctiontypes.SimulationAuctionRepDelegate)
 	if !ok {
 		println("not fetching instances")
-		return []auctiontypes.LRPAuctionInfo{}
+		return []auctiontypes.SimulatedInstance{}
 	}
-	return simDelegate.LRPAuctionInfos()
+	return simDelegate.SimulatedInstances()
 }
 
-// internals -- no locks here the operations above should be atomic
+// private internals -- no locks here
+func (rep *AuctionRep) repInstanceScoreInfo(processGuid string) (StartInstanceScoreInfo, error) {
+	remaining, err := rep.delegate.RemainingResources()
+	if err != nil {
+		return StartInstanceScoreInfo{}, err
+	}
 
-func (rep *AuctionRep) hasRoomFor(instance auctiontypes.LRPAuctionInfo, remaining auctiontypes.Resources) bool {
-	hasEnoughMemory := remaining.MemoryMB >= instance.MemoryMB
-	hasEnoughDisk := remaining.DiskMB >= instance.DiskMB
+	total, err := rep.delegate.TotalResources()
+	if err != nil {
+		return StartInstanceScoreInfo{}, err
+	}
+
+	nInstances, err := rep.delegate.NumInstancesForProcessGuid(processGuid)
+	if err != nil {
+		return StartInstanceScoreInfo{}, err
+	}
+
+	return StartInstanceScoreInfo{
+		RemainingResources:         remaining,
+		TotalResources:             total,
+		NumInstancesForProcessGuid: nInstances,
+	}, nil
+}
+
+// private internals -- no locks here
+func (rep *AuctionRep) repStopIndexScoreInfo(stopAuctionInfo auctiontypes.StopAuctionInfo) (StopIndexScoreInfo, error) {
+	instanceScoreInfo, err := rep.repInstanceScoreInfo(stopAuctionInfo.ProcessGuid)
+	if err != nil {
+		return StopIndexScoreInfo{}, err
+	}
+
+	instanceGuids, err := rep.delegate.InstanceGuidsForProcessGuidAndIndex(stopAuctionInfo.ProcessGuid, stopAuctionInfo.Index)
+	if err != nil {
+		return StopIndexScoreInfo{}, err
+	}
+
+	return StopIndexScoreInfo{
+		InstanceScoreInfo:            instanceScoreInfo,
+		InstanceGuidsForProcessIndex: instanceGuids,
+	}, nil
+}
+
+// private internals -- no locks here
+func (rep *AuctionRep) satisfiesConstraints(startAuctionInfo auctiontypes.StartAuctionInfo, repInstanceScoreInfo StartInstanceScoreInfo) error {
+	remaining := repInstanceScoreInfo.RemainingResources
+	hasEnoughMemory := remaining.MemoryMB >= startAuctionInfo.MemoryMB
+	hasEnoughDisk := remaining.DiskMB >= startAuctionInfo.DiskMB
 	hasEnoughContainers := remaining.Containers > 0
 
-	return hasEnoughMemory && hasEnoughDisk && hasEnoughContainers
+	if hasEnoughMemory && hasEnoughDisk && hasEnoughContainers {
+		return nil
+	} else {
+		return auctiontypes.InsufficientResources
+	}
 }
 
-func (rep *AuctionRep) score(remaining auctiontypes.Resources, total auctiontypes.Resources, nInstances int) float64 {
-	fMemory := 1.0 - float64(remaining.MemoryMB)/float64(total.MemoryMB)
-	fDisk := 1.0 - float64(remaining.DiskMB)/float64(total.DiskMB)
-	fContainers := 1.0 - float64(remaining.Containers)/float64(total.Containers)
-	fResources := (fMemory + fDisk + fContainers) / 3.0
+func (rep *AuctionRep) isRunningProcessIndex(repStopIndexScoreInfo StopIndexScoreInfo) error {
+	if len(repStopIndexScoreInfo.InstanceGuidsForProcessIndex) == 0 {
+		return errors.New("not-running-instance")
+	}
+	return nil
+}
 
-	return fResources + float64(nInstances)
+// private internals -- no locks here
+func (rep *AuctionRep) startAuctionBid(repInstanceScoreInfo StartInstanceScoreInfo) float64 {
+	remaining := repInstanceScoreInfo.RemainingResources
+	total := repInstanceScoreInfo.TotalResources
+
+	fractionUsedContainers := 1.0 - float64(remaining.Containers)/float64(total.Containers)
+	fractionUsedDisk := 1.0 - float64(remaining.DiskMB)/float64(total.DiskMB)
+	fractionUsedMemory := 1.0 - float64(remaining.MemoryMB)/float64(total.MemoryMB)
+
+	return ((fractionUsedContainers + fractionUsedDisk + fractionUsedMemory) / 3.0) + float64(repInstanceScoreInfo.NumInstancesForProcessGuid)
 }

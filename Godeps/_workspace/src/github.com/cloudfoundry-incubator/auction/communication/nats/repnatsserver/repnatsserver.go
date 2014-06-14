@@ -7,6 +7,7 @@ import (
 	"github.com/cloudfoundry-incubator/auction/auctionrep"
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/auction/communication/nats"
+	"github.com/cloudfoundry-incubator/auction/communication/nats/natsmuxer"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/yagnats"
@@ -16,27 +17,27 @@ var errorResponse = []byte("error")
 var successResponse = []byte("ok")
 
 type RepNatsServer struct {
-	guid   string
-	rep    *auctionrep.AuctionRep
-	client yagnats.NATSClient
-	logger *gosteno.Logger
+	repGuid string
+	rep     *auctionrep.AuctionRep
+	client  yagnats.NATSClient
+	logger  *gosteno.Logger
 }
 
 func New(client yagnats.NATSClient, rep *auctionrep.AuctionRep, logger *gosteno.Logger) *RepNatsServer {
 	return &RepNatsServer{
-		guid:   rep.Guid(),
-		rep:    rep,
-		client: client,
-		logger: logger,
+		repGuid: rep.Guid(),
+		rep:     rep,
+		client:  client,
+		logger:  logger,
 	}
 }
 
 func (s *RepNatsServer) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error {
-	subjects := nats.NewSubjects(s.guid)
+	subjects := nats.NewSubjects(s.repGuid)
 
 	s.start(subjects)
 	s.logger.Infod(map[string]interface{}{
-		"guid": s.guid,
+		"rep-guid": s.repGuid,
 	}, "rep-nats-server.listening")
 	close(ready)
 
@@ -46,152 +47,188 @@ func (s *RepNatsServer) Run(sigChan <-chan os.Signal, ready chan<- struct{}) err
 }
 
 func (s *RepNatsServer) start(subjects nats.Subjects) {
-	s.client.Subscribe(subjects.TotalResources, func(msg *yagnats.Message) {
+	natsmuxer.HandleMuxedNATSRequest(s.client, subjects.TotalResources, func(payload []byte) []byte {
 		s.logger.Infod(map[string]interface{}{
-			"guid": s.guid,
+			"rep-guid": s.repGuid,
 		}, "rep-nats-server.total-resources.handling")
-		jresources, _ := json.Marshal(s.rep.TotalResources())
-		s.client.Publish(msg.ReplyTo, jresources)
+
+		out, _ := json.Marshal(s.rep.TotalResources())
+		return out
 	})
 
-	s.client.Subscribe(subjects.Score, func(msg *yagnats.Message) {
+	natsmuxer.HandleMuxedNATSRequest(s.client, subjects.BidForStartAuction, func(payload []byte) []byte {
 		s.logger.Infod(map[string]interface{}{
-			"guid": s.guid,
-		}, "rep-nats-server.score.handling")
-		var inst auctiontypes.LRPAuctionInfo
+			"rep-guid": s.repGuid,
+		}, "rep-nats-server.bid.handling")
+		var inst auctiontypes.StartAuctionInfo
 
-		err := json.Unmarshal(msg.Payload, &inst)
+		err := json.Unmarshal(payload, &inst)
 		if err != nil {
 			s.logger.Errord(map[string]interface{}{
-				"error": err.Error(),
-				"guid":  s.guid,
-			}, "rep-nats-server.score.failed-to-unmarshal-auction-info")
-			return
+				"error":    err.Error(),
+				"rep-guid": s.repGuid,
+			}, "rep-nats-server.bid.failed-to-unmarshal-auction-info")
+			return errorResponse
 		}
 
-		response := auctiontypes.ScoreResult{
-			Rep: s.guid,
+		response := auctiontypes.StartAuctionBid{
+			Rep: s.repGuid,
 		}
 
-		defer func() {
-			payload, _ := json.Marshal(response)
-			s.client.Publish(msg.ReplyTo, payload)
-		}()
-
-		score, err := s.rep.Score(inst)
+		bid, err := s.rep.BidForStartAuction(inst)
 		if err != nil {
 			response.Error = err.Error()
-			return
+		} else {
+			response.Bid = bid
 		}
 
-		response.Score = score
+		out, _ := json.Marshal(response)
+		return out
 	})
 
-	s.client.Subscribe(subjects.ScoreThenTentativelyReserve, func(msg *yagnats.Message) {
+	natsmuxer.HandleMuxedNATSRequest(s.client, subjects.BidForStopAuction, func(payload []byte) []byte {
 		s.logger.Infod(map[string]interface{}{
-			"guid": s.guid,
-		}, "rep-nats-server.score-then-tentatively-reserve.handling")
-		var inst auctiontypes.LRPAuctionInfo
+			"rep-guid": s.repGuid,
+		}, "rep-nats-server.stop-bid.handling")
+		var stopAuctionInfo auctiontypes.StopAuctionInfo
 
-		err := json.Unmarshal(msg.Payload, &inst)
+		err := json.Unmarshal(payload, &stopAuctionInfo)
 		if err != nil {
 			s.logger.Errord(map[string]interface{}{
-				"error": err.Error(),
-				"guid":  s.guid,
-			}, "rep-nats-server.score-then-tentatively-reserve.failed-to-unmarshal-auction-info")
-			return
+				"error":    err.Error(),
+				"rep-guid": s.repGuid,
+			}, "rep-nats-server.stop-bid.failed-to-unmarshal-auction-info")
+			return errorResponse
 		}
 
-		response := auctiontypes.ScoreResult{
-			Rep: s.guid,
+		response := auctiontypes.StopAuctionBid{
+			Rep: s.repGuid,
 		}
 
-		defer func() {
-			payload, _ := json.Marshal(response)
-			s.client.Publish(msg.ReplyTo, payload)
-		}()
-
-		score, err := s.rep.ScoreThenTentativelyReserve(inst)
+		bid, instanceGuids, err := s.rep.BidForStopAuction(stopAuctionInfo)
 		if err != nil {
 			response.Error = err.Error()
-			return
+		} else {
+			response.Bid = bid
+			response.InstanceGuids = instanceGuids
 		}
 
-		response.Score = score
+		out, _ := json.Marshal(response)
+		return out
 	})
 
-	s.client.Subscribe(subjects.ReleaseReservation, func(msg *yagnats.Message) {
+	natsmuxer.HandleMuxedNATSRequest(s.client, subjects.RebidThenTentativelyReserve, func(payload []byte) []byte {
 		s.logger.Infod(map[string]interface{}{
-			"guid": s.guid,
+			"rep-guid": s.repGuid,
+		}, "rep-nats-server.bid-then-tentatively-reserve.handling")
+		var inst auctiontypes.StartAuctionInfo
+
+		err := json.Unmarshal(payload, &inst)
+		if err != nil {
+			s.logger.Errord(map[string]interface{}{
+				"error":    err.Error(),
+				"rep-guid": s.repGuid,
+			}, "rep-nats-server.bid-then-tentatively-reserve.failed-to-unmarshal-auction-info")
+			return errorResponse
+		}
+
+		response := auctiontypes.StartAuctionBid{
+			Rep: s.repGuid,
+		}
+
+		bid, err := s.rep.RebidThenTentativelyReserve(inst)
+		if err != nil {
+			response.Error = err.Error()
+		} else {
+			response.Bid = bid
+		}
+
+		out, _ := json.Marshal(response)
+		return out
+	})
+
+	natsmuxer.HandleMuxedNATSRequest(s.client, subjects.ReleaseReservation, func(payload []byte) []byte {
+		s.logger.Infod(map[string]interface{}{
+			"rep-guid": s.repGuid,
 		}, "rep-nats-server.release-reservation.handling")
-		var inst auctiontypes.LRPAuctionInfo
+		var inst auctiontypes.StartAuctionInfo
 
-		responsePayload := errorResponse
-		defer func() {
-			s.client.Publish(msg.ReplyTo, responsePayload)
-		}()
-
-		err := json.Unmarshal(msg.Payload, &inst)
+		err := json.Unmarshal(payload, &inst)
 		if err != nil {
 			s.logger.Errord(map[string]interface{}{
-				"error": err.Error(),
-				"guid":  s.guid,
+				"error":    err.Error(),
+				"rep-guid": s.repGuid,
 			}, "rep-nats-server.release-reservation.failed-to-unmarshal-auction-info")
-			return
+			return errorResponse
 		}
 
 		s.rep.ReleaseReservation(inst) //need to handle error
 
-		responsePayload = successResponse
+		return successResponse
 	})
 
-	s.client.Subscribe(subjects.Run, func(msg *yagnats.Message) {
+	natsmuxer.HandleMuxedNATSRequest(s.client, subjects.Run, func(payload []byte) []byte {
 		s.logger.Infod(map[string]interface{}{
-			"guid": s.guid,
+			"rep-guid": s.repGuid,
 		}, "rep-nats-server.run.handling")
 		var inst models.LRPStartAuction
 
-		responsePayload := errorResponse
-		defer func() {
-			s.client.Publish(msg.ReplyTo, responsePayload)
-		}()
-
-		err := json.Unmarshal(msg.Payload, &inst)
+		err := json.Unmarshal(payload, &inst)
 		if err != nil {
 			s.logger.Errord(map[string]interface{}{
-				"error": err.Error(),
-				"guid":  s.guid,
+				"error":    err.Error(),
+				"rep-guid": s.repGuid,
 			}, "rep-nats-server.run.failed-to-unmarshal-auction-info")
-			return
+			return errorResponse
 		}
 
 		s.rep.Run(inst) //need to handle error
 
-		responsePayload = successResponse
+		return successResponse
+	})
+
+	natsmuxer.HandleMuxedNATSRequest(s.client, subjects.Stop, func(payload []byte) []byte {
+		s.logger.Infod(map[string]interface{}{
+			"rep-guid": s.repGuid,
+		}, "rep-nats-server.stop.handling")
+		var stopInstance models.StopLRPInstance
+
+		err := json.Unmarshal(payload, &stopInstance)
+		if err != nil {
+			s.logger.Errord(map[string]interface{}{
+				"error":    err.Error(),
+				"rep-guid": s.repGuid,
+			}, "rep-nats-server.stop.failed-to-unmarshal-auction-info")
+			return errorResponse
+		}
+
+		s.rep.Stop(stopInstance) //need to handle error
+
+		return successResponse
 	})
 
 	//simulation only
 
-	s.client.Subscribe(subjects.Reset, func(msg *yagnats.Message) {
+	natsmuxer.HandleMuxedNATSRequest(s.client, subjects.Reset, func(payload []byte) []byte {
 		s.rep.Reset()
-		s.client.Publish(msg.ReplyTo, successResponse)
+		return successResponse
 	})
 
-	s.client.Subscribe(subjects.SetLrpAuctionInfos, func(msg *yagnats.Message) {
-		var instances []auctiontypes.LRPAuctionInfo
+	natsmuxer.HandleMuxedNATSRequest(s.client, subjects.SetSimulatedInstances, func(payload []byte) []byte {
+		var instances []auctiontypes.SimulatedInstance
 
-		err := json.Unmarshal(msg.Payload, &instances)
+		err := json.Unmarshal(payload, &instances)
 		if err != nil {
-			s.client.Publish(msg.ReplyTo, errorResponse)
+			return errorResponse
 		}
 
-		s.rep.SetLRPAuctionInfos(instances)
-		s.client.Publish(msg.ReplyTo, successResponse)
+		s.rep.SetSimulatedInstances(instances)
+		return successResponse
 	})
 
-	s.client.Subscribe(subjects.LrpAuctionInfos, func(msg *yagnats.Message) {
-		jinstances, _ := json.Marshal(s.rep.LRPAuctionInfos())
-		s.client.Publish(msg.ReplyTo, jinstances)
+	natsmuxer.HandleMuxedNATSRequest(s.client, subjects.SimulatedInstances, func(payload []byte) []byte {
+		jinstances, _ := json.Marshal(s.rep.SimulatedInstances())
+		return jinstances
 	})
 }
 

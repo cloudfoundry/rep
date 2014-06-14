@@ -3,11 +3,11 @@ package auction_delegate_test
 import (
 	"errors"
 
-	"github.com/cloudfoundry-incubator/auction/auctionrep"
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/executor/client/fake_client"
 	. "github.com/cloudfoundry-incubator/rep/auction_delegate"
+	"github.com/cloudfoundry-incubator/rep/lrp_stopper/fake_lrp_stopper"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	steno "github.com/cloudfoundry/gosteno"
@@ -17,15 +17,17 @@ import (
 )
 
 var _ = Describe("AuctionDelegate", func() {
-	var delegate auctionrep.AuctionRepDelegate
+	var delegate auctiontypes.AuctionRepDelegate
 	var client *fake_client.FakeClient
 	var clientFetchError error
 	var bbs *fake_bbs.FakeRepBBS
+	var stopper *fake_lrp_stopper.FakeLRPStopper
 
 	BeforeEach(func() {
+		stopper = &fake_lrp_stopper.FakeLRPStopper{}
 		client = fake_client.New()
 		bbs = fake_bbs.NewFakeRepBBS()
-		delegate = New(bbs, client, steno.NewLogger("test"))
+		delegate = New(stopper, bbs, client, steno.NewLogger("test"))
 		clientFetchError = errors.New("Failed to fetch")
 	})
 
@@ -103,7 +105,7 @@ var _ = Describe("AuctionDelegate", func() {
 		})
 	})
 
-	Describe("NumInstancesForAppGuid", func() {
+	Describe("NumInstancesForProcessGuid", func() {
 		Context("when the client returns a succesful response", func() {
 			BeforeEach(func() {
 				client.WhenListingContainers = func() ([]api.Container, error) {
@@ -112,18 +114,21 @@ var _ = Describe("AuctionDelegate", func() {
 							Guid: "first",
 							Metadata: map[string]string{
 								ProcessGuidMetadataKey: "the-first-app-guid",
+								IndexMetadataKey:       "17",
 							},
 						},
 						api.Container{
 							Guid: "second",
 							Metadata: map[string]string{
 								ProcessGuidMetadataKey: "the-second-app-guid",
+								IndexMetadataKey:       "14",
 							},
 						},
 						api.Container{
 							Guid: "third",
 							Metadata: map[string]string{
 								ProcessGuidMetadataKey: "the-first-app-guid",
+								IndexMetadataKey:       "92",
 							},
 						},
 					}, nil
@@ -131,18 +136,18 @@ var _ = Describe("AuctionDelegate", func() {
 			})
 
 			It("Should use the client to get the resources", func() {
-				instances, err := delegate.NumInstancesForAppGuid("the-first-app-guid")
+				instances, err := delegate.NumInstancesForProcessGuid("the-first-app-guid")
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(instances).Should(Equal(2))
 
-				instances, err = delegate.NumInstancesForAppGuid("the-second-app-guid")
+				instances, err = delegate.NumInstancesForProcessGuid("the-second-app-guid")
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(instances).Should(Equal(1))
 			})
 
 			Context("when there are no matching app guids", func() {
 				It("should return 0", func() {
-					instances, err := delegate.NumInstancesForAppGuid("nope")
+					instances, err := delegate.NumInstancesForProcessGuid("nope")
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(instances).Should(Equal(0))
 				})
@@ -157,25 +162,103 @@ var _ = Describe("AuctionDelegate", func() {
 			})
 
 			It("should return the error", func() {
-				_, err := delegate.NumInstancesForAppGuid("foo")
+				_, err := delegate.NumInstancesForProcessGuid("foo")
 				Ω(err).Should(Equal(clientFetchError))
 			})
 		})
 	})
 
+	Describe("InstanceGuidsForProcessGuidAndIndex", func() {
+		Context("when the client returns a succesful response", func() {
+			BeforeEach(func() {
+				client.WhenListingContainers = func() ([]api.Container, error) {
+					return []api.Container{
+						api.Container{
+							Guid: "first",
+							Metadata: map[string]string{
+								ProcessGuidMetadataKey: "requested-app-guid",
+								IndexMetadataKey:       "17",
+							},
+						},
+						api.Container{
+							Guid: "second",
+							Metadata: map[string]string{
+								ProcessGuidMetadataKey: "requested-app-guid",
+								IndexMetadataKey:       "17",
+							},
+						},
+						api.Container{
+							Guid: "third",
+							Metadata: map[string]string{
+								ProcessGuidMetadataKey: "requested-app-guid",
+								IndexMetadataKey:       "18",
+							},
+						},
+						api.Container{
+							Guid: "fourth",
+							Metadata: map[string]string{
+								ProcessGuidMetadataKey: "other-app-guid",
+								IndexMetadataKey:       "17",
+							},
+						},
+					}, nil
+				}
+			})
+
+			It("should return the instance guids", func() {
+				instanceGuids, err := delegate.InstanceGuidsForProcessGuidAndIndex("requested-app-guid", 17)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(instanceGuids).Should(HaveLen(2))
+				Ω(instanceGuids).Should(ContainElement("first"))
+				Ω(instanceGuids).Should(ContainElement("second"))
+			})
+
+			Context("when there are no matching app guids", func() {
+				It("should return empty", func() {
+					instanceGuids, err := delegate.InstanceGuidsForProcessGuidAndIndex("nope", 17)
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(instanceGuids).Should(BeEmpty())
+				})
+			})
+
+			Context("when there are no matching indexes", func() {
+				It("should return empty", func() {
+					instanceGuids, err := delegate.InstanceGuidsForProcessGuidAndIndex("requested-app-guid", 19)
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(instanceGuids).Should(BeEmpty())
+				})
+			})
+		})
+
+		Context("when the client returns an error", func() {
+			BeforeEach(func() {
+				client.WhenListingContainers = func() ([]api.Container, error) {
+					return []api.Container{}, clientFetchError
+				}
+			})
+
+			It("should return the error", func() {
+				instanceGuids, err := delegate.InstanceGuidsForProcessGuidAndIndex("requested-app-guid", 17)
+				Ω(err).Should(Equal(clientFetchError))
+				Ω(instanceGuids).Should(BeEmpty())
+			})
+		})
+	})
+
 	Describe("Reserve", func() {
-		var auctionInfo auctiontypes.LRPAuctionInfo
+		var auctionInfo auctiontypes.StartAuctionInfo
 		var allocationCalled bool
 
 		Context("when the client returns a succesful response", func() {
 
 			BeforeEach(func() {
 				allocationCalled = false
-				auctionInfo = auctiontypes.LRPAuctionInfo{
-					AppGuid:      "app-guid",
+				auctionInfo = auctiontypes.StartAuctionInfo{
+					ProcessGuid:  "process-guid",
 					InstanceGuid: "instance-guid",
 					DiskMB:       1024,
 					MemoryMB:     2048,
+					Index:        17,
 				}
 
 				client.WhenAllocatingContainer = func(allocationGuid string, req api.ContainerAllocationRequest) (api.Container, error) {
@@ -184,7 +267,7 @@ var _ = Describe("AuctionDelegate", func() {
 					Ω(req).Should(Equal(api.ContainerAllocationRequest{
 						MemoryMB: auctionInfo.MemoryMB,
 						DiskMB:   auctionInfo.DiskMB,
-						Metadata: map[string]string{ProcessGuidMetadataKey: auctionInfo.AppGuid},
+						Metadata: map[string]string{ProcessGuidMetadataKey: auctionInfo.ProcessGuid, IndexMetadataKey: "17"},
 					}))
 					return api.Container{}, nil
 				}
@@ -213,17 +296,18 @@ var _ = Describe("AuctionDelegate", func() {
 	})
 
 	Describe("ReleaseReservation", func() {
-		var auctionInfo auctiontypes.LRPAuctionInfo
+		var auctionInfo auctiontypes.StartAuctionInfo
 		var releaseCalled bool
 
 		Context("when the client returns a succesful response", func() {
 			BeforeEach(func() {
 				releaseCalled = false
-				auctionInfo = auctiontypes.LRPAuctionInfo{
-					AppGuid:      "app-guid",
+				auctionInfo = auctiontypes.StartAuctionInfo{
+					ProcessGuid:  "process-guid",
 					InstanceGuid: "instance-guid",
 					DiskMB:       1024,
 					MemoryMB:     2048,
+					Index:        17,
 				}
 
 				client.WhenDeletingContainer = func(allocationGuid string) error {
@@ -265,7 +349,7 @@ var _ = Describe("AuctionDelegate", func() {
 			calledInitialize, calledRun, deleteCalled = false, false, false
 
 			startAuction = models.LRPStartAuction{
-				ProcessGuid:  "app-guid",
+				ProcessGuid:  "process-guid",
 				InstanceGuid: "instance-guid",
 				Actions: []models.ExecutorAction{
 					{
@@ -407,6 +491,19 @@ var _ = Describe("AuctionDelegate", func() {
 				delegate.Run(startAuction)
 				Ω(deleteCalled).Should(BeTrue())
 			})
+		})
+	})
+
+	Describe("Stop", func() {
+		It("should instruct the LRPStopper to stop", func() {
+			stopInstance := models.StopLRPInstance{
+				ProcessGuid:  "some-process-guid",
+				InstanceGuid: "some-instance-guid",
+				Index:        2,
+			}
+
+			delegate.Stop(stopInstance)
+			Ω(stopper.StopInstanceArgsForCall(0)).Should(Equal(stopInstance))
 		})
 	})
 })

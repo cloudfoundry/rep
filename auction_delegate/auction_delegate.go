@@ -1,27 +1,33 @@
 package auction_delegate
 
 import (
+	"strconv"
+
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/executor/client"
+	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	steno "github.com/cloudfoundry/gosteno"
 )
 
 const ProcessGuidMetadataKey = "process-guid"
+const IndexMetadataKey = "index"
 
 type AuctionDelegate struct {
-	bbs    Bbs.RepBBS
-	client client.Client
-	logger *steno.Logger
+	lrpStopper lrp_stopper.LRPStopper
+	bbs        Bbs.RepBBS
+	client     client.Client
+	logger     *steno.Logger
 }
 
-func New(bbs Bbs.RepBBS, client client.Client, logger *steno.Logger) *AuctionDelegate {
+func New(lrpStopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, client client.Client, logger *steno.Logger) *AuctionDelegate {
 	return &AuctionDelegate{
-		bbs:    bbs,
-		client: client,
-		logger: logger,
+		lrpStopper: lrpStopper,
+		bbs:        bbs,
+		client:     client,
+		logger:     logger,
 	}
 }
 
@@ -45,7 +51,7 @@ func (a *AuctionDelegate) TotalResources() (auctiontypes.Resources, error) {
 	return resources, err
 }
 
-func (a *AuctionDelegate) NumInstancesForAppGuid(guid string) (int, error) {
+func (a *AuctionDelegate) NumInstancesForProcessGuid(processGuid string) (int, error) {
 	containers, err := a.client.ListContainers()
 	if err != nil {
 		a.logger.Errord(map[string]interface{}{
@@ -56,23 +62,43 @@ func (a *AuctionDelegate) NumInstancesForAppGuid(guid string) (int, error) {
 
 	count := 0
 	for _, container := range containers {
-		if container.Metadata[ProcessGuidMetadataKey] == guid {
+		if container.Metadata[ProcessGuidMetadataKey] == processGuid {
 			count++
 		}
 	}
 	return count, nil
 }
 
-func (a *AuctionDelegate) Reserve(instance auctiontypes.LRPAuctionInfo) error {
+func (a *AuctionDelegate) InstanceGuidsForProcessGuidAndIndex(processGuid string, index int) ([]string, error) {
+	containers, err := a.client.ListContainers()
+	if err != nil {
+		a.logger.Errord(map[string]interface{}{
+			"error": err.Error(),
+		}, "auction-delegate.list-containers.failed")
+		return []string{}, err
+	}
+
+	indexAsString := strconv.Itoa(index)
+	instanceGuids := []string{}
+	for _, container := range containers {
+		if container.Metadata[ProcessGuidMetadataKey] == processGuid && container.Metadata[IndexMetadataKey] == indexAsString {
+			instanceGuids = append(instanceGuids, container.Guid)
+		}
+	}
+	return instanceGuids, nil
+}
+
+func (a *AuctionDelegate) Reserve(auctionInfo auctiontypes.StartAuctionInfo) error {
 	a.logger.Debugd(map[string]interface{}{
-		"instance": instance,
+		"auction-info": auctionInfo,
 	}, "auction-delegate.reserve")
 
-	_, err := a.client.AllocateContainer(instance.InstanceGuid, api.ContainerAllocationRequest{
-		MemoryMB: instance.MemoryMB,
-		DiskMB:   instance.DiskMB,
+	_, err := a.client.AllocateContainer(auctionInfo.InstanceGuid, api.ContainerAllocationRequest{
+		MemoryMB: auctionInfo.MemoryMB,
+		DiskMB:   auctionInfo.DiskMB,
 		Metadata: map[string]string{
-			ProcessGuidMetadataKey: instance.AppGuid,
+			ProcessGuidMetadataKey: auctionInfo.ProcessGuid,
+			IndexMetadataKey:       strconv.Itoa(auctionInfo.Index),
 		},
 	})
 	if err != nil {
@@ -83,8 +109,8 @@ func (a *AuctionDelegate) Reserve(instance auctiontypes.LRPAuctionInfo) error {
 	return err
 }
 
-func (a *AuctionDelegate) ReleaseReservation(instance auctiontypes.LRPAuctionInfo) error {
-	err := a.client.DeleteContainer(instance.InstanceGuid)
+func (a *AuctionDelegate) ReleaseReservation(auctionInfo auctiontypes.StartAuctionInfo) error {
+	err := a.client.DeleteContainer(auctionInfo.InstanceGuid)
 	if err != nil {
 		a.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
@@ -93,27 +119,27 @@ func (a *AuctionDelegate) ReleaseReservation(instance auctiontypes.LRPAuctionInf
 	return err
 }
 
-func (a *AuctionDelegate) Run(instance models.LRPStartAuction) error {
+func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 	a.logger.Infod(map[string]interface{}{
-		"instance": instance,
+		"start-auction": startAuction,
 	}, "auction-delegate.run")
 
-	container, err := a.client.InitializeContainer(instance.InstanceGuid, api.ContainerInitializationRequest{
-		Ports: a.convertPortMappings(instance.Ports),
-		Log:   instance.Log,
+	container, err := a.client.InitializeContainer(startAuction.InstanceGuid, api.ContainerInitializationRequest{
+		Ports: a.convertPortMappings(startAuction.Ports),
+		Log:   startAuction.Log,
 	})
 	if err != nil {
 		a.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
 		}, "auction-delegate.initialize-container-request.failed")
-		a.client.DeleteContainer(instance.InstanceGuid)
+		a.client.DeleteContainer(startAuction.InstanceGuid)
 		return err
 	}
 
 	lrp := models.ActualLRP{
-		ProcessGuid:  instance.ProcessGuid,
-		InstanceGuid: instance.InstanceGuid,
-		Index:        instance.Index,
+		ProcessGuid:  startAuction.ProcessGuid,
+		InstanceGuid: startAuction.InstanceGuid,
+		Index:        startAuction.Index,
 	}
 	err = a.bbs.ReportActualLRPAsStarting(lrp, container.ExecutorGuid)
 
@@ -121,23 +147,31 @@ func (a *AuctionDelegate) Run(instance models.LRPStartAuction) error {
 		a.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
 		}, "auction-delegate.mark-starting.failed")
-		a.client.DeleteContainer(instance.InstanceGuid)
+		a.client.DeleteContainer(startAuction.InstanceGuid)
 		return err
 	}
 
-	err = a.client.Run(instance.InstanceGuid, api.ContainerRunRequest{
-		Actions: instance.Actions,
+	err = a.client.Run(startAuction.InstanceGuid, api.ContainerRunRequest{
+		Actions: startAuction.Actions,
 	})
 	if err != nil {
 		a.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
 		}, "auction-delegate.run-actions.failed")
-		a.client.DeleteContainer(instance.InstanceGuid)
+		a.client.DeleteContainer(startAuction.InstanceGuid)
 		a.bbs.RemoveActualLRP(lrp)
 		return err
 	}
 
 	return nil
+}
+
+func (a *AuctionDelegate) Stop(stopInstance models.StopLRPInstance) error {
+	a.logger.Infod(map[string]interface{}{
+		"stop-instance": stopInstance,
+	}, "auction-delegate.stop")
+
+	return a.lrpStopper.StopInstance(stopInstance)
 }
 
 func (a *AuctionDelegate) convertPortMappings(portMappings []models.PortMapping) []api.PortMapping {

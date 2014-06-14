@@ -8,245 +8,289 @@ import (
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/auction/communication/nats"
-	"github.com/cloudfoundry-incubator/auction/util"
+	"github.com/cloudfoundry-incubator/auction/communication/nats/natsmuxer"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/yagnats"
 )
 
-var TimeoutError = errors.New("timeout")
 var RequestFailedError = errors.New("request failed")
 
 type RepNatsClient struct {
-	client     yagnats.NATSClient
+	client     *natsmuxer.NATSMuxerClient
 	timeout    time.Duration
 	runTimeout time.Duration
 	logger     *gosteno.Logger
 }
 
-func New(client yagnats.NATSClient, timeout time.Duration, runTimeout time.Duration, logger *gosteno.Logger) *RepNatsClient {
+func New(natsClient yagnats.NATSClient, timeout time.Duration, runTimeout time.Duration, logger *gosteno.Logger) (*RepNatsClient, error) {
+	client := natsmuxer.NewNATSMuxerClient(natsClient)
+	err := client.ListenForResponses()
+	if err != nil {
+		return nil, err
+	}
+
 	return &RepNatsClient{
 		client:     client,
 		timeout:    timeout,
 		runTimeout: runTimeout,
 		logger:     logger,
-	}
+	}, nil
 }
 
-func (rep *RepNatsClient) Score(guids []string, instance auctiontypes.LRPAuctionInfo) auctiontypes.ScoreResults {
+func (rep *RepNatsClient) BidForStartAuction(repGuids []string, startAuctionInfo auctiontypes.StartAuctionInfo) auctiontypes.StartAuctionBids {
 	rep.logger.Infod(map[string]interface{}{
-		"auction-info":  instance,
-		"num-rep-guids": len(guids),
-	}, "rep-nats-client.score.fetching")
+		"start-auction-info": startAuctionInfo,
+		"num-rep-guids":      len(repGuids),
+	}, "rep-nats-client.start-bid.fetching")
 
-	replyTo := util.RandomGuid()
+	subjects := []string{}
+	for _, repGuid := range repGuids {
+		subjects = append(subjects, nats.NewSubjects(repGuid).BidForStartAuction)
+	}
+	payload, _ := json.Marshal(startAuctionInfo)
 
-	allReceived := new(sync.WaitGroup)
-	allReceived.Add(len(guids))
-	responses := make(chan auctiontypes.ScoreResult, len(guids))
+	responses, _ := rep.aggregateWithTimeout(subjects, payload, rep.timeout)
 
-	n := 0
-	subscriptionID, err := rep.client.Subscribe(replyTo, func(msg *yagnats.Message) {
-		n++
-		defer allReceived.Done()
-		var result auctiontypes.ScoreResult
-		err := json.Unmarshal(msg.Payload, &result)
+	results := auctiontypes.StartAuctionBids{}
+	for _, response := range responses {
+		bid := auctiontypes.StartAuctionBid{}
+		err := json.Unmarshal(response, &bid)
 		if err != nil {
 			rep.logger.Infod(map[string]interface{}{
-				"unparseable-message": msg.Payload,
-				"error":               err.Error(),
-			}, "rep-nats-client.score.failed-to-parse-message")
-			return
+				"malformed-payload": string(response),
+				"error":             err.Error(),
+			}, "rep-nats-client.start-bid.parse-failed")
+			continue
 		}
-
-		responses <- result
-	})
-
-	if err != nil {
-		rep.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "rep-nats-client.score.failed-to-fetch")
-		return auctiontypes.ScoreResults{}
-	}
-
-	defer rep.client.Unsubscribe(subscriptionID)
-
-	payload, _ := json.Marshal(instance)
-
-	for _, guid := range guids {
-		rep.client.PublishWithReplyTo(guid+".score", replyTo, payload)
-	}
-
-	done := make(chan struct{})
-	go func() {
-		allReceived.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-	case <-time.After(rep.timeout):
-		rep.logger.Info("rep-nats-client.score.did-not-receive-all-scores")
-	}
-
-	results := auctiontypes.ScoreResults{}
-
-	for {
-		select {
-		case res := <-responses:
-			results = append(results, res)
-		default:
-			return results
-		}
+		results = append(results, bid)
 	}
 
 	rep.logger.Infod(map[string]interface{}{
-		"auction-info":        instance,
-		"num-rep-guids":       len(guids),
-		"num-scores-received": len(results),
-	}, "rep-nats-client.score.fetched")
+		"start-auction-info": startAuctionInfo,
+		"num-rep-guids":      len(repGuids),
+		"num-bids-received":  len(results),
+	}, "rep-nats-client.start-bid.fetched")
 
 	return results
 }
 
-func (rep *RepNatsClient) ScoreThenTentativelyReserve(guids []string, instance auctiontypes.LRPAuctionInfo) auctiontypes.ScoreResults {
+func (rep *RepNatsClient) BidForStopAuction(repGuids []string, stopAuctionInfo auctiontypes.StopAuctionInfo) auctiontypes.StopAuctionBids {
 	rep.logger.Infod(map[string]interface{}{
-		"auction-info":  instance,
-		"num-rep-guids": len(guids),
-	}, "rep-nats-client.score-then-tentatively-reserve.starting")
+		"stop-auction-info": stopAuctionInfo,
+		"num-rep-guids":     len(repGuids),
+	}, "rep-nats-client.stop-bid.fetching")
 
-	resultChan := make(chan auctiontypes.ScoreResult, 0)
-	for _, guid := range guids {
-		go func(guid string) {
-			result := auctiontypes.ScoreResult{}
-			subjects := nats.NewSubjects(guid)
-			err := rep.publishWithTimeout(subjects.ScoreThenTentativelyReserve, instance, &result, rep.timeout)
-			if err != nil {
-				rep.logger.Infod(map[string]interface{}{
-					"error":    err.Error(),
-					"rep-guid": guid,
-				}, "rep-nats-client.score-then-tentatively-reserve.failed")
-
-				result = auctiontypes.ScoreResult{Error: err.Error()}
-				rep.publishWithTimeout(subjects.ReleaseReservation, instance, nil, rep.timeout)
-			}
-			resultChan <- result
-		}(guid)
+	subjects := []string{}
+	for _, repGuid := range repGuids {
+		subjects = append(subjects, nats.NewSubjects(repGuid).BidForStopAuction)
 	}
+	payload, _ := json.Marshal(stopAuctionInfo)
 
-	results := auctiontypes.ScoreResults{}
-	for _ = range guids {
-		results = append(results, <-resultChan)
+	responses, _ := rep.aggregateWithTimeout(subjects, payload, rep.timeout)
+
+	results := auctiontypes.StopAuctionBids{}
+	for _, response := range responses {
+		bid := auctiontypes.StopAuctionBid{}
+		err := json.Unmarshal(response, &bid)
+		if err != nil {
+			rep.logger.Infod(map[string]interface{}{
+				"malformed-payload": string(response),
+				"error":             err.Error(),
+			}, "rep-nats-client.stop-bid.parse-failed")
+			continue
+		}
+		results = append(results, bid)
 	}
 
 	rep.logger.Infod(map[string]interface{}{
-		"auction-info":        instance,
-		"num-rep-guids":       len(guids),
-		"num-scores-received": len(results),
-	}, "rep-nats-client.score-then-tentatively-reserve.done")
+		"stop-auction-info": stopAuctionInfo,
+		"num-rep-guids":     len(repGuids),
+		"num-bids-received": len(results),
+	}, "rep-nats-client.stop-bid.fetched")
 
 	return results
 }
 
-func (rep *RepNatsClient) ReleaseReservation(guids []string, instance auctiontypes.LRPAuctionInfo) {
+func (rep *RepNatsClient) RebidThenTentativelyReserve(repGuids []string, startAuctionInfo auctiontypes.StartAuctionInfo) auctiontypes.StartAuctionBids {
 	rep.logger.Infod(map[string]interface{}{
-		"auction-info":         instance,
-		"rep-guids-to-release": guids,
+		"start-auction-info": startAuctionInfo,
+		"num-rep-guids":      len(repGuids),
+	}, "rep-nats-client.bid-then-tentatively-reserve.starting")
+
+	subjects := []string{}
+	subjectToRepGuid := map[string]string{}
+	for _, repGuid := range repGuids {
+		subject := nats.NewSubjects(repGuid).RebidThenTentativelyReserve
+		subjects = append(subjects, subject)
+		subjectToRepGuid[subject] = repGuid
+	}
+	payload, _ := json.Marshal(startAuctionInfo)
+
+	responses, failedSubjects := rep.aggregateWithTimeout(subjects, payload, rep.timeout)
+
+	results := auctiontypes.StartAuctionBids{}
+	for _, response := range responses {
+		bid := auctiontypes.StartAuctionBid{}
+		err := json.Unmarshal(response, &bid)
+		if err != nil {
+			rep.logger.Infod(map[string]interface{}{
+				"malformed-payload": string(response),
+				"error":             err.Error(),
+			}, "rep-nats-client.bid-then-tentatively-reserve.parse-failed")
+			continue
+		}
+		results = append(results, bid)
+	}
+
+	if len(failedSubjects) > 0 {
+		releaseGuids := []string{}
+		for _, failedSubject := range failedSubjects {
+			releaseGuids = append(releaseGuids, subjectToRepGuid[failedSubject])
+		}
+
+		rep.ReleaseReservation(releaseGuids, startAuctionInfo)
+	}
+
+	rep.logger.Infod(map[string]interface{}{
+		"start-auction-info": startAuctionInfo,
+		"num-rep-guids":      len(repGuids),
+		"num-bids-received":  len(results),
+	}, "rep-nats-client.bid-then-tentatively-reserve.fetched")
+
+	return results
+}
+
+func (rep *RepNatsClient) ReleaseReservation(repGuids []string, startAuctionInfo auctiontypes.StartAuctionInfo) {
+	rep.logger.Infod(map[string]interface{}{
+		"start-auction-info":   startAuctionInfo,
+		"rep-guids-to-release": repGuids,
 	}, "rep-nats-client.release-reservation.starting")
 
-	allReceived := new(sync.WaitGroup)
-	allReceived.Add(len(guids))
-
-	for _, guid := range guids {
-		go func(guid string) {
-			subjects := nats.NewSubjects(guid)
-			err := rep.publishWithTimeout(subjects.ReleaseReservation, instance, nil, rep.timeout)
-			if err != nil {
-				rep.logger.Infod(map[string]interface{}{
-					"error":    err.Error(),
-					"rep-guid": guid,
-				}, "rep-nats-client.release-reservation.failed")
-			}
-			allReceived.Done()
-		}(guid)
+	subjects := []string{}
+	for _, repGuid := range repGuids {
+		subjects = append(subjects, nats.NewSubjects(repGuid).ReleaseReservation)
 	}
+	payload, _ := json.Marshal(startAuctionInfo)
 
-	allReceived.Wait()
+	rep.aggregateWithTimeout(subjects, payload, rep.timeout)
 
 	rep.logger.Infod(map[string]interface{}{
-		"auction-info":         instance,
-		"rep-guids-to-release": guids,
+		"start-auction-info":   startAuctionInfo,
+		"rep-guids-to-release": repGuids,
 	}, "rep-nats-client.release-reservation.done")
 }
 
-func (rep *RepNatsClient) Run(guid string, instance models.LRPStartAuction) {
+func (rep *RepNatsClient) Run(repGuid string, startAuction models.LRPStartAuction) {
 	rep.logger.Infod(map[string]interface{}{
-		"auction-info": instance,
-		"rep-guid":     guid,
+		"start-auction-info": startAuction,
+		"rep-guid":           repGuid,
 	}, "rep-nats-client.run.starting")
 
-	subjects := nats.NewSubjects(guid)
-	err := rep.publishWithTimeout(subjects.Run, instance, nil, rep.runTimeout)
+	subjects := nats.NewSubjects(repGuid)
+	payload, _ := json.Marshal(startAuction)
+	_, err := rep.publishWithTimeout(subjects.Run, payload, rep.runTimeout)
 
 	if err != nil {
 		rep.logger.Errord(map[string]interface{}{
-			"error":        err.Error(),
-			"auction-info": instance,
-			"rep-guid":     guid,
+			"error":              err.Error(),
+			"start-auction-info": startAuction,
+			"rep-guid":           repGuid,
 		}, "rep-nats-client.run.failed")
 	}
 
 	rep.logger.Infod(map[string]interface{}{
-		"auction-info": instance,
-		"rep-guid":     guid,
+		"start-auction-info": startAuction,
+		"rep-guid":           repGuid,
 	}, "rep-nats-client.run.done")
 }
 
-func (rep *RepNatsClient) publishWithTimeout(subject string, req interface{}, resp interface{}, timeout time.Duration) (err error) {
-	replyTo := util.RandomGuid()
-	c := make(chan []byte, 1)
+func (rep *RepNatsClient) Stop(repGuid string, stopInstance models.StopLRPInstance) {
+	rep.logger.Infod(map[string]interface{}{
+		"stop-instance": stopInstance,
+		"rep-guid":      repGuid,
+	}, "rep-nats-client.stop.starting")
 
-	subscriptionID, err := rep.client.Subscribe(replyTo, func(msg *yagnats.Message) {
-		c <- msg.Payload
-	})
+	subjects := nats.NewSubjects(repGuid)
+	payload, _ := json.Marshal(stopInstance)
+
+	_, err := rep.publishWithTimeout(subjects.Stop, payload, rep.timeout)
+
 	if err != nil {
-		return err
-	}
-	defer rep.client.Unsubscribe(subscriptionID)
-
-	payload := []byte{}
-	if req != nil {
-		payload, err = json.Marshal(req)
-		if err != nil {
-			return err
-		}
+		rep.logger.Errord(map[string]interface{}{
+			"error":         err.Error(),
+			"stop-instance": stopInstance,
+			"rep-guid":      repGuid,
+		}, "rep-nats-client.stop.failed")
 	}
 
-	rep.client.PublishWithReplyTo(subject, replyTo, payload)
+	rep.logger.Infod(map[string]interface{}{
+		"stop-instance": stopInstance,
+		"rep-guid":      repGuid,
+	}, "rep-nats-client.stop.done")
+}
 
-	select {
-	case payload := <-c:
-		if string(payload) == "error" {
-			return RequestFailedError
-		}
-
-		if resp != nil {
-			return json.Unmarshal(payload, resp)
-		}
-
-		return nil
-
-	case <-time.After(timeout):
-		return TimeoutError
+func (rep *RepNatsClient) publishWithTimeout(subject string, payload []byte, timeout time.Duration) ([]byte, error) {
+	response, err := rep.client.Request(subject, payload, timeout)
+	if err != nil {
+		return nil, err
 	}
+
+	if string(response) == "error" {
+		return nil, RequestFailedError
+	}
+
+	return response, nil
+}
+
+func (rep *RepNatsClient) aggregateWithTimeout(subjects []string, payload []byte, timeout time.Duration) ([][]byte, []string) {
+	allReceived := new(sync.WaitGroup)
+	allReceived.Add(len(subjects))
+
+	lock := &sync.Mutex{}
+	results := [][]byte{}
+	failed := []string{}
+
+	for _, subject := range subjects {
+		go func(subject string) {
+			defer allReceived.Done()
+
+			result, err := rep.publishWithTimeout(subject, payload, timeout)
+			if err != nil {
+				rep.logger.Infod(map[string]interface{}{
+					"error": err.Error(),
+				}, "rep-nats-client.request-failed")
+
+				lock.Lock()
+				failed = append(failed, subject)
+				lock.Unlock()
+
+				return
+			}
+
+			lock.Lock()
+			results = append(results, result)
+			lock.Unlock()
+		}(subject)
+	}
+
+	allReceived.Wait()
+
+	return results, failed
 }
 
 //SIMULATION ONLY METHODS:
 
-func (rep *RepNatsClient) TotalResources(guid string) auctiontypes.Resources {
+func (rep *RepNatsClient) TotalResources(repGuid string) auctiontypes.Resources {
 	var totalResources auctiontypes.Resources
-	subjects := nats.NewSubjects(guid)
-	err := rep.publishWithTimeout(subjects.TotalResources, nil, &totalResources, rep.timeout)
+	subjects := nats.NewSubjects(repGuid)
+	response, err := rep.publishWithTimeout(subjects.TotalResources, nil, rep.timeout)
+	if err != nil {
+		//test only, so panic is OK
+		panic(err)
+	}
+
+	err = json.Unmarshal(response, &totalResources)
 	if err != nil {
 		//test only, so panic is OK
 		panic(err)
@@ -255,10 +299,16 @@ func (rep *RepNatsClient) TotalResources(guid string) auctiontypes.Resources {
 	return totalResources
 }
 
-func (rep *RepNatsClient) LRPAuctionInfos(guid string) []auctiontypes.LRPAuctionInfo {
-	var instances []auctiontypes.LRPAuctionInfo
-	subjects := nats.NewSubjects(guid)
-	err := rep.publishWithTimeout(subjects.LrpAuctionInfos, nil, &instances, rep.timeout)
+func (rep *RepNatsClient) SimulatedInstances(repGuid string) []auctiontypes.SimulatedInstance {
+	var instances []auctiontypes.SimulatedInstance
+	subjects := nats.NewSubjects(repGuid)
+	response, err := rep.publishWithTimeout(subjects.SimulatedInstances, nil, rep.timeout)
+	if err != nil {
+		//test only, so panic is OK
+		panic(err)
+	}
+
+	err = json.Unmarshal(response, &instances)
 	if err != nil {
 		//test only, so panic is OK
 		panic(err)
@@ -267,18 +317,19 @@ func (rep *RepNatsClient) LRPAuctionInfos(guid string) []auctiontypes.LRPAuction
 	return instances
 }
 
-func (rep *RepNatsClient) Reset(guid string) {
-	subjects := nats.NewSubjects(guid)
-	err := rep.publishWithTimeout(subjects.Reset, nil, nil, rep.timeout)
+func (rep *RepNatsClient) Reset(repGuid string) {
+	subjects := nats.NewSubjects(repGuid)
+	_, err := rep.publishWithTimeout(subjects.Reset, nil, rep.timeout)
 	if err != nil {
 		//test only, so panic is OK
 		panic(err)
 	}
 }
 
-func (rep *RepNatsClient) SetLRPAuctionInfos(guid string, instances []auctiontypes.LRPAuctionInfo) {
-	subjects := nats.NewSubjects(guid)
-	err := rep.publishWithTimeout(subjects.SetLrpAuctionInfos, instances, nil, rep.timeout)
+func (rep *RepNatsClient) SetSimulatedInstances(repGuid string, instances []auctiontypes.SimulatedInstance) {
+	subjects := nats.NewSubjects(repGuid)
+	payload, _ := json.Marshal(instances)
+	_, err := rep.publishWithTimeout(subjects.SetSimulatedInstances, payload, rep.timeout)
 	if err != nil {
 		//test only, so panic is OK
 		panic(err)

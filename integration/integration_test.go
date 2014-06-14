@@ -132,7 +132,8 @@ var _ = Describe("The Rep", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			repID := reps[0].RepID
 
-			client := repnatsclient.New(natsRunner.MessageBus, time.Second, 10*time.Second, gosteno.NewLogger("the-logger"))
+			client, err := repnatsclient.New(natsRunner.MessageBus, time.Second, 10*time.Second, gosteno.NewLogger("the-logger"))
+			Ω(err).ShouldNot(HaveOccurred())
 			resources := client.TotalResources(repID)
 			Ω(resources).Should(Equal(auctiontypes.Resources{
 				MemoryMB:   1024,

@@ -11,19 +11,19 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctionrep",
-			"Rev": "b94695eeca83257052c8d729608aeafde4e7f993"
+			"Rev": "e25459e02e4a1e1efd28588b8bb52a28ed9e254c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctiontypes",
-			"Rev": "b94695eeca83257052c8d729608aeafde4e7f993"
+			"Rev": "e25459e02e4a1e1efd28588b8bb52a28ed9e254c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats",
-			"Rev": "b94695eeca83257052c8d729608aeafde4e7f993"
+			"Rev": "e25459e02e4a1e1efd28588b8bb52a28ed9e254c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/util",
-			"Rev": "b94695eeca83257052c8d729608aeafde4e7f993"
+			"Rev": "e25459e02e4a1e1efd28588b8bb52a28ed9e254c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/delta_force/delta_force",
@@ -39,11 +39,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "9a7d5246fcf7a2c30480857a6853805e44531e04"
+			"Rev": "5219a9bf5721a3adc7a6f8f8e5439f7d3dc56411"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "9a7d5246fcf7a2c30480857a6853805e44531e04"
+			"Rev": "5219a9bf5721a3adc7a6f8f8e5439f7d3dc56411"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
