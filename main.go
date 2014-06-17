@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/auction/auctionrep"
-	"github.com/cloudfoundry-incubator/auction/communication/nats/repnatsserver"
+	"github.com/cloudfoundry-incubator/auction/communication/nats/auction_nats_server"
 	"github.com/cloudfoundry-incubator/executor/client"
 	"github.com/cloudfoundry-incubator/rep/api"
 	"github.com/cloudfoundry-incubator/rep/api/lrprunning"
@@ -250,9 +250,9 @@ func initializeNatsClient(logger *steno.Logger) yagnats.NATSClient {
 	return natsClient
 }
 
-func initializeAuctionNatsServer(stopper lrp_stopper.LRPStopper, repID string, bbs Bbs.RepBBS, executorClient client.Client, logger *steno.Logger) *repnatsserver.RepNatsServer {
+func initializeAuctionNatsServer(stopper lrp_stopper.LRPStopper, repID string, bbs Bbs.RepBBS, executorClient client.Client, logger *steno.Logger) *auction_nats_server.AuctionNATSServer {
 	auctionDelegate := auction_delegate.New(stopper, bbs, executorClient, logger)
 	auctionRep := auctionrep.New(repID, auctionDelegate)
 	natsClient := initializeNatsClient(logger)
-	return repnatsserver.New(natsClient, auctionRep, logger)
+	return auction_nats_server.New(natsClient, auctionRep, logger)
 }

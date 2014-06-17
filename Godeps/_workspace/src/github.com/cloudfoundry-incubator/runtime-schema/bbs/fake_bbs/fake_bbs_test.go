@@ -38,8 +38,12 @@ var _ = Describe("FakeBbs", func() {
 		metricsBBS = NewFakeMetricsBBS()
 		Ω(metricsBBS).ShouldNot(BeNil())
 
-		var lrpRouterBBS bbs.LRPRouterBBS
-		lrpRouterBBS = NewFakeLRPRouterBBS()
-		Ω(lrpRouterBBS).ShouldNot(BeNil())
+		var routeEmitterBBS bbs.RouteEmitterBBS
+		routeEmitterBBS = NewFakeRouteEmitterBBS()
+		Ω(routeEmitterBBS).ShouldNot(BeNil())
+
+		var nsyncBBS bbs.NsyncBBS
+		nsyncBBS = &FakeNsyncBBS{}
+		Ω(nsyncBBS).ShouldNot(BeNil())
 	})
 })

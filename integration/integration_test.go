@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
-	"github.com/cloudfoundry-incubator/auction/communication/nats/repnatsclient"
+	"github.com/cloudfoundry-incubator/auction/communication/nats/auction_nats_client"
 	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/rep/reprunner"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -132,7 +132,7 @@ var _ = Describe("The Rep", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			repID := reps[0].RepID
 
-			client, err := repnatsclient.New(natsRunner.MessageBus, time.Second, 10*time.Second, gosteno.NewLogger("the-logger"))
+			client, err := auction_nats_client.New(natsRunner.MessageBus, time.Second, 10*time.Second, gosteno.NewLogger("the-logger"))
 			Ω(err).ShouldNot(HaveOccurred())
 			resources := client.TotalResources(repID)
 			Ω(resources).Should(Equal(auctiontypes.Resources{
