@@ -11,39 +11,39 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctionrep",
-			"Rev": "e25459e02e4a1e1efd28588b8bb52a28ed9e254c"
+			"Rev": "84af235f7504e45ece03e3ce67977d2694034842"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctiontypes",
-			"Rev": "e25459e02e4a1e1efd28588b8bb52a28ed9e254c"
+			"Rev": "84af235f7504e45ece03e3ce67977d2694034842"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats",
-			"Rev": "e25459e02e4a1e1efd28588b8bb52a28ed9e254c"
+			"Rev": "84af235f7504e45ece03e3ce67977d2694034842"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/util",
-			"Rev": "e25459e02e4a1e1efd28588b8bb52a28ed9e254c"
+			"Rev": "84af235f7504e45ece03e3ce67977d2694034842"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/delta_force/delta_force",
-			"Rev": "7499a2b3e62c1eaa21cb0020154f5679f3736714"
+			"Rev": "de3c425f8ad5e6897c70aaf7b21c1170731fb60e"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/api",
-			"Rev": "da2c3e0db327272d383a160f44dbda6d1af9ff6c"
+			"Rev": "7a7d1735f8ab162390becdfa2806c26ff8c1699f"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/client",
-			"Rev": "da2c3e0db327272d383a160f44dbda6d1af9ff6c"
+			"Rev": "7a7d1735f8ab162390becdfa2806c26ff8c1699f"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "5219a9bf5721a3adc7a6f8f8e5439f7d3dc56411"
+			"Rev": "79964ba1ca6a508d7593e545581f186faaa65da4"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "5219a9bf5721a3adc7a6f8f8e5439f7d3dc56411"
+			"Rev": "79964ba1ca6a508d7593e545581f186faaa65da4"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -60,7 +60,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
-			"Rev": "65a22cbed10ebcd7708870001cbc6f2d3f5263ae"
+			"Rev": "6798458485919c837534d805fd56d76d5ab172da"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/yagnats",
