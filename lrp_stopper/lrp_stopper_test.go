@@ -52,13 +52,13 @@ var _ = Describe("LRP Stopper", func() {
 
 		JustBeforeEach(func() {
 			client.WhenGettingContainer = func(allocationGuid string) (api.Container, error) {
-				Ω(allocationGuid).Should(Equal(stopInstance.InstanceGuid))
+				Ω(allocationGuid).Should(Equal(stopInstance.LRPIdentifier().OpaqueID()))
 				err := getError
-				return api.Container{Guid: stopInstance.InstanceGuid}, err
+				return api.Container{Guid: stopInstance.LRPIdentifier().OpaqueID()}, err
 			}
 
 			client.WhenDeletingContainer = func(allocationGuid string) error {
-				Ω(allocationGuid).Should(Equal(stopInstance.InstanceGuid))
+				Ω(allocationGuid).Should(Equal(stopInstance.LRPIdentifier().OpaqueID()))
 				didDelete = true
 				return nil
 			}

@@ -30,7 +30,8 @@ func (stopper *lrpStopper) StopInstance(stopInstance models.StopLRPInstance) err
 		"stop-instance": stopInstance,
 	}, "rep.lrp-stopper.received-stop-instance")
 
-	_, err := stopper.client.GetContainer(stopInstance.InstanceGuid)
+	containerId := stopInstance.LRPIdentifier().OpaqueID()
+	_, err := stopper.client.GetContainer(containerId)
 	if err != nil {
 		return err
 	}
@@ -48,7 +49,7 @@ func (stopper *lrpStopper) StopInstance(stopInstance models.StopLRPInstance) err
 		return err
 	}
 
-	err = stopper.client.DeleteContainer(stopInstance.InstanceGuid)
+	err = stopper.client.DeleteContainer(containerId)
 	if err != nil {
 		stopper.logger.Infod(map[string]interface{}{
 			"stop-instance": stopInstance,

@@ -111,25 +111,13 @@ var _ = Describe("AuctionDelegate", func() {
 				client.WhenListingContainers = func() ([]api.Container, error) {
 					return []api.Container{
 						api.Container{
-							Guid: "first",
-							Metadata: map[string]string{
-								ProcessGuidMetadataKey: "the-first-app-guid",
-								IndexMetadataKey:       "17",
-							},
+							Guid: "the-first-app-guid.17.first",
 						},
 						api.Container{
-							Guid: "second",
-							Metadata: map[string]string{
-								ProcessGuidMetadataKey: "the-second-app-guid",
-								IndexMetadataKey:       "14",
-							},
+							Guid: "the-second-app-guid.14.second",
 						},
 						api.Container{
-							Guid: "third",
-							Metadata: map[string]string{
-								ProcessGuidMetadataKey: "the-first-app-guid",
-								IndexMetadataKey:       "92",
-							},
+							Guid: "the-first-app-guid.92.third",
 						},
 					}, nil
 				}
@@ -174,32 +162,16 @@ var _ = Describe("AuctionDelegate", func() {
 				client.WhenListingContainers = func() ([]api.Container, error) {
 					return []api.Container{
 						api.Container{
-							Guid: "first",
-							Metadata: map[string]string{
-								ProcessGuidMetadataKey: "requested-app-guid",
-								IndexMetadataKey:       "17",
-							},
+							Guid: "requested-app-guid.17.first",
 						},
 						api.Container{
-							Guid: "second",
-							Metadata: map[string]string{
-								ProcessGuidMetadataKey: "requested-app-guid",
-								IndexMetadataKey:       "17",
-							},
+							Guid: "requested-app-guid.17.second",
 						},
 						api.Container{
-							Guid: "third",
-							Metadata: map[string]string{
-								ProcessGuidMetadataKey: "requested-app-guid",
-								IndexMetadataKey:       "18",
-							},
+							Guid: "requested-app-guid.18.third",
 						},
 						api.Container{
-							Guid: "fourth",
-							Metadata: map[string]string{
-								ProcessGuidMetadataKey: "other-app-guid",
-								IndexMetadataKey:       "17",
-							},
+							Guid: "other-app-guid.17.fourth",
 						},
 					}, nil
 				}
@@ -263,11 +235,10 @@ var _ = Describe("AuctionDelegate", func() {
 
 				client.WhenAllocatingContainer = func(allocationGuid string, req api.ContainerAllocationRequest) (api.Container, error) {
 					allocationCalled = true
-					Ω(allocationGuid).Should(Equal(auctionInfo.InstanceGuid))
+					Ω(allocationGuid).Should(Equal(auctionInfo.LRPIdentifier().OpaqueID()))
 					Ω(req).Should(Equal(api.ContainerAllocationRequest{
 						MemoryMB: auctionInfo.MemoryMB,
 						DiskMB:   auctionInfo.DiskMB,
-						Metadata: map[string]string{ProcessGuidMetadataKey: auctionInfo.ProcessGuid, IndexMetadataKey: "17"},
 					}))
 					return api.Container{}, nil
 				}
@@ -312,7 +283,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 				client.WhenDeletingContainer = func(allocationGuid string) error {
 					releaseCalled = true
-					Ω(allocationGuid).Should(Equal(auctionInfo.InstanceGuid))
+					Ω(allocationGuid).Should(Equal(auctionInfo.LRPIdentifier().OpaqueID()))
 					return nil
 				}
 			})
@@ -367,7 +338,7 @@ var _ = Describe("AuctionDelegate", func() {
 			}
 
 			client.WhenInitializingContainer = func(allocationGuid string, request api.ContainerInitializationRequest) (api.Container, error) {
-				Ω(allocationGuid).Should(Equal(startAuction.InstanceGuid))
+				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 				Ω(request).Should(Equal(api.ContainerInitializationRequest{
 					Ports: []api.PortMapping{
 						{
@@ -382,7 +353,7 @@ var _ = Describe("AuctionDelegate", func() {
 			}
 
 			client.WhenRunning = func(allocationGuid string, request api.ContainerRunRequest) error {
-				Ω(allocationGuid).Should(Equal(startAuction.InstanceGuid))
+				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 				Ω(request).Should(Equal(api.ContainerRunRequest{
 					Actions: startAuction.Actions,
 				}))
@@ -392,7 +363,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 			client.WhenDeletingContainer = func(allocationGuid string) error {
 				deleteCalled = true
-				Ω(allocationGuid).Should(Equal(startAuction.InstanceGuid))
+				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 				return nil
 			}
 		})

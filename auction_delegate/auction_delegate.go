@@ -1,8 +1,6 @@
 package auction_delegate
 
 import (
-	"strconv"
-
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/executor/client"
@@ -11,9 +9,6 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	steno "github.com/cloudfoundry/gosteno"
 )
-
-const ProcessGuidMetadataKey = "process-guid"
-const IndexMetadataKey = "index"
 
 type AuctionDelegate struct {
 	lrpStopper lrp_stopper.LRPStopper
@@ -62,7 +57,12 @@ func (a *AuctionDelegate) NumInstancesForProcessGuid(processGuid string) (int, e
 
 	count := 0
 	for _, container := range containers {
-		if container.Metadata[ProcessGuidMetadataKey] == processGuid {
+		identifier, err := models.LRPIdentifierFromOpaqueID(container.Guid)
+		if err != nil {
+			continue
+		}
+
+		if identifier.ProcessGuid == processGuid {
 			count++
 		}
 	}
@@ -78,11 +78,15 @@ func (a *AuctionDelegate) InstanceGuidsForProcessGuidAndIndex(processGuid string
 		return []string{}, err
 	}
 
-	indexAsString := strconv.Itoa(index)
 	instanceGuids := []string{}
 	for _, container := range containers {
-		if container.Metadata[ProcessGuidMetadataKey] == processGuid && container.Metadata[IndexMetadataKey] == indexAsString {
-			instanceGuids = append(instanceGuids, container.Guid)
+		identifier, err := models.LRPIdentifierFromOpaqueID(container.Guid)
+		if err != nil {
+			continue
+		}
+
+		if identifier.ProcessGuid == processGuid && identifier.Index == index {
+			instanceGuids = append(instanceGuids, identifier.InstanceGuid)
 		}
 	}
 	return instanceGuids, nil
@@ -93,13 +97,9 @@ func (a *AuctionDelegate) Reserve(auctionInfo auctiontypes.StartAuctionInfo) err
 		"auction-info": auctionInfo,
 	}, "auction-delegate.reserve")
 
-	_, err := a.client.AllocateContainer(auctionInfo.InstanceGuid, api.ContainerAllocationRequest{
+	_, err := a.client.AllocateContainer(auctionInfo.LRPIdentifier().OpaqueID(), api.ContainerAllocationRequest{
 		MemoryMB: auctionInfo.MemoryMB,
 		DiskMB:   auctionInfo.DiskMB,
-		Metadata: map[string]string{
-			ProcessGuidMetadataKey: auctionInfo.ProcessGuid,
-			IndexMetadataKey:       strconv.Itoa(auctionInfo.Index),
-		},
 	})
 	if err != nil {
 		a.logger.Errord(map[string]interface{}{
@@ -110,7 +110,7 @@ func (a *AuctionDelegate) Reserve(auctionInfo auctiontypes.StartAuctionInfo) err
 }
 
 func (a *AuctionDelegate) ReleaseReservation(auctionInfo auctiontypes.StartAuctionInfo) error {
-	err := a.client.DeleteContainer(auctionInfo.InstanceGuid)
+	err := a.client.DeleteContainer(auctionInfo.LRPIdentifier().OpaqueID())
 	if err != nil {
 		a.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
@@ -124,7 +124,9 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 		"start-auction": startAuction,
 	}, "auction-delegate.run")
 
-	container, err := a.client.InitializeContainer(startAuction.InstanceGuid, api.ContainerInitializationRequest{
+	containerGuid := startAuction.LRPIdentifier().OpaqueID()
+
+	container, err := a.client.InitializeContainer(containerGuid, api.ContainerInitializationRequest{
 		Ports: a.convertPortMappings(startAuction.Ports),
 		Log:   startAuction.Log,
 	})
@@ -132,7 +134,7 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 		a.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
 		}, "auction-delegate.initialize-container-request.failed")
-		a.client.DeleteContainer(startAuction.InstanceGuid)
+		a.client.DeleteContainer(containerGuid)
 		return err
 	}
 
@@ -147,18 +149,18 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 		a.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
 		}, "auction-delegate.mark-starting.failed")
-		a.client.DeleteContainer(startAuction.InstanceGuid)
+		a.client.DeleteContainer(containerGuid)
 		return err
 	}
 
-	err = a.client.Run(startAuction.InstanceGuid, api.ContainerRunRequest{
+	err = a.client.Run(containerGuid, api.ContainerRunRequest{
 		Actions: startAuction.Actions,
 	})
 	if err != nil {
 		a.logger.Errord(map[string]interface{}{
 			"error": err.Error(),
 		}, "auction-delegate.run-actions.failed")
-		a.client.DeleteContainer(startAuction.InstanceGuid)
+		a.client.DeleteContainer(containerGuid)
 		a.bbs.RemoveActualLRP(lrp)
 		return err
 	}
