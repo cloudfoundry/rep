@@ -39,7 +39,7 @@ var _ = Describe("Callback API", func() {
 	})
 
 	BeforeEach(func() {
-		fakeBBS = fake_bbs.NewFakeRepBBS()
+		fakeBBS = &fake_bbs.FakeRepBBS{}
 		fakeExecutor = fake_client.New()
 
 		apiServer, err := api.NewServer(
@@ -91,11 +91,8 @@ var _ = Describe("Callback API", func() {
 				},
 			}
 
-			marshalledTask, err := json.Marshal(task)
-			Ω(err).ShouldNot(HaveOccurred())
-
 			result = executorAPI.ContainerRunResult{
-				Metadata: marshalledTask,
+				Guid: "task-guid-123",
 			}
 		})
 
@@ -120,9 +117,12 @@ var _ = Describe("Callback API", func() {
 			})
 
 			It("records the job result", func() {
-				Eventually(fakeBBS.CompletedTasks).Should(HaveLen(1))
-				Ω(fakeBBS.CompletedTasks()[0].Guid).Should(Equal(task.Guid))
-				Ω(fakeBBS.CompletedTasks()[0].Result).Should(Equal("42"))
+				Eventually(fakeBBS.CompleteTaskCallCount).Should(Equal(1))
+				taskGuid, failed, failureReason, result := fakeBBS.CompleteTaskArgsForCall(0)
+				Ω(taskGuid).Should(Equal(task.Guid))
+				Ω(failed).Should(BeFalse())
+				Ω(failureReason).Should(BeEmpty())
+				Ω(result).Should(Equal("42"))
 			})
 		})
 
@@ -137,14 +137,12 @@ var _ = Describe("Callback API", func() {
 			})
 
 			It("records the job failure", func() {
-				expectedTask := task
-				expectedTask.ContainerHandle = "some-container-handle"
-				expectedTask.ExecutorID = "some-executor-id"
-				expectedTask.Failed = true
-				expectedTask.FailureReason = "it didn't work"
-
-				Eventually(fakeBBS.CompletedTasks).Should(HaveLen(1))
-				Ω(fakeBBS.CompletedTasks()[0]).Should(Equal(expectedTask))
+				Eventually(fakeBBS.CompleteTaskCallCount).Should(Equal(1))
+				taskGuid, failed, failureReason, result := fakeBBS.CompleteTaskArgsForCall(0)
+				Ω(taskGuid).Should(Equal(task.Guid))
+				Ω(failed).Should(BeTrue())
+				Ω(failureReason).Should(Equal("it didn't work"))
+				Ω(result).Should(BeEmpty())
 			})
 		})
 	})
@@ -190,22 +188,21 @@ var _ = Describe("Callback API", func() {
 			})
 
 			It("reports the LRP as running", func() {
-				Ω(fakeBBS.RunningLRPs()).Should(Equal([]models.ActualLRP{
-					{
-						ProcessGuid:  "some-process-guid",
-						Index:        2,
-						InstanceGuid: "some-instance-guid",
+				actualLRP, executorGUID := fakeBBS.ReportActualLRPAsRunningArgsForCall(0)
+				Ω(actualLRP).Should(Equal(models.ActualLRP{
+					ProcessGuid:  "some-process-guid",
+					Index:        2,
+					InstanceGuid: "some-instance-guid",
 
-						Host: "1.2.3.4",
+					Host: "1.2.3.4",
 
-						Ports: []models.PortMapping{
-							{ContainerPort: 8080, HostPort: 1234},
-							{ContainerPort: 8081, HostPort: 1235},
-						},
+					Ports: []models.PortMapping{
+						{ContainerPort: 8080, HostPort: 1234},
+						{ContainerPort: 8081, HostPort: 1235},
 					},
 				}))
 
-				Ω(fakeBBS.RunningLRPsExecutorIDs()).Should(Equal([]string{"some-executor-id"}))
+				Ω(executorGUID).Should(Equal("some-executor-id"))
 			})
 
 			It("returns 200", func() {
@@ -239,7 +236,7 @@ var _ = Describe("Callback API", func() {
 
 		Context("when reporting it as running fails", func() {
 			BeforeEach(func() {
-				fakeBBS.SetRunningError(errors.New("oh no!"))
+				fakeBBS.ReportActualLRPAsRunningReturns(errors.New("oh no!"))
 			})
 
 			It("returns 500", func() {

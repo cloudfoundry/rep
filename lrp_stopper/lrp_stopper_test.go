@@ -32,7 +32,7 @@ var _ = Describe("LRP Stopper", func() {
 		}
 
 		steno.EnterTestMode()
-		bbs = fake_bbs.NewFakeRepBBS()
+		bbs = &fake_bbs.FakeRepBBS{}
 		client = fake_client.New()
 		logger = steno.NewLogger("steno")
 
@@ -72,7 +72,7 @@ var _ = Describe("LRP Stopper", func() {
 			})
 
 			It("should resolve the StopLRPInstance", func() {
-				Ω(bbs.ResolvedStopLRPInstances()).Should(ContainElement(stopInstance))
+				Ω(bbs.ResolveStopLRPInstanceArgsForCall(0)).Should(Equal(stopInstance))
 			})
 
 			It("should not error", func() {
@@ -81,7 +81,7 @@ var _ = Describe("LRP Stopper", func() {
 
 			Context("when resolving the container fails", func() {
 				BeforeEach(func() {
-					bbs.SetResolveStopLRPInstanceError(errors.New("oops"))
+					bbs.ResolveStopLRPInstanceReturns(errors.New("oops"))
 				})
 
 				It("should not delete the container", func() {
@@ -101,7 +101,7 @@ var _ = Describe("LRP Stopper", func() {
 
 			It("should do nothing", func() {
 				Ω(didDelete).Should(BeFalse())
-				Ω(bbs.ResolvedStopLRPInstances()).Should(BeEmpty())
+				Ω(bbs.ResolveStopLRPInstanceCallCount()).Should(Equal(0))
 			})
 
 			It("should return an error error", func() {

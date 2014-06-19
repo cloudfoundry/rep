@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
 	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gosteno"
 )
 
@@ -34,14 +34,5 @@ func (handler *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task := models.Task{}
-	err = json.Unmarshal(runResult.Metadata, &task)
-	if err != nil {
-		handler.logger.Errord(map[string]interface{}{
-			"error": fmt.Sprintf("Could not unmarshal metadata: %s", err),
-		}, "game-scheduler.complete-callback-handler.failed")
-		return
-	}
-
-	handler.bbs.CompleteTask(task, runResult.Failed, runResult.FailureReason, runResult.Result)
+	handler.bbs.CompleteTask(runResult.Guid, runResult.Failed, runResult.FailureReason, runResult.Result)
 }

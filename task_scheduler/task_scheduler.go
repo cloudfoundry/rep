@@ -107,50 +107,49 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 
 	s.sleepForARandomInterval()
 
-	task, err = s.bbs.ClaimTask(task, container.ExecutorGuid)
+	err = s.bbs.ClaimTask(task.Guid, container.ExecutorGuid)
 	if err != nil {
 		s.logError("task-scheduler.claim-task.failed", err)
-		s.client.DeleteContainer(container.Guid)
+		s.client.DeleteContainer(task.Guid)
 		return
 	}
 
-	_, err = s.client.InitializeContainer(container.Guid, api.ContainerInitializationRequest{
+	container, err = s.client.InitializeContainer(task.Guid, api.ContainerInitializationRequest{
 		CpuPercent: task.CpuPercent,
 		Log:        task.Log,
 	})
 	if err != nil {
 		s.logError("task-scheduler.initialize-container-request.failed", err)
-		s.client.DeleteContainer(container.Guid)
-		s.markTaskAsFailed(task, err)
+		s.client.DeleteContainer(task.Guid)
+		s.markTaskAsFailed(task.Guid, err)
 		return
 	}
 
-	task, err = s.bbs.StartTask(task, container.Guid)
+	err = s.bbs.StartTask(task.Guid, container.ExecutorGuid, container.ContainerHandle)
 	if err != nil {
 		s.logError("task-scheduler.start-task.failed", err)
-		s.client.DeleteContainer(container.Guid)
+		s.client.DeleteContainer(task.Guid)
 		return
 	}
 
 	callbackRequest, err := s.callbackGenerator.RequestForHandler(routes.TaskCompleted, router.Params{
-		"guid": container.Guid,
+		"guid": task.Guid,
 	}, nil)
 	if err != nil {
 		s.logError("task-scheduler.callback-generator.failed", err)
 	}
 
-	err = s.client.Run(container.Guid, api.ContainerRunRequest{
+	err = s.client.Run(task.Guid, api.ContainerRunRequest{
 		Actions:     task.Actions,
 		CompleteURL: callbackRequest.URL.String(),
-		Metadata:    task.ToJSON(),
 	})
 	if err != nil {
 		s.logError("task-scheduler.run-actions.failed", err)
 	}
 }
 
-func (s *TaskScheduler) markTaskAsFailed(task models.Task, err error) {
-	_, err = s.bbs.CompleteTask(task, true, "Failed to initialize container - "+err.Error(), "")
+func (s *TaskScheduler) markTaskAsFailed(taskGuid string, err error) {
+	err = s.bbs.CompleteTask(taskGuid, true, "Failed to initialize container - "+err.Error(), "")
 	if err != nil {
 		s.logError("task-scheduler.mark-task-as-failed.failed", err)
 	}

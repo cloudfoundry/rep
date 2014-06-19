@@ -26,7 +26,7 @@ var _ = Describe("AuctionDelegate", func() {
 	BeforeEach(func() {
 		stopper = &fake_lrp_stopper.FakeLRPStopper{}
 		client = fake_client.New()
-		bbs = fake_bbs.NewFakeRepBBS()
+		bbs = &fake_bbs.FakeRepBBS{}
 		delegate = New(stopper, bbs, client, steno.NewLogger("test"))
 		clientFetchError = errors.New("Failed to fetch")
 	})
@@ -408,18 +408,19 @@ var _ = Describe("AuctionDelegate", func() {
 
 			It("should mark the instance as STARTING in etcd", func() {
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(bbs.StartingLRPs()).Should(HaveLen(1))
-				Ω(bbs.StartingLRPs()[0]).Should(Equal(models.ActualLRP{
+				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
+				actualLRP, executorGuid := bbs.ReportActualLRPAsStartingArgsForCall(0)
+				Ω(actualLRP).Should(Equal(models.ActualLRP{
 					ProcessGuid:  startAuction.ProcessGuid,
 					InstanceGuid: startAuction.InstanceGuid,
 					Index:        startAuction.Index,
 				}))
-				Ω(bbs.StartingLRPExecutorIDs()[0]).Should(Equal("some-executor-id"))
+				Ω(executorGuid).Should(Equal("some-executor-id"))
 			})
 
 			Context("when marking the instance as STARTING fails", func() {
 				BeforeEach(func() {
-					bbs.SetStartingError(errors.New("kaboom"))
+					bbs.ReportActualLRPAsStartingReturns(errors.New("kaboom"))
 				})
 
 				It("should fail", func() {
@@ -454,8 +455,9 @@ var _ = Describe("AuctionDelegate", func() {
 				})
 
 				It("should have remove the STARTING LRP from etcd", func() {
-					Ω(bbs.StartingLRPs()).Should(HaveLen(1))
-					Ω(bbs.RemovedLRPs()).Should(HaveLen(1))
+					Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
+					Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
+					Ω(bbs.RemoveActualLRPArgsForCall(0).InstanceGuid).Should(Equal(startAuction.InstanceGuid))
 				})
 
 				It("should fail", func() {
@@ -478,7 +480,7 @@ var _ = Describe("AuctionDelegate", func() {
 			It("should not mark the task as starting", func() {
 				Ω(err).Should(Equal(initializeError))
 
-				Ω(bbs.StartingLRPs()).Should(BeEmpty())
+				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(0))
 			})
 
 			It("should not call run and should return an error", func() {

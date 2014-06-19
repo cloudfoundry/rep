@@ -21,11 +21,15 @@ import (
 var _ = Describe("StopLRPListener", func() {
 	var (
 		stopper      *fake_lrp_stopper.FakeLRPStopper
-		bbs          *fake_bbs.FakeRepBBS
+		fakeBBS      *fake_bbs.FakeRepBBS
 		client       *fake_client.FakeClient
 		logger       *steno.Logger
 		process      ifrit.Process
 		stopInstance models.StopLRPInstance
+
+		stopInstanceChan chan models.StopLRPInstance
+		watchStopChan    chan bool
+		watchErrorChan   chan error
 	)
 
 	BeforeEach(func() {
@@ -35,13 +39,19 @@ var _ = Describe("StopLRPListener", func() {
 			Index:        1138,
 		}
 
+		fakeBBS = &fake_bbs.FakeRepBBS{}
+		stopInstanceChan = make(chan models.StopLRPInstance, 0)
+		watchStopChan = make(chan bool, 0)
+		watchErrorChan = make(chan error, 0)
+
+		fakeBBS.WatchForStopLRPInstanceReturns(stopInstanceChan, watchStopChan, watchErrorChan)
+
 		steno.EnterTestMode()
-		bbs = fake_bbs.NewFakeRepBBS()
 		client = fake_client.New()
 		logger = steno.NewLogger("steno")
 		stopper = &fake_lrp_stopper.FakeLRPStopper{}
 
-		listener := New(stopper, bbs, client, logger)
+		listener := New(stopper, fakeBBS, client, logger)
 
 		process = ifrit.Envoke(listener)
 	})
@@ -64,12 +74,12 @@ var _ = Describe("StopLRPListener", func() {
 			}
 
 			errorTime = time.Now()
-			bbs.WatchForStopLRPInstanceError(errors.New("failed to watch for LRPStopInstance."))
+			watchErrorChan <- errors.New("failed to watch for LRPStopInstance.")
 		})
 
 		Context("and a stop event comes in", func() {
 			BeforeEach(func() {
-				bbs.EmitStopLRPInstance(stopInstance)
+				stopInstanceChan <- stopInstance
 			})
 
 			It("should wait for 3 seconds and retry", func() {
@@ -92,7 +102,7 @@ var _ = Describe("StopLRPListener", func() {
 
 	Context("when a StopLRPInstance request comes down the pipe", func() {
 		JustBeforeEach(func() {
-			bbs.EmitStopLRPInstance(stopInstance)
+			stopInstanceChan <- stopInstance
 		})
 
 		It("should inform the stopper", func() {

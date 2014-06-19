@@ -1,7 +1,6 @@
 package maintain_test
 
 import (
-	"os"
 	"syscall"
 	"time"
 
@@ -16,30 +15,37 @@ import (
 )
 
 var _ = Describe("Maintain Presence", func() {
-	var repPresence models.RepPresence
-	var heartbeatInterval = 1 * time.Second
+	var (
+		repPresence       models.RepPresence
+		heartbeatInterval = 1 * time.Second
 
-	var fakeBBS *fake_bbs.FakeRepBBS
-	var sigChan chan os.Signal
-	var logger *steno.Logger
+		fakeBBS *fake_bbs.FakeRepBBS
+		logger  *steno.Logger
 
-	var maintainer ifrit.Process
+		maintainer ifrit.Process
+
+		presence           *fake_bbs.FakePresence
+		maintainStatusChan chan bool
+	)
 
 	BeforeSuite(func() {
 		steno.EnterTestMode(steno.LOG_DEBUG)
 	})
 
 	BeforeEach(func() {
+		presence = &fake_bbs.FakePresence{}
+		maintainStatusChan = make(chan bool)
+
 		repPresence = models.RepPresence{
 			RepID: "rep-id",
 			Stack: "lucid64",
 		}
-		fakeBBS = fake_bbs.NewFakeRepBBS()
-		logger = steno.NewLogger("test-logger")
-		sigChan = make(chan os.Signal, 1)
-	})
 
-	JustBeforeEach(func() {
+		fakeBBS = &fake_bbs.FakeRepBBS{}
+		fakeBBS.MaintainRepPresenceReturns(presence, maintainStatusChan, nil)
+
+		logger = steno.NewLogger("test-logger")
+
 		maintainer = ifrit.Envoke(maintain.New(repPresence, fakeBBS, logger, heartbeatInterval))
 	})
 
@@ -49,20 +55,27 @@ var _ = Describe("Maintain Presence", func() {
 	})
 
 	Context("when maintaining presence", func() {
+		BeforeEach(func() {
+			maintainStatusChan <- true
+			maintainStatusChan <- true
+		})
+
 		It("should maintain presence", func() {
-			Eventually(fakeBBS.GetMaintainRepPresence).Should(Equal(repPresence))
+			Eventually(fakeBBS.MaintainRepPresenceCallCount).Should(Equal(1))
+			interval, maintainedPresence := fakeBBS.MaintainRepPresenceArgsForCall(0)
+			Ω(interval).Should(Equal(heartbeatInterval))
+			Ω(maintainedPresence).Should(Equal(repPresence))
 		})
 	})
 
 	Context("when we fail to maintain our presence", func() {
 		BeforeEach(func() {
-			fakeBBS.MaintainRepPresenceOutput.Presence = &fake_bbs.FakePresence{
-				MaintainStatus: false,
-			}
+			maintainStatusChan <- true
+			maintainStatusChan <- false
 		})
 
 		It("continues to retry", func() {
-			Consistently(maintainer.Wait()).ShouldNot(Receive())
+			Consistently(maintainer.Wait()).ShouldNot(Receive(), "should not shut down")
 		})
 
 		It("logs an error message", func() {
