@@ -69,7 +69,7 @@ var _ = Describe("TaskScheduler", func() {
 					{
 						Action: models.RunAction{
 							Script:  "the-script",
-							Env:     []models.EnvironmentVariable{{Key: "PATH", Value: "the-path"}},
+							Env:     []models.EnvironmentVariable{{Name: "PATH", Value: "the-path"}},
 							Timeout: 500,
 						},
 					},
