@@ -31,11 +31,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/api",
-			"Rev": "c3e078a7793f12fef3af02f569ef46d07bbe6e49"
+			"Rev": "97c8e5f484ace4e6cdd491df37d316093003ae9f"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/client",
-			"Rev": "c3e078a7793f12fef3af02f569ef46d07bbe6e49"
+			"Rev": "97c8e5f484ace4e6cdd491df37d316093003ae9f"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
@@ -60,7 +60,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
-			"Rev": "1a43788769c69f92f6f1eaa41cd6366df2c3b5ed"
+			"Rev": "6798458485919c837534d805fd56d76d5ab172da"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/yagnats",
@@ -86,7 +86,7 @@
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
-			"Rev": "9a6dc5f3eab3f180174c5053724737bf10402c6c"
+			"Rev": "439138de94ac33aebc7dad33cada3796318845ea"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/router",
