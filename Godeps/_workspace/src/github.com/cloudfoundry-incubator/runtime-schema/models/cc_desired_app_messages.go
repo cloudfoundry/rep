@@ -20,3 +20,12 @@ func (d DesireAppRequestFromCC) ToJSON() []byte {
 	encoded, _ := json.Marshal(d)
 	return encoded
 }
+
+type CCDesiredStateServerResponse struct {
+	Apps        []DesireAppRequestFromCC `json:"apps"`
+	CCBulkToken *json.RawMessage         `json:"token"`
+}
+
+type CCBulkToken struct {
+	Id int `json:"id"`
+}
