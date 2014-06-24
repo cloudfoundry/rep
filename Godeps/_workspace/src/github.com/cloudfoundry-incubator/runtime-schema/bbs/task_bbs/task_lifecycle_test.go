@@ -31,7 +31,9 @@ var _ = Describe("Task BBS", func() {
 		steno.EnterTestMode()
 		bbs = New(etcdClient, timeProvider, logger)
 		task = models.Task{
-			Guid: "some-guid",
+			Guid:    "some-guid",
+			Stack:   "pancakes",
+			Actions: dummyActions,
 		}
 	})
 

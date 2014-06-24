@@ -17,17 +17,9 @@ import (
 
 //Bulletin Board System/Store
 
-type ExecutorBBS interface {
-	//services
-	MaintainExecutorPresence(
-		heartbeatInterval time.Duration,
-		executorID string,
-	) (presence services_bbs.Presence, disappeared <-chan bool, err error)
-}
-
 type RepBBS interface {
 	//services
-	MaintainRepPresence(heartbeatInterval time.Duration, repPresence models.RepPresence) (services_bbs.Presence, <-chan bool, error)
+	MaintainExecutorPresence(heartbeatInterval time.Duration, executorPresence models.ExecutorPresence) (services_bbs.Presence, <-chan bool, error)
 
 	//task
 	WatchForDesiredTask() (<-chan models.Task, chan<- bool, <-chan error)
@@ -91,7 +83,7 @@ type NsyncBBS interface {
 
 type AuctioneerBBS interface {
 	//services
-	GetAllReps() ([]models.RepPresence, error)
+	GetAllExecutors() ([]models.ExecutorPresence, error)
 
 	//start auction
 	WatchForLRPStartAuction() (<-chan models.LRPStartAuction, chan<- bool, <-chan error)
@@ -143,10 +135,6 @@ type RouteEmitterBBS interface {
 	GetRunningActualLRPs() ([]models.ActualLRP, error)
 	GetDesiredLRPByProcessGuid(processGuid string) (models.DesiredLRP, error)
 	GetRunningActualLRPsByProcessGuid(processGuid string) ([]models.ActualLRP, error)
-}
-
-func NewExecutorBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger *steno.Logger) ExecutorBBS {
-	return NewBBS(store, timeProvider, logger)
 }
 
 func NewRepBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger *steno.Logger) RepBBS {

@@ -1,11 +1,8 @@
 package services_bbs_test
 
 import (
-	"time"
-
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
-	"github.com/cloudfoundry/storeadapter/test_helpers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -41,10 +38,12 @@ var _ = Context("Getting Generic Services", func() {
 			BeforeEach(func() {
 				serviceNodes := []storeadapter.StoreNode{
 					{
-						Key: "/v1/executor/guid-0",
+						Key:   "/v1/executor/guid-0",
+						Value: []byte("{}"),
 					},
 					{
-						Key: "/v1/executor/guid-1",
+						Key:   "/v1/executor/guid-1",
+						Value: []byte("{}"),
 					},
 					{
 						Key:   "/v1/file_server/guid-0",
@@ -72,7 +71,7 @@ var _ = Context("Getting Generic Services", func() {
 
 			It("returns the file-server service registrations", func() {
 				Ω(registrations.FilterByName(models.FileServerServiceName)).Should(Equal(models.ServiceRegistrations{
-					{Name: models.FileServerServiceName, Id: "guid-0", Location: "http://example.com/file-server"},
+					{Name: models.FileServerServiceName, Id: "guid-0"},
 				}))
 			})
 		})
@@ -85,36 +84,6 @@ var _ = Context("Getting Generic Services", func() {
 			It("returns empty registrations", func() {
 				Ω(registrations).Should(BeEmpty())
 			})
-		})
-	})
-
-	Describe("GetAllExecutors", func() {
-		It("returns a list of the executor IDs that exist", func() {
-			executors, err := bbs.GetAllExecutors()
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Ω(executors).Should(BeEmpty())
-
-			presenceA, statusA, err := bbs.MaintainExecutorPresence(1*time.Second, "executor-a")
-			Ω(err).ShouldNot(HaveOccurred())
-			test_helpers.NewStatusReporter(statusA)
-
-			presenceB, statusB, err := bbs.MaintainExecutorPresence(1*time.Second, "executor-b")
-			Ω(err).ShouldNot(HaveOccurred())
-			test_helpers.NewStatusReporter(statusB)
-
-			Eventually(func() []string {
-				executors, _ := bbs.GetAllExecutors()
-				return executors
-			}).Should(ContainElement("executor-a"))
-
-			Eventually(func() []string {
-				executors, _ := bbs.GetAllExecutors()
-				return executors
-			}).Should(ContainElement("executor-b"))
-
-			presenceA.Remove()
-			presenceB.Remove()
 		})
 	})
 })

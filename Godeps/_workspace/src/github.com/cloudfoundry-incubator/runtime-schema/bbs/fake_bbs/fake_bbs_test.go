@@ -10,10 +10,6 @@ import (
 
 var _ = Describe("FakeBbs", func() {
 	It("should provide fakes that satisfy the interfaces", func() {
-		var executorBBS bbs.ExecutorBBS
-		executorBBS = NewFakeExecutorBBS()
-		Ω(executorBBS).ShouldNot(BeNil())
-
 		var repBBS bbs.RepBBS
 		repBBS = &FakeRepBBS{}
 		Ω(repBBS).ShouldNot(BeNil())

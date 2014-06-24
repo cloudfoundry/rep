@@ -91,9 +91,11 @@ var _ = Describe("StopLRPInstance", func() {
 	Describe("GetAllStopLRPInstances", func() {
 		It("gets all stop instances", func() {
 			stopInstance1 := models.StopLRPInstance{
+				ProcessGuid:  "some-process-guid-1",
 				InstanceGuid: "some-instance-guid-1",
 			}
 			stopInstance2 := models.StopLRPInstance{
+				ProcessGuid:  "some-process-guid-2+",
 				InstanceGuid: "some-instance-guid-2+",
 			}
 
@@ -192,6 +194,11 @@ var _ = Describe("StopLRPInstance", func() {
 		)
 
 		BeforeEach(func() {
+			stopInstance = models.StopLRPInstance{
+				ProcessGuid:  "some-process-guid",
+				InstanceGuid: "instance-guid",
+				Index:        17,
+			}
 			events, stop, errors = bbs.WatchForStopLRPInstance()
 		})
 

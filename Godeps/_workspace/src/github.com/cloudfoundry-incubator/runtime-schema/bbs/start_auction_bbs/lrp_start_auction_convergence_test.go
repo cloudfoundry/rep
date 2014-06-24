@@ -49,6 +49,14 @@ var _ = Describe("LRPStartAuction Convergence", func() {
 				Index:        1,
 				ProcessGuid:  "process-guid",
 				InstanceGuid: "instance-guid",
+				Stack:        "stack",
+				Actions: []models.ExecutorAction{
+					{
+						Action: models.RunAction{
+							Script: "cat /tmp/file",
+						},
+					},
+				},
 			}
 			err := bbs.RequestLRPStartAuction(auction)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -75,6 +83,14 @@ var _ = Describe("LRPStartAuction Convergence", func() {
 				Index:        1,
 				ProcessGuid:  "process-guid",
 				InstanceGuid: "instance-guid",
+				Stack:        "stack",
+				Actions: []models.ExecutorAction{
+					{
+						Action: models.RunAction{
+							Script: "cat /tmp/file",
+						},
+					},
+				},
 			}
 			err := bbs.RequestLRPStartAuction(auction)
 			Ω(err).ShouldNot(HaveOccurred())

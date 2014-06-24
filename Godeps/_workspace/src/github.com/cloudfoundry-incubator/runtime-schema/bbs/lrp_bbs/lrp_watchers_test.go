@@ -19,6 +19,7 @@ var _ = Describe("LrpWatchers", func() {
 		lrp := models.DesiredLRP{
 			ProcessGuid: "some-process-guid",
 			Instances:   5,
+			Source:      "http://example.com",
 			Stack:       "some-stack",
 			MemoryMB:    1024,
 			DiskMB:      512,
@@ -86,7 +87,7 @@ var _ = Describe("LrpWatchers", func() {
 		)
 
 		BeforeEach(func() {
-			lrp = models.ActualLRP{ProcessGuid: "some-process-guid", State: models.ActualLRPStateStarting, Since: timeProvider.Time().UnixNano(), ExecutorID: "executor-id"}
+			lrp = models.ActualLRP{ProcessGuid: "some-process-guid", InstanceGuid: "some-instance-guid", State: models.ActualLRPStateStarting, Since: timeProvider.Time().UnixNano(), ExecutorID: "executor-id"}
 			events, stop, errors = bbs.WatchForActualLRPChanges()
 		})
 

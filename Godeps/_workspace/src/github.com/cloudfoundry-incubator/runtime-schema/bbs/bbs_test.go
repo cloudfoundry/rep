@@ -9,7 +9,6 @@ import (
 var _ = Describe("BBS", func() {
 	It("should compile and be able to construct and return each BBS", func() {
 		NewBBS(etcdClient, timeProvider, logger)
-		NewExecutorBBS(etcdClient, timeProvider, logger)
 		NewRepBBS(etcdClient, timeProvider, logger)
 		NewConvergerBBS(etcdClient, timeProvider, logger)
 		NewAppManagerBBS(etcdClient, timeProvider, logger)

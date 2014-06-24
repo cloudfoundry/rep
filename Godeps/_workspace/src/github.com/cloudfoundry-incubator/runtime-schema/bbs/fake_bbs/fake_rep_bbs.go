@@ -10,13 +10,13 @@ import (
 )
 
 type FakeRepBBS struct {
-	MaintainRepPresenceStub        func(heartbeatInterval time.Duration, repPresence models.RepPresence) (services_bbs.Presence, <-chan bool, error)
-	maintainRepPresenceMutex       sync.RWMutex
-	maintainRepPresenceArgsForCall []struct {
+	MaintainExecutorPresenceStub        func(heartbeatInterval time.Duration, executorPresence models.ExecutorPresence) (services_bbs.Presence, <-chan bool, error)
+	maintainExecutorPresenceMutex       sync.RWMutex
+	maintainExecutorPresenceArgsForCall []struct {
 		arg1 time.Duration
-		arg2 models.RepPresence
+		arg2 models.ExecutorPresence
 	}
-	maintainRepPresenceReturns struct {
+	maintainExecutorPresenceReturns struct {
 		result1 services_bbs.Presence
 		result2 <-chan bool
 		result3 error
@@ -103,34 +103,34 @@ type FakeRepBBS struct {
 	}
 }
 
-func (fake *FakeRepBBS) MaintainRepPresence(arg1 time.Duration, arg2 models.RepPresence) (services_bbs.Presence, <-chan bool, error) {
-	fake.maintainRepPresenceMutex.Lock()
-	defer fake.maintainRepPresenceMutex.Unlock()
-	fake.maintainRepPresenceArgsForCall = append(fake.maintainRepPresenceArgsForCall, struct {
+func (fake *FakeRepBBS) MaintainExecutorPresence(arg1 time.Duration, arg2 models.ExecutorPresence) (services_bbs.Presence, <-chan bool, error) {
+	fake.maintainExecutorPresenceMutex.Lock()
+	defer fake.maintainExecutorPresenceMutex.Unlock()
+	fake.maintainExecutorPresenceArgsForCall = append(fake.maintainExecutorPresenceArgsForCall, struct {
 		arg1 time.Duration
-		arg2 models.RepPresence
+		arg2 models.ExecutorPresence
 	}{arg1, arg2})
-	if fake.MaintainRepPresenceStub != nil {
-		return fake.MaintainRepPresenceStub(arg1, arg2)
+	if fake.MaintainExecutorPresenceStub != nil {
+		return fake.MaintainExecutorPresenceStub(arg1, arg2)
 	} else {
-		return fake.maintainRepPresenceReturns.result1, fake.maintainRepPresenceReturns.result2, fake.maintainRepPresenceReturns.result3
+		return fake.maintainExecutorPresenceReturns.result1, fake.maintainExecutorPresenceReturns.result2, fake.maintainExecutorPresenceReturns.result3
 	}
 }
 
-func (fake *FakeRepBBS) MaintainRepPresenceCallCount() int {
-	fake.maintainRepPresenceMutex.RLock()
-	defer fake.maintainRepPresenceMutex.RUnlock()
-	return len(fake.maintainRepPresenceArgsForCall)
+func (fake *FakeRepBBS) MaintainExecutorPresenceCallCount() int {
+	fake.maintainExecutorPresenceMutex.RLock()
+	defer fake.maintainExecutorPresenceMutex.RUnlock()
+	return len(fake.maintainExecutorPresenceArgsForCall)
 }
 
-func (fake *FakeRepBBS) MaintainRepPresenceArgsForCall(i int) (time.Duration, models.RepPresence) {
-	fake.maintainRepPresenceMutex.RLock()
-	defer fake.maintainRepPresenceMutex.RUnlock()
-	return fake.maintainRepPresenceArgsForCall[i].arg1, fake.maintainRepPresenceArgsForCall[i].arg2
+func (fake *FakeRepBBS) MaintainExecutorPresenceArgsForCall(i int) (time.Duration, models.ExecutorPresence) {
+	fake.maintainExecutorPresenceMutex.RLock()
+	defer fake.maintainExecutorPresenceMutex.RUnlock()
+	return fake.maintainExecutorPresenceArgsForCall[i].arg1, fake.maintainExecutorPresenceArgsForCall[i].arg2
 }
 
-func (fake *FakeRepBBS) MaintainRepPresenceReturns(result1 services_bbs.Presence, result2 <-chan bool, result3 error) {
-	fake.maintainRepPresenceReturns = struct {
+func (fake *FakeRepBBS) MaintainExecutorPresenceReturns(result1 services_bbs.Presence, result2 <-chan bool, result3 error) {
+	fake.maintainExecutorPresenceReturns = struct {
 		result1 services_bbs.Presence
 		result2 <-chan bool
 		result3 error

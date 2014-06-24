@@ -76,8 +76,10 @@ var _ = Describe("Start Auction", func() {
 
 		BeforeEach(func() {
 			auctionLRP = models.LRPStartAuction{
-				ProcessGuid: "some-guid",
-				Index:       1,
+				ProcessGuid:  "some-guid",
+				Index:        1,
+				Stack:        "pancakes",
+				InstanceGuid: "instance-guid",
 				Actions: []models.ExecutorAction{
 					{
 						Action: models.RunAction{

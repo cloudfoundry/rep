@@ -120,7 +120,7 @@ func main() {
 	lrpStopper := initializeLRPStopper(bbs, executorClient, logger)
 
 	group := grouper.EnvokeGroup(grouper.RunGroup{
-		"maintainer":        initializeMaintainer(executorID, bbs, logger),
+		"maintainer":        initializeMaintainer(executorID, executorClient, bbs, logger),
 		"task-rep":          initializeTaskRep(executorID, bbs, logger, executorClient),
 		"stop-lrp-listener": initializeStopLRPListener(lrpStopper, bbs, executorClient, logger),
 		"api-server":        initializeAPIServer(executorID, bbs, logger, executorClient),
@@ -219,13 +219,13 @@ func initializeAPIServer(executorID string, bbs Bbs.RepBBS, logger *steno.Logger
 	return http_server.New(*listenAddr, apiHandler)
 }
 
-func initializeMaintainer(executorID string, bbs Bbs.RepBBS, logger *steno.Logger) *maintain.Maintainer {
+func initializeMaintainer(executorID string, executorClient client.Client, bbs Bbs.RepBBS, logger *steno.Logger) *maintain.Maintainer {
 	executorPresence := models.ExecutorPresence{
 		ExecutorID: executorID,
 		Stack:      *stack,
 	}
 
-	return maintain.New(executorPresence, bbs, logger, *heartbeatInterval)
+	return maintain.New(executorPresence, executorClient, bbs, logger, *heartbeatInterval)
 }
 
 func initializeNatsClient(logger *steno.Logger) yagnats.NATSClient {

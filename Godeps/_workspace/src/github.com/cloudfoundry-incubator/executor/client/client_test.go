@@ -34,10 +34,9 @@ var _ = Describe("Client", func() {
 				DiskMB:   1024,
 			}
 			validResponse = api.Container{
-				Guid:         "guid-123",
-				ExecutorGuid: "executor-guid",
-				MemoryMB:     64,
-				DiskMB:       1024,
+				Guid:     "guid-123",
+				MemoryMB: 64,
+				DiskMB:   1024,
 			}
 		})
 
@@ -137,8 +136,6 @@ var _ = Describe("Client", func() {
 						SourceName: "XYZ",
 						Index:      &zero,
 					},
-
-					ExecutorGuid: "executor-guid",
 				}))
 			})
 		})
@@ -391,4 +388,33 @@ var _ = Describe("Client", func() {
 		})
 	})
 
+	Describe("Ping", func() {
+		Context("when the ping succeeds", func() {
+			BeforeEach(func() {
+				fakeExecutor.AppendHandlers(ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/ping"),
+					ghttp.RespondWith(http.StatusOK, nil),
+				))
+			})
+
+			It("should succeed", func() {
+				err := client.Ping()
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+		})
+
+		Context("when the ping fails", func() {
+			BeforeEach(func() {
+				fakeExecutor.AppendHandlers(ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/ping"),
+					ghttp.RespondWith(http.StatusBadGateway, nil),
+				))
+			})
+
+			It("should fail", func() {
+				err := client.Ping()
+				Ω(err).Should(HaveOccurred())
+			})
+		})
+	})
 })

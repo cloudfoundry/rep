@@ -65,6 +65,8 @@ var _ = Describe("LrpConvergence", func() {
 			desiredLRP = models.DesiredLRP{
 				ProcessGuid: processGuid,
 				Instances:   2,
+				Stack:       "pancake",
+				Source:      "megatron",
 			}
 		})
 

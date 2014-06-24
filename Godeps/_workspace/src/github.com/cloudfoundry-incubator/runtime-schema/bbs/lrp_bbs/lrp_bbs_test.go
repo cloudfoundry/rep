@@ -17,6 +17,7 @@ var _ = Describe("LRP", func() {
 			lrp = models.DesiredLRP{
 				ProcessGuid: "some-process-guid",
 				Instances:   5,
+				Source:      "http://example.com",
 				Stack:       "some-stack",
 				MemoryMB:    1024,
 				DiskMB:      512,
@@ -149,6 +150,8 @@ var _ = Describe("LRP", func() {
 
 		prevValue := models.DesiredLRP{
 			ProcessGuid: "some-guid",
+			Source:      "http://example.com",
+			Stack:       "some-stack",
 			Instances:   1,
 		}
 

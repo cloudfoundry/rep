@@ -39,29 +39,11 @@ func (bbs *ServicesBBS) registrationsForServiceName(name string) (models.Service
 
 	for _, node := range rootNode.ChildNodes {
 		reg := models.ServiceRegistration{
-			Name:     name,
-			Id:       path.Base(node.Key),
-			Location: string(node.Value),
+			Name: name,
+			Id:   path.Base(node.Key),
 		}
 		registrations = append(registrations, reg)
 	}
 
 	return registrations, nil
-}
-
-func (bbs *ServicesBBS) GetAllExecutors() ([]string, error) {
-	nodes, err := bbs.store.ListRecursively(shared.ExecutorSchemaRoot)
-	if err == storeadapter.ErrorKeyNotFound {
-		return []string{}, nil
-	} else if err != nil {
-		return nil, err
-	}
-
-	executors := []string{}
-
-	for _, node := range nodes.ChildNodes {
-		executors = append(executors, node.KeyComponents()[2])
-	}
-
-	return executors, nil
 }

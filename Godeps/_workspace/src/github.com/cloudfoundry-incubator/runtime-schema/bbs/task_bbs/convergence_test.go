@@ -47,7 +47,9 @@ var _ = Describe("Convergence of Tasks", func() {
 
 		bbs = New(etcdClient, timeProvider, logger)
 		task = models.Task{
-			Guid: "some-guid",
+			Guid:    "some-guid",
+			Stack:   "pancakes",
+			Actions: dummyActions,
 		}
 		servicesBBS = services_bbs.New(etcdClient, logger)
 	})
@@ -138,7 +140,9 @@ var _ = Describe("Convergence of Tasks", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 
 				var status <-chan bool
-				presence, status, err = servicesBBS.MaintainExecutorPresence(time.Minute, "executor-id")
+				presence, status, err = servicesBBS.MaintainExecutorPresence(time.Minute, models.ExecutorPresence{
+					ExecutorID: "executor-id",
+				})
 				Ω(err).ShouldNot(HaveOccurred())
 				test_helpers.NewStatusReporter(status)
 			})
@@ -210,7 +214,9 @@ var _ = Describe("Convergence of Tasks", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 
 				var status <-chan bool
-				presence, status, err = servicesBBS.MaintainExecutorPresence(time.Minute, "executor-id")
+				presence, status, err = servicesBBS.MaintainExecutorPresence(time.Minute, models.ExecutorPresence{
+					ExecutorID: "executor-id",
+				})
 				Ω(err).ShouldNot(HaveOccurred())
 				test_helpers.NewStatusReporter(status)
 			})

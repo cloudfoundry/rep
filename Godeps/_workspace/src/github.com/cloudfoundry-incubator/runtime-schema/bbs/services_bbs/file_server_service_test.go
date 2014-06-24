@@ -2,6 +2,7 @@ package services_bbs_test
 
 import (
 	"time"
+	"github.com/cloudfoundry/storeadapter"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -9,6 +10,7 @@ import (
 	. "github.com/cloudfoundry-incubator/runtime-schema/bbs/services_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	steno "github.com/cloudfoundry/gosteno"
+	. "github.com/cloudfoundry/storeadapter/storenodematchers"
 	"github.com/cloudfoundry/storeadapter/test_helpers"
 )
 
@@ -33,6 +35,37 @@ var _ = Describe("Fetching available file servers", func() {
 		logger := steno.NewLogger("the-logger")
 		steno.EnterTestMode()
 		bbs = New(etcdClient, logger)
+	})
+
+	Describe("MaintainFileServerPresence", func() {
+		var fileServerURL string
+		var fileServerId string
+
+		BeforeEach(func() {
+			fileServerURL = "stubFileServerURL"
+			fileServerId = factories.GenerateGuid()
+			interval = 1 * time.Second
+
+			presence, status, err = bbs.MaintainFileServerPresence(interval, fileServerURL, fileServerId)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			reporter := test_helpers.NewStatusReporter(status)
+			Eventually(reporter.Locked).Should(BeTrue())
+		})
+
+		AfterEach(func() {
+			presence.Remove()
+		})
+
+		It("should put /file_server/FILE_SERVER_ID in the store with a TTL", func() {
+			node, err := etcdClient.Get("/v1/file_server/" + fileServerId)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(node).Should(MatchStoreNode(storeadapter.StoreNode{
+				Key:   "/v1/file_server/" + fileServerId,
+				Value: []byte(fileServerURL),
+				TTL:   uint64(interval.Seconds()), // move to config one day
+			}))
+		})
 	})
 
 	Describe("GetAvailableFileServer", func() {

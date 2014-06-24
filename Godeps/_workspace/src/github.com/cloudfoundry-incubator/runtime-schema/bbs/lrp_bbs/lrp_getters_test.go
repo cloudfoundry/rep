@@ -12,9 +12,9 @@ var _ = Describe("LrpGetters", func() {
 	var desiredLrp1, desiredLrp2, desiredLrp3 models.DesiredLRP
 
 	BeforeEach(func() {
-		desiredLrp1 = models.DesiredLRP{ProcessGuid: "guidA"}
-		desiredLrp2 = models.DesiredLRP{ProcessGuid: "guidB"}
-		desiredLrp3 = models.DesiredLRP{ProcessGuid: "guidC"}
+		desiredLrp1 = models.DesiredLRP{ProcessGuid: "guidA", Stack: "stack", Source: "http://jelly.donut"}
+		desiredLrp2 = models.DesiredLRP{ProcessGuid: "guidB", Stack: "stack", Source: "http://jelly.donut"}
+		desiredLrp3 = models.DesiredLRP{ProcessGuid: "guidC", Stack: "stack", Source: "http://jelly.donut"}
 
 		lrp1 = models.ActualLRP{
 			ProcessGuid:  "guidA",
