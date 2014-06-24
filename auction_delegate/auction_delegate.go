@@ -11,14 +11,16 @@ import (
 )
 
 type AuctionDelegate struct {
+	executorID string
 	lrpStopper lrp_stopper.LRPStopper
 	bbs        Bbs.RepBBS
 	client     client.Client
 	logger     *steno.Logger
 }
 
-func New(lrpStopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, client client.Client, logger *steno.Logger) *AuctionDelegate {
+func New(executorID string, lrpStopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, client client.Client, logger *steno.Logger) *AuctionDelegate {
 	return &AuctionDelegate{
+		executorID: executorID,
 		lrpStopper: lrpStopper,
 		bbs:        bbs,
 		client:     client,
@@ -126,7 +128,7 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 
 	containerGuid := startAuction.LRPIdentifier().OpaqueID()
 
-	container, err := a.client.InitializeContainer(containerGuid, api.ContainerInitializationRequest{
+	_, err := a.client.InitializeContainer(containerGuid, api.ContainerInitializationRequest{
 		Ports: a.convertPortMappings(startAuction.Ports),
 		Log:   startAuction.Log,
 	})
@@ -143,7 +145,7 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 		InstanceGuid: startAuction.InstanceGuid,
 		Index:        startAuction.Index,
 	}
-	err = a.bbs.ReportActualLRPAsStarting(lrp, container.ExecutorGuid)
+	err = a.bbs.ReportActualLRPAsStarting(lrp, a.executorID)
 
 	if err != nil {
 		a.logger.Errord(map[string]interface{}{

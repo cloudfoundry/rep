@@ -85,6 +85,7 @@ var _ = Describe("TaskScheduler", func() {
 
 		BeforeEach(func() {
 			taskScheduler = ifrit.Envoke(task_scheduler.New(
+				"some-executor-id",
 				router.NewRequestGenerator(
 					routes.TaskCompleted,
 					routes.Routes,
@@ -150,7 +151,7 @@ var _ = Describe("TaskScheduler", func() {
 						Ω(req.MemoryMB).Should(Equal(64))
 						Ω(req.DiskMB).Should(Equal(1024))
 						Ω(containerGuid).Should(Equal(task.Guid))
-						return api.Container{ExecutorGuid: "the-executor-guid", Guid: containerGuid}, nil
+						return api.Container{Guid: containerGuid}, nil
 					}
 
 					fakeClient.WhenDeletingContainer = func(allocationGuid string) error {
@@ -163,7 +164,7 @@ var _ = Describe("TaskScheduler", func() {
 					Eventually(fakeBBS.ClaimTaskCallCount).Should(Equal(1))
 					taskGuid, executorGuid := fakeBBS.ClaimTaskArgsForCall(0)
 					Ω(taskGuid).Should(Equal(task.Guid))
-					Ω(executorGuid).Should(Equal("the-executor-guid"))
+					Ω(executorGuid).Should(Equal("some-executor-id"))
 				})
 
 				Context("when claiming the task succeeds", func() {
@@ -183,7 +184,7 @@ var _ = Describe("TaskScheduler", func() {
 
 								Ω(fakeBBS.ClaimTaskCallCount()).Should(Equal(1))
 								Ω(fakeBBS.StartTaskCallCount()).Should(Equal(0))
-								return api.Container{ExecutorGuid: "the-executor-guid", ContainerHandle: "the-container-handle"}, nil
+								return api.Container{ContainerHandle: "the-container-handle"}, nil
 							}
 						})
 
@@ -191,7 +192,7 @@ var _ = Describe("TaskScheduler", func() {
 							Eventually(fakeBBS.StartTaskCallCount).Should(Equal(1))
 							taskGuid, executorGuid, containerHandle := fakeBBS.StartTaskArgsForCall(0)
 							Ω(taskGuid).Should(Equal(task.Guid))
-							Ω(executorGuid).Should(Equal("the-executor-guid"))
+							Ω(executorGuid).Should(Equal("some-executor-id"))
 							Ω(containerHandle).Should(Equal("the-container-handle"))
 						})
 

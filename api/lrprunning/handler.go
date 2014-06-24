@@ -11,18 +11,20 @@ import (
 )
 
 type handler struct {
-	bbs      bbs.RepBBS
-	executor executorclient.Client
-	lrpHost  string
-	logger   *gosteno.Logger
+	executorID string
+	bbs        bbs.RepBBS
+	executor   executorclient.Client
+	lrpHost    string
+	logger     *gosteno.Logger
 }
 
-func NewHandler(bbs bbs.RepBBS, executor executorclient.Client, lrpHost string, logger *gosteno.Logger) http.Handler {
+func NewHandler(executorID string, bbs bbs.RepBBS, executor executorclient.Client, lrpHost string, logger *gosteno.Logger) http.Handler {
 	return &handler{
-		bbs:      bbs,
-		executor: executor,
-		lrpHost:  lrpHost,
-		logger:   logger,
+		executorID: executorID,
+		bbs:        bbs,
+		executor:   executor,
+		lrpHost:    lrpHost,
+		logger:     logger,
 	}
 }
 
@@ -69,10 +71,9 @@ func (handler *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	handler.logger.Infod(map[string]interface{}{
-		"actual":        lrp,
-		"executor-guid": container.ExecutorGuid,
+		"actual": lrp,
 	}, "rep.lrp-running-handler.marking-actual-as-running")
-	err = handler.bbs.ReportActualLRPAsRunning(lrp, container.ExecutorGuid)
+	err = handler.bbs.ReportActualLRPAsRunning(lrp, handler.executorID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

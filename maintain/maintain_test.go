@@ -16,7 +16,7 @@ import (
 
 var _ = Describe("Maintain Presence", func() {
 	var (
-		repPresence       models.RepPresence
+		executorPresence  models.ExecutorPresence
 		heartbeatInterval = 1 * time.Second
 
 		fakeBBS *fake_bbs.FakeRepBBS
@@ -36,17 +36,17 @@ var _ = Describe("Maintain Presence", func() {
 		presence = &fake_bbs.FakePresence{}
 		maintainStatusChan = make(chan bool)
 
-		repPresence = models.RepPresence{
-			RepID: "rep-id",
-			Stack: "lucid64",
+		executorPresence = models.ExecutorPresence{
+			ExecutorID: "executor-id",
+			Stack:      "lucid64",
 		}
 
 		fakeBBS = &fake_bbs.FakeRepBBS{}
-		fakeBBS.MaintainRepPresenceReturns(presence, maintainStatusChan, nil)
+		fakeBBS.MaintainExecutorPresenceReturns(presence, maintainStatusChan, nil)
 
 		logger = steno.NewLogger("test-logger")
 
-		maintainer = ifrit.Envoke(maintain.New(repPresence, fakeBBS, logger, heartbeatInterval))
+		maintainer = ifrit.Envoke(maintain.New(executorPresence, fakeBBS, logger, heartbeatInterval))
 	})
 
 	AfterEach(func() {
@@ -61,10 +61,10 @@ var _ = Describe("Maintain Presence", func() {
 		})
 
 		It("should maintain presence", func() {
-			Eventually(fakeBBS.MaintainRepPresenceCallCount).Should(Equal(1))
-			interval, maintainedPresence := fakeBBS.MaintainRepPresenceArgsForCall(0)
+			Eventually(fakeBBS.MaintainExecutorPresenceCallCount).Should(Equal(1))
+			interval, maintainedPresence := fakeBBS.MaintainExecutorPresenceArgsForCall(0)
 			Ω(interval).Should(Equal(heartbeatInterval))
-			Ω(maintainedPresence).Should(Equal(repPresence))
+			Ω(maintainedPresence).Should(Equal(executorPresence))
 		})
 	})
 

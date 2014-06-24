@@ -21,14 +21,16 @@ const ServerCloseErrMsg = "use of closed network connection"
 type TaskScheduler struct {
 	callbackGenerator *router.RequestGenerator
 
-	bbs      bbs.RepBBS
-	logger   *gosteno.Logger
-	stack    string
-	client   client.Client
-	inFlight *sync.WaitGroup
+	executorID string
+	bbs        bbs.RepBBS
+	logger     *gosteno.Logger
+	stack      string
+	client     client.Client
+	inFlight   *sync.WaitGroup
 }
 
 func New(
+	executorID string,
 	callbackGenerator *router.RequestGenerator,
 	bbs bbs.RepBBS,
 	logger *gosteno.Logger,
@@ -36,6 +38,7 @@ func New(
 	executorClient client.Client,
 ) *TaskScheduler {
 	return &TaskScheduler{
+		executorID:        executorID,
 		callbackGenerator: callbackGenerator,
 
 		bbs:    bbs,
@@ -96,7 +99,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		return
 	}
 
-	container, err := s.client.AllocateContainer(task.Guid, api.ContainerAllocationRequest{
+	_, err = s.client.AllocateContainer(task.Guid, api.ContainerAllocationRequest{
 		DiskMB:   task.DiskMB,
 		MemoryMB: task.MemoryMB,
 	})
@@ -107,14 +110,14 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 
 	s.sleepForARandomInterval()
 
-	err = s.bbs.ClaimTask(task.Guid, container.ExecutorGuid)
+	err = s.bbs.ClaimTask(task.Guid, s.executorID)
 	if err != nil {
 		s.logError("task-scheduler.claim-task.failed", err)
 		s.client.DeleteContainer(task.Guid)
 		return
 	}
 
-	container, err = s.client.InitializeContainer(task.Guid, api.ContainerInitializationRequest{
+	container, err := s.client.InitializeContainer(task.Guid, api.ContainerInitializationRequest{
 		CpuPercent: task.CpuPercent,
 		Log:        task.Log,
 	})
@@ -125,7 +128,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		return
 	}
 
-	err = s.bbs.StartTask(task.Guid, container.ExecutorGuid, container.ContainerHandle)
+	err = s.bbs.StartTask(task.Guid, s.executorID, container.ContainerHandle)
 	if err != nil {
 		s.logError("task-scheduler.start-task.failed", err)
 		s.client.DeleteContainer(task.Guid)

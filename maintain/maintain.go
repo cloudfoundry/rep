@@ -11,15 +11,15 @@ import (
 )
 
 type Maintainer struct {
-	repPresence       models.RepPresence
+	executorPresence  models.ExecutorPresence
 	bbs               Bbs.RepBBS
 	logger            *steno.Logger
 	heartbeatInterval time.Duration
 }
 
-func New(repPresence models.RepPresence, bbs Bbs.RepBBS, logger *steno.Logger, heartbeatInterval time.Duration) *Maintainer {
+func New(executorPresence models.ExecutorPresence, bbs Bbs.RepBBS, logger *steno.Logger, heartbeatInterval time.Duration) *Maintainer {
 	return &Maintainer{
-		repPresence:       repPresence,
+		executorPresence:  executorPresence,
 		bbs:               bbs,
 		logger:            logger,
 		heartbeatInterval: heartbeatInterval,
@@ -28,7 +28,7 @@ func New(repPresence models.RepPresence, bbs Bbs.RepBBS, logger *steno.Logger, h
 
 func (m *Maintainer) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error {
 	for {
-		presence, status, err := m.bbs.MaintainRepPresence(m.heartbeatInterval, m.repPresence)
+		presence, status, err := m.bbs.MaintainExecutorPresence(m.heartbeatInterval, m.executorPresence)
 		if err != nil {
 			m.logger.Errord(map[string]interface{}{
 				"error": err.Error(),

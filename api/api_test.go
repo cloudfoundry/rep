@@ -44,7 +44,7 @@ var _ = Describe("Callback API", func() {
 
 		apiServer, err := api.NewServer(
 			taskcomplete.NewHandler(fakeBBS, logger),
-			lrprunning.NewHandler(fakeBBS, fakeExecutor, "1.2.3.4", logger),
+			lrprunning.NewHandler("some-executor-id", fakeBBS, fakeExecutor, "1.2.3.4", logger),
 		)
 		Ω(err).ShouldNot(HaveOccurred())
 
@@ -178,7 +178,6 @@ var _ = Describe("Callback API", func() {
 			BeforeEach(func() {
 				fakeExecutor.WhenGettingContainer = func(guid string) (executorAPI.Container, error) {
 					return executorAPI.Container{
-						ExecutorGuid: "some-executor-id",
 						Ports: []executorAPI.PortMapping{
 							{ContainerPort: 8080, HostPort: 1234},
 							{ContainerPort: 8081, HostPort: 1235},

@@ -27,7 +27,7 @@ var _ = Describe("AuctionDelegate", func() {
 		stopper = &fake_lrp_stopper.FakeLRPStopper{}
 		client = fake_client.New()
 		bbs = &fake_bbs.FakeRepBBS{}
-		delegate = New(stopper, bbs, client, steno.NewLogger("test"))
+		delegate = New("some-executor-id", stopper, bbs, client, steno.NewLogger("test"))
 		clientFetchError = errors.New("Failed to fetch")
 	})
 
@@ -349,7 +349,7 @@ var _ = Describe("AuctionDelegate", func() {
 					Log: startAuction.Log,
 				}))
 				calledInitialize = true
-				return api.Container{ExecutorGuid: "some-executor-id"}, initializeError
+				return api.Container{}, initializeError
 			}
 
 			client.WhenRunning = func(allocationGuid string, request api.ContainerRunRequest) error {

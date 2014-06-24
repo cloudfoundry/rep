@@ -67,18 +67,18 @@ var _ = Describe("The Rep", func() {
 	})
 
 	Describe("maintaining presence", func() {
-		var repPresence models.RepPresence
+		var executorPresence models.ExecutorPresence
 
 		BeforeEach(func() {
-			Eventually(bbs.GetAllReps).Should(HaveLen(1))
-			reps, err := bbs.GetAllReps()
+			Eventually(bbs.GetAllExecutors).Should(HaveLen(1))
+			executors, err := bbs.GetAllExecutors()
 			Ω(err).ShouldNot(HaveOccurred())
-			repPresence = reps[0]
+			executorPresence = executors[0]
 		})
 
 		It("should maintain presence", func() {
-			Ω(repPresence.Stack).Should(Equal("the-stack"))
-			Ω(repPresence.RepID).ShouldNot(BeZero())
+			Ω(executorPresence.Stack).Should(Equal("the-stack"))
+			Ω(executorPresence.ExecutorID).ShouldNot(BeZero())
 		})
 
 		Context("when the presence fails to be maintained", func() {
@@ -86,10 +86,10 @@ var _ = Describe("The Rep", func() {
 				etcdRunner.Stop()
 				etcdRunner.Start()
 
-				Eventually(bbs.GetAllReps).Should(HaveLen(1))
-				reps, err := bbs.GetAllReps()
+				Eventually(bbs.GetAllExecutors).Should(HaveLen(1))
+				executors, err := bbs.GetAllExecutors()
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(reps[0]).Should(Equal(repPresence))
+				Ω(executors[0]).Should(Equal(executorPresence))
 
 				Ω(runner.Session).ShouldNot(gexec.Exit())
 			})
@@ -134,14 +134,14 @@ var _ = Describe("The Rep", func() {
 		})
 
 		It("makes a request to the executor", func() {
-			Eventually(bbs.GetAllReps).Should(HaveLen(1))
-			reps, err := bbs.GetAllReps()
+			Eventually(bbs.GetAllExecutors).Should(HaveLen(1))
+			executors, err := bbs.GetAllExecutors()
 			Ω(err).ShouldNot(HaveOccurred())
-			repID := reps[0].RepID
+			executorID := executors[0].ExecutorID
 
 			client, err := auction_nats_client.New(natsRunner.MessageBus, time.Second, 10*time.Second, gosteno.NewLogger("the-logger"))
 			Ω(err).ShouldNot(HaveOccurred())
-			resources := client.TotalResources(repID)
+			resources := client.TotalResources(executorID)
 			Ω(resources).Should(Equal(auctiontypes.Resources{
 				MemoryMB:   1024,
 				DiskMB:     2048,
