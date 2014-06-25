@@ -106,6 +106,13 @@ var _ = Describe("The Rep", func() {
 			bbs.DesireTask(models.Task{
 				Guid:  "the-task-guid",
 				Stack: "the-stack",
+				Actions: []models.ExecutorAction{
+					{
+						Action: models.RunAction{
+							Script: "cat /tmp/file",
+						},
+					},
+				},
 			})
 		})
 
