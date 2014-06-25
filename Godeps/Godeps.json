@@ -31,11 +31,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/api",
-			"Rev": "5551308ebbf613ef59c9828e3a1b550af8292496"
+			"Rev": "ccf673b0467b143c3172bbe310d7389cd8b4c4ea"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/client",
-			"Rev": "5551308ebbf613ef59c9828e3a1b550af8292496"
+			"Rev": "ccf673b0467b143c3172bbe310d7389cd8b4c4ea"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
@@ -82,7 +82,7 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "1d0e3e0a4e04ad1bc22b275068f4667738b43a02"
+			"Rev": "7ec350c6bff61a8e3f999e1164f11e5c133605d0"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",

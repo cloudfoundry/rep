@@ -32,10 +32,7 @@ var _ = Describe("The Rep", func() {
 		fakeExecutor = ghttp.NewServer()
 		// these tests only look for the start of a sequence of requests
 		fakeExecutor.AllowUnhandledRequests = true
-		fakeExecutor.AppendHandlers(ghttp.CombineHandlers(
-			ghttp.VerifyRequest("GET", "/ping"),
-			ghttp.RespondWith(http.StatusOK, nil),
-		))
+		fakeExecutor.RouteToHandler("GET", "/ping", ghttp.RespondWith(http.StatusOK, nil))
 
 		bbs = Bbs.NewBBS(etcdRunner.Adapter(), timeprovider.NewTimeProvider(), gosteno.NewLogger("the-logger"))
 		runner = reprunner.New(
@@ -47,7 +44,7 @@ var _ = Describe("The Rep", func() {
 			fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
 			"127.0.0.1:4001",
 			"info",
-			5*time.Second,
+			time.Second,
 		)
 
 		runner.Start()
@@ -86,15 +83,10 @@ var _ = Describe("The Rep", func() {
 
 		Context("when the presence fails to be maintained", func() {
 			It("should not exit, but keep trying to maintain presence at the same ID", func() {
-				fakeExecutor.AppendHandlers(ghttp.CombineHandlers(
-					ghttp.VerifyRequest("GET", "/ping"),
-					ghttp.RespondWith(http.StatusOK, nil),
-				))
-
 				etcdRunner.Stop()
 				etcdRunner.Start()
 
-				Eventually(bbs.GetAllExecutors, 10).Should(HaveLen(1))
+				Eventually(bbs.GetAllExecutors, 5).Should(HaveLen(1))
 				executors, err := bbs.GetAllExecutors()
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(executors[0]).Should(Equal(executorPresence))
