@@ -52,7 +52,7 @@ func New(
 
 func (s *TaskScheduler) Run(signals <-chan os.Signal, readyChan chan<- struct{}) error {
 	tasks, stopChan, errChan := s.bbs.WatchForDesiredTask()
-	s.logger.Info("executor.watching-for-desired-task")
+	s.logger.Info("rep.watching-for-desired-task")
 
 	close(readyChan)
 
