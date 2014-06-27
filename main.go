@@ -102,8 +102,19 @@ var stack = flag.String(
 	"the rep stack - must be specified",
 )
 
+var repID = flag.String(
+	"repID",
+	"",
+	"the ID used by the rep to identify itself to external systems - must be specified",
+)
+
 func main() {
 	flag.Parse()
+
+	if *repID == "" {
+		log.Fatalf("-repID must be specified")
+	}
+
 	if *stack == "" {
 		log.Fatalf("-stack must be specified")
 	}
@@ -112,18 +123,17 @@ func main() {
 		log.Fatalf("-lrpHost must be specified")
 	}
 
-	executorID := generateExecutorID()
 	logger := initializeLogger()
 	bbs := initializeRepBBS(logger)
 	executorClient := client.New(http.DefaultClient, *executorURL)
 	lrpStopper := initializeLRPStopper(bbs, executorClient, logger)
 
 	group := grouper.EnvokeGroup(grouper.RunGroup{
-		"maintainer":        initializeMaintainer(executorID, executorClient, bbs, logger),
-		"task-rep":          initializeTaskRep(executorID, bbs, logger, executorClient),
+		"maintainer":        initializeMaintainer(*repID, executorClient, bbs, logger),
+		"task-rep":          initializeTaskRep(*repID, bbs, logger, executorClient),
 		"stop-lrp-listener": initializeStopLRPListener(lrpStopper, bbs, executorClient, logger),
-		"api-server":        initializeAPIServer(executorID, bbs, logger, executorClient),
-		"auction-server":    initializeAuctionNatsServer(executorID, lrpStopper, bbs, executorClient, logger),
+		"api-server":        initializeAPIServer(*repID, bbs, logger, executorClient),
+		"auction-server":    initializeAuctionNatsServer(*repID, lrpStopper, bbs, executorClient, logger),
 	})
 	monitor := ifrit.Envoke(sigmon.New(group))
 
@@ -182,13 +192,13 @@ func initializeRepBBS(logger *steno.Logger) Bbs.RepBBS {
 	return bbs
 }
 
-func initializeTaskRep(executorID string, bbs Bbs.RepBBS, logger *steno.Logger, executorClient client.Client) *task_scheduler.TaskScheduler {
+func initializeTaskRep(repID string, bbs Bbs.RepBBS, logger *steno.Logger, executorClient client.Client) *task_scheduler.TaskScheduler {
 	callbackGenerator := rata.NewRequestGenerator(
 		"http://"+*listenAddr,
 		routes.Routes,
 	)
 
-	return task_scheduler.New(executorID, callbackGenerator, bbs, logger, *stack, executorClient)
+	return task_scheduler.New(repID, callbackGenerator, bbs, logger, *stack, executorClient)
 }
 
 func generateExecutorID() string {
@@ -207,9 +217,9 @@ func initializeStopLRPListener(stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, e
 	return stop_lrp_listener.New(stopper, bbs, executorClient, logger)
 }
 
-func initializeAPIServer(executorID string, bbs Bbs.RepBBS, logger *steno.Logger, executorClient client.Client) ifrit.Runner {
+func initializeAPIServer(repID string, bbs Bbs.RepBBS, logger *steno.Logger, executorClient client.Client) ifrit.Runner {
 	taskCompleteHandler := taskcomplete.NewHandler(bbs, logger)
-	lrpRunningHandler := lrprunning.NewHandler(executorID, bbs, executorClient, *lrpHost, logger)
+	lrpRunningHandler := lrprunning.NewHandler(repID, bbs, executorClient, *lrpHost, logger)
 
 	apiHandler, err := api.NewServer(taskCompleteHandler, lrpRunningHandler)
 	if err != nil {
@@ -218,9 +228,9 @@ func initializeAPIServer(executorID string, bbs Bbs.RepBBS, logger *steno.Logger
 	return http_server.New(*listenAddr, apiHandler)
 }
 
-func initializeMaintainer(executorID string, executorClient client.Client, bbs Bbs.RepBBS, logger *steno.Logger) *maintain.Maintainer {
+func initializeMaintainer(repID string, executorClient client.Client, bbs Bbs.RepBBS, logger *steno.Logger) *maintain.Maintainer {
 	executorPresence := models.ExecutorPresence{
-		ExecutorID: executorID,
+		ExecutorID: repID,
 		Stack:      *stack,
 	}
 
@@ -249,9 +259,9 @@ func initializeNatsClient(logger *steno.Logger) yagnats.NATSClient {
 	return natsClient
 }
 
-func initializeAuctionNatsServer(executorID string, stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, executorClient client.Client, logger *steno.Logger) *auction_nats_server.AuctionNATSServer {
-	auctionDelegate := auction_delegate.New(executorID, stopper, bbs, executorClient, logger)
-	auctionRep := auctionrep.New(executorID, auctionDelegate)
+func initializeAuctionNatsServer(repID string, stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, executorClient client.Client, logger *steno.Logger) *auction_nats_server.AuctionNATSServer {
+	auctionDelegate := auction_delegate.New(repID, stopper, bbs, executorClient, logger)
+	auctionRep := auctionrep.New(repID, auctionDelegate)
 	natsClient := initializeNatsClient(logger)
 	return auction_nats_server.New(natsClient, auctionRep, logger)
 }
