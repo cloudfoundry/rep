@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"github.com/tedsuo/router"
+	"github.com/tedsuo/rata"
 
 	"github.com/cloudfoundry-incubator/rep/routes"
 )
@@ -14,5 +14,5 @@ func NewServer(taskHandler, lrpHandler http.Handler) (http.Handler, error) {
 		routes.LRPRunning:    lrpHandler,
 	}
 
-	return router.NewRouter(routes.Routes, handlers)
+	return rata.NewRouter(routes.Routes, handlers)
 }

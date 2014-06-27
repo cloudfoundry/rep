@@ -33,7 +33,7 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
 	"github.com/tedsuo/ifrit/sigmon"
-	"github.com/tedsuo/router"
+	"github.com/tedsuo/rata"
 )
 
 var etcdCluster = flag.String(
@@ -183,7 +183,7 @@ func initializeRepBBS(logger *steno.Logger) Bbs.RepBBS {
 }
 
 func initializeTaskRep(executorID string, bbs Bbs.RepBBS, logger *steno.Logger, executorClient client.Client) *task_scheduler.TaskScheduler {
-	callbackGenerator := router.NewRequestGenerator(
+	callbackGenerator := rata.NewRequestGenerator(
 		"http://"+*listenAddr,
 		routes.Routes,
 	)

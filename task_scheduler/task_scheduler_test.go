@@ -7,7 +7,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/router"
+	"github.com/tedsuo/rata"
 
 	"github.com/cloudfoundry-incubator/executor/client/fake_client"
 	"github.com/cloudfoundry-incubator/rep/routes"
@@ -86,7 +86,7 @@ var _ = Describe("TaskScheduler", func() {
 		BeforeEach(func() {
 			taskScheduler = ifrit.Envoke(task_scheduler.New(
 				"some-executor-id",
-				router.NewRequestGenerator(
+				rata.NewRequestGenerator(
 					routes.TaskCompleted,
 					routes.Routes,
 				),

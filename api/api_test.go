@@ -18,7 +18,7 @@ import (
 	"github.com/cloudfoundry/gosteno"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/tedsuo/router"
+	"github.com/tedsuo/rata"
 )
 
 var _ = Describe("Callback API", func() {
@@ -161,9 +161,9 @@ var _ = Describe("Callback API", func() {
 		})
 
 		JustBeforeEach(func() {
-			generator := router.NewRequestGenerator(server.URL, routes.Routes)
+			generator := rata.NewRequestGenerator(server.URL, routes.Routes)
 
-			request, err := generator.RequestForHandler(routes.LRPRunning, router.Params{
+			request, err := generator.CreateRequest(routes.LRPRunning, rata.Params{
 				"process_guid":  processGuid,
 				"index":         index,
 				"instance_guid": instanceGuid,

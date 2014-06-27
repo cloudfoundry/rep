@@ -13,13 +13,13 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gosteno"
-	"github.com/tedsuo/router"
+	"github.com/tedsuo/rata"
 )
 
 const ServerCloseErrMsg = "use of closed network connection"
 
 type TaskScheduler struct {
-	callbackGenerator *router.RequestGenerator
+	callbackGenerator *rata.RequestGenerator
 
 	executorID string
 	bbs        bbs.RepBBS
@@ -31,7 +31,7 @@ type TaskScheduler struct {
 
 func New(
 	executorID string,
-	callbackGenerator *router.RequestGenerator,
+	callbackGenerator *rata.RequestGenerator,
 	bbs bbs.RepBBS,
 	logger *gosteno.Logger,
 	stack string,
@@ -135,7 +135,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		return
 	}
 
-	callbackRequest, err := s.callbackGenerator.RequestForHandler(routes.TaskCompleted, router.Params{
+	callbackRequest, err := s.callbackGenerator.CreateRequest(routes.TaskCompleted, rata.Params{
 		"guid": task.Guid,
 	}, nil)
 	if err != nil {

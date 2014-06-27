@@ -1,10 +1,9 @@
-package router
+package rata
 
 import (
 	"fmt"
 	"io"
 	"net/http"
-	"runtime"
 	"strings"
 )
 
@@ -20,29 +19,26 @@ type RequestGenerator struct {
 // NewRequestGenerator creates a RequestGenerator for a given host and route set.
 // Host is of the form "http://example.com".
 func NewRequestGenerator(host string, routes Routes) *RequestGenerator {
-	_, file, line, _ := runtime.Caller(1)
-	fmt.Printf("\n\033[0;35m%s\033[0m%s:%d:%s\n", "WARNING:", file, line, " package router is deprecated, please use github.com/tedsuo/rata instead")
-
 	return &RequestGenerator{
 		host:   host,
 		routes: routes,
 	}
 }
 
-// RequestForHandler creates a new http Request for the matching handler. If the
+// CreateRequest creates a new http Request for the matching handler. If the
 // request cannot be created, either because the handler does not exist or because
-// the given params do not match the params the route requires, then RequestForHandler
+// the given params do not match the params the route requires, then CreateRequest
 // returns an error.
-func (r *RequestGenerator) RequestForHandler(
-	handler string,
+func (r *RequestGenerator) CreateRequest(
+	name string,
 	params Params,
 	body io.Reader,
 ) (*http.Request, error) {
-	route, ok := r.routes.RouteForHandler(handler)
+	route, ok := r.routes.FindRouteByName(name)
 	if !ok {
-		return &http.Request{}, fmt.Errorf("No route exists for handler %", handler)
+		return &http.Request{}, fmt.Errorf("No route exists with the name %", name)
 	}
-	path, err := route.PathWithParams(params)
+	path, err := route.CreatePath(params)
 	if err != nil {
 		return &http.Request{}, err
 	}
