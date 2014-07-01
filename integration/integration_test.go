@@ -110,7 +110,8 @@ var _ = Describe("The Rep", func() {
 				Actions: []models.ExecutorAction{
 					{
 						Action: models.RunAction{
-							Script: "cat /tmp/file",
+							Path: "cat",
+							Args: []string{"/tmp/file"},
 						},
 					},
 				},
