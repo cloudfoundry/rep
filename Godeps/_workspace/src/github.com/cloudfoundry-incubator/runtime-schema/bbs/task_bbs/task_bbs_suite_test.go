@@ -18,7 +18,8 @@ var etcdClient storeadapter.StoreAdapter
 var dummyActions = []models.ExecutorAction{
 	{
 		Action: models.RunAction{
-			Script: "cat /tmp/file",
+			Path: "cat",
+			Args: []string{"/tmp/file"},
 		},
 	},
 }

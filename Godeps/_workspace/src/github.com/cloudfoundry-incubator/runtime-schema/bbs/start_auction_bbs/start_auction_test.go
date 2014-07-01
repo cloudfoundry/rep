@@ -23,7 +23,8 @@ var _ = Describe("Start Auction", func() {
 				Actions: []models.ExecutorAction{
 					{
 						Action: models.RunAction{
-							Script: "cat /tmp/file",
+							Path: "cat",
+							Args: []string{"/tmp/file"},
 							Env: []models.EnvironmentVariable{
 								{
 									Name:  "PATH",
@@ -83,7 +84,8 @@ var _ = Describe("Start Auction", func() {
 				Actions: []models.ExecutorAction{
 					{
 						Action: models.RunAction{
-							Script: "cat /tmp/file",
+							Path: "cat",
+							Args: []string{"/tmp/file"},
 							Env: []models.EnvironmentVariable{
 								{
 									Name:  "PATH",
@@ -155,7 +157,8 @@ var _ = Describe("Start Auction", func() {
 				Actions: []models.ExecutorAction{
 					{
 						Action: models.RunAction{
-							Script: "cat /tmp/file",
+							Path: "cat",
+							Args: []string{"/tmp/file"},
 							Env: []models.EnvironmentVariable{
 								{
 									Name:  "PATH",
@@ -224,7 +227,8 @@ var _ = Describe("Start Auction", func() {
 				Actions: []models.ExecutorAction{
 					{
 						Action: models.RunAction{
-							Script: "cat /tmp/file",
+							Path: "cat",
+							Args: []string{"/tmp/file"},
 							Env: []models.EnvironmentVariable{
 								{
 									Name:  "PATH",

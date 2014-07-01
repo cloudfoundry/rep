@@ -53,7 +53,8 @@ var _ = Describe("LRPStartAuction Convergence", func() {
 				Actions: []models.ExecutorAction{
 					{
 						Action: models.RunAction{
-							Script: "cat /tmp/file",
+							Path: "cat",
+							Args: []string{"/tmp/file"},
 						},
 					},
 				},
@@ -87,7 +88,8 @@ var _ = Describe("LRPStartAuction Convergence", func() {
 				Actions: []models.ExecutorAction{
 					{
 						Action: models.RunAction{
-							Script: "cat /tmp/file",
+							Path: "cat",
+							Args: []string{"/tmp/file"},
 						},
 					},
 				},
