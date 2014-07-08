@@ -11,7 +11,7 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
-var repID string
+var executorID string
 var representativePath string
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
 var natsRunner *natsrunner.NATSRunner
@@ -25,7 +25,7 @@ func TestRepresentativeMain(t *testing.T) {
 var _ = BeforeSuite(func() {
 	var err error
 
-	repID = "the-rep-id-" + string(GinkgoParallelNode())
+	executorID = "the-rep-id-" + string(GinkgoParallelNode())
 
 	etcdPort = 5001 + GinkgoParallelNode()
 	schedulerPort = 56000 + GinkgoParallelNode()

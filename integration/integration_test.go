@@ -37,7 +37,7 @@ var _ = Describe("The Rep", func() {
 		bbs = Bbs.NewBBS(etcdRunner.Adapter(), timeprovider.NewTimeProvider(), gosteno.NewLogger("the-logger"))
 		runner = reprunner.New(
 			representativePath,
-			repID,
+			executorID,
 			"the-stack",
 			"the-lrp-host",
 			fmt.Sprintf("127.0.0.1:%d", schedulerPort),
@@ -79,7 +79,7 @@ var _ = Describe("The Rep", func() {
 
 		It("should maintain presence", func() {
 			Ω(executorPresence.Stack).Should(Equal("the-stack"))
-			Ω(executorPresence.ExecutorID).Should(Equal(repID))
+			Ω(executorPresence.ExecutorID).Should(Equal(executorID))
 		})
 
 		Context("when the presence fails to be maintained", func() {

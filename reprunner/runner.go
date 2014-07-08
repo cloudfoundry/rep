@@ -18,7 +18,7 @@ type Runner struct {
 
 type Config struct {
 	stack             string
-	repID             string
+	executorID        string
 	lrpHost           string
 	listenAddr        string
 	executorURL       string
@@ -28,11 +28,11 @@ type Config struct {
 	heartbeatInterval time.Duration
 }
 
-func New(binPath, repID, stack, lrpHost, listenAddr, executorURL, etcdCluster, natsAddr, logLevel string, heartbeatInterval time.Duration) *Runner {
+func New(binPath, executorID, stack, lrpHost, listenAddr, executorURL, etcdCluster, natsAddr, logLevel string, heartbeatInterval time.Duration) *Runner {
 	return &Runner{
 		binPath: binPath,
 		config: Config{
-			repID:             repID,
+			executorID:        executorID,
 			stack:             stack,
 			lrpHost:           lrpHost,
 			listenAddr:        listenAddr,
@@ -53,7 +53,7 @@ func (r *Runner) Start() {
 	repSession, err := gexec.Start(
 		exec.Command(
 			r.binPath,
-			"-repID", r.config.repID,
+			"-executorID", r.config.executorID,
 			"-stack", r.config.stack,
 			"-lrpHost", r.config.lrpHost,
 			"-listenAddr", r.config.listenAddr,
