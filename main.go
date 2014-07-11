@@ -149,7 +149,7 @@ func main() {
 			monitor.Signal(syscall.SIGTERM)
 		case err := <-monitorExited:
 			if err != nil {
-				logger.Fatalf("rep existed with error: %s", err)
+				logger.Fatalf("rep exited with error: %s", err)
 			}
 			os.Exit(0)
 		}
