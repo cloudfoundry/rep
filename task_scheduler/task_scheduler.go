@@ -7,8 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cloudfoundry-incubator/executor/api"
-	"github.com/cloudfoundry-incubator/executor/client"
+	executorapi "github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/rep/routes"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -25,7 +24,7 @@ type TaskScheduler struct {
 	bbs        bbs.RepBBS
 	logger     *gosteno.Logger
 	stack      string
-	client     client.Client
+	client     executorapi.Client
 	inFlight   *sync.WaitGroup
 }
 
@@ -35,7 +34,7 @@ func New(
 	bbs bbs.RepBBS,
 	logger *gosteno.Logger,
 	stack string,
-	executorClient client.Client,
+	executorClient executorapi.Client,
 ) *TaskScheduler {
 	return &TaskScheduler{
 		executorID:        executorID,
@@ -99,7 +98,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		return
 	}
 
-	_, err = s.client.AllocateContainer(task.Guid, api.ContainerAllocationRequest{
+	_, err = s.client.AllocateContainer(task.Guid, executorapi.ContainerAllocationRequest{
 		DiskMB:   task.DiskMB,
 		MemoryMB: task.MemoryMB,
 	})
@@ -117,7 +116,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		return
 	}
 
-	container, err := s.client.InitializeContainer(task.Guid, api.ContainerInitializationRequest{
+	container, err := s.client.InitializeContainer(task.Guid, executorapi.ContainerInitializationRequest{
 		CpuPercent: task.CpuPercent,
 		Log:        task.Log,
 	})
@@ -142,7 +141,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		s.logError("task-scheduler.callback-generator.failed", err)
 	}
 
-	err = s.client.Run(task.Guid, api.ContainerRunRequest{
+	err = s.client.Run(task.Guid, executorapi.ContainerRunRequest{
 		Actions:     task.Actions,
 		CompleteURL: callbackRequest.URL.String(),
 	})

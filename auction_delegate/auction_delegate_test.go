@@ -5,7 +5,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/executor/api"
-	"github.com/cloudfoundry-incubator/executor/client/fake_client"
+	fake_client "github.com/cloudfoundry-incubator/executor/api/fakes"
 	. "github.com/cloudfoundry-incubator/rep/auction_delegate"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper/fake_lrp_stopper"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
@@ -25,7 +25,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 	BeforeEach(func() {
 		stopper = &fake_lrp_stopper.FakeLRPStopper{}
-		client = fake_client.New()
+		client = new(fake_client.FakeClient)
 		bbs = &fake_bbs.FakeRepBBS{}
 		delegate = New("some-executor-id", stopper, bbs, client, steno.NewLogger("test"))
 		clientFetchError = errors.New("Failed to fetch")
@@ -34,13 +34,12 @@ var _ = Describe("AuctionDelegate", func() {
 	Describe("Remaining Resources", func() {
 		Context("when the client returns a succesful response", func() {
 			BeforeEach(func() {
-				client.WhenFetchingRemainingResources = func() (api.ExecutorResources, error) {
-					return api.ExecutorResources{
-						MemoryMB:   1024,
-						DiskMB:     2048,
-						Containers: 4,
-					}, nil
+				resources := api.ExecutorResources{
+					MemoryMB:   1024,
+					DiskMB:     2048,
+					Containers: 4,
 				}
+				client.RemainingResourcesReturns(resources, nil)
 			})
 
 			It("Should use the client to get the resources", func() {
@@ -56,9 +55,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 		Context("when the client returns an error", func() {
 			BeforeEach(func() {
-				client.WhenFetchingRemainingResources = func() (api.ExecutorResources, error) {
-					return api.ExecutorResources{}, clientFetchError
-				}
+				client.RemainingResourcesReturns(api.ExecutorResources{}, clientFetchError)
 			})
 
 			It("should return the error", func() {
@@ -71,13 +68,12 @@ var _ = Describe("AuctionDelegate", func() {
 	Describe("Total Resources", func() {
 		Context("when the client returns a succesful response", func() {
 			BeforeEach(func() {
-				client.WhenFetchingTotalResources = func() (api.ExecutorResources, error) {
-					return api.ExecutorResources{
-						MemoryMB:   1024,
-						DiskMB:     2048,
-						Containers: 4,
-					}, nil
+				resources := api.ExecutorResources{
+					MemoryMB:   1024,
+					DiskMB:     2048,
+					Containers: 4,
 				}
+				client.TotalResourcesReturns(resources, nil)
 			})
 
 			It("Should use the client to get the resources", func() {
@@ -93,9 +89,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 		Context("when the client returns an error", func() {
 			BeforeEach(func() {
-				client.WhenFetchingTotalResources = func() (api.ExecutorResources, error) {
-					return api.ExecutorResources{}, clientFetchError
-				}
+				client.TotalResourcesReturns(api.ExecutorResources{}, clientFetchError)
 			})
 
 			It("should return the error", func() {
@@ -108,19 +102,18 @@ var _ = Describe("AuctionDelegate", func() {
 	Describe("NumInstancesForProcessGuid", func() {
 		Context("when the client returns a succesful response", func() {
 			BeforeEach(func() {
-				client.WhenListingContainers = func() ([]api.Container, error) {
-					return []api.Container{
-						api.Container{
-							Guid: "the-first-app-guid.17.first",
-						},
-						api.Container{
-							Guid: "the-second-app-guid.14.second",
-						},
-						api.Container{
-							Guid: "the-first-app-guid.92.third",
-						},
-					}, nil
+				containers := []api.Container{
+					api.Container{
+						Guid: "the-first-app-guid.17.first",
+					},
+					api.Container{
+						Guid: "the-second-app-guid.14.second",
+					},
+					api.Container{
+						Guid: "the-first-app-guid.92.third",
+					},
 				}
+				client.ListContainersReturns(containers, nil)
 			})
 
 			It("Should use the client to get the resources", func() {
@@ -144,9 +137,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 		Context("when the client returns an error", func() {
 			BeforeEach(func() {
-				client.WhenListingContainers = func() ([]api.Container, error) {
-					return []api.Container{}, clientFetchError
-				}
+				client.ListContainersReturns([]api.Container{}, clientFetchError)
 			})
 
 			It("should return the error", func() {
@@ -159,22 +150,21 @@ var _ = Describe("AuctionDelegate", func() {
 	Describe("InstanceGuidsForProcessGuidAndIndex", func() {
 		Context("when the client returns a succesful response", func() {
 			BeforeEach(func() {
-				client.WhenListingContainers = func() ([]api.Container, error) {
-					return []api.Container{
-						api.Container{
-							Guid: "requested-app-guid.17.first",
-						},
-						api.Container{
-							Guid: "requested-app-guid.17.second",
-						},
-						api.Container{
-							Guid: "requested-app-guid.18.third",
-						},
-						api.Container{
-							Guid: "other-app-guid.17.fourth",
-						},
-					}, nil
+				containers := []api.Container{
+					api.Container{
+						Guid: "requested-app-guid.17.first",
+					},
+					api.Container{
+						Guid: "requested-app-guid.17.second",
+					},
+					api.Container{
+						Guid: "requested-app-guid.18.third",
+					},
+					api.Container{
+						Guid: "other-app-guid.17.fourth",
+					},
 				}
+				client.ListContainersReturns(containers, nil)
 			})
 
 			It("should return the instance guids", func() {
@@ -204,9 +194,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 		Context("when the client returns an error", func() {
 			BeforeEach(func() {
-				client.WhenListingContainers = func() ([]api.Container, error) {
-					return []api.Container{}, clientFetchError
-				}
+				client.ListContainersReturns([]api.Container{}, clientFetchError)
 			})
 
 			It("should return the error", func() {
@@ -218,13 +206,16 @@ var _ = Describe("AuctionDelegate", func() {
 	})
 
 	Describe("Reserve", func() {
+		var reserveErr error
 		var auctionInfo auctiontypes.StartAuctionInfo
-		var allocationCalled bool
+
+		JustBeforeEach(func() {
+			reserveErr = delegate.Reserve(auctionInfo)
+		})
 
 		Context("when the client returns a succesful response", func() {
 
 			BeforeEach(func() {
-				allocationCalled = false
 				auctionInfo = auctiontypes.StartAuctionInfo{
 					ProcessGuid:  "process-guid",
 					InstanceGuid: "instance-guid",
@@ -233,91 +224,83 @@ var _ = Describe("AuctionDelegate", func() {
 					Index:        17,
 				}
 
-				client.WhenAllocatingContainer = func(allocationGuid string, req api.ContainerAllocationRequest) (api.Container, error) {
-					allocationCalled = true
-					Ω(allocationGuid).Should(Equal(auctionInfo.LRPIdentifier().OpaqueID()))
-					Ω(req).Should(Equal(api.ContainerAllocationRequest{
-						MemoryMB: auctionInfo.MemoryMB,
-						DiskMB:   auctionInfo.DiskMB,
-					}))
-					return api.Container{}, nil
-				}
+				client.AllocateContainerReturns(api.Container{}, nil)
+			})
+
+			It("should not return an error", func() {
+				Ω(reserveErr).ShouldNot(HaveOccurred())
 			})
 
 			It("should allocate a container, passing in the correct data", func() {
-				err := delegate.Reserve(auctionInfo)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(allocationCalled).Should(BeTrue())
+				Ω(client.AllocateContainerCallCount()).Should(Equal(1))
+
+				allocationGuid, req := client.AllocateContainerArgsForCall(0)
+				Ω(allocationGuid).Should(Equal(auctionInfo.LRPIdentifier().OpaqueID()))
+				Ω(req).Should(Equal(api.ContainerAllocationRequest{
+					MemoryMB: auctionInfo.MemoryMB,
+					DiskMB:   auctionInfo.DiskMB,
+				}))
 			})
 		})
 
 		Context("when the client returns an error", func() {
-
 			BeforeEach(func() {
-				client.WhenAllocatingContainer = func(allocationGuid string, req api.ContainerAllocationRequest) (api.Container, error) {
-					return api.Container{}, clientFetchError
-				}
+				client.AllocateContainerReturns(api.Container{}, clientFetchError)
 			})
 
 			It("should return the error", func() {
-				err := delegate.Reserve(auctionInfo)
-				Ω(err).Should(Equal(clientFetchError))
+				Ω(reserveErr).Should(Equal(clientFetchError))
 			})
 		})
 	})
 
 	Describe("ReleaseReservation", func() {
 		var auctionInfo auctiontypes.StartAuctionInfo
-		var releaseCalled bool
+		var releaseErr error
+
+		JustBeforeEach(func() {
+			auctionInfo = auctiontypes.StartAuctionInfo{
+				ProcessGuid:  "process-guid",
+				InstanceGuid: "instance-guid",
+				DiskMB:       1024,
+				MemoryMB:     2048,
+				Index:        17,
+			}
+			releaseErr = delegate.ReleaseReservation(auctionInfo)
+		})
 
 		Context("when the client returns a succesful response", func() {
 			BeforeEach(func() {
-				releaseCalled = false
-				auctionInfo = auctiontypes.StartAuctionInfo{
-					ProcessGuid:  "process-guid",
-					InstanceGuid: "instance-guid",
-					DiskMB:       1024,
-					MemoryMB:     2048,
-					Index:        17,
-				}
+				client.DeleteContainerReturns(nil)
+			})
 
-				client.WhenDeletingContainer = func(allocationGuid string) error {
-					releaseCalled = true
-					Ω(allocationGuid).Should(Equal(auctionInfo.LRPIdentifier().OpaqueID()))
-					return nil
-				}
+			It("should not return an error", func() {
+				Ω(releaseErr).ShouldNot(HaveOccurred())
 			})
 
 			It("should allocate a container, passing in the correct data", func() {
-				err := delegate.ReleaseReservation(auctionInfo)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(releaseCalled).Should(BeTrue())
+				Ω(client.DeleteContainerCallCount()).Should(Equal(1))
+				Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(auctionInfo.LRPIdentifier().OpaqueID()))
 			})
 		})
 
 		Context("when the client returns an error", func() {
 			BeforeEach(func() {
-				client.WhenDeletingContainer = func(allocationGuid string) error {
-					return clientFetchError
-				}
+				client.DeleteContainerReturns(clientFetchError)
 			})
 
 			It("should return the error", func() {
-				err := delegate.ReleaseReservation(auctionInfo)
-				Ω(err).Should(Equal(clientFetchError))
+				Ω(releaseErr).Should(Equal(clientFetchError))
 			})
 		})
 	})
 
 	Describe("Run", func() {
 		var startAuction models.LRPStartAuction
-		var initializeError, runError error
-		var calledInitialize, calledRun, deleteCalled bool
-		var err error
+		var err, initializeError, startingErr, runError error
 
 		BeforeEach(func() {
-			initializeError, runError = nil, nil
-			calledInitialize, calledRun, deleteCalled = false, false, false
+			initializeError, startingErr, runError = nil, nil, nil
 
 			startAuction = models.LRPStartAuction{
 				ProcessGuid:  "process-guid",
@@ -336,49 +319,33 @@ var _ = Describe("AuctionDelegate", func() {
 				},
 				Index: 2,
 			}
-
-			client.WhenInitializingContainer = func(allocationGuid string, request api.ContainerInitializationRequest) (api.Container, error) {
-				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
-				Ω(request).Should(Equal(api.ContainerInitializationRequest{
-					Ports: []api.PortMapping{
-						{
-							HostPort:      startAuction.Ports[0].HostPort,
-							ContainerPort: startAuction.Ports[0].ContainerPort,
-						},
-					},
-					Log: startAuction.Log,
-				}))
-				calledInitialize = true
-				return api.Container{}, initializeError
-			}
-
-			client.WhenRunning = func(allocationGuid string, request api.ContainerRunRequest) error {
-				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
-				Ω(request).Should(Equal(api.ContainerRunRequest{
-					Actions: startAuction.Actions,
-				}))
-				calledRun = true
-				return runError
-			}
-
-			client.WhenDeletingContainer = func(allocationGuid string) error {
-				deleteCalled = true
-				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
-				return nil
-			}
 		})
 
 		JustBeforeEach(func() {
+			client.InitializeContainerReturns(api.Container{}, initializeError)
+			bbs.ReportActualLRPAsStartingReturns(startingErr)
+			client.RunReturns(runError)
+			client.DeleteContainerReturns(nil)
+
 			err = delegate.Run(startAuction)
 		})
 
-		Context("when the initialize succeeds", func() {
-			BeforeEach(func() {
-				initializeError = nil
+		Context("when running succeeds", func() {
+			It("should not return an error", func() {
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("should attempt to initialize the correct container", func() {
+				Ω(client.InitializeContainerCallCount()).Should(Equal(1))
+				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
+				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
+				Ω(initRequest).Should(Equal(api.ContainerInitializationRequest{
+					Ports: []api.PortMapping{{ContainerPort: 8080}},
+					Log:   models.LogConfig{Guid: "log-guid"},
+				}))
 			})
 
 			It("should mark the instance as STARTING in etcd", func() {
-				Ω(err).ShouldNot(HaveOccurred())
 				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
 				actualLRP, executorGuid := bbs.ReportActualLRPAsStartingArgsForCall(0)
 				Ω(actualLRP).Should(Equal(models.ActualLRP{
@@ -389,57 +356,23 @@ var _ = Describe("AuctionDelegate", func() {
 				Ω(executorGuid).Should(Equal("some-executor-id"))
 			})
 
-			Context("when marking the instance as STARTING fails", func() {
-				BeforeEach(func() {
-					bbs.ReportActualLRPAsStartingReturns(errors.New("kaboom"))
-				})
+			It("should attempt to run the correct actions in the correct container", func() {
+				Ω(client.RunCallCount()).Should(Equal(1))
 
-				It("should fail", func() {
-					Ω(err).Should(Equal(errors.New("kaboom")))
-				})
+				allocationGuid, runRequest := client.RunArgsForCall(0)
 
-				It("should delete the container", func() {
-					Ω(deleteCalled).Should(BeTrue())
-				})
-
-				It("should not have run", func() {
-					Ω(calledRun).Should(BeFalse())
-				})
+				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
+				Ω(runRequest).Should(Equal(api.ContainerRunRequest{
+					Actions: startAuction.Actions,
+				}))
 			})
 
-			Context("when run succeeds", func() {
-				BeforeEach(func() {
-					runError = nil
-				})
-
-				It("should succeed", func() {
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(calledInitialize).Should(BeTrue())
-					Ω(calledRun).Should(BeTrue())
-					Ω(deleteCalled).Should(BeFalse())
-				})
+			It("does not attempt to remove the STARTING LRP from etcd", func() {
+				Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(0))
 			})
 
-			Context("when run fails", func() {
-				BeforeEach(func() {
-					runError = errors.New("Failed to run")
-				})
-
-				It("should have remove the STARTING LRP from etcd", func() {
-					Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
-					Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
-					Ω(bbs.RemoveActualLRPArgsForCall(0).InstanceGuid).Should(Equal(startAuction.InstanceGuid))
-				})
-
-				It("should fail", func() {
-					Ω(err).Should(Equal(runError))
-					Ω(calledInitialize).Should(BeTrue())
-					Ω(calledRun).Should(BeTrue())
-				})
-
-				It("should delete the container", func() {
-					Ω(deleteCalled).Should(BeTrue())
-				})
+			It("should not delete the container", func() {
+				Ω(client.DeleteContainerCallCount()).Should(Equal(0))
 			})
 		})
 
@@ -448,21 +381,130 @@ var _ = Describe("AuctionDelegate", func() {
 				initializeError = errors.New("Failed to initialize")
 			})
 
-			It("should not mark the task as starting", func() {
+			It("should bubble up the error", func() {
 				Ω(err).Should(Equal(initializeError))
+			})
 
+			It("should attempt to initialize the correct container", func() {
+				Ω(client.InitializeContainerCallCount()).Should(Equal(1))
+				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
+				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
+				Ω(initRequest).Should(Equal(api.ContainerInitializationRequest{
+					Ports: []api.PortMapping{{ContainerPort: 8080}},
+					Log:   models.LogConfig{Guid: "log-guid"},
+				}))
+			})
+
+			It("should not mark the task as starting", func() {
 				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(0))
 			})
 
-			It("should not call run and should return an error", func() {
-				Ω(err).Should(Equal(initializeError))
-				Ω(calledInitialize).Should(BeTrue())
-				Ω(calledRun).Should(BeFalse())
+			It("should not attempt to run the actions", func() {
+				Ω(client.RunCallCount()).Should(Equal(0))
 			})
 
 			It("should delete the container", func() {
-				delegate.Run(startAuction)
-				Ω(deleteCalled).Should(BeTrue())
+				Ω(client.DeleteContainerCallCount()).Should(Equal(1))
+				allocationGuid := client.DeleteContainerArgsForCall(0)
+				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
+			})
+		})
+
+		Context("when marking the instance as STARTING fails", func() {
+			BeforeEach(func() {
+				startingErr = errors.New("kaboom")
+			})
+
+			It("should bubble up the error", func() {
+				Ω(err).Should(Equal(startingErr))
+			})
+
+			It("should attempt to initialize the correct container", func() {
+				Ω(client.InitializeContainerCallCount()).Should(Equal(1))
+				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
+				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
+				Ω(initRequest).Should(Equal(api.ContainerInitializationRequest{
+					Ports: []api.PortMapping{{ContainerPort: 8080}},
+					Log:   models.LogConfig{Guid: "log-guid"},
+				}))
+			})
+
+			It("should mark the instance as STARTING in etcd", func() {
+				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
+				actualLRP, executorGuid := bbs.ReportActualLRPAsStartingArgsForCall(0)
+				Ω(actualLRP).Should(Equal(models.ActualLRP{
+					ProcessGuid:  startAuction.ProcessGuid,
+					InstanceGuid: startAuction.InstanceGuid,
+					Index:        startAuction.Index,
+				}))
+				Ω(executorGuid).Should(Equal("some-executor-id"))
+			})
+
+			It("does not attempt to remove the STARTING LRP from etcd", func() {
+				Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(0))
+			})
+
+			It("should not attempt to run the actions", func() {
+				Ω(client.RunCallCount()).Should(Equal(0))
+			})
+
+			It("should delete the container", func() {
+				Ω(client.DeleteContainerCallCount()).Should(Equal(1))
+				allocationGuid := client.DeleteContainerArgsForCall(0)
+				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
+			})
+		})
+
+		Context("when run fails", func() {
+			BeforeEach(func() {
+				runError = errors.New("Failed to run")
+			})
+
+			It("should bubble up the error", func() {
+				Ω(err).Should(Equal(runError))
+			})
+
+			It("should attempt to initialize the correct container", func() {
+				Ω(client.InitializeContainerCallCount()).Should(Equal(1))
+				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
+				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
+				Ω(initRequest).Should(Equal(api.ContainerInitializationRequest{
+					Ports: []api.PortMapping{{ContainerPort: 8080}},
+					Log:   models.LogConfig{Guid: "log-guid"},
+				}))
+			})
+
+			It("should mark the instance as STARTING in etcd", func() {
+				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
+				actualLRP, executorGuid := bbs.ReportActualLRPAsStartingArgsForCall(0)
+				Ω(actualLRP).Should(Equal(models.ActualLRP{
+					ProcessGuid:  startAuction.ProcessGuid,
+					InstanceGuid: startAuction.InstanceGuid,
+					Index:        startAuction.Index,
+				}))
+				Ω(executorGuid).Should(Equal("some-executor-id"))
+			})
+
+			It("should remove the STARTING LRP from etcd", func() {
+				Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
+				Ω(bbs.RemoveActualLRPArgsForCall(0).InstanceGuid).Should(Equal(startAuction.InstanceGuid))
+			})
+
+			It("should attempt to run the actions in the correct container", func() {
+				Ω(client.RunCallCount()).Should(Equal(1))
+
+				allocationGuid, runRequest := client.RunArgsForCall(0)
+
+				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
+				Ω(runRequest).Should(Equal(api.ContainerRunRequest{
+					Actions: startAuction.Actions,
+				}))
+			})
+
+			It("should delete the container", func() {
+				Ω(client.DeleteContainerCallCount()).Should(Equal(1))
+				allocationGuid := client.DeleteContainerArgsForCall(0)
+				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 			})
 		})
 	})

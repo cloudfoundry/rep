@@ -1,7 +1,7 @@
 package lrp_stopper
 
 import (
-	"github.com/cloudfoundry-incubator/executor/client"
+	executorapi "github.com/cloudfoundry-incubator/executor/api"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	steno "github.com/cloudfoundry/gosteno"
@@ -13,11 +13,11 @@ type LRPStopper interface {
 
 type lrpStopper struct {
 	bbs    Bbs.RepBBS
-	client client.Client
+	client executorapi.Client
 	logger *steno.Logger
 }
 
-func New(bbs Bbs.RepBBS, client client.Client, logger *steno.Logger) LRPStopper {
+func New(bbs Bbs.RepBBS, client executorapi.Client, logger *steno.Logger) LRPStopper {
 	return &lrpStopper{
 		bbs:    bbs,
 		client: client,

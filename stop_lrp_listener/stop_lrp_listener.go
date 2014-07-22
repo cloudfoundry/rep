@@ -4,7 +4,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/cloudfoundry-incubator/executor/client"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	steno "github.com/cloudfoundry/gosteno"
@@ -13,15 +12,13 @@ import (
 type StopLRPListener struct {
 	lrpStopper lrp_stopper.LRPStopper
 	bbs        Bbs.RepBBS
-	client     client.Client
 	logger     *steno.Logger
 }
 
-func New(lrpStopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, client client.Client, logger *steno.Logger) *StopLRPListener {
+func New(lrpStopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, logger *steno.Logger) *StopLRPListener {
 	return &StopLRPListener{
 		lrpStopper: lrpStopper,
 		bbs:        bbs,
-		client:     client,
 		logger:     logger,
 	}
 }

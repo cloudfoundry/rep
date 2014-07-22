@@ -11,6 +11,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/auction/auctionrep"
 	"github.com/cloudfoundry-incubator/auction/communication/nats/auction_nats_server"
+	executorapi "github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/executor/client"
 	"github.com/cloudfoundry-incubator/rep/api"
 	"github.com/cloudfoundry-incubator/rep/api/lrprunning"
@@ -131,7 +132,7 @@ func main() {
 	group := grouper.EnvokeGroup(grouper.RunGroup{
 		"maintainer":        initializeMaintainer(*executorID, executorClient, bbs, logger),
 		"task-rep":          initializeTaskRep(*executorID, bbs, logger, executorClient),
-		"stop-lrp-listener": initializeStopLRPListener(lrpStopper, bbs, executorClient, logger),
+		"stop-lrp-listener": initializeStopLRPListener(lrpStopper, bbs, logger),
 		"api-server":        initializeAPIServer(*executorID, bbs, logger, executorClient),
 		"auction-server":    initializeAuctionNatsServer(*executorID, lrpStopper, bbs, executorClient, logger),
 	})
@@ -192,7 +193,7 @@ func initializeRepBBS(logger *steno.Logger) Bbs.RepBBS {
 	return bbs
 }
 
-func initializeTaskRep(executorID string, bbs Bbs.RepBBS, logger *steno.Logger, executorClient client.Client) *task_scheduler.TaskScheduler {
+func initializeTaskRep(executorID string, bbs Bbs.RepBBS, logger *steno.Logger, executorClient executorapi.Client) *task_scheduler.TaskScheduler {
 	callbackGenerator := rata.NewRequestGenerator(
 		"http://"+*listenAddr,
 		routes.Routes,
@@ -209,15 +210,15 @@ func generateExecutorID() string {
 	return uuid.String()
 }
 
-func initializeLRPStopper(bbs Bbs.RepBBS, executorClient client.Client, logger *steno.Logger) lrp_stopper.LRPStopper {
+func initializeLRPStopper(bbs Bbs.RepBBS, executorClient executorapi.Client, logger *steno.Logger) lrp_stopper.LRPStopper {
 	return lrp_stopper.New(bbs, executorClient, logger)
 }
 
-func initializeStopLRPListener(stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, executorClient client.Client, logger *steno.Logger) ifrit.Runner {
-	return stop_lrp_listener.New(stopper, bbs, executorClient, logger)
+func initializeStopLRPListener(stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, logger *steno.Logger) ifrit.Runner {
+	return stop_lrp_listener.New(stopper, bbs, logger)
 }
 
-func initializeAPIServer(executorID string, bbs Bbs.RepBBS, logger *steno.Logger, executorClient client.Client) ifrit.Runner {
+func initializeAPIServer(executorID string, bbs Bbs.RepBBS, logger *steno.Logger, executorClient executorapi.Client) ifrit.Runner {
 	taskCompleteHandler := taskcomplete.NewHandler(bbs, logger)
 	lrpRunningHandler := lrprunning.NewHandler(executorID, bbs, executorClient, *lrpHost, logger)
 
@@ -228,7 +229,7 @@ func initializeAPIServer(executorID string, bbs Bbs.RepBBS, logger *steno.Logger
 	return http_server.New(*listenAddr, apiHandler)
 }
 
-func initializeMaintainer(executorID string, executorClient client.Client, bbs Bbs.RepBBS, logger *steno.Logger) *maintain.Maintainer {
+func initializeMaintainer(executorID string, executorClient executorapi.Client, bbs Bbs.RepBBS, logger *steno.Logger) *maintain.Maintainer {
 	executorPresence := models.ExecutorPresence{
 		ExecutorID: executorID,
 		Stack:      *stack,
@@ -259,7 +260,7 @@ func initializeNatsClient(logger *steno.Logger) yagnats.NATSClient {
 	return natsClient
 }
 
-func initializeAuctionNatsServer(executorID string, stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, executorClient client.Client, logger *steno.Logger) *auction_nats_server.AuctionNATSServer {
+func initializeAuctionNatsServer(executorID string, stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, executorClient executorapi.Client, logger *steno.Logger) *auction_nats_server.AuctionNATSServer {
 	auctionDelegate := auction_delegate.New(executorID, stopper, bbs, executorClient, logger)
 	auctionRep := auctionrep.New(executorID, auctionDelegate)
 	natsClient := initializeNatsClient(logger)

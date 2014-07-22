@@ -5,7 +5,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cloudfoundry-incubator/executor/client"
+	executorapi "github.com/cloudfoundry-incubator/executor/api"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	steno "github.com/cloudfoundry/gosteno"
@@ -14,12 +14,12 @@ import (
 type Maintainer struct {
 	executorPresence  models.ExecutorPresence
 	bbs               Bbs.RepBBS
-	executorClient    client.Client
+	executorClient    executorapi.Client
 	logger            *steno.Logger
 	heartbeatInterval time.Duration
 }
 
-func New(executorPresence models.ExecutorPresence, executorClient client.Client, bbs Bbs.RepBBS, logger *steno.Logger, heartbeatInterval time.Duration) *Maintainer {
+func New(executorPresence models.ExecutorPresence, executorClient executorapi.Client, bbs Bbs.RepBBS, logger *steno.Logger, heartbeatInterval time.Duration) *Maintainer {
 	return &Maintainer{
 		executorPresence:  executorPresence,
 		bbs:               bbs,
@@ -73,6 +73,7 @@ func (m *Maintainer) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error 
 				pingTicker = time.NewTicker(time.Second)
 				pingTickerChan = pingTicker.C
 			}
+
 		case <-pingTickerChan:
 			err := m.executorClient.Ping()
 			if err != nil {

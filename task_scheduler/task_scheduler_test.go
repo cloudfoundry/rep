@@ -9,7 +9,7 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/rata"
 
-	"github.com/cloudfoundry-incubator/executor/client/fake_client"
+	fake_client "github.com/cloudfoundry-incubator/executor/api/fakes"
 	"github.com/cloudfoundry-incubator/rep/routes"
 	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
@@ -47,7 +47,7 @@ var _ = Describe("TaskScheduler", func() {
 		)
 
 		BeforeEach(func() {
-			fakeClient = fake_client.New()
+			fakeClient = new(fake_client.FakeClient)
 			fakeExecutor = ghttp.NewServer()
 			fakeBBS = &fake_bbs.FakeRepBBS{}
 
@@ -110,10 +110,12 @@ var _ = Describe("TaskScheduler", func() {
 			BeforeEach(func() {
 				allocationTimeChan = make(chan time.Time)
 
-				fakeClient.WhenAllocatingContainer = func(containerGuid string, req api.ContainerAllocationRequest) (api.Container, error) {
-					allocationTimeChan <- time.Now()
-					return api.Container{}, errors.New("Failed to allocate")
-				}
+				fakeClient.AllocateContainerReturns(api.Container{}, errors.New("Failed to allocate"))
+
+				// fakeClient.WhenAllocatingContainer = func(containerGuid string, req api.ContainerAllocationRequest) (api.Container, error) {
+				// 	allocationTimeChan <- time.Now()
+				// 	return api.Container{}, errors.New("Failed to allocate")
+				// }
 			})
 
 			JustBeforeEach(func() {
@@ -123,9 +125,8 @@ var _ = Describe("TaskScheduler", func() {
 			})
 
 			It("should wait 3 seconds and retry", func() {
-				var allocationTime time.Time
-				Eventually(allocationTimeChan, 5).Should(Receive(&allocationTime))
-				Ω(allocationTime.Sub(errorTime)).Should(BeNumerically("~", 3*time.Second, 200*time.Millisecond))
+				Eventually(fakeClient.AllocateContainerCallCount, 5).Should(Equal(1))
+				Ω(time.Now().Sub(errorTime)).Should(BeNumerically("~", 3*time.Second, 200*time.Millisecond))
 			})
 
 		})
@@ -143,7 +144,7 @@ var _ = Describe("TaskScheduler", func() {
 					allocateCalled = make(chan struct{}, 1)
 					deletedContainerGuid = make(chan string, 1)
 
-					fakeClient.WhenAllocatingContainer = func(containerGuid string, req api.ContainerAllocationRequest) (api.Container, error) {
+					fakeClient.AllocateContainerStub = func(containerGuid string, req api.ContainerAllocationRequest) (api.Container, error) {
 						defer GinkgoRecover()
 
 						allocateCalled <- struct{}{}
@@ -154,7 +155,7 @@ var _ = Describe("TaskScheduler", func() {
 						return api.Container{Guid: containerGuid}, nil
 					}
 
-					fakeClient.WhenDeletingContainer = func(allocationGuid string) error {
+					fakeClient.DeleteContainerStub = func(allocationGuid string) error {
 						deletedContainerGuid <- allocationGuid
 						return nil
 					}
@@ -174,7 +175,7 @@ var _ = Describe("TaskScheduler", func() {
 						BeforeEach(func() {
 							initCalled = make(chan struct{}, 1)
 
-							fakeClient.WhenInitializingContainer = func(allocationGuid string, req api.ContainerInitializationRequest) (api.Container, error) {
+							fakeClient.InitializeContainerStub = func(allocationGuid string, req api.ContainerInitializationRequest) (api.Container, error) {
 								defer GinkgoRecover()
 
 								initCalled <- struct{}{}
@@ -204,7 +205,7 @@ var _ = Describe("TaskScheduler", func() {
 							BeforeEach(func() {
 								reqChan = make(chan api.ContainerRunRequest, 1)
 
-								fakeClient.WhenRunning = func(allocationGuid string, req api.ContainerRunRequest) error {
+								fakeClient.RunStub = func(allocationGuid string, req api.ContainerRunRequest) error {
 									defer GinkgoRecover()
 
 									Ω(fakeBBS.StartTaskCallCount()).Should(Equal(1))
@@ -237,9 +238,7 @@ var _ = Describe("TaskScheduler", func() {
 
 					Context("but initializing the container fails", func() {
 						BeforeEach(func() {
-							fakeClient.WhenInitializingContainer = func(allocationGuid string, req api.ContainerInitializationRequest) (api.Container, error) {
-								return api.Container{}, errors.New("Can't initialize")
-							}
+							fakeClient.InitializeContainerReturns(api.Container{}, errors.New("Can't initialize"))
 						})
 
 						It("does not mark the job as started", func() {
@@ -272,19 +271,13 @@ var _ = Describe("TaskScheduler", func() {
 			})
 
 			Context("when reserving the container fails", func() {
-				var allocatedContainer chan struct{}
 
 				BeforeEach(func() {
-					allocatedContainer = make(chan struct{}, 1)
-
-					fakeClient.WhenAllocatingContainer = func(guid string, req api.ContainerAllocationRequest) (api.Container, error) {
-						allocatedContainer <- struct{}{}
-						return api.Container{}, errors.New("Something went wrong")
-					}
+					fakeClient.AllocateContainerReturns(api.Container{}, errors.New("Something went wrong"))
 				})
 
 				It("makes the resource allocation request", func() {
-					Eventually(allocatedContainer).Should(Receive())
+					Eventually(fakeClient.AllocateContainerCallCount).Should(Equal(1))
 				})
 
 				It("does not mark the job as Claimed", func() {

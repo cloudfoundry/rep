@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	executorclient "github.com/cloudfoundry-incubator/executor/client"
+	executorapi "github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gosteno"
@@ -13,12 +13,12 @@ import (
 type handler struct {
 	executorID string
 	bbs        bbs.RepBBS
-	executor   executorclient.Client
+	executor   executorapi.Client
 	lrpHost    string
 	logger     *gosteno.Logger
 }
 
-func NewHandler(executorID string, bbs bbs.RepBBS, executor executorclient.Client, lrpHost string, logger *gosteno.Logger) http.Handler {
+func NewHandler(executorID string, bbs bbs.RepBBS, executor executorapi.Client, lrpHost string, logger *gosteno.Logger) http.Handler {
 	return &handler{
 		executorID: executorID,
 		bbs:        bbs,

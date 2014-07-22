@@ -5,7 +5,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/cloudfoundry-incubator/executor/client/fake_client"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper/fake_lrp_stopper"
 	. "github.com/cloudfoundry-incubator/rep/stop_lrp_listener"
 	steno "github.com/cloudfoundry/gosteno"
@@ -22,7 +21,6 @@ var _ = Describe("StopLRPListener", func() {
 	var (
 		stopper      *fake_lrp_stopper.FakeLRPStopper
 		fakeBBS      *fake_bbs.FakeRepBBS
-		client       *fake_client.FakeClient
 		logger       *steno.Logger
 		process      ifrit.Process
 		stopInstance models.StopLRPInstance
@@ -47,11 +45,10 @@ var _ = Describe("StopLRPListener", func() {
 		fakeBBS.WatchForStopLRPInstanceReturns(stopInstanceChan, watchStopChan, watchErrorChan)
 
 		steno.EnterTestMode()
-		client = fake_client.New()
 		logger = steno.NewLogger("steno")
 		stopper = &fake_lrp_stopper.FakeLRPStopper{}
 
-		listener := New(stopper, fakeBBS, client, logger)
+		listener := New(stopper, fakeBBS, logger)
 
 		process = ifrit.Envoke(listener)
 	})

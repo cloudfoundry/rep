@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/cloudfoundry-incubator/executor/api"
-	"github.com/cloudfoundry-incubator/executor/client/fake_client"
+	fake_client "github.com/cloudfoundry-incubator/executor/api/fakes"
 	. "github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	steno "github.com/cloudfoundry/gosteno"
 
@@ -33,78 +33,76 @@ var _ = Describe("LRP Stopper", func() {
 
 		steno.EnterTestMode()
 		bbs = &fake_bbs.FakeRepBBS{}
-		client = fake_client.New()
+		client = new(fake_client.FakeClient)
 		logger = steno.NewLogger("steno")
 
 		stopper = New(bbs, client, logger)
 	})
 
 	Context("when told to stop an instance", func() {
-		var didDelete bool
-		var getError error
 		var returnedError error
 
-		BeforeEach(func() {
-			didDelete = false
-			getError = nil
-			returnedError = nil
-		})
-
 		JustBeforeEach(func() {
-			client.WhenGettingContainer = func(allocationGuid string) (api.Container, error) {
-				Ω(allocationGuid).Should(Equal(stopInstance.LRPIdentifier().OpaqueID()))
-				err := getError
-				return api.Container{Guid: stopInstance.LRPIdentifier().OpaqueID()}, err
-			}
-
-			client.WhenDeletingContainer = func(allocationGuid string) error {
-				Ω(allocationGuid).Should(Equal(stopInstance.LRPIdentifier().OpaqueID()))
-				didDelete = true
-				return nil
-			}
-
 			returnedError = stopper.StopInstance(stopInstance)
 		})
 
 		Context("when the instance is one that is running on the executor", func() {
-			It("should stop the instance", func() {
-				Ω(didDelete).Should(BeTrue())
+			BeforeEach(func() {
+				client.GetContainerReturns(api.Container{Guid: stopInstance.LRPIdentifier().OpaqueID()}, nil)
 			})
 
-			It("should resolve the StopLRPInstance", func() {
+			It("should ensure the container exists", func() {
+				Ω(client.GetContainerCallCount()).Should(Equal(1))
+
+				allocationGuid := client.GetContainerArgsForCall(0)
+				Ω(allocationGuid).Should(Equal(stopInstance.LRPIdentifier().OpaqueID()))
+			})
+
+			It("should attempt to delete the container", func() {
+				Ω(client.DeleteContainerCallCount()).Should(Equal(1))
+
+				allocationGuid := client.DeleteContainerArgsForCall(0)
+				Ω(allocationGuid).Should(Equal(stopInstance.LRPIdentifier().OpaqueID()))
+			})
+
+			It("should mark the LRP as stopped", func() {
 				Ω(bbs.ResolveStopLRPInstanceArgsForCall(0)).Should(Equal(stopInstance))
 			})
 
 			It("should not error", func() {
 				Ω(returnedError).ShouldNot(HaveOccurred())
 			})
+		})
 
-			Context("when resolving the container fails", func() {
-				BeforeEach(func() {
-					bbs.ResolveStopLRPInstanceReturns(errors.New("oops"))
-				})
+		Context("when resolving the LRP fails", func() {
+			BeforeEach(func() {
+				client.GetContainerReturns(api.Container{Guid: stopInstance.LRPIdentifier().OpaqueID()}, nil)
+				bbs.ResolveStopLRPInstanceReturns(errors.New("oops"))
+			})
 
-				It("should not delete the container", func() {
-					Ω(didDelete).Should(BeFalse())
-				})
+			It("should not attempt to delete the container", func() {
+				Ω(client.DeleteContainerCallCount()).Should(Equal(0))
+			})
 
-				It("should return an error error", func() {
-					Ω(returnedError).Should(MatchError(errors.New("oops")))
-				})
+			It("should bubble up the error", func() {
+				Ω(returnedError).Should(MatchError(errors.New("oops")))
 			})
 		})
 
 		Context("when the instance is not running on the executor", func() {
 			BeforeEach(func() {
-				getError = errors.New("nope")
+				client.GetContainerReturns(api.Container{}, errors.New("nope"))
 			})
 
-			It("should do nothing", func() {
-				Ω(didDelete).Should(BeFalse())
+			It("should not attempt to delete the container", func() {
+				Ω(client.DeleteContainerCallCount()).Should(Equal(0))
+			})
+
+			It("should not attempt to mark the LRP as stopped", func() {
 				Ω(bbs.ResolveStopLRPInstanceCallCount()).Should(Equal(0))
 			})
 
-			It("should return an error error", func() {
+			It("should bubble up the error", func() {
 				Ω(returnedError).Should(MatchError(errors.New("nope")))
 			})
 		})

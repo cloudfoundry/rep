@@ -2,8 +2,7 @@ package auction_delegate
 
 import (
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
-	"github.com/cloudfoundry-incubator/executor/api"
-	"github.com/cloudfoundry-incubator/executor/client"
+	executorapi "github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -14,11 +13,11 @@ type AuctionDelegate struct {
 	executorID string
 	lrpStopper lrp_stopper.LRPStopper
 	bbs        Bbs.RepBBS
-	client     client.Client
+	client     executorapi.Client
 	logger     *steno.Logger
 }
 
-func New(executorID string, lrpStopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, client client.Client, logger *steno.Logger) *AuctionDelegate {
+func New(executorID string, lrpStopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, client executorapi.Client, logger *steno.Logger) *AuctionDelegate {
 	return &AuctionDelegate{
 		executorID: executorID,
 		lrpStopper: lrpStopper,
@@ -99,7 +98,7 @@ func (a *AuctionDelegate) Reserve(auctionInfo auctiontypes.StartAuctionInfo) err
 		"auction-info": auctionInfo,
 	}, "auction-delegate.reserve")
 
-	_, err := a.client.AllocateContainer(auctionInfo.LRPIdentifier().OpaqueID(), api.ContainerAllocationRequest{
+	_, err := a.client.AllocateContainer(auctionInfo.LRPIdentifier().OpaqueID(), executorapi.ContainerAllocationRequest{
 		MemoryMB: auctionInfo.MemoryMB,
 		DiskMB:   auctionInfo.DiskMB,
 	})
@@ -128,7 +127,7 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 
 	containerGuid := startAuction.LRPIdentifier().OpaqueID()
 
-	_, err := a.client.InitializeContainer(containerGuid, api.ContainerInitializationRequest{
+	_, err := a.client.InitializeContainer(containerGuid, executorapi.ContainerInitializationRequest{
 		Ports: a.convertPortMappings(startAuction.Ports),
 		Log:   startAuction.Log,
 	})
@@ -155,7 +154,7 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 		return err
 	}
 
-	err = a.client.Run(containerGuid, api.ContainerRunRequest{
+	err = a.client.Run(containerGuid, executorapi.ContainerRunRequest{
 		Actions: startAuction.Actions,
 	})
 	if err != nil {
@@ -178,10 +177,10 @@ func (a *AuctionDelegate) Stop(stopInstance models.StopLRPInstance) error {
 	return a.lrpStopper.StopInstance(stopInstance)
 }
 
-func (a *AuctionDelegate) convertPortMappings(portMappings []models.PortMapping) []api.PortMapping {
-	out := []api.PortMapping{}
+func (a *AuctionDelegate) convertPortMappings(portMappings []models.PortMapping) []executorapi.PortMapping {
+	out := []executorapi.PortMapping{}
 	for _, portMapping := range portMappings {
-		out = append(out, api.PortMapping{
+		out = append(out, executorapi.PortMapping{
 			ContainerPort: portMapping.ContainerPort,
 			HostPort:      portMapping.HostPort,
 		})
@@ -190,7 +189,7 @@ func (a *AuctionDelegate) convertPortMappings(portMappings []models.PortMapping)
 	return out
 }
 
-func (a *AuctionDelegate) fetchResourcesVia(fetcher func() (api.ExecutorResources, error)) (auctiontypes.Resources, error) {
+func (a *AuctionDelegate) fetchResourcesVia(fetcher func() (executorapi.ExecutorResources, error)) (auctiontypes.Resources, error) {
 	resources, err := fetcher()
 	if err != nil {
 		return auctiontypes.Resources{}, err

@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 
 	executorAPI "github.com/cloudfoundry-incubator/executor/api"
-	"github.com/cloudfoundry-incubator/executor/client/fake_client"
+	fake_client "github.com/cloudfoundry-incubator/executor/api/fakes"
 	"github.com/cloudfoundry-incubator/rep/api"
 	"github.com/cloudfoundry-incubator/rep/api/lrprunning"
 	"github.com/cloudfoundry-incubator/rep/api/taskcomplete"
@@ -40,7 +40,7 @@ var _ = Describe("Callback API", func() {
 
 	BeforeEach(func() {
 		fakeBBS = &fake_bbs.FakeRepBBS{}
-		fakeExecutor = fake_client.New()
+		fakeExecutor = new(fake_client.FakeClient)
 
 		apiServer, err := api.NewServer(
 			taskcomplete.NewHandler(fakeBBS, logger),
@@ -176,14 +176,13 @@ var _ = Describe("Callback API", func() {
 
 		Context("when the guid is found on the executor", func() {
 			BeforeEach(func() {
-				fakeExecutor.WhenGettingContainer = func(guid string) (executorAPI.Container, error) {
-					return executorAPI.Container{
-						Ports: []executorAPI.PortMapping{
-							{ContainerPort: 8080, HostPort: 1234},
-							{ContainerPort: 8081, HostPort: 1235},
-						},
-					}, nil
+				container := executorAPI.Container{
+					Ports: []executorAPI.PortMapping{
+						{ContainerPort: 8080, HostPort: 1234},
+						{ContainerPort: 8081, HostPort: 1235},
+					},
 				}
+				fakeExecutor.GetContainerReturns(container, nil)
 			})
 
 			It("reports the LRP as running", func() {
@@ -213,9 +212,7 @@ var _ = Describe("Callback API", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeExecutor.WhenGettingContainer = func(guid string) (executorAPI.Container, error) {
-					return executorAPI.Container{}, disaster
-				}
+				fakeExecutor.GetContainerReturns(executorAPI.Container{}, disaster)
 			})
 
 			It("returns 400", func() {
