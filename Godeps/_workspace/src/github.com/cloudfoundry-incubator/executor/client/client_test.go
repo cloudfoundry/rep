@@ -140,11 +140,29 @@ var _ = Describe("Client", func() {
 			})
 		})
 
-		Context("when the get fails", func() {
+
+		Context("when the get fails because the container was not found", func() {
 			BeforeEach(func() {
 				fakeExecutor.AppendHandlers(ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/containers/"+containerGuid),
-					ghttp.RespondWith(http.StatusNotFound, "")),
+					ghttp.RespondWith(api.ErrContainerNotFound.HttpCode(), "", http.Header{
+						"X-Executor-Error": []string{api.ErrContainerNotFound.Name()},
+					})),
+				)
+			})
+
+			It("returns an error", func() {
+				_, err := client.GetContainer(containerGuid)
+				Ω(err).Should(Equal(api.ErrContainerNotFound))
+			})
+		})
+
+		Context("when the get fails for some other reason", func() {
+			BeforeEach(func() {
+				fakeExecutor.AppendHandlers(ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/containers/"+containerGuid),
+										ghttp.RespondWith(http.StatusInternalServerError, "")),
+
 				)
 			})
 
@@ -217,13 +235,15 @@ var _ = Describe("Client", func() {
 			BeforeEach(func() {
 				fakeExecutor.AppendHandlers(ghttp.CombineHandlers(
 					ghttp.VerifyRequest("POST", "/containers/guid-123/initialize"),
-					ghttp.RespondWith(http.StatusInternalServerError, "")),
+					ghttp.RespondWith(api.ErrContainerNotFound.HttpCode(), "", http.Header{
+						"X-Executor-Error": []string{api.ErrContainerNotFound.Name()},
+					})),
 				)
 			})
 
 			It("returns an error", func() {
 				container, err := client.InitializeContainer("guid-123", validRequest)
-				Ω(err).Should(HaveOccurred())
+				Ω(err).Should(Equal(api.ErrContainerNotFound))
 				Ω(container).Should(BeZero())
 			})
 		})
@@ -282,12 +302,15 @@ var _ = Describe("Client", func() {
 			BeforeEach(func() {
 				fakeExecutor.AppendHandlers(ghttp.CombineHandlers(
 					ghttp.VerifyRequest("POST", "/containers/guid-123/run"),
-					ghttp.RespondWith(http.StatusInternalServerError, "")))
+					ghttp.RespondWith(api.ErrStepsInvalid.HttpCode(), "", http.Header{
+						"X-Executor-Error": []string{api.ErrStepsInvalid.Name()},
+					})),
+				)
 			})
 
 			It("returns an error", func() {
 				err := client.Run("guid-123", validRequest)
-				Ω(err).Should(HaveOccurred())
+				Ω(err).Should(Equal(api.ErrStepsInvalid))
 			})
 		})
 	})
@@ -415,6 +438,23 @@ var _ = Describe("Client", func() {
 			It("should fail", func() {
 				err := client.Ping()
 				Ω(err).Should(HaveOccurred())
+			})
+		})
+
+		Context("when the ping fails with an unrecognized error", func() {
+			BeforeEach(func() {
+				fakeExecutor.AppendHandlers(ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/ping"),
+					ghttp.RespondWith(http.StatusBadGateway, nil, http.Header{
+						"X-Executor-Error": []string{"Whoa"},
+					}),
+				))
+			})
+
+			It("should fail and at least propagate the original name", func() {
+				err := client.Ping()
+				Ω(err).Should(HaveOccurred())
+				Ω(err.Error()).Should(ContainSubstring("Whoa"))
 			})
 		})
 	})
