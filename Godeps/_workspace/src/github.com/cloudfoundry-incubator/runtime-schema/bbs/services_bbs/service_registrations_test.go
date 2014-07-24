@@ -5,25 +5,16 @@ import (
 	"github.com/cloudfoundry/storeadapter"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/cloudfoundry-incubator/runtime-schema/bbs/services_bbs"
-	steno "github.com/cloudfoundry/gosteno"
 )
 
 var _ = Context("Getting Generic Services", func() {
 	var bbs *ServicesBBS
 
 	BeforeEach(func() {
-		logSink := steno.NewTestingSink()
-
-		steno.Init(&steno.Config{
-			Sinks: []steno.Sink{logSink},
-		})
-
-		logger := steno.NewLogger("the-logger")
-		steno.EnterTestMode()
-
-		bbs = New(etcdClient, logger)
+		bbs = New(etcdClient, lagertest.NewTestLogger("test"))
 	})
 
 	Describe("GetServiceRegistrations", func() {

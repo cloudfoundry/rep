@@ -8,12 +8,12 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	. "github.com/cloudfoundry-incubator/runtime-schema/bbs/task_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider/faketimeprovider"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/cloudfoundry/storeadapter/test_helpers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-golang/lager/lagertest"
 )
 
 var _ = Describe("Convergence of Tasks", func() {
@@ -36,21 +36,16 @@ var _ = Describe("Convergence of Tasks", func() {
 
 		timeProvider = faketimeprovider.New(time.Unix(1238, 0))
 
-		logSink := steno.NewTestingSink()
-
-		steno.Init(&steno.Config{
-			Sinks: []steno.Sink{logSink},
-		})
-
-		logger := steno.NewLogger("the-logger")
-		steno.EnterTestMode()
-
-		bbs = New(etcdClient, timeProvider, logger)
 		task = models.Task{
 			Guid:    "some-guid",
 			Stack:   "pancakes",
 			Actions: dummyActions,
 		}
+
+		logger := lagertest.NewTestLogger("test")
+
+		bbs = New(etcdClient, timeProvider, logger)
+
 		servicesBBS = services_bbs.New(etcdClient, logger)
 	})
 

@@ -10,9 +10,9 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/stop_auction_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/task_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter"
+	"github.com/pivotal-golang/lager"
 )
 
 //Bulletin Board System/Store
@@ -137,54 +137,54 @@ type RouteEmitterBBS interface {
 	GetRunningActualLRPsByProcessGuid(processGuid string) ([]models.ActualLRP, error)
 }
 
-func NewRepBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger *steno.Logger) RepBBS {
+func NewRepBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger lager.Logger) RepBBS {
 	return NewBBS(store, timeProvider, logger)
 }
 
-func NewConvergerBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger *steno.Logger) ConvergerBBS {
+func NewConvergerBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger lager.Logger) ConvergerBBS {
 	return NewBBS(store, timeProvider, logger)
 }
 
-func NewAppManagerBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger *steno.Logger) AppManagerBBS {
+func NewAppManagerBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger lager.Logger) AppManagerBBS {
 	return NewBBS(store, timeProvider, logger)
 }
 
-func NewNsyncBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger *steno.Logger) NsyncBBS {
+func NewNsyncBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger lager.Logger) NsyncBBS {
 	return NewBBS(store, timeProvider, logger)
 }
 
-func NewAuctioneerBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger *steno.Logger) AuctioneerBBS {
+func NewAuctioneerBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger lager.Logger) AuctioneerBBS {
 	return NewBBS(store, timeProvider, logger)
 }
 
-func NewStagerBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger *steno.Logger) StagerBBS {
+func NewStagerBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger lager.Logger) StagerBBS {
 	return NewBBS(store, timeProvider, logger)
 }
 
-func NewMetricsBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger *steno.Logger) MetricsBBS {
+func NewMetricsBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger lager.Logger) MetricsBBS {
 	return NewBBS(store, timeProvider, logger)
 }
 
-func NewFileServerBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger *steno.Logger) FileServerBBS {
+func NewFileServerBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger lager.Logger) FileServerBBS {
 	return NewBBS(store, timeProvider, logger)
 }
 
-func NewRouteEmitterBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger *steno.Logger) RouteEmitterBBS {
+func NewRouteEmitterBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger lager.Logger) RouteEmitterBBS {
 	return NewBBS(store, timeProvider, logger)
 }
 
-func NewTPSBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger *steno.Logger) TPSBBS {
+func NewTPSBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger lager.Logger) TPSBBS {
 	return NewBBS(store, timeProvider, logger)
 }
 
-func NewBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger *steno.Logger) *BBS {
+func NewBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger lager.Logger) *BBS {
 	return &BBS{
 		LockBBS:         lock_bbs.New(store),
-		LRPBBS:          lrp_bbs.New(store, timeProvider, logger),
-		StartAuctionBBS: start_auction_bbs.New(store, timeProvider, logger),
-		StopAuctionBBS:  stop_auction_bbs.New(store, timeProvider, logger),
-		ServicesBBS:     services_bbs.New(store, logger),
-		TaskBBS:         task_bbs.New(store, timeProvider, logger),
+		LRPBBS:          lrp_bbs.New(store, timeProvider, logger.Session("lrp-bbs")),
+		StartAuctionBBS: start_auction_bbs.New(store, timeProvider, logger.Session("lrp-start-auction-bbs")),
+		StopAuctionBBS:  stop_auction_bbs.New(store, timeProvider, logger.Session("lrp-stop-auction-bbs")),
+		ServicesBBS:     services_bbs.New(store, logger.Session("services-bbs")),
+		TaskBBS:         task_bbs.New(store, timeProvider, logger.Session("task-bbs")),
 	}
 }
 

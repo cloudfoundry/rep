@@ -7,6 +7,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
+	"github.com/pivotal-golang/lager"
 )
 
 type compareAndSwappableTask struct {
@@ -35,10 +36,12 @@ func (bbs *TaskBBS) ConvergeTask(timeToClaim time.Duration, convergenceInterval 
 		return
 	}
 
+	taskLog := bbs.logger.Session("converge-tasks")
+
 	logError := func(task models.Task, message string) {
-		bbs.logger.Errord(map[string]interface{}{
+		taskLog.Error(message, nil, lager.Data{
 			"task": task,
-		}, message)
+		})
 	}
 
 	keysToDelete := []string{}
@@ -54,10 +57,11 @@ func (bbs *TaskBBS) ConvergeTask(timeToClaim time.Duration, convergenceInterval 
 	for _, node := range taskState.ChildNodes {
 		task, err := models.NewTaskFromJSON(node.Value)
 		if err != nil {
-			bbs.logger.Errord(map[string]interface{}{
+			taskLog.Error("failed-to-unmarshal-task-json", err, lager.Data{
 				"key":   node.Key,
-				"value": string(node.Value),
-			}, "task.converge.json-parse-failure")
+				"value": node.Value,
+			})
+
 			keysToDelete = append(keysToDelete, node.Key)
 			continue
 		}
@@ -68,7 +72,7 @@ func (bbs *TaskBBS) ConvergeTask(timeToClaim time.Duration, convergenceInterval 
 		case models.TaskStatePending:
 			shouldMarkAsFailed := bbs.durationSinceTaskCreated(task) >= timeToClaim
 			if shouldMarkAsFailed {
-				logError(task, "task.converge.failed-to-claim")
+				logError(task, "failed-to-claim")
 				scheduleForCASByIndex(node.Index, markTaskFailed(task, "not claimed within time limit"))
 			} else if shouldKickTask {
 				scheduleForCASByIndex(node.Index, task)
@@ -77,17 +81,17 @@ func (bbs *TaskBBS) ConvergeTask(timeToClaim time.Duration, convergenceInterval 
 			_, executorIsAlive := executorState.Lookup(task.ExecutorID)
 
 			if !executorIsAlive {
-				logError(task, "task.converge.executor-disappeared")
+				logError(task, "executor-disappeared")
 				scheduleForCASByIndex(node.Index, markTaskFailed(task, "executor disappeared before completion"))
 			} else if shouldKickTask {
-				logError(task, "task.converge.failed-to-start")
+				logError(task, "failed-to-start")
 				scheduleForCASByIndex(node.Index, demoteToPending(task))
 			}
 		case models.TaskStateRunning:
 			_, executorIsAlive := executorState.Lookup(task.ExecutorID)
 
 			if !executorIsAlive {
-				logError(task, "task.converge.executor-disappeared")
+				logError(task, "executor-disappeared")
 				scheduleForCASByIndex(node.Index, markTaskFailed(task, "executor disappeared before completion"))
 			}
 		case models.TaskStateCompleted:
@@ -96,7 +100,7 @@ func (bbs *TaskBBS) ConvergeTask(timeToClaim time.Duration, convergenceInterval 
 			}
 		case models.TaskStateResolving:
 			if shouldKickTask {
-				logError(task, "task.converge.failed-to-resolve")
+				logError(task, "failed-to-resolve")
 				scheduleForCASByIndex(node.Index, demoteToCompleted(task))
 			}
 		}
@@ -135,10 +139,9 @@ func (bbs *TaskBBS) batchCompareAndSwapTasks(tasksToCAS []compareAndSwappableTas
 		go func(taskToCAS compareAndSwappableTask, newStoreNode storeadapter.StoreNode) {
 			err := bbs.store.CompareAndSwapByIndex(taskToCAS.OldIndex, newStoreNode)
 			if err != nil {
-				bbs.logger.Errord(map[string]interface{}{
-					"error": err.Error(),
-				}, "task.converge.failed-to-compare-and-swap")
+				bbs.logger.Error("failed-to-compare-and-swap", err)
 			}
+
 			waitGroup.Done()
 		}(taskToCAS, newStoreNode)
 	}

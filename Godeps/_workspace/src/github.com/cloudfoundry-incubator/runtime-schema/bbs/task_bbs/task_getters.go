@@ -4,6 +4,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
+	"github.com/pivotal-golang/lager"
 )
 
 func (bbs *TaskBBS) GetAllTasks() ([]models.Task, error) {
@@ -20,7 +21,10 @@ func (bbs *TaskBBS) GetAllTasks() ([]models.Task, error) {
 	for _, node := range node.ChildNodes {
 		task, err := models.NewTaskFromJSON(node.Value)
 		if err != nil {
-			bbs.logger.Errorf("cannot parse task JSON for key %s: %s", node.Key, err.Error())
+			bbs.logger.Error("failed-to-unmarshal-task", err, lager.Data{
+				"key":   node.Key,
+				"value": node.Value,
+			})
 		} else {
 			tasks = append(tasks, task)
 		}

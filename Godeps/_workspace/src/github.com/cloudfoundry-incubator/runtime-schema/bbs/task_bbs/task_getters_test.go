@@ -5,10 +5,10 @@ import (
 
 	. "github.com/cloudfoundry-incubator/runtime-schema/bbs/task_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider/faketimeprovider"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-golang/lager/lagertest"
 )
 
 var _ = Describe("Task BBS", func() {
@@ -21,15 +21,7 @@ var _ = Describe("Task BBS", func() {
 		err = nil
 		timeProvider = faketimeprovider.New(time.Unix(1238, 0))
 
-		logSink := steno.NewTestingSink()
-
-		steno.Init(&steno.Config{
-			Sinks: []steno.Sink{logSink},
-		})
-
-		logger := steno.NewLogger("the-logger")
-		steno.EnterTestMode()
-		bbs = New(etcdClient, timeProvider, logger)
+		bbs = New(etcdClient, timeProvider, lagertest.NewTestLogger("test"))
 		task = models.Task{
 			Guid:    "some-guid",
 			Stack:   "pancakes",

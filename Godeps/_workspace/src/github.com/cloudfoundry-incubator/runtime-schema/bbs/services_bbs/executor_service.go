@@ -19,6 +19,7 @@ func (bbs *ServicesBBS) GetAllExecutors() ([]models.ExecutorPresence, error) {
 	if err == storeadapter.ErrorKeyNotFound {
 		return []models.ExecutorPresence{}, nil
 	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -27,12 +28,12 @@ func (bbs *ServicesBBS) GetAllExecutors() ([]models.ExecutorPresence, error) {
 	for _, node := range node.ChildNodes {
 		executorPresence, err := models.NewExecutorPresenceFromJSON(node.Value)
 		if err != nil {
-			bbs.logger.Errord(map[string]interface{}{
-				"error": err.Error(),
-			}, "bbs.get-all-executors.invalid-json")
+			bbs.logger.Error("failed-to-unmarshal-executors-json", err)
 			continue
 		}
+
 		executorPresences = append(executorPresences, executorPresence)
 	}
+
 	return executorPresences, nil
 }

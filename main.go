@@ -25,7 +25,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
@@ -61,12 +60,6 @@ var natsPassword = flag.String(
 	"natsPassword",
 	"nats",
 	"Password for nats user",
-)
-
-var syslogName = flag.String(
-	"syslogName",
-	"",
-	"syslog name",
 )
 
 var heartbeatInterval = flag.Duration(
@@ -121,7 +114,7 @@ func main() {
 	}
 
 	logger := cf_lager.New("rep")
-	bbs := initializeRepBBS(initializeStenoLogger())
+	bbs := initializeRepBBS(logger)
 	executorClient := client.New(http.DefaultClient, *executorURL)
 	lrpStopper := initializeLRPStopper(bbs, executorClient, logger)
 
@@ -158,33 +151,20 @@ func main() {
 	}
 }
 
-func initializeStenoLogger() *steno.Logger {
-	stenoConfig := steno.Config{
-		Sinks: []steno.Sink{steno.NewIOSink(os.Stdout)},
-	}
-
-	if *syslogName != "" {
-		stenoConfig.Sinks = append(stenoConfig.Sinks, steno.NewSyslogSink(*syslogName))
-	}
-
-	steno.Init(&stenoConfig)
-	return steno.NewLogger("rep")
-}
-
-func initializeRepBBS(logger *steno.Logger) Bbs.RepBBS {
+func initializeRepBBS(logger lager.Logger) Bbs.RepBBS {
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
 		strings.Split(*etcdCluster, ","),
 		workerpool.NewWorkerPool(10),
 	)
 
 	bbs := Bbs.NewRepBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
+
 	err := etcdAdapter.Connect()
 	if err != nil {
-		logger.Errord(map[string]interface{}{
-			"error": err,
-		}, "rep.etcd-connect.failed")
+		logger.Fatal("failed-to-connect-to-etcd", err)
 		os.Exit(1)
 	}
+
 	return bbs
 }
 

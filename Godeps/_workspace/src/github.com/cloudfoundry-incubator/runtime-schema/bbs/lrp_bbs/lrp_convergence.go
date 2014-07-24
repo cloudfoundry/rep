@@ -7,6 +7,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
+	"github.com/pivotal-golang/lager"
 )
 
 type compareAndSwappableDesiredLRP struct {
@@ -17,17 +18,13 @@ type compareAndSwappableDesiredLRP struct {
 func (bbs *LRPBBS) ConvergeLRPs() {
 	actualsByProcessGuid, err := bbs.pruneActualsWithMissingExecutors()
 	if err != nil {
-		bbs.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "lrp-converger.failed-to-fetch-and-prune-actual-lrps")
+		bbs.logger.Error("failed-to-fetch-and-prune-actual-lrps", err)
 		return
 	}
 
 	node, err := bbs.store.ListRecursively(shared.DesiredLRPSchemaRoot)
 	if err != nil && err != storeadapter.ErrorKeyNotFound {
-		bbs.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "lrp-converger.failed-to-fetch-desired-lrps")
+		bbs.logger.Error("failed-to-fetch-desired-lrps", err)
 		return
 	}
 
@@ -39,9 +36,10 @@ func (bbs *LRPBBS) ConvergeLRPs() {
 		desiredLRP, err := models.NewDesiredLRPFromJSON(node.Value)
 
 		if err != nil {
-			bbs.logger.Infod(map[string]interface{}{
-				"error": err.Error(),
-			}, "lrp-converger.pruning-unparseable-desired-lrp-json")
+			bbs.logger.Info("pruning-invalid-desired-lrp-json", lager.Data{
+				"error":   err.Error(),
+				"payload": node.Value,
+			})
 			keysToDelete = append(keysToDelete, node.Key)
 			continue
 		}
@@ -63,9 +61,7 @@ func (bbs *LRPBBS) ConvergeLRPs() {
 	bbs.batchCompareAndSwapDesiredLRPs(desiredLRPsToCAS)
 	err = bbs.RequestStopLRPInstances(stopLRPInstances)
 	if err != nil {
-		bbs.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "lrp-converger.failed-to-request-stops")
+		bbs.logger.Error("failed-to-request-stops", err)
 	}
 }
 
@@ -75,11 +71,11 @@ func (bbs *LRPBBS) instancesToStop(knownDesiredProcessGuids map[string]bool, act
 	for processGuid, actuals := range actualsByProcessGuid {
 		if !knownDesiredProcessGuids[processGuid] {
 			for _, actual := range actuals {
-				bbs.logger.Infod(map[string]interface{}{
+				bbs.logger.Info("detected-undesired-process", lager.Data{
 					"process-guid":  processGuid,
 					"instance-guid": actual.InstanceGuid,
 					"index":         actual.Index,
-				}, "lrp-converger.detected-undesired-process")
+				})
 
 				stopLRPInstances = append(stopLRPInstances, models.StopLRPInstance{
 					ProcessGuid:  processGuid,
@@ -104,25 +100,27 @@ func (bbs *LRPBBS) needsReconciliation(desiredLRP models.DesiredLRP, actualLRPsF
 	result := delta_force.Reconcile(desiredLRP.Instances, actuals)
 
 	if len(result.IndicesToStart) > 0 {
-		bbs.logger.Infod(map[string]interface{}{
+		bbs.logger.Info("detected-missing-instance", lager.Data{
 			"process-guid":      desiredLRP.ProcessGuid,
 			"desired-instances": desiredLRP.Instances,
 			"missing-indices":   result.IndicesToStart,
-		}, "lrp-converger.detected-missing-instance")
+		})
 	}
+
 	if len(result.GuidsToStop) > 0 {
-		bbs.logger.Infod(map[string]interface{}{
+		bbs.logger.Info("detected-extra-instance", lager.Data{
 			"process-guid":      desiredLRP.ProcessGuid,
 			"desired-instances": desiredLRP.Instances,
 			"extra-guids":       result.GuidsToStop,
-		}, "lrp-converger.detected-extra-instance")
+		})
 	}
+
 	if len(result.IndicesToStopAllButOne) > 0 {
-		bbs.logger.Infod(map[string]interface{}{
+		bbs.logger.Info("detected-duplicate-instance", lager.Data{
 			"process-guid":       desiredLRP.ProcessGuid,
 			"desired-instances":  desiredLRP.Instances,
 			"duplicated-indices": result.IndicesToStopAllButOne,
-		}, "lrp-converger.detected-duplicate-instance")
+		})
 	}
 
 	return !result.Empty()
@@ -133,17 +131,13 @@ func (bbs *LRPBBS) pruneActualsWithMissingExecutors() (map[string][]models.Actua
 	if err == storeadapter.ErrorKeyNotFound {
 		executorState = storeadapter.StoreNode{}
 	} else if err != nil {
-		bbs.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "lrp-converger.get-executors.failed")
+		bbs.logger.Error("failed-to-get-executors", err)
 		return nil, err
 	}
 
 	actuals, err := bbs.GetAllActualLRPs()
 	if err != nil {
-		bbs.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "lrp-converger.get-actuals.failed")
+		bbs.logger.Error("failed-to-get-actual-lrps", err)
 		return nil, err
 	}
 
@@ -156,10 +150,10 @@ func (bbs *LRPBBS) pruneActualsWithMissingExecutors() (map[string][]models.Actua
 		if executorIsAlive {
 			actualsByProcessGuid[actual.ProcessGuid] = append(actualsByProcessGuid[actual.ProcessGuid], actual)
 		} else {
-			bbs.logger.Infod(map[string]interface{}{
+			bbs.logger.Info("detected-actual-with-missing-executor", lager.Data{
 				"actual":      actual,
 				"executor-id": actual.ExecutorID,
-			}, "lrp-converger.identified-actual-with-missing-executor")
+			})
 
 			keysToDelete = append(keysToDelete, shared.ActualLRPSchemaPath(actual))
 		}
@@ -182,10 +176,9 @@ func (bbs *LRPBBS) batchCompareAndSwapDesiredLRPs(desiredLRPsToCAS []compareAndS
 		go func(desiredLRPToCAS compareAndSwappableDesiredLRP, newStoreNode storeadapter.StoreNode) {
 			err := bbs.store.CompareAndSwapByIndex(desiredLRPToCAS.OldIndex, newStoreNode)
 			if err != nil {
-				bbs.logger.Errord(map[string]interface{}{
-					"error": err.Error(),
-				}, "lrp_bbs.converge.failed-to-compare-and-swap")
+				bbs.logger.Error("failed-to-compare-and-swap", err)
 			}
+
 			waitGroup.Done()
 		}(desiredLRPToCAS, newStoreNode)
 	}

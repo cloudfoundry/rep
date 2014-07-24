@@ -3,18 +3,18 @@ package lrp_bbs
 import (
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter"
+	"github.com/pivotal-golang/lager"
 )
 
 type LRPBBS struct {
 	store        storeadapter.StoreAdapter
 	timeProvider timeprovider.TimeProvider
-	logger       *gosteno.Logger
+	logger       lager.Logger
 }
 
-func New(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger *gosteno.Logger) *LRPBBS {
+func New(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger lager.Logger) *LRPBBS {
 	return &LRPBBS{
 		store:        store,
 		timeProvider: timeProvider,

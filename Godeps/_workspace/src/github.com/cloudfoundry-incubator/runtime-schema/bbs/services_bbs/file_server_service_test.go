@@ -2,14 +2,15 @@ package services_bbs_test
 
 import (
 	"time"
+
 	"github.com/cloudfoundry/storeadapter"
+	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	. "github.com/cloudfoundry-incubator/runtime-schema/bbs/services_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
-	steno "github.com/cloudfoundry/gosteno"
 	. "github.com/cloudfoundry/storeadapter/storenodematchers"
 	"github.com/cloudfoundry/storeadapter/test_helpers"
 )
@@ -26,15 +27,7 @@ var _ = Describe("Fetching available file servers", func() {
 	)
 
 	BeforeEach(func() {
-		logSink := steno.NewTestingSink()
-
-		steno.Init(&steno.Config{
-			Sinks: []steno.Sink{logSink},
-		})
-
-		logger := steno.NewLogger("the-logger")
-		steno.EnterTestMode()
-		bbs = New(etcdClient, logger)
+		bbs = New(etcdClient, lagertest.NewTestLogger("test"))
 	})
 
 	Describe("MaintainFileServerPresence", func() {

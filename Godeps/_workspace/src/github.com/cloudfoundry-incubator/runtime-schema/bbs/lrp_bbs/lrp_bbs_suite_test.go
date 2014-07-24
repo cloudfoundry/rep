@@ -2,13 +2,13 @@ package lrp_bbs_test
 
 import (
 	. "github.com/cloudfoundry-incubator/runtime-schema/bbs/lrp_bbs"
-	"github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider/faketimeprovider"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-golang/lager/lagertest"
 
 	"testing"
 	"time"
@@ -38,7 +38,7 @@ var _ = BeforeEach(func() {
 	etcdRunner.Start()
 
 	timeProvider = faketimeprovider.New(time.Unix(0, 1138))
-	bbs = New(etcdClient, timeProvider, gosteno.NewLogger("test"))
+	bbs = New(etcdClient, timeProvider, lagertest.NewTestLogger("test"))
 })
 
 func itRetriesUntilStoreComesBack(action func() error) {

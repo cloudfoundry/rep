@@ -1,16 +1,16 @@
 package services_bbs
 
 import (
-	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/storeadapter"
+	"github.com/pivotal-golang/lager"
 )
 
 type ServicesBBS struct {
 	store  storeadapter.StoreAdapter
-	logger *steno.Logger
+	logger lager.Logger
 }
 
-func New(store storeadapter.StoreAdapter, logger *steno.Logger) *ServicesBBS {
+func New(store storeadapter.StoreAdapter, logger lager.Logger) *ServicesBBS {
 	return &ServicesBBS{
 		store:  store,
 		logger: logger,
