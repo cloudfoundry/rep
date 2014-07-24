@@ -11,19 +11,23 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctionrep",
-			"Rev": "0fea44f9d5bf27415f0d731dba6abe64eadd53c6"
+			"Rev": "74092cae472d8f252b07a6fa1eefd67747d00dc8"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctiontypes",
-			"Rev": "0fea44f9d5bf27415f0d731dba6abe64eadd53c6"
+			"Rev": "74092cae472d8f252b07a6fa1eefd67747d00dc8"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats",
-			"Rev": "0fea44f9d5bf27415f0d731dba6abe64eadd53c6"
+			"Rev": "74092cae472d8f252b07a6fa1eefd67747d00dc8"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/util",
-			"Rev": "0fea44f9d5bf27415f0d731dba6abe64eadd53c6"
+			"Rev": "74092cae472d8f252b07a6fa1eefd67747d00dc8"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry-incubator/cf-lager",
+			"Rev": "c88fc2b60504c2feb0a40435d505cf21d9cd58d3"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/delta_force/delta_force",
@@ -83,6 +87,10 @@
 		{
 			"ImportPath": "github.com/onsi/gomega",
 			"Rev": "28e5ce936abc528d8c6b5eb3dd5689e7e81e9272"
+		},
+		{
+			"ImportPath": "github.com/pivotal-golang/lager",
+			"Rev": "e8822eb6379ecd32065776bd84139100cffa5563"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
