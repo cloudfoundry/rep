@@ -12,6 +12,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider"
+	"github.com/pivotal-golang/lager/lagertest"
 
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	. "github.com/onsi/ginkgo"
@@ -141,7 +142,7 @@ var _ = Describe("The Rep", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			executorID := executors[0].ExecutorID
 
-			client, err := auction_nats_client.New(natsRunner.MessageBus, time.Second, 10*time.Second, gosteno.NewLogger("the-logger"))
+			client, err := auction_nats_client.New(natsRunner.MessageBus, time.Second, 10*time.Second, lagertest.NewTestLogger("test"))
 			Ω(err).ShouldNot(HaveOccurred())
 			resources := client.TotalResources(executorID)
 			Ω(resources).Should(Equal(auctiontypes.Resources{

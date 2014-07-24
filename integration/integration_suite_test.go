@@ -3,7 +3,6 @@ package integration_test
 import (
 	"testing"
 
-	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/natsrunner"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
@@ -38,7 +37,6 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = BeforeEach(func() {
-	steno.EnterTestMode()
 	etcdRunner.Start()
 	natsRunner.Start()
 })

@@ -6,26 +6,27 @@ import (
 
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	steno "github.com/cloudfoundry/gosteno"
+	"github.com/pivotal-golang/lager"
 )
 
 type StopLRPListener struct {
 	lrpStopper lrp_stopper.LRPStopper
 	bbs        Bbs.RepBBS
-	logger     *steno.Logger
+	logger     lager.Logger
 }
 
-func New(lrpStopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, logger *steno.Logger) *StopLRPListener {
+func New(lrpStopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, logger lager.Logger) *StopLRPListener {
 	return &StopLRPListener{
 		lrpStopper: lrpStopper,
 		bbs:        bbs,
-		logger:     logger,
+		logger:     logger.Session("stop-lrp-listener"),
 	}
 }
 
 func (listener *StopLRPListener) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	stopInstancesChan, stopChan, errChan := listener.bbs.WatchForStopLRPInstance()
-	listener.logger.Info("rep.stop-lrp-listener.watching-for-stops")
+
+	listener.logger.Info("watching")
 
 	close(ready)
 
@@ -35,12 +36,15 @@ func (listener *StopLRPListener) Run(signals <-chan os.Signal, ready chan<- stru
 		select {
 		case stopInstance, ok := <-stopInstancesChan:
 			if !ok {
-				listener.logger.Error("rep.stop-lrp-listener.watch-closed")
+				listener.logger.Error("watch-closed", nil)
 				stopInstancesChan = nil
 				break
 			}
 
-			listener.logger.Info("rep.stop-lrp-listener.received-stop-lrp-instance")
+			listener.logger.Info("received-stop", lager.Data{
+				"instance": stopInstance,
+			})
+
 			go listener.lrpStopper.StopInstance(stopInstance)
 
 		case <-reWatchChan:
@@ -49,9 +53,7 @@ func (listener *StopLRPListener) Run(signals <-chan os.Signal, ready chan<- stru
 			stopInstancesChan, stopChan, errChan = listener.bbs.WatchForStopLRPInstance()
 
 		case err := <-errChan:
-			listener.logger.Errord(map[string]interface{}{
-				"error": err.Error(),
-			}, "rep.stop-lrp-listener.received-watch-error")
+			listener.logger.Error("watch-error", err)
 
 			stopInstancesChan = nil
 			errChan = nil
@@ -59,7 +61,7 @@ func (listener *StopLRPListener) Run(signals <-chan os.Signal, ready chan<- stru
 			reWatchChan = time.After(3 * time.Second)
 
 		case <-signals:
-			listener.logger.Info("rep.stop-lrp-listener.shutting-down")
+			listener.logger.Info("shutting-down")
 			close(stopChan)
 			return nil
 		}

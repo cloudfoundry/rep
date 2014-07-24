@@ -10,7 +10,7 @@ import (
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper/fake_lrp_stopper"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	steno "github.com/cloudfoundry/gosteno"
+	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -27,7 +27,7 @@ var _ = Describe("AuctionDelegate", func() {
 		stopper = &fake_lrp_stopper.FakeLRPStopper{}
 		client = new(fake_client.FakeClient)
 		bbs = &fake_bbs.FakeRepBBS{}
-		delegate = New("some-executor-id", stopper, bbs, client, steno.NewLogger("test"))
+		delegate = New("some-executor-id", stopper, bbs, client, lagertest.NewTestLogger("test"))
 		clientFetchError = errors.New("Failed to fetch")
 	})
 

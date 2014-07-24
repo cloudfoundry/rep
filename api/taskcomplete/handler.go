@@ -2,25 +2,24 @@ package taskcomplete
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry/gosteno"
+	"github.com/pivotal-golang/lager"
 )
 
 type handler struct {
 	bbs            bbs.RepBBS
 	executorClient api.Client
-	logger         *gosteno.Logger
+	logger         lager.Logger
 }
 
-func NewHandler(bbs bbs.RepBBS, executorClient api.Client, logger *gosteno.Logger) http.Handler {
+func NewHandler(bbs bbs.RepBBS, executorClient api.Client, logger lager.Logger) http.Handler {
 	return &handler{
 		bbs:            bbs,
 		executorClient: executorClient,
-		logger:         logger,
+		logger:         logger.Session("complete-handler"),
 	}
 }
 
@@ -29,9 +28,7 @@ func (handler *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var runResult api.ContainerRunResult
 	err := json.NewDecoder(r.Body).Decode(&runResult)
 	if err != nil {
-		handler.logger.Errord(map[string]interface{}{
-			"error": fmt.Sprintf("Could not unmarshal response: %s", err),
-		}, "game-scheduler.complete-callback-handler.failed")
+		handler.logger.Error("failed-to-unmarshal", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

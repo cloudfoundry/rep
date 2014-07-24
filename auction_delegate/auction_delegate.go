@@ -6,7 +6,7 @@ import (
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	steno "github.com/cloudfoundry/gosteno"
+	"github.com/pivotal-golang/lager"
 )
 
 type AuctionDelegate struct {
@@ -14,25 +14,23 @@ type AuctionDelegate struct {
 	lrpStopper lrp_stopper.LRPStopper
 	bbs        Bbs.RepBBS
 	client     executorapi.Client
-	logger     *steno.Logger
+	logger     lager.Logger
 }
 
-func New(executorID string, lrpStopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, client executorapi.Client, logger *steno.Logger) *AuctionDelegate {
+func New(executorID string, lrpStopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, client executorapi.Client, logger lager.Logger) *AuctionDelegate {
 	return &AuctionDelegate{
 		executorID: executorID,
 		lrpStopper: lrpStopper,
 		bbs:        bbs,
 		client:     client,
-		logger:     logger,
+		logger:     logger.Session("auction-delegate"),
 	}
 }
 
 func (a *AuctionDelegate) RemainingResources() (auctiontypes.Resources, error) {
 	resources, err := a.fetchResourcesVia(a.client.RemainingResources)
 	if err != nil {
-		a.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "auction-delegate.get-remaining-resources.failed")
+		a.logger.Error("failed-to-get-remaining-resource", err)
 	}
 	return resources, err
 }
@@ -40,9 +38,7 @@ func (a *AuctionDelegate) RemainingResources() (auctiontypes.Resources, error) {
 func (a *AuctionDelegate) TotalResources() (auctiontypes.Resources, error) {
 	resources, err := a.fetchResourcesVia(a.client.TotalResources)
 	if err != nil {
-		a.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "auction-delegate.get-remaining-resources.failed")
+		a.logger.Error("failed-to-get-total-resources", err)
 	}
 	return resources, err
 }
@@ -50,9 +46,7 @@ func (a *AuctionDelegate) TotalResources() (auctiontypes.Resources, error) {
 func (a *AuctionDelegate) NumInstancesForProcessGuid(processGuid string) (int, error) {
 	containers, err := a.client.ListContainers()
 	if err != nil {
-		a.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "auction-delegate.list-containers.failed")
+		a.logger.Error("failed-to-list-containers", err)
 		return 0, err
 	}
 
@@ -73,9 +67,7 @@ func (a *AuctionDelegate) NumInstancesForProcessGuid(processGuid string) (int, e
 func (a *AuctionDelegate) InstanceGuidsForProcessGuidAndIndex(processGuid string, index int) ([]string, error) {
 	containers, err := a.client.ListContainers()
 	if err != nil {
-		a.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "auction-delegate.list-containers.failed")
+		a.logger.Error("failed-to-list-containers", err)
 		return []string{}, err
 	}
 
@@ -94,36 +86,38 @@ func (a *AuctionDelegate) InstanceGuidsForProcessGuidAndIndex(processGuid string
 }
 
 func (a *AuctionDelegate) Reserve(auctionInfo auctiontypes.StartAuctionInfo) error {
-	a.logger.Debugd(map[string]interface{}{
+	reserveLog := a.logger.Session("reservation")
+
+	reserveLog.Info("reserve", lager.Data{
 		"auction-info": auctionInfo,
-	}, "auction-delegate.reserve")
+	})
 
 	_, err := a.client.AllocateContainer(auctionInfo.LRPIdentifier().OpaqueID(), executorapi.ContainerAllocationRequest{
 		MemoryMB: auctionInfo.MemoryMB,
 		DiskMB:   auctionInfo.DiskMB,
 	})
 	if err != nil {
-		a.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "auction-delegate.reserve.failed")
+		reserveLog.Error("failed-to-reserve", err)
 	}
+
 	return err
 }
 
 func (a *AuctionDelegate) ReleaseReservation(auctionInfo auctiontypes.StartAuctionInfo) error {
 	err := a.client.DeleteContainer(auctionInfo.LRPIdentifier().OpaqueID())
 	if err != nil {
-		a.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "auction-delegate.release-reserve.failed")
+		a.logger.Error("failed-to-release-reservation", err)
 	}
+
 	return err
 }
 
 func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
-	a.logger.Infod(map[string]interface{}{
+	auctionLog := a.logger.Session("run")
+
+	auctionLog.Info("start", lager.Data{
 		"start-auction": startAuction,
-	}, "auction-delegate.run")
+	})
 
 	containerGuid := startAuction.LRPIdentifier().OpaqueID()
 
@@ -132,9 +126,7 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 		Log:   startAuction.Log,
 	})
 	if err != nil {
-		a.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "auction-delegate.initialize-container-request.failed")
+		auctionLog.Error("failed-to-initialize-container", err)
 		a.client.DeleteContainer(containerGuid)
 		return err
 	}
@@ -147,9 +139,7 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 	err = a.bbs.ReportActualLRPAsStarting(lrp, a.executorID)
 
 	if err != nil {
-		a.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "auction-delegate.mark-starting.failed")
+		auctionLog.Error("failed-to-mark-starting", err)
 		a.client.DeleteContainer(containerGuid)
 		return err
 	}
@@ -158,9 +148,7 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 		Actions: startAuction.Actions,
 	})
 	if err != nil {
-		a.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "auction-delegate.run-actions.failed")
+		auctionLog.Error("failed-to-run-actions", err)
 		a.client.DeleteContainer(containerGuid)
 		a.bbs.RemoveActualLRP(lrp)
 		return err
@@ -170,9 +158,9 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 }
 
 func (a *AuctionDelegate) Stop(stopInstance models.StopLRPInstance) error {
-	a.logger.Infod(map[string]interface{}{
+	a.logger.Info("stop-instance", lager.Data{
 		"stop-instance": stopInstance,
-	}, "auction-delegate.stop")
+	})
 
 	return a.lrpStopper.StopInstance(stopInstance)
 }

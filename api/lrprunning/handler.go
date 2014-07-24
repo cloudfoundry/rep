@@ -7,7 +7,7 @@ import (
 	executorapi "github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry/gosteno"
+	"github.com/pivotal-golang/lager"
 )
 
 type handler struct {
@@ -15,10 +15,16 @@ type handler struct {
 	bbs        bbs.RepBBS
 	executor   executorapi.Client
 	lrpHost    string
-	logger     *gosteno.Logger
+	logger     lager.Logger
 }
 
-func NewHandler(executorID string, bbs bbs.RepBBS, executor executorapi.Client, lrpHost string, logger *gosteno.Logger) http.Handler {
+func NewHandler(
+	executorID string,
+	bbs bbs.RepBBS,
+	executor executorapi.Client,
+	lrpHost string,
+	logger lager.Logger,
+) http.Handler {
 	return &handler{
 		executorID: executorID,
 		bbs:        bbs,
@@ -70,9 +76,10 @@ func (handler *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Ports: ports,
 	}
 
-	handler.logger.Infod(map[string]interface{}{
+	handler.logger.Info("marking-actual-as-running", lager.Data{
 		"actual": lrp,
-	}, "rep.lrp-running-handler.marking-actual-as-running")
+	})
+
 	err = handler.bbs.ReportActualLRPAsRunning(lrp, handler.executorID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

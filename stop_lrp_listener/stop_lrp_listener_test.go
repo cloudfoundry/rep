@@ -7,7 +7,8 @@ import (
 
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper/fake_lrp_stopper"
 	. "github.com/cloudfoundry-incubator/rep/stop_lrp_listener"
-	steno "github.com/cloudfoundry/gosteno"
+	"github.com/pivotal-golang/lager"
+	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 
 	. "github.com/onsi/ginkgo"
@@ -21,7 +22,7 @@ var _ = Describe("StopLRPListener", func() {
 	var (
 		stopper      *fake_lrp_stopper.FakeLRPStopper
 		fakeBBS      *fake_bbs.FakeRepBBS
-		logger       *steno.Logger
+		logger       lager.Logger
 		process      ifrit.Process
 		stopInstance models.StopLRPInstance
 
@@ -44,8 +45,7 @@ var _ = Describe("StopLRPListener", func() {
 
 		fakeBBS.WatchForStopLRPInstanceReturns(stopInstanceChan, watchStopChan, watchErrorChan)
 
-		steno.EnterTestMode()
-		logger = steno.NewLogger("steno")
+		logger = lagertest.NewTestLogger("test")
 		stopper = &fake_lrp_stopper.FakeLRPStopper{}
 
 		listener := New(stopper, fakeBBS, logger)

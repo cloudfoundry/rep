@@ -9,11 +9,12 @@ import (
 	"github.com/cloudfoundry-incubator/rep/maintain"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	steno "github.com/cloudfoundry/gosteno"
+	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("Maintain Presence", func() {
@@ -23,17 +24,13 @@ var _ = Describe("Maintain Presence", func() {
 
 		fakeBBS    *fake_bbs.FakeRepBBS
 		fakeClient *fake_client.FakeClient
-		logger     *steno.Logger
+		logger     *lagertest.TestLogger
 
 		maintainer ifrit.Process
 
 		presence           *fake_bbs.FakePresence
 		maintainStatusChan chan bool
 	)
-
-	BeforeSuite(func() {
-		steno.EnterTestMode(steno.LOG_DEBUG)
-	})
 
 	BeforeEach(func() {
 		fakeClient = new(fake_client.FakeClient)
@@ -49,7 +46,7 @@ var _ = Describe("Maintain Presence", func() {
 		fakeBBS = &fake_bbs.FakeRepBBS{}
 		fakeBBS.MaintainExecutorPresenceReturns(presence, maintainStatusChan, nil)
 
-		logger = steno.NewLogger("test-logger")
+		logger = lagertest.NewTestLogger("test")
 
 		maintainer = ifrit.Envoke(maintain.New(executorPresence, fakeClient, fakeBBS, logger, heartbeatInterval))
 	})
@@ -135,23 +132,7 @@ var _ = Describe("Maintain Presence", func() {
 		})
 
 		It("logs an error message", func() {
-			testSink := steno.GetMeTheGlobalTestSink()
-
-			records := []*steno.Record{}
-
-			lockMessageIndex := 0
-			Eventually(func() string {
-				records = testSink.Records()
-
-				if len(records) > 0 {
-					lockMessageIndex := len(records) - 1
-					return records[lockMessageIndex].Message
-				}
-
-				return ""
-			}, 1.0, 0.1).Should(Equal("rep.maintain_presence.lost-lock"))
-
-			Ω(records[lockMessageIndex].Level).Should(Equal(steno.LOG_ERROR))
+			Eventually(logger.TestSink.Buffer).Should(gbytes.Say("lost-lock"))
 		})
 	})
 })

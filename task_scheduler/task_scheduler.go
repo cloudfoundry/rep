@@ -11,7 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/rep/routes"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry/gosteno"
+	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
 )
 
@@ -22,7 +22,7 @@ type TaskScheduler struct {
 
 	executorID string
 	bbs        bbs.RepBBS
-	logger     *gosteno.Logger
+	logger     lager.Logger
 	stack      string
 	client     executorapi.Client
 	inFlight   *sync.WaitGroup
@@ -32,7 +32,7 @@ func New(
 	executorID string,
 	callbackGenerator *rata.RequestGenerator,
 	bbs bbs.RepBBS,
-	logger *gosteno.Logger,
+	logger lager.Logger,
 	stack string,
 	executorClient executorapi.Client,
 ) *TaskScheduler {
@@ -41,7 +41,7 @@ func New(
 		callbackGenerator: callbackGenerator,
 
 		bbs:    bbs,
-		logger: logger,
+		logger: logger.Session("task-scheduler"),
 		stack:  stack,
 		client: executorClient,
 
@@ -50,15 +50,18 @@ func New(
 }
 
 func (s *TaskScheduler) Run(signals <-chan os.Signal, readyChan chan<- struct{}) error {
+	watchLog := s.logger.Session("watching")
+
 	tasks, stopChan, errChan := s.bbs.WatchForDesiredTask()
-	s.logger.Info("rep.watching-for-desired-task")
+
+	watchLog.Info("started")
 
 	close(readyChan)
 
 	for {
 		select {
 		case err := <-errChan:
-			s.logError("task-scheduler.watch-desired.restart", err)
+			watchLog.Error("failed", err)
 
 			time.Sleep(3 * time.Second)
 
@@ -67,7 +70,8 @@ func (s *TaskScheduler) Run(signals <-chan os.Signal, readyChan chan<- struct{})
 		case task, ok := <-tasks:
 			if !ok {
 				err := errors.New("task channel closed. This is very unexpected, we did not intented to exit like this.")
-				s.logError("task-scheduler.watch-desired.task-chan-closed", err)
+
+				watchLog.Error("task-channel-closed", err)
 
 				s.gracefulShutdown()
 				return nil
@@ -98,12 +102,14 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		return
 	}
 
+	taskLog := s.logger.Session("task-request")
+
 	_, err = s.client.AllocateContainer(task.Guid, executorapi.ContainerAllocationRequest{
 		DiskMB:   task.DiskMB,
 		MemoryMB: task.MemoryMB,
 	})
 	if err != nil {
-		s.logError("task-scheduler.allocation-request.failed", err)
+		taskLog.Error("failed-to-allocate", err)
 		return
 	}
 
@@ -111,7 +117,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 
 	err = s.bbs.ClaimTask(task.Guid, s.executorID)
 	if err != nil {
-		s.logError("task-scheduler.claim-task.failed", err)
+		taskLog.Error("failed-to-claim-task", err)
 		s.client.DeleteContainer(task.Guid)
 		return
 	}
@@ -121,15 +127,15 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		Log:        task.Log,
 	})
 	if err != nil {
-		s.logError("task-scheduler.initialize-container-request.failed", err)
+		taskLog.Error("failed-to-initialize-container", err)
 		s.client.DeleteContainer(task.Guid)
-		s.markTaskAsFailed(task.Guid, err)
+		s.markTaskAsFailed(taskLog, task.Guid, err)
 		return
 	}
 
 	err = s.bbs.StartTask(task.Guid, s.executorID, container.ContainerHandle)
 	if err != nil {
-		s.logError("task-scheduler.start-task.failed", err)
+		taskLog.Error("failed-to-mark-task-started", err)
 		s.client.DeleteContainer(task.Guid)
 		return
 	}
@@ -138,7 +144,8 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		"guid": task.Guid,
 	}, nil)
 	if err != nil {
-		s.logError("task-scheduler.callback-generator.failed", err)
+		taskLog.Error("failed-to-generate-callback-request", err)
+		return
 	}
 
 	err = s.client.Run(task.Guid, executorapi.ContainerRunRequest{
@@ -146,19 +153,18 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		CompleteURL: callbackRequest.URL.String(),
 	})
 	if err != nil {
-		s.logError("task-scheduler.run-actions.failed", err)
+		taskLog.Error("failed-to-run-actions", err)
+		return
 	}
+
+	return
 }
 
-func (s *TaskScheduler) markTaskAsFailed(taskGuid string, err error) {
+func (s *TaskScheduler) markTaskAsFailed(taskLog lager.Logger, taskGuid string, err error) {
 	err = s.bbs.CompleteTask(taskGuid, true, "Failed to initialize container - "+err.Error(), "")
 	if err != nil {
-		s.logError("task-scheduler.mark-task-as-failed.failed", err)
+		taskLog.Error("failed-to-mark-task-failed", err)
 	}
-}
-
-func (s *TaskScheduler) logError(topic string, err error) {
-	s.logger.Errord(map[string]interface{}{"error": err.Error()}, topic)
 }
 
 func (s *TaskScheduler) sleepForARandomInterval() {

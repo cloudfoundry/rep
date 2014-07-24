@@ -11,6 +11,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/auction/auctionrep"
 	"github.com/cloudfoundry-incubator/auction/communication/nats/auction_nats_server"
+	"github.com/cloudfoundry-incubator/cf-lager"
 	executorapi "github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/executor/client"
 	"github.com/cloudfoundry-incubator/rep/api"
@@ -30,6 +31,7 @@ import (
 	"github.com/cloudfoundry/storeadapter/workerpool"
 	"github.com/cloudfoundry/yagnats"
 	"github.com/nu7hatch/gouuid"
+	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
@@ -59,12 +61,6 @@ var natsPassword = flag.String(
 	"natsPassword",
 	"nats",
 	"Password for nats user",
-)
-
-var logLevel = flag.String(
-	"logLevel",
-	"info",
-	"the logging level (none, fatal, error, warn, info, debug, debug1, debug2, all)",
 )
 
 var syslogName = flag.String(
@@ -124,8 +120,8 @@ func main() {
 		log.Fatalf("-lrpHost must be specified")
 	}
 
-	logger := initializeLogger()
-	bbs := initializeRepBBS(logger)
+	logger := cf_lager.New("rep")
+	bbs := initializeRepBBS(initializeStenoLogger())
 	executorClient := client.New(http.DefaultClient, *executorURL)
 	lrpStopper := initializeLRPStopper(bbs, executorClient, logger)
 
@@ -146,25 +142,24 @@ func main() {
 	for {
 		select {
 		case member := <-workerExited:
-			logger.Infof("%s exited", member.Name)
+			logger.Info("process-exited", lager.Data{
+				"member": member.Name,
+			})
+
 			monitor.Signal(syscall.SIGTERM)
 		case err := <-monitorExited:
 			if err != nil {
-				logger.Fatalf("rep exited with error: %s", err)
+				logger.Error("exited-with-failure", err)
+				os.Exit(1)
 			}
+
 			os.Exit(0)
 		}
 	}
 }
 
-func initializeLogger() *steno.Logger {
-	l, err := steno.GetLogLevel(*logLevel)
-	if err != nil {
-		log.Fatalf("Invalid loglevel: %s\n", *logLevel)
-	}
-
+func initializeStenoLogger() *steno.Logger {
 	stenoConfig := steno.Config{
-		Level: l,
 		Sinks: []steno.Sink{steno.NewIOSink(os.Stdout)},
 	}
 
@@ -193,7 +188,7 @@ func initializeRepBBS(logger *steno.Logger) Bbs.RepBBS {
 	return bbs
 }
 
-func initializeTaskRep(executorID string, bbs Bbs.RepBBS, logger *steno.Logger, executorClient executorapi.Client) *task_scheduler.TaskScheduler {
+func initializeTaskRep(executorID string, bbs Bbs.RepBBS, logger lager.Logger, executorClient executorapi.Client) *task_scheduler.TaskScheduler {
 	callbackGenerator := rata.NewRequestGenerator(
 		"http://"+*listenAddr,
 		routes.Routes,
@@ -210,15 +205,15 @@ func generateExecutorID() string {
 	return uuid.String()
 }
 
-func initializeLRPStopper(bbs Bbs.RepBBS, executorClient executorapi.Client, logger *steno.Logger) lrp_stopper.LRPStopper {
+func initializeLRPStopper(bbs Bbs.RepBBS, executorClient executorapi.Client, logger lager.Logger) lrp_stopper.LRPStopper {
 	return lrp_stopper.New(bbs, executorClient, logger)
 }
 
-func initializeStopLRPListener(stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, logger *steno.Logger) ifrit.Runner {
+func initializeStopLRPListener(stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, logger lager.Logger) ifrit.Runner {
 	return stop_lrp_listener.New(stopper, bbs, logger)
 }
 
-func initializeAPIServer(executorID string, bbs Bbs.RepBBS, logger *steno.Logger, executorClient executorapi.Client) ifrit.Runner {
+func initializeAPIServer(executorID string, bbs Bbs.RepBBS, logger lager.Logger, executorClient executorapi.Client) ifrit.Runner {
 	taskCompleteHandler := taskcomplete.NewHandler(bbs, executorClient, logger)
 	lrpRunningHandler := lrprunning.NewHandler(executorID, bbs, executorClient, *lrpHost, logger)
 
@@ -229,7 +224,7 @@ func initializeAPIServer(executorID string, bbs Bbs.RepBBS, logger *steno.Logger
 	return http_server.New(*listenAddr, apiHandler)
 }
 
-func initializeMaintainer(executorID string, executorClient executorapi.Client, bbs Bbs.RepBBS, logger *steno.Logger) *maintain.Maintainer {
+func initializeMaintainer(executorID string, executorClient executorapi.Client, bbs Bbs.RepBBS, logger lager.Logger) *maintain.Maintainer {
 	executorPresence := models.ExecutorPresence{
 		ExecutorID: executorID,
 		Stack:      *stack,
@@ -238,7 +233,7 @@ func initializeMaintainer(executorID string, executorClient executorapi.Client, 
 	return maintain.New(executorPresence, executorClient, bbs, logger, *heartbeatInterval)
 }
 
-func initializeNatsClient(logger *steno.Logger) yagnats.NATSClient {
+func initializeNatsClient(logger lager.Logger) yagnats.NATSClient {
 	natsClient := yagnats.NewClient()
 
 	natsMembers := []yagnats.ConnectionProvider{}
@@ -258,13 +253,13 @@ func initializeNatsClient(logger *steno.Logger) yagnats.NATSClient {
 	})
 
 	if err != nil {
-		logger.Fatalf("Error connecting to NATS: %s\n", err)
+		logger.Fatal("failed-to-connect-to-nats", err)
 	}
 
 	return natsClient
 }
 
-func initializeAuctionNatsServer(executorID string, stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, executorClient executorapi.Client, logger *steno.Logger) *auction_nats_server.AuctionNATSServer {
+func initializeAuctionNatsServer(executorID string, stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, executorClient executorapi.Client, logger lager.Logger) *auction_nats_server.AuctionNATSServer {
 	auctionDelegate := auction_delegate.New(executorID, stopper, bbs, executorClient, logger)
 	auctionRep := auctionrep.New(executorID, auctionDelegate)
 	natsClient := initializeNatsClient(logger)

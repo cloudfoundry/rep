@@ -8,23 +8,23 @@ import (
 	executorapi "github.com/cloudfoundry-incubator/executor/api"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	steno "github.com/cloudfoundry/gosteno"
+	"github.com/pivotal-golang/lager"
 )
 
 type Maintainer struct {
 	executorPresence  models.ExecutorPresence
 	bbs               Bbs.RepBBS
 	executorClient    executorapi.Client
-	logger            *steno.Logger
+	logger            lager.Logger
 	heartbeatInterval time.Duration
 }
 
-func New(executorPresence models.ExecutorPresence, executorClient executorapi.Client, bbs Bbs.RepBBS, logger *steno.Logger, heartbeatInterval time.Duration) *Maintainer {
+func New(executorPresence models.ExecutorPresence, executorClient executorapi.Client, bbs Bbs.RepBBS, logger lager.Logger, heartbeatInterval time.Duration) *Maintainer {
 	return &Maintainer{
 		executorPresence:  executorPresence,
 		bbs:               bbs,
 		executorClient:    executorClient,
-		logger:            logger,
+		logger:            logger.Session("maintainer"),
 		heartbeatInterval: heartbeatInterval,
 	}
 }
@@ -32,9 +32,8 @@ func New(executorPresence models.ExecutorPresence, executorClient executorapi.Cl
 func (m *Maintainer) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error {
 	presence, status, err := m.bbs.MaintainExecutorPresence(m.heartbeatInterval, m.executorPresence)
 	if err != nil {
-		m.logger.Errord(map[string]interface{}{
-			"error": err.Error(),
-		}, "rep.maintain_presence_begin.failed")
+		m.logger.Error("failed-to-start-maintaining-presence", err)
+		return err
 	}
 
 	if ready != nil {
@@ -59,15 +58,13 @@ func (m *Maintainer) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error 
 			}
 
 			if !locked {
-				m.logger.Error("rep.maintain_presence.lost-lock")
+				m.logger.Error("lost-lock", nil)
 				continue
 			}
 
 			err := m.executorClient.Ping()
 			if err != nil {
-				m.logger.Errord(map[string]interface{}{
-					"error": err.Error(),
-				}, "rep.maintain_presence.failed-to-ping-executor")
+				m.logger.Error("failed-to-ping-executor", err)
 				status = nil
 				presence.Remove()
 				pingTicker = time.NewTicker(time.Second)
@@ -79,14 +76,14 @@ func (m *Maintainer) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error 
 			if err != nil {
 				continue
 			}
+
 			presence, status, err = m.bbs.MaintainExecutorPresence(m.heartbeatInterval, m.executorPresence)
 			if err != nil {
-				m.logger.Errord(map[string]interface{}{
-					"error": err.Error(),
-				}, "rep.maintain_presence_continue.failed")
+				m.logger.Error("failed-to-restart-maintaining-presence", err)
 				status = nil
 				continue
 			}
+
 			pingTicker.Stop()
 			pingTickerChan = nil
 			pingTicker = nil

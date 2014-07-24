@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/executor/api"
+	"github.com/pivotal-golang/lager"
+	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/rata"
 
@@ -14,7 +16,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry/gosteno"
 	"github.com/onsi/gomega/ghttp"
 
 	. "github.com/onsi/ginkgo"
@@ -22,14 +23,10 @@ import (
 )
 
 var _ = Describe("TaskScheduler", func() {
-	var logger *gosteno.Logger
-
-	BeforeSuite(func() {
-		gosteno.EnterTestMode(gosteno.LOG_DEBUG)
-	})
+	var logger lager.Logger
 
 	BeforeEach(func() {
-		logger = gosteno.NewLogger("test-logger")
+		logger = lagertest.NewTestLogger("test")
 	})
 
 	Context("when a game scheduler is running", func() {

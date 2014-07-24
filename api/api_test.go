@@ -15,23 +15,23 @@ import (
 	"github.com/cloudfoundry-incubator/rep/routes"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry/gosteno"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-golang/lager"
+	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/rata"
 )
 
 var _ = Describe("Callback API", func() {
 	var fakeBBS *fake_bbs.FakeRepBBS
 	var fakeExecutor *fake_client.FakeClient
-	var logger *gosteno.Logger
+	var logger lager.Logger
 
 	var server *httptest.Server
 	var httpClient *http.Client
 
 	BeforeSuite(func() {
-		gosteno.EnterTestMode(gosteno.LOG_DEBUG)
-		logger = gosteno.NewLogger("test-logger")
+		logger = lagertest.NewTestLogger("test")
 
 		httpClient = &http.Client{
 			Transport: &http.Transport{},

@@ -6,7 +6,8 @@ import (
 	"github.com/cloudfoundry-incubator/executor/api"
 	fake_client "github.com/cloudfoundry-incubator/executor/api/fakes"
 	. "github.com/cloudfoundry-incubator/rep/lrp_stopper"
-	steno "github.com/cloudfoundry/gosteno"
+	"github.com/pivotal-golang/lager"
+	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -20,7 +21,7 @@ var _ = Describe("LRP Stopper", func() {
 		stopper      LRPStopper
 		bbs          *fake_bbs.FakeRepBBS
 		client       *fake_client.FakeClient
-		logger       *steno.Logger
+		logger       lager.Logger
 		stopInstance models.StopLRPInstance
 	)
 
@@ -31,10 +32,9 @@ var _ = Describe("LRP Stopper", func() {
 			Index:        1138,
 		}
 
-		steno.EnterTestMode()
 		bbs = &fake_bbs.FakeRepBBS{}
 		client = new(fake_client.FakeClient)
-		logger = steno.NewLogger("steno")
+		logger = lagertest.NewTestLogger("test")
 
 		stopper = New(bbs, client, logger)
 	})
