@@ -11,19 +11,19 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctionrep",
-			"Rev": "98d1d894687f404142c5596af3ff7a6b3b8e4b20"
+			"Rev": "0fea44f9d5bf27415f0d731dba6abe64eadd53c6"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctiontypes",
-			"Rev": "98d1d894687f404142c5596af3ff7a6b3b8e4b20"
+			"Rev": "0fea44f9d5bf27415f0d731dba6abe64eadd53c6"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats",
-			"Rev": "98d1d894687f404142c5596af3ff7a6b3b8e4b20"
+			"Rev": "0fea44f9d5bf27415f0d731dba6abe64eadd53c6"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/util",
-			"Rev": "98d1d894687f404142c5596af3ff7a6b3b8e4b20"
+			"Rev": "0fea44f9d5bf27415f0d731dba6abe64eadd53c6"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/delta_force/delta_force",
@@ -31,24 +31,24 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/api",
-			"Rev": "310a534c660c9a6074db0ffb3336c35cd4d191fd"
+			"Rev": "572cd73b3c93f796aef371a56bd84f3b208e1cc2"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/client",
-			"Rev": "310a534c660c9a6074db0ffb3336c35cd4d191fd"
+			"Rev": "572cd73b3c93f796aef371a56bd84f3b208e1cc2"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "815b44467bfda0222bb6bf68ac8e1b3e73460ef4"
+			"Rev": "1f960419a571ef0e973d7885767f266d5c7601d8"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "815b44467bfda0222bb6bf68ac8e1b3e73460ef4"
+			"Rev": "1f960419a571ef0e973d7885767f266d5c7601d8"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
-			"Comment": "scotty_09012012-40-g5eb8c6e",
-			"Rev": "5eb8c6e554f0dfc39d6468813b8ac19ec28fe74f"
+			"Comment": "scotty_09012012-41-g5c1406e",
+			"Rev": "5c1406e9ea0ab919f92e1b194169565def41147b"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
@@ -60,11 +60,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
-			"Rev": "1a43788769c69f92f6f1eaa41cd6366df2c3b5ed"
+			"Rev": "a697022fe6e9677a6bb5eae8544de042ba0d7365"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/yagnats",
-			"Rev": "196990d547253e2c2d14e188464ccd69b526e35d"
+			"Rev": "c1ce84af2d21949b6e45cd4888cd50b42b7c6777"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-etcd/etcd",
@@ -77,16 +77,16 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Comment": "v1.0.0-16-g12446bb",
-			"Rev": "12446bbcc74950944c897e32ea99cc8d058f9c92"
+			"Comment": "v1.0.0-26-g34294d5",
+			"Rev": "34294d53b098180c6e983307c0439a6b30a16b43"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "7ec350c6bff61a8e3f999e1164f11e5c133605d0"
+			"Rev": "28e5ce936abc528d8c6b5eb3dd5689e7e81e9272"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
-			"Rev": "fee34ad3d56f161c5fba8508befe05169d5e5ece"
+			"Rev": "435f9e78ed02262ec0d1e13a82b5a475c990714a"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/rata",

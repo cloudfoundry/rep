@@ -44,14 +44,14 @@ type FakeStoreAdapter struct {
 	rootNode *containerNode
 
 	MaintainedNodeName string
+	MaintainedNodeValue []byte
 	MaintainNodeError  error
 	MaintainNodeStatus chan bool
 	ReleaseNodeChannel chan chan bool
 
-	createLock *sync.Mutex
-
 	eventChannel chan storeadapter.WatchEvent
 	sendEvents   bool
+	*sync.Mutex
 }
 
 func New() *FakeStoreAdapter {
@@ -78,7 +78,7 @@ func (adapter *FakeStoreAdapter) Reset() {
 		nodes: make(map[string]*containerNode),
 	}
 
-	adapter.createLock = new(sync.Mutex)
+	adapter.Mutex = new(sync.Mutex)
 	adapter.sendEvents = false
 	adapter.eventChannel = make(chan storeadapter.WatchEvent)
 }
@@ -106,10 +106,17 @@ func (adapter *FakeStoreAdapter) sendEvent(prevNode *storeadapter.StoreNode, nod
 }
 
 func (adapter *FakeStoreAdapter) SetMulti(nodes []storeadapter.StoreNode) error {
+	adapter.Lock()
+	defer adapter.Unlock()
+
+	return adapter.setMulti(nodes)
+}
+
+func (adapter *FakeStoreAdapter) setMulti(nodes []storeadapter.StoreNode) error {
 	var eventType storeadapter.EventType
 
 	for _, node := range nodes {
-		prevNode, err := adapter.Get(node.Key)
+		prevNode, err := adapter.get(node.Key)
 		if err == nil {
 			eventType = storeadapter.UpdateEvent
 		}
@@ -149,22 +156,29 @@ func (adapter *FakeStoreAdapter) SetMulti(nodes []storeadapter.StoreNode) error 
 }
 
 func (adapter *FakeStoreAdapter) Create(node storeadapter.StoreNode) error {
-	adapter.createLock.Lock()
-	defer adapter.createLock.Unlock()
+	adapter.Lock()
+	defer adapter.Unlock()
 
 	if adapter.CreateErrInjector != nil && adapter.CreateErrInjector.KeyRegexp.MatchString(node.Key) {
 		return adapter.CreateErrInjector.Error
 	}
 
-	_, err := adapter.Get(node.Key)
+	_, err := adapter.get(node.Key)
 	if err == nil {
 		return storeadapter.ErrorKeyExists
 	}
 
-	return adapter.SetMulti([]storeadapter.StoreNode{node})
+	return adapter.setMulti([]storeadapter.StoreNode{node})
 }
 
 func (adapter *FakeStoreAdapter) Get(key string) (storeadapter.StoreNode, error) {
+	adapter.Lock()
+	defer adapter.Unlock()
+
+	return adapter.get(key)
+}
+
+func (adapter *FakeStoreAdapter) get(key string) (storeadapter.StoreNode, error) {
 	if adapter.GetErrInjector != nil && adapter.GetErrInjector.KeyRegexp.MatchString(key) {
 		return storeadapter.StoreNode{}, adapter.GetErrInjector.Error
 	}
@@ -187,6 +201,9 @@ func (adapter *FakeStoreAdapter) Get(key string) (storeadapter.StoreNode, error)
 }
 
 func (adapter *FakeStoreAdapter) ListRecursively(key string) (storeadapter.StoreNode, error) {
+	adapter.Lock()
+	defer adapter.Unlock()
+
 	if adapter.ListErrInjector != nil && adapter.ListErrInjector.KeyRegexp.MatchString(key) {
 		return storeadapter.StoreNode{}, adapter.ListErrInjector.Error
 	}
@@ -233,8 +250,11 @@ func (adapter *FakeStoreAdapter) listContainerNode(key string, container *contai
 }
 
 func (adapter *FakeStoreAdapter) Delete(keys ...string) error {
+	adapter.Lock()
+	defer adapter.Unlock()
+
 	for _, key := range keys {
-		node, _ := adapter.Get(key)
+		node, _ := adapter.get(key)
 
 		if adapter.DeleteErrInjector != nil && adapter.DeleteErrInjector.KeyRegexp.MatchString(key) {
 			return adapter.DeleteErrInjector.Error
@@ -300,6 +320,7 @@ func (adapter *FakeStoreAdapter) keyComponents(key string) (components []string)
 
 func (adapter *FakeStoreAdapter) MaintainNode(storeNode storeadapter.StoreNode) (status <-chan bool, releaseNode chan chan bool, err error) {
 	adapter.MaintainedNodeName = storeNode.Key
+	adapter.MaintainedNodeValue = storeNode.Value
 	adapter.ReleaseNodeChannel = make(chan chan bool, 1)
 
 	return adapter.MaintainNodeStatus, adapter.ReleaseNodeChannel, adapter.MaintainNodeError

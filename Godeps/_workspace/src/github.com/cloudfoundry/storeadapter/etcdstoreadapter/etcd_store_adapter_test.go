@@ -1005,8 +1005,8 @@ var _ = Describe("ETCD Store Adapter", func() {
 				Expect(string(event.Node.Value)).To(Equal("new value"))
 
 				stop <- true
-				Eventually(events).Should(BeClosed())
-				Eventually(errors).Should(BeClosed())
+				Eventually(events, 2).Should(BeClosed())
+				Eventually(errors, 2).Should(BeClosed())
 
 				close(done)
 			}, 5.0)
