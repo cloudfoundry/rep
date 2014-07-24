@@ -245,7 +245,11 @@ func initializeNatsClient(logger *steno.Logger) yagnats.NATSClient {
 	for _, addr := range strings.Split(*natsAddresses, ",") {
 		natsMembers = append(
 			natsMembers,
-			&yagnats.ConnectionInfo{addr, *natsUsername, *natsPassword, 5 * time.Second},
+			&yagnats.ConnectionInfo{
+				Addr:     addr,
+				Username: *natsUsername,
+				Password: *natsPassword,
+			},
 		)
 	}
 
