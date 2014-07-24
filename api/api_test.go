@@ -43,7 +43,7 @@ var _ = Describe("Callback API", func() {
 		fakeExecutor = new(fake_client.FakeClient)
 
 		apiServer, err := api.NewServer(
-			taskcomplete.NewHandler(fakeBBS, logger),
+			taskcomplete.NewHandler(fakeBBS, fakeExecutor, logger),
 			lrprunning.NewHandler("some-executor-id", fakeBBS, fakeExecutor, "1.2.3.4", logger),
 		)
 		Ω(err).ShouldNot(HaveOccurred())

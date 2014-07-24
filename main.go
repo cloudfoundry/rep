@@ -219,7 +219,7 @@ func initializeStopLRPListener(stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, l
 }
 
 func initializeAPIServer(executorID string, bbs Bbs.RepBBS, logger *steno.Logger, executorClient executorapi.Client) ifrit.Runner {
-	taskCompleteHandler := taskcomplete.NewHandler(bbs, logger)
+	taskCompleteHandler := taskcomplete.NewHandler(bbs, executorClient, logger)
 	lrpRunningHandler := lrprunning.NewHandler(executorID, bbs, executorClient, *lrpHost, logger)
 
 	apiHandler, err := api.NewServer(taskCompleteHandler, lrpRunningHandler)

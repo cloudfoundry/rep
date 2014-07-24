@@ -11,14 +11,16 @@ import (
 )
 
 type handler struct {
-	bbs    bbs.RepBBS
-	logger *gosteno.Logger
+	bbs            bbs.RepBBS
+	executorClient api.Client
+	logger         *gosteno.Logger
 }
 
-func NewHandler(bbs bbs.RepBBS, logger *gosteno.Logger) http.Handler {
+func NewHandler(bbs bbs.RepBBS, executorClient api.Client, logger *gosteno.Logger) http.Handler {
 	return &handler{
-		bbs:    bbs,
-		logger: logger,
+		bbs:            bbs,
+		executorClient: executorClient,
+		logger:         logger,
 	}
 }
 
@@ -35,4 +37,5 @@ func (handler *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	handler.bbs.CompleteTask(runResult.Guid, runResult.Failed, runResult.FailureReason, runResult.Result)
+	handler.executorClient.DeleteContainer(runResult.Guid)
 }
