@@ -97,11 +97,11 @@ var _ = Describe("Maintain Presence", func() {
 				fakeBBS.MaintainExecutorPresenceReturns(presence, newMaintainStatusChan, nil)
 
 				fakeClient.PingReturns(nil) //healthy again
-				Eventually(fakeClient.PingCallCount).Should(Equal(2))
+				Eventually(fakeClient.PingCallCount, 10*heartbeatInterval).Should(Equal(2))
 			})
 
 			It("should attempt to reestablish presence", func() {
-				Eventually(fakeBBS.MaintainExecutorPresenceCallCount).Should(Equal(2))
+				Eventually(fakeBBS.MaintainExecutorPresenceCallCount, 10*heartbeatInterval).Should(Equal(2))
 			})
 
 			It("should ping the executor on each maintain tick", func() {
@@ -111,7 +111,7 @@ var _ = Describe("Maintain Presence", func() {
 				case <-time.Tick(time.Second):
 					Fail("newMaintainStatusChan not called in time")
 				}
-				Eventually(fakeClient.PingCallCount).Should(Equal(3))
+				Eventually(fakeClient.PingCallCount, 10*heartbeatInterval).Should(Equal(3))
 			})
 		})
 	})
