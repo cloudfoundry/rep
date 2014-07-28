@@ -66,6 +66,13 @@ var _ = Describe("LRP Stopper", func() {
 			})
 
 			It("should mark the LRP as stopped", func() {
+				processGuid, index, instanceGuid := bbs.RemoveActualLRPForIndexArgsForCall(0)
+				Ω(processGuid).Should(Equal(stopInstance.ProcessGuid))
+				Ω(index).Should(Equal(stopInstance.Index))
+				Ω(instanceGuid).Should(Equal(stopInstance.InstanceGuid))
+			})
+
+			It("deletes the stop command from the queue", func() {
 				Ω(bbs.ResolveStopLRPInstanceArgsForCall(0)).Should(Equal(stopInstance))
 			})
 
@@ -104,6 +111,28 @@ var _ = Describe("LRP Stopper", func() {
 
 			It("should bubble up the error", func() {
 				Ω(returnedError).Should(MatchError(errors.New("nope")))
+			})
+		})
+
+		Context("when deleting the container fails", func() {
+			BeforeEach(func() {
+				client.DeleteContainerReturns(errors.New("Couldn't delete that"))
+			})
+
+			It("does not mark the LRP as stopped", func() {
+				Ω(bbs.RemoveActualLRPForIndexCallCount()).Should(Equal(0))
+			})
+		})
+
+		Context("when marking the LRP as stopped fails", func() {
+			var expectedError = errors.New("ker-blewie")
+
+			BeforeEach(func() {
+				bbs.RemoveActualLRPForIndexReturns(expectedError)
+			})
+
+			It("bubbles uo the error", func() {
+				Ω(returnedError).Should(Equal(expectedError))
 			})
 		})
 	})

@@ -55,5 +55,11 @@ func (stopper *lrpStopper) StopInstance(stopInstance models.StopLRPInstance) err
 		return err
 	}
 
+	err = stopper.bbs.RemoveActualLRPForIndex(stopInstance.ProcessGuid, stopInstance.Index, stopInstance.InstanceGuid)
+	if err != nil {
+		stopLog.Error("failed-to-remove-actual-lrp", err)
+		return err
+	}
+
 	return nil
 }
