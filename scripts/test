@@ -14,7 +14,7 @@ go get -u github.com/coreos/etcd
 go get github.com/dustin/goveralls
 go get code.google.com/p/go.tools/cmd/cover
 go get github.com/apcera/gnatsd
-go install github.com/onsi/ginkgo/ginkgo
+go get github.com/onsi/ginkgo/ginkgo
 
 ginkgo -cover -r -failOnPending -randomizeAllSpecs -race -trace -skipPackage=integration "$@"
 ginkgo -failOnPending -randomizeAllSpecs -trace -race integration
