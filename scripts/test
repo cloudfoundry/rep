@@ -15,6 +15,7 @@ go get github.com/dustin/goveralls
 go get code.google.com/p/go.tools/cmd/cover
 go get github.com/apcera/gnatsd
 go get github.com/onsi/ginkgo/ginkgo
+go get github.com/onsi/gomega
 
 ginkgo -cover -r -failOnPending -randomizeAllSpecs -race -trace -skipPackage=integration "$@"
 ginkgo -failOnPending -randomizeAllSpecs -trace -race integration
