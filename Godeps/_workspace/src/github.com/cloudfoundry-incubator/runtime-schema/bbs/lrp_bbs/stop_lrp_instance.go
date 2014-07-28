@@ -61,7 +61,7 @@ func (bbs *LRPBBS) GetAllStopLRPInstances() ([]models.StopLRPInstance, error) {
 
 func (bbs *LRPBBS) ResolveStopLRPInstance(stopInstance models.StopLRPInstance) error {
 	return shared.RetryIndefinitelyOnStoreTimeout(func() error {
-		err := bbs.store.Delete(shared.StopLRPInstanceSchemaPath(stopInstance), shared.ActualLRPSchemaPathFromStopLRPInstance(stopInstance))
+		err := bbs.store.Delete(shared.StopLRPInstanceSchemaPath(stopInstance))
 		if err == storeadapter.ErrorKeyNotFound {
 			err = nil
 		}

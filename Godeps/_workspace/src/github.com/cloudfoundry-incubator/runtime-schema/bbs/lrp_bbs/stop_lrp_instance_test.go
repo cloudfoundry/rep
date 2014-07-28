@@ -135,42 +135,6 @@ var _ = Describe("StopLRPInstance", func() {
 			It("removes the StopLRPInstance", func() {
 				Ω(bbs.GetAllStopLRPInstances()).Should(BeEmpty())
 			})
-
-			It("removes the associate ActualLRP", func() {
-				Ω(bbs.GetAllActualLRPs()).Should(BeEmpty())
-			})
-		})
-
-		Context("when the StopLRPInstance does not exist", func() {
-			BeforeEach(func() {
-				err := bbs.ReportActualLRPAsRunning(models.ActualLRP{
-					ProcessGuid:  stopInstance.ProcessGuid,
-					InstanceGuid: stopInstance.InstanceGuid,
-					Index:        stopInstance.Index,
-				}, "executor-id")
-				Ω(err).ShouldNot(HaveOccurred())
-			})
-
-			It("does not error, and still removes the ActualLRP", func() {
-				err := bbs.ResolveStopLRPInstance(stopInstance)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Ω(bbs.GetAllActualLRPs()).Should(BeEmpty())
-			})
-		})
-
-		Context("when the ActualLRP does not exist", func() {
-			BeforeEach(func() {
-				err := bbs.RequestStopLRPInstance(stopInstance)
-				Ω(err).ShouldNot(HaveOccurred())
-			})
-
-			It("does not error, and still removes the StopLRPInstance", func() {
-				err := bbs.ResolveStopLRPInstance(stopInstance)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Ω(bbs.GetAllStopLRPInstances()).Should(BeEmpty())
-			})
 		})
 
 		Context("when the store is out of commission", func() {

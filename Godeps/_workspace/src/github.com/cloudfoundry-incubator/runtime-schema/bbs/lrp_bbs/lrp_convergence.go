@@ -155,7 +155,7 @@ func (bbs *LRPBBS) pruneActualsWithMissingExecutors() (map[string][]models.Actua
 				"executor-id": actual.ExecutorID,
 			})
 
-			keysToDelete = append(keysToDelete, shared.ActualLRPSchemaPath(actual))
+			keysToDelete = append(keysToDelete, shared.ActualLRPSchemaPath(actual.ProcessGuid, actual.Index, actual.InstanceGuid))
 		}
 	}
 

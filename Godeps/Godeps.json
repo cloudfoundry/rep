@@ -1,9 +1,6 @@
 {
 	"ImportPath": "github.com/cloudfoundry-incubator/rep",
 	"GoVersion": "go1.3",
-	"Packages": [
-		"./..."
-	],
 	"Deps": [
 		{
 			"ImportPath": "github.com/bmizerany/pat",
@@ -11,19 +8,19 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctionrep",
-			"Rev": "74092cae472d8f252b07a6fa1eefd67747d00dc8"
+			"Rev": "6b557c5533915fb6c721932974008c62524a8eca"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctiontypes",
-			"Rev": "74092cae472d8f252b07a6fa1eefd67747d00dc8"
+			"Rev": "6b557c5533915fb6c721932974008c62524a8eca"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats",
-			"Rev": "74092cae472d8f252b07a6fa1eefd67747d00dc8"
+			"Rev": "6b557c5533915fb6c721932974008c62524a8eca"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/util",
-			"Rev": "74092cae472d8f252b07a6fa1eefd67747d00dc8"
+			"Rev": "6b557c5533915fb6c721932974008c62524a8eca"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/cf-lager",
@@ -35,23 +32,19 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/api",
-			"Rev": "572cd73b3c93f796aef371a56bd84f3b208e1cc2"
+			"Rev": "bd5a72a160d8f871cb75a76e3eb6a2ab9b79ab9b"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/client",
-			"Rev": "572cd73b3c93f796aef371a56bd84f3b208e1cc2"
+			"Rev": "bd5a72a160d8f871cb75a76e3eb6a2ab9b79ab9b"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "0584b2b1185bd915309fba87cb43a392e0f1ea05"
+			"Rev": "5c6e8b3e8750332a067fdf64d99adfc8f442b701"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "0584b2b1185bd915309fba87cb43a392e0f1ea05"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
-			"Rev": "64cdd7421c0413dc87e5fca2b254efbb4e7dd9d0"
+			"Rev": "5c6e8b3e8750332a067fdf64d99adfc8f442b701"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/timeprovider",
@@ -73,15 +66,6 @@
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
 			"Rev": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
-		},
-		{
-			"ImportPath": "github.com/onsi/ginkgo",
-			"Comment": "v1.0.0-26-g34294d5",
-			"Rev": "34294d53b098180c6e983307c0439a6b30a16b43"
-		},
-		{
-			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "28e5ce936abc528d8c6b5eb3dd5689e7e81e9272"
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/lager",

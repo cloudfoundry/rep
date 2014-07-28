@@ -82,8 +82,12 @@ func (bbs *LRPBBS) ChangeDesiredLRP(change models.DesiredLRPChange) error {
 }
 
 func (bbs *LRPBBS) RemoveActualLRP(lrp models.ActualLRP) error {
+	return bbs.RemoveActualLRPForIndex(lrp.ProcessGuid, lrp.Index, lrp.InstanceGuid)
+}
+
+func (bbs *LRPBBS) RemoveActualLRPForIndex(processGuid string, index int, instanceGuid string) error {
 	return shared.RetryIndefinitelyOnStoreTimeout(func() error {
-		return bbs.store.Delete(shared.ActualLRPSchemaPath(lrp))
+		return bbs.store.Delete(shared.ActualLRPSchemaPath(processGuid, index, instanceGuid))
 	})
 }
 
@@ -95,7 +99,7 @@ func (bbs *LRPBBS) ReportActualLRPAsStarting(lrp models.ActualLRP, executorID st
 	return shared.RetryIndefinitelyOnStoreTimeout(func() error {
 		return bbs.store.SetMulti([]storeadapter.StoreNode{
 			{
-				Key:   shared.ActualLRPSchemaPath(lrp),
+				Key:   shared.ActualLRPSchemaPath(lrp.ProcessGuid, lrp.Index, lrp.InstanceGuid),
 				Value: lrp.ToJSON(),
 			},
 		})
@@ -110,7 +114,7 @@ func (bbs *LRPBBS) ReportActualLRPAsRunning(lrp models.ActualLRP, executorID str
 	return shared.RetryIndefinitelyOnStoreTimeout(func() error {
 		return bbs.store.SetMulti([]storeadapter.StoreNode{
 			{
-				Key:   shared.ActualLRPSchemaPath(lrp),
+				Key:   shared.ActualLRPSchemaPath(lrp.ProcessGuid, lrp.Index, lrp.InstanceGuid),
 				Value: lrp.ToJSON(),
 			},
 		})

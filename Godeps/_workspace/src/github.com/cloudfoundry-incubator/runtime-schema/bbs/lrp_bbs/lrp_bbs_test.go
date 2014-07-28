@@ -143,6 +143,26 @@ var _ = Describe("LRP", func() {
 				})
 			})
 		})
+
+		Describe("RemoveActualLRPForIndex", func() {
+			BeforeEach(func() {
+				bbs.ReportActualLRPAsStarting(lrp, executorID)
+			})
+
+			It("should remove the LRP", func() {
+				err := bbs.RemoveActualLRPForIndex(lrp.ProcessGuid, lrp.Index, lrp.InstanceGuid)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				_, err = etcdClient.Get("/v1/actual/some-process-guid/1/some-instance-guid")
+				Ω(err).Should(MatchError(storeadapter.ErrorKeyNotFound))
+			})
+
+			Context("when the store is out of commission", func() {
+				itRetriesUntilStoreComesBack(func() error {
+					return bbs.RemoveActualLRPForIndex(lrp.ProcessGuid, lrp.Index, lrp.InstanceGuid)
+				})
+			})
+		})
 	})
 
 	Describe("Changing desired LRPs", func() {
