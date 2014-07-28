@@ -1,6 +1,9 @@
 {
 	"ImportPath": "github.com/cloudfoundry-incubator/rep",
 	"GoVersion": "go1.3",
+	"Packages": [
+		"./..."
+	],
 	"Deps": [
 		{
 			"ImportPath": "github.com/bmizerany/pat",
@@ -47,6 +50,10 @@
 			"Rev": "5c6e8b3e8750332a067fdf64d99adfc8f442b701"
 		},
 		{
+			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
+			"Rev": "64cdd7421c0413dc87e5fca2b254efbb4e7dd9d0"
+		},
+		{
 			"ImportPath": "github.com/cloudfoundry/gunk/timeprovider",
 			"Rev": "64cdd7421c0413dc87e5fca2b254efbb4e7dd9d0"
 		},
@@ -66,6 +73,15 @@
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
 			"Rev": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
+		},
+		{
+			"ImportPath": "github.com/onsi/ginkgo",
+			"Comment": "v1.0.0-28-g6481765",
+			"Rev": "6481765dda39cbaae281109e6945449642329197"
+		},
+		{
+			"ImportPath": "github.com/onsi/gomega",
+			"Rev": "4699d5a664396173c7d9fcef9e88be297c7bae13"
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/lager",
