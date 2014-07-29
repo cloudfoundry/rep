@@ -61,7 +61,7 @@ var _ = Describe("Fetching available file servers", func() {
 		})
 	})
 
-	Describe("GetAvailableFileServer", func() {
+	Describe("Getting file servers", func() {
 		Context("when there are available file servers", func() {
 			BeforeEach(func() {
 				fileServerURL = "http://128.70.3.29:8012"
@@ -79,10 +79,20 @@ var _ = Describe("Fetching available file servers", func() {
 				presence.Remove()
 			})
 
-			It("should get from /v1/file_server/", func() {
-				url, err := bbs.GetAvailableFileServer()
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(url).Should(Equal(fileServerURL))
+			Describe("GetAvailableFileServer", func() {
+				It("should get from /v1/file_server/", func() {
+					url, err := bbs.GetAvailableFileServer()
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(url).Should(Equal(fileServerURL))
+				})
+			})
+
+			Describe("GetAllFileServers", func() {
+				It("should return all file server urls", func() {
+					urls, err := bbs.GetAllFileServers()
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(urls).Should(Equal([]string{fileServerURL}))
+				})
 			})
 		})
 
@@ -120,26 +130,46 @@ var _ = Describe("Fetching available file servers", func() {
 				otherPresence.Remove()
 			})
 
-			It("should pick one at random", func() {
-				result := map[string]bool{}
+			Describe("GetAvailableFileServer", func() {
+				It("should pick one at random", func() {
+					result := map[string]bool{}
 
-				for i := 0; i < 10; i++ {
-					url, err := bbs.GetAvailableFileServer()
+					for i := 0; i < 10; i++ {
+						url, err := bbs.GetAvailableFileServer()
+						Ω(err).ShouldNot(HaveOccurred())
+						result[url] = true
+					}
+
+					Ω(result).Should(HaveLen(2))
+					Ω(result).Should(HaveKey(fileServerURL))
+					Ω(result).Should(HaveKey(otherFileServerURL))
+				})
+			})
+
+			Describe("GetAllFileServers", func() {
+				It("should return all file server urls", func() {
+					urls, err := bbs.GetAllFileServers()
 					Ω(err).ShouldNot(HaveOccurred())
-					result[url] = true
-				}
-
-				Ω(result).Should(HaveLen(2))
-				Ω(result).Should(HaveKey(fileServerURL))
-				Ω(result).Should(HaveKey(otherFileServerURL))
+					Ω(urls).Should(ConsistOf([]string{fileServerURL, otherFileServerURL}))
+				})
 			})
 		})
 
 		Context("when there are none", func() {
-			It("should error", func() {
-				url, err := bbs.GetAvailableFileServer()
-				Ω(err).Should(HaveOccurred())
-				Ω(url).Should(BeZero())
+			Describe("GetAvailableFileServer", func() {
+				It("should error", func() {
+					url, err := bbs.GetAvailableFileServer()
+					Ω(err).Should(HaveOccurred())
+					Ω(url).Should(BeZero())
+				})
+			})
+
+			Describe("GetAllFileServers", func() {
+				It("should return empty", func() {
+					urls, err := bbs.GetAllFileServers()
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(urls).Should(BeEmpty())
+				})
 			})
 		})
 	})

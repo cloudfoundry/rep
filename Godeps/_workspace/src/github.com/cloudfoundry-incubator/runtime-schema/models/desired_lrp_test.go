@@ -14,6 +14,7 @@ var _ = Describe("DesiredLRP", func() {
 	  "process_guid": "some-guid",
 	  "instances": 1,
 	  "stack": "some-stack",
+	  "root_fs": "docker:///docker.com/docker",
 	  "actions": [
 	    {
 	      "action": "download",
@@ -47,11 +48,12 @@ var _ = Describe("DesiredLRP", func() {
 		lrp = DesiredLRP{
 			ProcessGuid: "some-guid",
 
-			Instances: 1,
-			Stack:     "some-stack",
-			MemoryMB:  1024,
-			DiskMB:    512,
-			Routes:    []string{"route-1", "route-2"},
+			Instances:  1,
+			Stack:      "some-stack",
+			RootFSPath: "docker:///docker.com/docker",
+			MemoryMB:   1024,
+			DiskMB:     512,
+			Routes:     []string{"route-1", "route-2"},
 			Ports: []PortMapping{
 				{HostPort: 1234, ContainerPort: 5678},
 			},
