@@ -366,8 +366,18 @@ var _ = Describe("AuctionDelegate", func() {
 				allocationGuid, runRequest := client.RunArgsForCall(0)
 
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
-				Ω(runRequest).Should(Equal(api.ContainerRunRequest{
-					Actions: startAuction.DesiredLRP.Actions,
+				Ω(runRequest.Actions).Should(Equal(startAuction.DesiredLRP.Actions))
+			})
+
+			It("makes the instance guid and index available via container-wide env", func() {
+				Ω(client.RunCallCount()).Should(Equal(1))
+
+				allocationGuid, runRequest := client.RunArgsForCall(0)
+
+				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
+				Ω(runRequest.Env).Should(Equal([]api.EnvironmentVariable{
+					{Name: "CF_INSTANCE_GUID", Value: "instance-guid"},
+					{Name: "CF_INSTANCE_INDEX", Value: "2"},
 				}))
 			})
 
@@ -495,17 +505,6 @@ var _ = Describe("AuctionDelegate", func() {
 			It("should remove the STARTING LRP from etcd", func() {
 				Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
 				Ω(bbs.RemoveActualLRPArgsForCall(0).InstanceGuid).Should(Equal(startAuction.InstanceGuid))
-			})
-
-			It("should attempt to run the actions in the correct container", func() {
-				Ω(client.RunCallCount()).Should(Equal(1))
-
-				allocationGuid, runRequest := client.RunArgsForCall(0)
-
-				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
-				Ω(runRequest).Should(Equal(api.ContainerRunRequest{
-					Actions: startAuction.DesiredLRP.Actions,
-				}))
 			})
 
 			It("should delete the container", func() {

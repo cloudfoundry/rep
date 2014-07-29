@@ -1,6 +1,8 @@
 package auction_delegate
 
 import (
+	"strconv"
+
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	executorapi "github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
@@ -150,6 +152,10 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 
 	err = a.client.Run(containerGuid, executorapi.ContainerRunRequest{
 		Actions: startAuction.DesiredLRP.Actions,
+		Env: []executorapi.EnvironmentVariable{
+			{Name: "CF_INSTANCE_GUID", Value: startAuction.InstanceGuid},
+			{Name: "CF_INSTANCE_INDEX", Value: strconv.Itoa(startAuction.Index)},
+		},
 	})
 	if err != nil {
 		auctionLog.Error("failed-to-run-actions", err)
