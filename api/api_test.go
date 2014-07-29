@@ -62,8 +62,6 @@ var _ = Describe("Callback API", func() {
 		var resp *http.Response
 
 		BeforeEach(func() {
-			index := 0
-
 			task = models.Task{
 				Guid:       "task-guid-123",
 				Stack:      "some-stack",
@@ -87,7 +85,6 @@ var _ = Describe("Callback API", func() {
 				Log: models.LogConfig{
 					Guid:       "some-guid",
 					SourceName: "XYZ",
-					Index:      &index,
 				},
 			}
 

@@ -303,21 +303,24 @@ var _ = Describe("AuctionDelegate", func() {
 			initializeError, startingErr, runError = nil, nil, nil
 
 			startAuction = models.LRPStartAuction{
-				ProcessGuid:  "process-guid",
-				InstanceGuid: "instance-guid",
-				Actions: []models.ExecutorAction{
-					{
-						Action: models.DownloadAction{
-							From: "http://example.com/something",
-							To:   "/something",
+				DesiredLRP: models.DesiredLRP{
+					ProcessGuid: "process-guid",
+					Actions: []models.ExecutorAction{
+						{
+							Action: models.DownloadAction{
+								From: "http://example.com/something",
+								To:   "/something",
+							},
 						},
 					},
+					Log: models.LogConfig{Guid: "log-guid"},
+					Ports: []models.PortMapping{
+						{ContainerPort: 8080},
+					},
 				},
-				Log: models.LogConfig{Guid: "log-guid"},
-				Ports: []models.PortMapping{
-					{ContainerPort: 8080},
-				},
-				Index: 2,
+
+				InstanceGuid: "instance-guid",
+				Index:        2,
 			}
 		})
 
@@ -336,12 +339,13 @@ var _ = Describe("AuctionDelegate", func() {
 			})
 
 			It("should attempt to initialize the correct container", func() {
+				two := 2
 				Ω(client.InitializeContainerCallCount()).Should(Equal(1))
 				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 				Ω(initRequest).Should(Equal(api.ContainerInitializationRequest{
 					Ports: []api.PortMapping{{ContainerPort: 8080}},
-					Log:   models.LogConfig{Guid: "log-guid"},
+					Log:   api.LogConfig{Guid: "log-guid", Index: &two},
 				}))
 			})
 
@@ -349,7 +353,7 @@ var _ = Describe("AuctionDelegate", func() {
 				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
 				actualLRP, executorGuid := bbs.ReportActualLRPAsStartingArgsForCall(0)
 				Ω(actualLRP).Should(Equal(models.ActualLRP{
-					ProcessGuid:  startAuction.ProcessGuid,
+					ProcessGuid:  startAuction.DesiredLRP.ProcessGuid,
 					InstanceGuid: startAuction.InstanceGuid,
 					Index:        startAuction.Index,
 				}))
@@ -363,7 +367,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 				Ω(runRequest).Should(Equal(api.ContainerRunRequest{
-					Actions: startAuction.Actions,
+					Actions: startAuction.DesiredLRP.Actions,
 				}))
 			})
 
@@ -386,12 +390,13 @@ var _ = Describe("AuctionDelegate", func() {
 			})
 
 			It("should attempt to initialize the correct container", func() {
+				two := 2
 				Ω(client.InitializeContainerCallCount()).Should(Equal(1))
 				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 				Ω(initRequest).Should(Equal(api.ContainerInitializationRequest{
 					Ports: []api.PortMapping{{ContainerPort: 8080}},
-					Log:   models.LogConfig{Guid: "log-guid"},
+					Log:   api.LogConfig{Guid: "log-guid", Index: &two},
 				}))
 			})
 
@@ -420,12 +425,13 @@ var _ = Describe("AuctionDelegate", func() {
 			})
 
 			It("should attempt to initialize the correct container", func() {
+				two := 2
 				Ω(client.InitializeContainerCallCount()).Should(Equal(1))
 				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 				Ω(initRequest).Should(Equal(api.ContainerInitializationRequest{
 					Ports: []api.PortMapping{{ContainerPort: 8080}},
-					Log:   models.LogConfig{Guid: "log-guid"},
+					Log:   api.LogConfig{Guid: "log-guid", Index: &two},
 				}))
 			})
 
@@ -433,7 +439,7 @@ var _ = Describe("AuctionDelegate", func() {
 				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
 				actualLRP, executorGuid := bbs.ReportActualLRPAsStartingArgsForCall(0)
 				Ω(actualLRP).Should(Equal(models.ActualLRP{
-					ProcessGuid:  startAuction.ProcessGuid,
+					ProcessGuid:  startAuction.DesiredLRP.ProcessGuid,
 					InstanceGuid: startAuction.InstanceGuid,
 					Index:        startAuction.Index,
 				}))
@@ -465,12 +471,13 @@ var _ = Describe("AuctionDelegate", func() {
 			})
 
 			It("should attempt to initialize the correct container", func() {
+				two := 2
 				Ω(client.InitializeContainerCallCount()).Should(Equal(1))
 				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 				Ω(initRequest).Should(Equal(api.ContainerInitializationRequest{
 					Ports: []api.PortMapping{{ContainerPort: 8080}},
-					Log:   models.LogConfig{Guid: "log-guid"},
+					Log:   api.LogConfig{Guid: "log-guid", Index: &two},
 				}))
 			})
 
@@ -478,7 +485,7 @@ var _ = Describe("AuctionDelegate", func() {
 				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
 				actualLRP, executorGuid := bbs.ReportActualLRPAsStartingArgsForCall(0)
 				Ω(actualLRP).Should(Equal(models.ActualLRP{
-					ProcessGuid:  startAuction.ProcessGuid,
+					ProcessGuid:  startAuction.DesiredLRP.ProcessGuid,
 					InstanceGuid: startAuction.InstanceGuid,
 					Index:        startAuction.Index,
 				}))
@@ -497,7 +504,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 				Ω(runRequest).Should(Equal(api.ContainerRunRequest{
-					Actions: startAuction.Actions,
+					Actions: startAuction.DesiredLRP.Actions,
 				}))
 			})
 

@@ -122,8 +122,12 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 	containerGuid := startAuction.LRPIdentifier().OpaqueID()
 
 	_, err := a.client.InitializeContainer(containerGuid, executorapi.ContainerInitializationRequest{
-		Ports: a.convertPortMappings(startAuction.Ports),
-		Log:   startAuction.Log,
+		Ports: a.convertPortMappings(startAuction.DesiredLRP.Ports),
+		Log: executorapi.LogConfig{
+			Guid:       startAuction.DesiredLRP.Log.Guid,
+			SourceName: startAuction.DesiredLRP.Log.SourceName,
+			Index:      &startAuction.Index,
+		},
 	})
 	if err != nil {
 		auctionLog.Error("failed-to-initialize-container", err)
@@ -132,7 +136,7 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 	}
 
 	lrp := models.ActualLRP{
-		ProcessGuid:  startAuction.ProcessGuid,
+		ProcessGuid:  startAuction.DesiredLRP.ProcessGuid,
 		InstanceGuid: startAuction.InstanceGuid,
 		Index:        startAuction.Index,
 	}
@@ -145,7 +149,7 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 	}
 
 	err = a.client.Run(containerGuid, executorapi.ContainerRunRequest{
-		Actions: startAuction.Actions,
+		Actions: startAuction.DesiredLRP.Actions,
 	})
 	if err != nil {
 		auctionLog.Error("failed-to-run-actions", err)

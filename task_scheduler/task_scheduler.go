@@ -124,7 +124,10 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 
 	container, err := s.client.InitializeContainer(task.Guid, executorapi.ContainerInitializationRequest{
 		CpuPercent: task.CpuPercent,
-		Log:        task.Log,
+		Log: executorapi.LogConfig{
+			Guid:       task.Log.Guid,
+			SourceName: task.Log.SourceName,
+		},
 	})
 	if err != nil {
 		taskLog.Error("failed-to-initialize-container", err)

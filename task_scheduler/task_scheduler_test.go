@@ -54,8 +54,6 @@ var _ = Describe("TaskScheduler", func() {
 
 			fakeBBS.WatchForDesiredTaskReturns(desiredTaskChan, watchStopChan, watchErrorChan)
 
-			index := 0
-
 			task = models.Task{
 				Guid:       "task-guid-123",
 				Stack:      correctStack,
@@ -74,7 +72,6 @@ var _ = Describe("TaskScheduler", func() {
 				Log: models.LogConfig{
 					Guid:       "some-guid",
 					SourceName: "XYZ",
-					Index:      &index,
 				},
 			}
 
@@ -178,7 +175,10 @@ var _ = Describe("TaskScheduler", func() {
 								initCalled <- struct{}{}
 								Ω(allocationGuid).Should(Equal(task.Guid))
 								Ω(req.CpuPercent).Should(Equal(0.5))
-								Ω(req.Log).Should(Equal(task.Log))
+								Ω(req.Log).Should(Equal(api.LogConfig{
+									Guid:       task.Log.Guid,
+									SourceName: task.Log.SourceName,
+								}))
 
 								Ω(fakeBBS.ClaimTaskCallCount()).Should(Equal(1))
 								Ω(fakeBBS.StartTaskCallCount()).Should(Equal(0))
