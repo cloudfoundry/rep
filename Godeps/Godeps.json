@@ -35,11 +35,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/api",
-			"Rev": "26fdcbc955c480e91e156075d1404cd4095ec4f4"
+			"Rev": "83ecfb7465e87ff57e5841dc7fedd5da6eaab609"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/client",
-			"Rev": "26fdcbc955c480e91e156075d1404cd4095ec4f4"
+			"Rev": "83ecfb7465e87ff57e5841dc7fedd5da6eaab609"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
