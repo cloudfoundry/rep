@@ -11,23 +11,23 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctionrep",
-			"Rev": "c24ba176bf6bd7df0be2ed185e154c7b1fb4f0ee"
+			"Rev": "0327579e8a3d5960b90cb14667eb5ed14a9d36ea"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctiontypes",
-			"Rev": "c24ba176bf6bd7df0be2ed185e154c7b1fb4f0ee"
+			"Rev": "0327579e8a3d5960b90cb14667eb5ed14a9d36ea"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats",
-			"Rev": "c24ba176bf6bd7df0be2ed185e154c7b1fb4f0ee"
+			"Rev": "0327579e8a3d5960b90cb14667eb5ed14a9d36ea"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/util",
-			"Rev": "c24ba176bf6bd7df0be2ed185e154c7b1fb4f0ee"
+			"Rev": "0327579e8a3d5960b90cb14667eb5ed14a9d36ea"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/cf-lager",
-			"Rev": "c88fc2b60504c2feb0a40435d505cf21d9cd58d3"
+			"Rev": "e28b8c12c6771eefcfef8654002dc513f42eb673"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/delta_force/delta_force",
@@ -35,19 +35,19 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/api",
-			"Rev": "b672cfc7f16898a1240a00b6bb466807e53e0a4d"
+			"Rev": "26fdcbc955c480e91e156075d1404cd4095ec4f4"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/client",
-			"Rev": "b672cfc7f16898a1240a00b6bb466807e53e0a4d"
+			"Rev": "26fdcbc955c480e91e156075d1404cd4095ec4f4"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "419e8fb55f341337720fa3d10e7e68bc6bf5a80f"
+			"Rev": "87f475ec1fded85151513b07f4c72798efe1ade4"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "419e8fb55f341337720fa3d10e7e68bc6bf5a80f"
+			"Rev": "87f475ec1fded85151513b07f4c72798efe1ade4"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
@@ -85,7 +85,7 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/lager",
-			"Rev": "47f7d81047d6e4a49c7e0a14de1e897fb12e3848"
+			"Rev": "4a7f4216b220966ac3500c9ff297aeae68278a45"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",

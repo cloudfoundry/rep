@@ -9,5 +9,5 @@ func (fs *FileServerGetter) GetAvailableFileServer() (string, error) {
 		return fs.WhenGettingAvailableFileServer()
 	}
 
-	return "http://some-fake-file-server", nil
+	return "http://some-fake-file-server/", nil
 }
