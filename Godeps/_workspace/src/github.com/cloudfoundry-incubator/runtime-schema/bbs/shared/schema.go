@@ -27,7 +27,7 @@ func FileServerSchemaPath(segments ...string) string {
 }
 
 func LRPStartAuctionSchemaPath(lrp models.LRPStartAuction) string {
-	return path.Join(LRPStartAuctionSchemaRoot, lrp.ProcessGuid, strconv.Itoa(lrp.Index))
+	return path.Join(LRPStartAuctionSchemaRoot, lrp.DesiredLRP.ProcessGuid, strconv.Itoa(lrp.Index))
 }
 
 func LRPStopAuctionSchemaPath(lrp models.LRPStopAuction) string {

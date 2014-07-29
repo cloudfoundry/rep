@@ -19,11 +19,18 @@ var _ = Describe("LrpWatchers", func() {
 		lrp := models.DesiredLRP{
 			ProcessGuid: "some-process-guid",
 			Instances:   5,
-			Source:      "http://example.com",
 			Stack:       "some-stack",
 			MemoryMB:    1024,
 			DiskMB:      512,
 			Routes:      []string{"route-1", "route-2"},
+			Actions: []models.ExecutorAction{
+				{
+					Action: models.DownloadAction{
+						From: "http://example.com",
+						To:   "/tmp/internet",
+					},
+				},
+			},
 		}
 
 		BeforeEach(func() {

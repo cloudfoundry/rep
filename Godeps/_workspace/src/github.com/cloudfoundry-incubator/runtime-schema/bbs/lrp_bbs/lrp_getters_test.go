@@ -12,9 +12,44 @@ var _ = Describe("LrpGetters", func() {
 	var desiredLrp1, desiredLrp2, desiredLrp3 models.DesiredLRP
 
 	BeforeEach(func() {
-		desiredLrp1 = models.DesiredLRP{ProcessGuid: "guidA", Stack: "stack", Source: "http://jelly.donut"}
-		desiredLrp2 = models.DesiredLRP{ProcessGuid: "guidB", Stack: "stack", Source: "http://jelly.donut"}
-		desiredLrp3 = models.DesiredLRP{ProcessGuid: "guidC", Stack: "stack", Source: "http://jelly.donut"}
+		desiredLrp1 = models.DesiredLRP{
+			ProcessGuid: "guidA",
+			Stack:       "stack",
+			Actions: []models.ExecutorAction{
+				{
+					Action: models.DownloadAction{
+						From: "http://example.com",
+						To:   "/tmp/internet",
+					},
+				},
+			},
+		}
+
+		desiredLrp2 = models.DesiredLRP{
+			ProcessGuid: "guidB",
+			Stack:       "stack",
+			Actions: []models.ExecutorAction{
+				{
+					Action: models.DownloadAction{
+						From: "http://example.com",
+						To:   "/tmp/internet",
+					},
+				},
+			},
+		}
+
+		desiredLrp3 = models.DesiredLRP{
+			ProcessGuid: "guidC",
+			Stack:       "stack",
+			Actions: []models.ExecutorAction{
+				{
+					Action: models.DownloadAction{
+						From: "http://example.com",
+						To:   "/tmp/internet",
+					},
+				},
+			},
+		}
 
 		lrp1 = models.ActualLRP{
 			ProcessGuid:  "guidA",
@@ -24,6 +59,7 @@ var _ = Describe("LrpGetters", func() {
 			Since:        timeProvider.Time().UnixNano(),
 			ExecutorID:   "executor-id",
 		}
+
 		lrp2 = models.ActualLRP{
 			ProcessGuid:  "guidA",
 			Index:        2,
@@ -32,6 +68,7 @@ var _ = Describe("LrpGetters", func() {
 			Since:        timeProvider.Time().UnixNano(),
 			ExecutorID:   "executor-id",
 		}
+
 		lrp3 = models.ActualLRP{
 			ProcessGuid:  "guidB",
 			Index:        2,

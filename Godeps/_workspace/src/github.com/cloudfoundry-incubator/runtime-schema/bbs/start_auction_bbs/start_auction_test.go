@@ -18,20 +18,19 @@ var _ = Describe("Start Auction", func() {
 
 		BeforeEach(func() {
 			auctionLRP = models.LRPStartAuction{
-				ProcessGuid: "some-guid",
-				Index:       1,
-				Actions: []models.ExecutorAction{
-					{
-						Action: models.RunAction{
-							Path: "cat",
-							Args: []string{"/tmp/file"},
-							Env: []models.EnvironmentVariable{
-								{
-									Name:  "PATH",
-									Value: "the-path",
-								},
+				Index:        1,
+				InstanceGuid: "instance-guid",
+
+				DesiredLRP: models.DesiredLRP{
+					ProcessGuid: "some-guid",
+					Stack:       "some-stack",
+					Instances:   1,
+					Actions: []models.ExecutorAction{
+						{
+							Action: models.DownloadAction{
+								From: "http://example.com",
+								To:   "/tmp/internet",
 							},
-							Timeout: time.Second,
 						},
 					},
 				},
@@ -77,26 +76,24 @@ var _ = Describe("Start Auction", func() {
 
 		BeforeEach(func() {
 			auctionLRP = models.LRPStartAuction{
-				ProcessGuid:  "some-guid",
 				Index:        1,
-				Stack:        "pancakes",
 				InstanceGuid: "instance-guid",
-				Actions: []models.ExecutorAction{
-					{
-						Action: models.RunAction{
-							Path: "cat",
-							Args: []string{"/tmp/file"},
-							Env: []models.EnvironmentVariable{
-								{
-									Name:  "PATH",
-									Value: "the-path",
-								},
+
+				DesiredLRP: models.DesiredLRP{
+					ProcessGuid: "some-guid",
+					Stack:       "some-stack",
+					Instances:   1,
+					Actions: []models.ExecutorAction{
+						{
+							Action: models.DownloadAction{
+								From: "http://example.com",
+								To:   "/tmp/internet",
 							},
-							Timeout: time.Second,
 						},
 					},
 				},
 			}
+
 			events, stop, errors = bbs.WatchForLRPStartAuction()
 		})
 
@@ -152,20 +149,19 @@ var _ = Describe("Start Auction", func() {
 
 		BeforeEach(func() {
 			auctionLRP = models.LRPStartAuction{
-				ProcessGuid: "some-guid",
-				Index:       1,
-				Actions: []models.ExecutorAction{
-					{
-						Action: models.RunAction{
-							Path: "cat",
-							Args: []string{"/tmp/file"},
-							Env: []models.EnvironmentVariable{
-								{
-									Name:  "PATH",
-									Value: "the-path",
-								},
+				Index:        1,
+				InstanceGuid: "instance-guid",
+
+				DesiredLRP: models.DesiredLRP{
+					ProcessGuid: "some-guid",
+					Stack:       "some-stack",
+					Instances:   1,
+					Actions: []models.ExecutorAction{
+						{
+							Action: models.DownloadAction{
+								From: "http://example.com",
+								To:   "/tmp/internet",
 							},
-							Timeout: time.Second,
 						},
 					},
 				},
@@ -222,20 +218,19 @@ var _ = Describe("Start Auction", func() {
 
 		BeforeEach(func() {
 			auctionLRP = models.LRPStartAuction{
-				ProcessGuid: "some-guid",
-				Index:       1,
-				Actions: []models.ExecutorAction{
-					{
-						Action: models.RunAction{
-							Path: "cat",
-							Args: []string{"/tmp/file"},
-							Env: []models.EnvironmentVariable{
-								{
-									Name:  "PATH",
-									Value: "the-path",
-								},
+				Index:        1,
+				InstanceGuid: "instance-guid",
+
+				DesiredLRP: models.DesiredLRP{
+					ProcessGuid: "some-guid",
+					Stack:       "some-stack",
+					Instances:   1,
+					Actions: []models.ExecutorAction{
+						{
+							Action: models.DownloadAction{
+								From: "http://example.com",
+								To:   "/tmp/internet",
 							},
-							Timeout: time.Second,
 						},
 					},
 				},

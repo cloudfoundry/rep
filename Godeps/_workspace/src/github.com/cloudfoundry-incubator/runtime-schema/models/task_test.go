@@ -36,8 +36,7 @@ var _ = Describe("Task", func() {
 		"cpu_percent": 42.25,
 		"log": {
 			"guid": "123",
-			"source_name": "APP",
-			"index": 42
+			"source_name": "APP"
 		},
 		"created_at": 1393371971000000000,
 		"updated_at": 1393371971000000010,
@@ -47,8 +46,6 @@ var _ = Describe("Task", func() {
 	}`
 
 	BeforeEach(func() {
-		index := 42
-
 		task = Task{
 			Guid:  "some-guid",
 			Stack: "some-stack",
@@ -65,7 +62,6 @@ var _ = Describe("Task", func() {
 			Log: LogConfig{
 				Guid:       "123",
 				SourceName: "APP",
-				Index:      &index,
 			},
 			ExecutorID:      "executor",
 			ContainerHandle: "17fgsafdfcvc",

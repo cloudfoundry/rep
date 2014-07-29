@@ -47,18 +47,23 @@ var _ = Describe("LRPStartAuction Convergence", func() {
 		BeforeEach(func() {
 			auction = models.LRPStartAuction{
 				Index:        1,
-				ProcessGuid:  "process-guid",
 				InstanceGuid: "instance-guid",
-				Stack:        "stack",
-				Actions: []models.ExecutorAction{
-					{
-						Action: models.RunAction{
-							Path: "cat",
-							Args: []string{"/tmp/file"},
+
+				DesiredLRP: models.DesiredLRP{
+					ProcessGuid: "some-guid",
+					Stack:       "some-stack",
+					Instances:   1,
+					Actions: []models.ExecutorAction{
+						{
+							Action: models.DownloadAction{
+								From: "http://example.com",
+								To:   "/tmp/internet",
+							},
 						},
 					},
 				},
 			}
+
 			err := bbs.RequestLRPStartAuction(auction)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
@@ -82,18 +87,23 @@ var _ = Describe("LRPStartAuction Convergence", func() {
 		BeforeEach(func() {
 			auction := models.LRPStartAuction{
 				Index:        1,
-				ProcessGuid:  "process-guid",
 				InstanceGuid: "instance-guid",
-				Stack:        "stack",
-				Actions: []models.ExecutorAction{
-					{
-						Action: models.RunAction{
-							Path: "cat",
-							Args: []string{"/tmp/file"},
+
+				DesiredLRP: models.DesiredLRP{
+					ProcessGuid: "some-guid",
+					Stack:       "some-stack",
+					Instances:   1,
+					Actions: []models.ExecutorAction{
+						{
+							Action: models.DownloadAction{
+								From: "http://example.com",
+								To:   "/tmp/internet",
+							},
 						},
 					},
 				},
 			}
+
 			err := bbs.RequestLRPStartAuction(auction)
 			Ω(err).ShouldNot(HaveOccurred())
 			auction.State = models.LRPStartAuctionStatePending
