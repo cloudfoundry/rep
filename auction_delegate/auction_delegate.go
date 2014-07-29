@@ -124,7 +124,8 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 	containerGuid := startAuction.LRPIdentifier().OpaqueID()
 
 	_, err := a.client.InitializeContainer(containerGuid, executorapi.ContainerInitializationRequest{
-		Ports: a.convertPortMappings(startAuction.DesiredLRP.Ports),
+		RootFSPath: startAuction.DesiredLRP.RootFSPath,
+		Ports:      a.convertPortMappings(startAuction.DesiredLRP.Ports),
 		Log: executorapi.LogConfig{
 			Guid:       startAuction.DesiredLRP.Log.Guid,
 			SourceName: startAuction.DesiredLRP.Log.SourceName,

@@ -296,6 +296,7 @@ var _ = Describe("AuctionDelegate", func() {
 	})
 
 	Describe("Run", func() {
+		var expectedRootFS = "docker://docker.com/docker"
 		var startAuction models.LRPStartAuction
 		var err, initializeError, startingErr, runError error
 
@@ -304,6 +305,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 			startAuction = models.LRPStartAuction{
 				DesiredLRP: models.DesiredLRP{
+					RootFSPath:  expectedRootFS,
 					ProcessGuid: "process-guid",
 					Actions: []models.ExecutorAction{
 						{
@@ -344,8 +346,9 @@ var _ = Describe("AuctionDelegate", func() {
 				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 				Ω(initRequest).Should(Equal(api.ContainerInitializationRequest{
-					Ports: []api.PortMapping{{ContainerPort: 8080}},
-					Log:   api.LogConfig{Guid: "log-guid", Index: &two},
+					RootFSPath: expectedRootFS,
+					Ports:      []api.PortMapping{{ContainerPort: 8080}},
+					Log:        api.LogConfig{Guid: "log-guid", Index: &two},
 				}))
 			})
 
@@ -405,8 +408,9 @@ var _ = Describe("AuctionDelegate", func() {
 				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 				Ω(initRequest).Should(Equal(api.ContainerInitializationRequest{
-					Ports: []api.PortMapping{{ContainerPort: 8080}},
-					Log:   api.LogConfig{Guid: "log-guid", Index: &two},
+					RootFSPath: expectedRootFS,
+					Ports:      []api.PortMapping{{ContainerPort: 8080}},
+					Log:        api.LogConfig{Guid: "log-guid", Index: &two},
 				}))
 			})
 
@@ -440,8 +444,9 @@ var _ = Describe("AuctionDelegate", func() {
 				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 				Ω(initRequest).Should(Equal(api.ContainerInitializationRequest{
-					Ports: []api.PortMapping{{ContainerPort: 8080}},
-					Log:   api.LogConfig{Guid: "log-guid", Index: &two},
+					RootFSPath: expectedRootFS,
+					Ports:      []api.PortMapping{{ContainerPort: 8080}},
+					Log:        api.LogConfig{Guid: "log-guid", Index: &two},
 				}))
 			})
 
@@ -486,8 +491,9 @@ var _ = Describe("AuctionDelegate", func() {
 				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 				Ω(initRequest).Should(Equal(api.ContainerInitializationRequest{
-					Ports: []api.PortMapping{{ContainerPort: 8080}},
-					Log:   api.LogConfig{Guid: "log-guid", Index: &two},
+					RootFSPath: expectedRootFS,
+					Ports:      []api.PortMapping{{ContainerPort: 8080}},
+					Log:        api.LogConfig{Guid: "log-guid", Index: &two},
 				}))
 			})
 
