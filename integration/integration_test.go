@@ -58,7 +58,7 @@ var _ = Describe("The Rep", func() {
 		close(done)
 	})
 
-	Describe("when an interrupt signal is send to the representative", func() {
+	Describe("when an interrupt signal is sent to the representative", func() {
 		BeforeEach(func() {
 			runner.Stop()
 		})
