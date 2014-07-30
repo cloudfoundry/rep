@@ -12,6 +12,7 @@ var _ = Describe("DesiredLRP", func() {
 
 	lrpPayload := `{
 	  "process_guid": "some-guid",
+		"domain": "some-domain",
 	  "instances": 1,
 	  "stack": "some-stack",
 	  "root_fs": "docker:///docker.com/docker",
@@ -47,6 +48,8 @@ var _ = Describe("DesiredLRP", func() {
 	BeforeEach(func() {
 		lrp = DesiredLRP{
 			ProcessGuid: "some-guid",
+
+			Domain: "some-domain",
 
 			Instances:  1,
 			Stack:      "some-stack",

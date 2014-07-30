@@ -18,10 +18,6 @@ var _ = Describe("FakeBbs", func() {
 		convergerBBS = NewFakeConvergerBBS()
 		Ω(convergerBBS).ShouldNot(BeNil())
 
-		var appManagerBBS bbs.AppManagerBBS
-		appManagerBBS = NewFakeAppManagerBBS()
-		Ω(appManagerBBS).ShouldNot(BeNil())
-
 		var auctioneerBBS bbs.AuctioneerBBS
 		auctioneerBBS = NewFakeAuctioneerBBS()
 		Ω(auctioneerBBS).ShouldNot(BeNil())

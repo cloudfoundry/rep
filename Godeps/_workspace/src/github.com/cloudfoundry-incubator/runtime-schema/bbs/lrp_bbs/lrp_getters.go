@@ -1,6 +1,7 @@
 package lrp_bbs
 
 import (
+	"errors"
 	"fmt"
 	"path"
 
@@ -8,6 +9,8 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
 )
+
+var ErrNoDomain = errors.New("no domain given")
 
 func (bbs *LRPBBS) GetAllDesiredLRPs() ([]models.DesiredLRP, error) {
 	lrps := []models.DesiredLRP{}
@@ -26,6 +29,34 @@ func (bbs *LRPBBS) GetAllDesiredLRPs() ([]models.DesiredLRP, error) {
 		if err != nil {
 			return lrps, fmt.Errorf("cannot parse lrp JSON for key %s: %s", node.Key, err.Error())
 		} else {
+			lrps = append(lrps, lrp)
+		}
+	}
+
+	return lrps, nil
+}
+
+func (bbs *LRPBBS) GetAllDesiredLRPsByDomain(domain string) ([]models.DesiredLRP, error) {
+	if len(domain) == 0 {
+		return nil, ErrNoDomain
+	}
+
+	lrps := []models.DesiredLRP{}
+
+	node, err := bbs.store.ListRecursively(shared.DesiredLRPSchemaRoot)
+	if err == storeadapter.ErrorKeyNotFound {
+		return lrps, nil
+	}
+
+	if err != nil {
+		return lrps, err
+	}
+
+	for _, node := range node.ChildNodes {
+		lrp, err := models.NewDesiredLRPFromJSON(node.Value)
+		if err != nil {
+			return lrps, fmt.Errorf("cannot parse lrp JSON for key %s: %s", node.Key, err.Error())
+		} else if lrp.Domain == domain {
 			lrps = append(lrps, lrp)
 		}
 	}

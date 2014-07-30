@@ -13,6 +13,7 @@ var _ = Describe("LRPStartAuction", func() {
 	startAuctionPayload := `{
     "desired_lrp": {
       "process_guid": "some-guid",
+			"domain": "",
       "instances": 1,
       "stack": "some-stack",
       "root_fs": "docker:///docker.com/docker",

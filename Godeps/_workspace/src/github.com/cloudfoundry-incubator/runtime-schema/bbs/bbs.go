@@ -39,18 +39,26 @@ type RepBBS interface {
 type ConvergerBBS interface {
 	//lrp
 	ConvergeLRPs()
+	GetActualLRPsByProcessGuid(string) ([]models.ActualLRP, error)
+	RequestStopLRPInstance(stopInstance models.StopLRPInstance) error
+	WatchForDesiredLRPChanges() (<-chan models.DesiredLRPChange, chan<- bool, <-chan error)
 
 	//start auction
 	ConvergeLRPStartAuctions(kickPendingDuration time.Duration, expireClaimedDuration time.Duration)
+	RequestLRPStartAuction(models.LRPStartAuction) error
 
 	//stop auction
 	ConvergeLRPStopAuctions(kickPendingDuration time.Duration, expireClaimedDuration time.Duration)
+	RequestLRPStopAuction(models.LRPStopAuction) error
 
 	//task
 	ConvergeTask(timeToClaim time.Duration, converganceInterval time.Duration)
 
 	//lock
 	MaintainConvergeLock(interval time.Duration, executorID string) (disappeared <-chan bool, stop chan<- chan bool, err error)
+
+	//services
+	GetAvailableFileServer() (string, error)
 }
 
 type TPSBBS interface {
@@ -58,27 +66,11 @@ type TPSBBS interface {
 	GetActualLRPsByProcessGuid(string) ([]models.ActualLRP, error)
 }
 
-type AppManagerBBS interface {
-	//lrp
-	GetActualLRPsByProcessGuid(string) ([]models.ActualLRP, error)
-	RequestStopLRPInstance(stopInstance models.StopLRPInstance) error
-	WatchForDesiredLRPChanges() (<-chan models.DesiredLRPChange, chan<- bool, <-chan error)
-
-	//start auction
-	RequestLRPStartAuction(models.LRPStartAuction) error
-
-	//stop auction
-	RequestLRPStopAuction(models.LRPStopAuction) error
-
-	//services
-	GetAvailableFileServer() (string, error)
-}
-
 type NsyncBBS interface {
 	// lrp
 	DesireLRP(models.DesiredLRP) error
 	RemoveDesiredLRPByProcessGuid(guid string) error
-	GetAllDesiredLRPs() ([]models.DesiredLRP, error)
+	GetAllDesiredLRPsByDomain(domain string) ([]models.DesiredLRP, error)
 	ChangeDesiredLRP(change models.DesiredLRPChange) error
 }
 
@@ -163,10 +155,6 @@ func NewRepBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimePr
 }
 
 func NewConvergerBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger lager.Logger) ConvergerBBS {
-	return NewBBS(store, timeProvider, logger)
-}
-
-func NewAppManagerBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger lager.Logger) AppManagerBBS {
 	return NewBBS(store, timeProvider, logger)
 }
 

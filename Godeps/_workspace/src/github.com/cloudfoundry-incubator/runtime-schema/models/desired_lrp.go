@@ -4,6 +4,7 @@ import "encoding/json"
 
 type DesiredLRP struct {
 	ProcessGuid string           `json:"process_guid"`
+	Domain      string           `json:"domain"`
 	RootFSPath  string           `json:"root_fs"`
 	Instances   int              `json:"instances"`
 	Stack       string           `json:"stack"`

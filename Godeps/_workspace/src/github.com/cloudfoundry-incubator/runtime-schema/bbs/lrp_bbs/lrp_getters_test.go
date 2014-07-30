@@ -1,6 +1,7 @@
 package lrp_bbs_test
 
 import (
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lrp_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 
 	. "github.com/onsi/ginkgo"
@@ -99,6 +100,38 @@ var _ = Describe("LrpGetters", func() {
 			Ω(all).Should(ContainElement(desiredLrp1))
 			Ω(all).Should(ContainElement(desiredLrp2))
 			Ω(all).Should(ContainElement(desiredLrp3))
+		})
+	})
+
+	Describe("GetAllDesiredLRPsByDomain", func() {
+		BeforeEach(func() {
+			desiredLrp1.Domain = "domain-1"
+			desiredLrp2.Domain = "domain-1"
+			desiredLrp3.Domain = "domain-2"
+
+			err := bbs.DesireLRP(desiredLrp1)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = bbs.DesireLRP(desiredLrp2)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = bbs.DesireLRP(desiredLrp3)
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("returns all desired long running processes for the given domain", func() {
+			byDomain, err := bbs.GetAllDesiredLRPsByDomain("domain-1")
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(byDomain).Should(ConsistOf([]models.DesiredLRP{desiredLrp1, desiredLrp2}))
+
+			byDomain, err = bbs.GetAllDesiredLRPsByDomain("domain-2")
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(byDomain).Should(ConsistOf([]models.DesiredLRP{desiredLrp3}))
+		})
+
+		It("blows up with an empty string domain", func() {
+			_, err := bbs.GetAllDesiredLRPsByDomain("")
+			Ω(err).Should(Equal(lrp_bbs.ErrNoDomain))
 		})
 	})
 

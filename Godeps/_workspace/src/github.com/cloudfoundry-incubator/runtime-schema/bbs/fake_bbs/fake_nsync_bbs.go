@@ -2,7 +2,7 @@
 package fake_bbs
 
 import (
-	. "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 
@@ -21,22 +21,24 @@ type FakeNsyncBBS struct {
 	RemoveDesiredLRPByProcessGuidStub        func(guid string) error
 	removeDesiredLRPByProcessGuidMutex       sync.RWMutex
 	removeDesiredLRPByProcessGuidArgsForCall []struct {
-		arg1 string
+		guid string
 	}
 	removeDesiredLRPByProcessGuidReturns struct {
 		result1 error
 	}
-	GetAllDesiredLRPsStub        func() ([]models.DesiredLRP, error)
-	getAllDesiredLRPsMutex       sync.RWMutex
-	getAllDesiredLRPsArgsForCall []struct{}
-	getAllDesiredLRPsReturns struct {
+	GetAllDesiredLRPsByDomainStub        func(domain string) ([]models.DesiredLRP, error)
+	getAllDesiredLRPsByDomainMutex       sync.RWMutex
+	getAllDesiredLRPsByDomainArgsForCall []struct {
+		domain string
+	}
+	getAllDesiredLRPsByDomainReturns struct {
 		result1 []models.DesiredLRP
 		result2 error
 	}
 	ChangeDesiredLRPStub        func(change models.DesiredLRPChange) error
 	changeDesiredLRPMutex       sync.RWMutex
 	changeDesiredLRPArgsForCall []struct {
-		arg1 models.DesiredLRPChange
+		change models.DesiredLRPChange
 	}
 	changeDesiredLRPReturns struct {
 		result1 error
@@ -74,14 +76,14 @@ func (fake *FakeNsyncBBS) DesireLRPReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *FakeNsyncBBS) RemoveDesiredLRPByProcessGuid(arg1 string) error {
+func (fake *FakeNsyncBBS) RemoveDesiredLRPByProcessGuid(guid string) error {
 	fake.removeDesiredLRPByProcessGuidMutex.Lock()
 	defer fake.removeDesiredLRPByProcessGuidMutex.Unlock()
 	fake.removeDesiredLRPByProcessGuidArgsForCall = append(fake.removeDesiredLRPByProcessGuidArgsForCall, struct {
-		arg1 string
-	}{arg1})
+		guid string
+	}{guid})
 	if fake.RemoveDesiredLRPByProcessGuidStub != nil {
-		return fake.RemoveDesiredLRPByProcessGuidStub(arg1)
+		return fake.RemoveDesiredLRPByProcessGuidStub(guid)
 	} else {
 		return fake.removeDesiredLRPByProcessGuidReturns.result1
 	}
@@ -96,7 +98,7 @@ func (fake *FakeNsyncBBS) RemoveDesiredLRPByProcessGuidCallCount() int {
 func (fake *FakeNsyncBBS) RemoveDesiredLRPByProcessGuidArgsForCall(i int) string {
 	fake.removeDesiredLRPByProcessGuidMutex.RLock()
 	defer fake.removeDesiredLRPByProcessGuidMutex.RUnlock()
-	return fake.removeDesiredLRPByProcessGuidArgsForCall[i].arg1
+	return fake.removeDesiredLRPByProcessGuidArgsForCall[i].guid
 }
 
 func (fake *FakeNsyncBBS) RemoveDesiredLRPByProcessGuidReturns(result1 error) {
@@ -105,38 +107,46 @@ func (fake *FakeNsyncBBS) RemoveDesiredLRPByProcessGuidReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *FakeNsyncBBS) GetAllDesiredLRPs() ([]models.DesiredLRP, error) {
-	fake.getAllDesiredLRPsMutex.Lock()
-	defer fake.getAllDesiredLRPsMutex.Unlock()
-	fake.getAllDesiredLRPsArgsForCall = append(fake.getAllDesiredLRPsArgsForCall, struct{}{})
-	if fake.GetAllDesiredLRPsStub != nil {
-		return fake.GetAllDesiredLRPsStub()
+func (fake *FakeNsyncBBS) GetAllDesiredLRPsByDomain(domain string) ([]models.DesiredLRP, error) {
+	fake.getAllDesiredLRPsByDomainMutex.Lock()
+	defer fake.getAllDesiredLRPsByDomainMutex.Unlock()
+	fake.getAllDesiredLRPsByDomainArgsForCall = append(fake.getAllDesiredLRPsByDomainArgsForCall, struct {
+		domain string
+	}{domain})
+	if fake.GetAllDesiredLRPsByDomainStub != nil {
+		return fake.GetAllDesiredLRPsByDomainStub(domain)
 	} else {
-		return fake.getAllDesiredLRPsReturns.result1, fake.getAllDesiredLRPsReturns.result2
+		return fake.getAllDesiredLRPsByDomainReturns.result1, fake.getAllDesiredLRPsByDomainReturns.result2
 	}
 }
 
-func (fake *FakeNsyncBBS) GetAllDesiredLRPsCallCount() int {
-	fake.getAllDesiredLRPsMutex.RLock()
-	defer fake.getAllDesiredLRPsMutex.RUnlock()
-	return len(fake.getAllDesiredLRPsArgsForCall)
+func (fake *FakeNsyncBBS) GetAllDesiredLRPsByDomainCallCount() int {
+	fake.getAllDesiredLRPsByDomainMutex.RLock()
+	defer fake.getAllDesiredLRPsByDomainMutex.RUnlock()
+	return len(fake.getAllDesiredLRPsByDomainArgsForCall)
 }
 
-func (fake *FakeNsyncBBS) GetAllDesiredLRPsReturns(result1 []models.DesiredLRP, result2 error) {
-	fake.getAllDesiredLRPsReturns = struct {
+func (fake *FakeNsyncBBS) GetAllDesiredLRPsByDomainArgsForCall(i int) string {
+	fake.getAllDesiredLRPsByDomainMutex.RLock()
+	defer fake.getAllDesiredLRPsByDomainMutex.RUnlock()
+	return fake.getAllDesiredLRPsByDomainArgsForCall[i].domain
+}
+
+func (fake *FakeNsyncBBS) GetAllDesiredLRPsByDomainReturns(result1 []models.DesiredLRP, result2 error) {
+	fake.getAllDesiredLRPsByDomainReturns = struct {
 		result1 []models.DesiredLRP
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeNsyncBBS) ChangeDesiredLRP(arg1 models.DesiredLRPChange) error {
+func (fake *FakeNsyncBBS) ChangeDesiredLRP(change models.DesiredLRPChange) error {
 	fake.changeDesiredLRPMutex.Lock()
 	defer fake.changeDesiredLRPMutex.Unlock()
 	fake.changeDesiredLRPArgsForCall = append(fake.changeDesiredLRPArgsForCall, struct {
-		arg1 models.DesiredLRPChange
-	}{arg1})
+		change models.DesiredLRPChange
+	}{change})
 	if fake.ChangeDesiredLRPStub != nil {
-		return fake.ChangeDesiredLRPStub(arg1)
+		return fake.ChangeDesiredLRPStub(change)
 	} else {
 		return fake.changeDesiredLRPReturns.result1
 	}
@@ -151,7 +161,7 @@ func (fake *FakeNsyncBBS) ChangeDesiredLRPCallCount() int {
 func (fake *FakeNsyncBBS) ChangeDesiredLRPArgsForCall(i int) models.DesiredLRPChange {
 	fake.changeDesiredLRPMutex.RLock()
 	defer fake.changeDesiredLRPMutex.RUnlock()
-	return fake.changeDesiredLRPArgsForCall[i].arg1
+	return fake.changeDesiredLRPArgsForCall[i].change
 }
 
 func (fake *FakeNsyncBBS) ChangeDesiredLRPReturns(result1 error) {
@@ -160,4 +170,4 @@ func (fake *FakeNsyncBBS) ChangeDesiredLRPReturns(result1 error) {
 	}{result1}
 }
 
-var _ NsyncBBS = new(FakeNsyncBBS)
+var _ bbs.NsyncBBS = new(FakeNsyncBBS)
