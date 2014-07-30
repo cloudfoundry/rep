@@ -17,6 +17,7 @@ var _ = Describe("LrpWatchers", func() {
 		)
 
 		lrp := models.DesiredLRP{
+			Domain:      "tests",
 			ProcessGuid: "some-process-guid",
 			Instances:   5,
 			Stack:       "some-stack",

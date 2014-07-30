@@ -305,6 +305,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 			startAuction = models.LRPStartAuction{
 				DesiredLRP: models.DesiredLRP{
+					Domain:      "tests",
 					RootFSPath:  expectedRootFS,
 					ProcessGuid: "process-guid",
 					Actions: []models.ExecutorAction{

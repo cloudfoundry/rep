@@ -37,6 +37,7 @@ var _ = Describe("Convergence of Tasks", func() {
 		timeProvider = faketimeprovider.New(time.Unix(1238, 0))
 
 		task = models.Task{
+			Domain:  "tests",
 			Guid:    "some-guid",
 			Stack:   "pancakes",
 			Actions: dummyActions,

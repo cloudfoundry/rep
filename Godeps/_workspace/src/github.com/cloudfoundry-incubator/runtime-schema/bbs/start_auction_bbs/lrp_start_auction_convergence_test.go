@@ -50,6 +50,7 @@ var _ = Describe("LRPStartAuction Convergence", func() {
 				InstanceGuid: "instance-guid",
 
 				DesiredLRP: models.DesiredLRP{
+					Domain:      "tests",
 					ProcessGuid: "some-guid",
 					Stack:       "some-stack",
 					Instances:   1,
@@ -90,6 +91,7 @@ var _ = Describe("LRPStartAuction Convergence", func() {
 				InstanceGuid: "instance-guid",
 
 				DesiredLRP: models.DesiredLRP{
+					Domain:      "tests",
 					ProcessGuid: "some-guid",
 					Stack:       "some-stack",
 					Instances:   1,

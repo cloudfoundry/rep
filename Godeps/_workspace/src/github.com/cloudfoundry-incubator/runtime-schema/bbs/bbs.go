@@ -138,6 +138,8 @@ type VeritasBBS interface {
 	GetAllDesiredLRPs() ([]models.DesiredLRP, error)
 	GetAllActualLRPs() ([]models.ActualLRP, error)
 	GetAllStopLRPInstances() ([]models.StopLRPInstance, error)
+	DesireLRP(models.DesiredLRP) error
+	RemoveDesiredLRPByProcessGuid(guid string) error
 
 	//start auctions
 	GetAllLRPStartAuctions() ([]models.LRPStartAuction, error)

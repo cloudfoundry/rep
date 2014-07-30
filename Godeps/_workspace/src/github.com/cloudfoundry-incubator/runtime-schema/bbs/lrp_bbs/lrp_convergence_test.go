@@ -63,6 +63,7 @@ var _ = Describe("LrpConvergence", func() {
 
 		BeforeEach(func() {
 			desiredLRP = models.DesiredLRP{
+				Domain:      "tests",
 				ProcessGuid: processGuid,
 				Instances:   2,
 				Stack:       "pancake",

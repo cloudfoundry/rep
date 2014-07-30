@@ -15,6 +15,7 @@ var _ = Describe("LRP", func() {
 
 		BeforeEach(func() {
 			lrp = models.DesiredLRP{
+				Domain:      "tests",
 				ProcessGuid: "some-process-guid",
 				Instances:   5,
 				Stack:       "some-stack",
@@ -176,6 +177,7 @@ var _ = Describe("LRP", func() {
 		var changeErr error
 
 		prevValue := models.DesiredLRP{
+			Domain:      "tests",
 			ProcessGuid: "some-guid",
 			Stack:       "some-stack",
 			Instances:   1,

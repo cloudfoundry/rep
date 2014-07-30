@@ -23,6 +23,7 @@ var _ = Describe("Task BBS", func() {
 
 		bbs = New(etcdClient, timeProvider, lagertest.NewTestLogger("test"))
 		task = models.Task{
+			Domain:  "tests",
 			Guid:    "some-guid",
 			Stack:   "pancakes",
 			Actions: dummyActions,

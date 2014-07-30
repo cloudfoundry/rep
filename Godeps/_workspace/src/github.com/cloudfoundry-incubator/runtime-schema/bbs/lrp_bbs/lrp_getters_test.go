@@ -14,6 +14,7 @@ var _ = Describe("LrpGetters", func() {
 
 	BeforeEach(func() {
 		desiredLrp1 = models.DesiredLRP{
+			Domain:      "tests",
 			ProcessGuid: "guidA",
 			Stack:       "stack",
 			Actions: []models.ExecutorAction{
@@ -27,6 +28,7 @@ var _ = Describe("LrpGetters", func() {
 		}
 
 		desiredLrp2 = models.DesiredLRP{
+			Domain:      "tests",
 			ProcessGuid: "guidB",
 			Stack:       "stack",
 			Actions: []models.ExecutorAction{
@@ -40,6 +42,7 @@ var _ = Describe("LrpGetters", func() {
 		}
 
 		desiredLrp3 = models.DesiredLRP{
+			Domain:      "tests",
 			ProcessGuid: "guidC",
 			Stack:       "stack",
 			Actions: []models.ExecutorAction{

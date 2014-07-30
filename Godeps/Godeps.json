@@ -43,11 +43,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "1173a9196e65cbc57d643242cbb0da9391bc1b08"
+			"Rev": "b30103f18c98748a527aba9370a070bdcd4ac51b"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "1173a9196e65cbc57d643242cbb0da9391bc1b08"
+			"Rev": "b30103f18c98748a527aba9370a070bdcd4ac51b"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
