@@ -11,6 +11,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/auction/auctionrep"
 	"github.com/cloudfoundry-incubator/auction/communication/nats/auction_nats_server"
+	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
 	executorapi "github.com/cloudfoundry-incubator/executor/api"
 	"github.com/cloudfoundry-incubator/executor/client"
@@ -112,6 +113,8 @@ func main() {
 	if *lrpHost == "" {
 		log.Fatalf("-lrpHost must be specified")
 	}
+
+	cf_debug_server.Run()
 
 	logger := cf_lager.New("rep")
 	bbs := initializeRepBBS(logger)
