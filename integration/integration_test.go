@@ -120,7 +120,7 @@ var _ = Describe("The Rep", func() {
 		})
 
 		It("makes a request to the executor", func() {
-			Eventually(fakeExecutor.ReceivedRequests).Should(HaveLen(1))
+			Eventually(fakeExecutor.ReceivedRequests).Should(HaveLen(2))
 		})
 	})
 
@@ -182,7 +182,7 @@ var _ = Describe("The Rep", func() {
 		})
 
 		It("should delete the container and resolve the StopLRPInstance", func() {
-			Eventually(fakeExecutor.ReceivedRequests).Should(HaveLen(3))
+			Eventually(fakeExecutor.ReceivedRequests).Should(HaveLen(4))
 			Eventually(bbs.GetAllActualLRPs).Should(BeEmpty())
 			Eventually(bbs.GetAllStopLRPInstances).Should(BeEmpty())
 		})
