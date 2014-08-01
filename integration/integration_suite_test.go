@@ -1,6 +1,7 @@
 package integration_test
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/cloudfoundry/gunk/natsrunner"
@@ -14,7 +15,7 @@ var executorID string
 var representativePath string
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
 var natsRunner *natsrunner.NATSRunner
-var etcdPort, schedulerPort int
+var etcdPort, natsPort, schedulerPort int
 
 func TestRepresentativeMain(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -24,12 +25,13 @@ func TestRepresentativeMain(t *testing.T) {
 var _ = BeforeSuite(func() {
 	var err error
 
-	executorID = "the-rep-id-" + string(GinkgoParallelNode())
+	executorID = "the-rep-id-" + strconv.Itoa(GinkgoParallelNode())
 
-	etcdPort = 5001 + GinkgoParallelNode()
+	etcdPort = 4001 + GinkgoParallelNode()
+	natsPort = 4222 + GinkgoParallelNode()
 	schedulerPort = 56000 + GinkgoParallelNode()
 
-	natsRunner = natsrunner.NewNATSRunner(4001)
+	natsRunner = natsrunner.NewNATSRunner(natsPort)
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
 
 	representativePath, err = gexec.Build("github.com/cloudfoundry-incubator/rep", "-race")

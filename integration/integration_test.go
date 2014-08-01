@@ -44,7 +44,7 @@ var _ = Describe("The Rep", func() {
 			fmt.Sprintf("127.0.0.1:%d", schedulerPort),
 			fakeExecutor.URL(),
 			fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
-			"127.0.0.1:4001",
+			fmt.Sprintf("127.0.0.1:%d", natsPort),
 			"info",
 			time.Second,
 		)
