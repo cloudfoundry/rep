@@ -415,8 +415,12 @@ var _ = Describe("AuctionDelegate", func() {
 				}))
 			})
 
-			It("should not mark the task as starting", func() {
-				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(0))
+			It("should mark the lrp as starting", func() {
+				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
+			})
+
+			It("should remove the started lrp", func() {
+				Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
 			})
 
 			It("should not attempt to run the actions", func() {
@@ -439,16 +443,8 @@ var _ = Describe("AuctionDelegate", func() {
 				Ω(err).Should(Equal(startingErr))
 			})
 
-			It("should attempt to initialize the correct container", func() {
-				two := 2
-				Ω(client.InitializeContainerCallCount()).Should(Equal(1))
-				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
-				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
-				Ω(initRequest).Should(Equal(api.ContainerInitializationRequest{
-					RootFSPath: expectedRootFS,
-					Ports:      []api.PortMapping{{ContainerPort: 8080}},
-					Log:        api.LogConfig{Guid: "log-guid", Index: &two},
-				}))
+			It("should not attempt to initialize the correct container", func() {
+				Ω(client.InitializeContainerCallCount()).Should(Equal(0))
 			})
 
 			It("should mark the instance as STARTING in etcd", func() {

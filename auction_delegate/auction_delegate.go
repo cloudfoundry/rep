@@ -123,7 +123,21 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 
 	containerGuid := startAuction.LRPIdentifier().OpaqueID()
 
-	_, err := a.client.InitializeContainer(containerGuid, executorapi.ContainerInitializationRequest{
+	lrp := models.ActualLRP{
+		ProcessGuid:  startAuction.DesiredLRP.ProcessGuid,
+		InstanceGuid: startAuction.InstanceGuid,
+		Index:        startAuction.Index,
+	}
+
+	err := a.bbs.ReportActualLRPAsStarting(lrp, a.executorID)
+
+	if err != nil {
+		auctionLog.Error("failed-to-mark-starting", err)
+		a.client.DeleteContainer(containerGuid)
+		return err
+	}
+
+	_, err = a.client.InitializeContainer(containerGuid, executorapi.ContainerInitializationRequest{
 		RootFSPath: startAuction.DesiredLRP.RootFSPath,
 		Ports:      a.convertPortMappings(startAuction.DesiredLRP.Ports),
 		Log: executorapi.LogConfig{
@@ -132,22 +146,11 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 			Index:      &startAuction.Index,
 		},
 	})
+
 	if err != nil {
 		auctionLog.Error("failed-to-initialize-container", err)
 		a.client.DeleteContainer(containerGuid)
-		return err
-	}
-
-	lrp := models.ActualLRP{
-		ProcessGuid:  startAuction.DesiredLRP.ProcessGuid,
-		InstanceGuid: startAuction.InstanceGuid,
-		Index:        startAuction.Index,
-	}
-	err = a.bbs.ReportActualLRPAsStarting(lrp, a.executorID)
-
-	if err != nil {
-		auctionLog.Error("failed-to-mark-starting", err)
-		a.client.DeleteContainer(containerGuid)
+		a.bbs.RemoveActualLRP(lrp)
 		return err
 	}
 
