@@ -128,9 +128,10 @@ func main() {
 		"api-server":        initializeAPIServer(*executorID, bbs, logger, executorClient),
 		"auction-server":    initializeAuctionNatsServer(*executorID, lrpStopper, bbs, executorClient, logger),
 	})
+
 	monitor := ifrit.Envoke(sigmon.New(group))
 
-	logger.Info("rep.started")
+	logger.Info("started")
 
 	workerExited := group.Exits()
 	monitorExited := monitor.Wait()

@@ -30,15 +30,23 @@ func New(executorPresence models.ExecutorPresence, executorClient executorapi.Cl
 }
 
 func (m *Maintainer) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error {
+	for {
+		err := m.executorClient.Ping()
+		if err == nil {
+			break
+		}
+
+		m.logger.Error("failed-to-ping-executor-on-start", err)
+		time.Sleep(time.Second)
+	}
+
 	presence, status, err := m.bbs.MaintainExecutorPresence(m.heartbeatInterval, m.executorPresence)
 	if err != nil {
 		m.logger.Error("failed-to-start-maintaining-presence", err)
 		return err
 	}
 
-	if ready != nil {
-		close(ready)
-	}
+	close(ready)
 
 	var pingTickerChan <-chan time.Time
 	var pingTicker *time.Ticker
