@@ -20,6 +20,7 @@ type Runner struct {
 	StartCheck        string
 	StartCheckTimeout time.Duration
 	Cleanup           func()
+	BufferChan        chan *gbytes.Buffer
 }
 
 func (r *Runner) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error {
@@ -42,7 +43,7 @@ func (r *Runner) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error {
 	if r.StartCheck != "" {
 		timeout := r.StartCheckTimeout
 		if timeout == 0 {
-			timeout = time.Second
+			timeout = 5 * time.Second
 		}
 
 		Eventually(allOutput, timeout).Should(gbytes.Say(r.StartCheck))
@@ -54,6 +55,8 @@ func (r *Runner) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error {
 
 	for {
 		select {
+		case r.BufferChan <- session.Buffer():
+
 		case signal = <-sigChan:
 			session.Signal(signal)
 
