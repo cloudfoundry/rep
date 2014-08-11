@@ -25,6 +25,7 @@ func NewHandler(bbs bbs.RepBBS, executorClient api.Client, logger lager.Logger) 
 
 func (handler *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
+
 	var runResult api.ContainerRunResult
 	err := json.NewDecoder(r.Body).Decode(&runResult)
 	if err != nil {
@@ -33,6 +34,27 @@ func (handler *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	handler.bbs.CompleteTask(runResult.Guid, runResult.Failed, runResult.FailureReason, runResult.Result)
-	handler.executorClient.DeleteContainer(runResult.Guid)
+	hLog := handler.logger.Session("complete", lager.Data{
+		"guid":   runResult.Guid,
+		"failed": runResult.Failed,
+		"reason": runResult.FailureReason,
+	})
+
+	hLog.Debug("completing")
+
+	err = handler.bbs.CompleteTask(runResult.Guid, runResult.Failed, runResult.FailureReason, runResult.Result)
+	if err != nil {
+		hLog.Error("failed-to-mark-complete", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = handler.executorClient.DeleteContainer(runResult.Guid)
+	if err != nil {
+		hLog.Error("failed-to-delete-container", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	hLog.Info("completed")
 }
