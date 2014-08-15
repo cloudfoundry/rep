@@ -237,6 +237,30 @@ func (adapter *ETCDStoreAdapter) Delete(keys ...string) error {
 	return adapter.convertError(err)
 }
 
+func (adapter *ETCDStoreAdapter) DeleteLeaves(keys ...string) error {
+	results := make(chan error, len(keys))
+
+	for _, key := range keys {
+		key := key
+		adapter.workerPool.ScheduleWork(func() {
+			_, err := adapter.client.DeleteDir(key)
+			results <- err
+		})
+	}
+
+	var err error
+	numReceived := 0
+	for numReceived < len(keys) {
+		result := <-results
+		numReceived++
+		if err == nil {
+			err = result
+		}
+	}
+
+	return adapter.convertError(err)
+}
+
 func (adapter *ETCDStoreAdapter) CompareAndDelete(node storeadapter.StoreNode) error {
 	results := make(chan error, 1)
 

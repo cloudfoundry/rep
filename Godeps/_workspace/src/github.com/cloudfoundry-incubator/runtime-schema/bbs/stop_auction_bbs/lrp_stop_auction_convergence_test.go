@@ -12,16 +12,23 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const (
+	processGuid               = "process-guid"
+	pendingKickDuration       = 30 * time.Second
+	claimedExpirationDuration = 5 * time.Minute
+)
+
 var _ = Describe("LrpAuctionConvergence", func() {
-	var pendingKickDuration time.Duration
-	var claimedExpirationDuration time.Duration
-	BeforeEach(func() {
-		pendingKickDuration = 30 * time.Second
-		claimedExpirationDuration = 5 * time.Minute
+	var stopAuctionEvents <-chan models.LRPStopAuction
+
+	JustBeforeEach(func() {
+		stopAuctionEvents, _, _ = bbs.WatchForLRPStopAuction()
+		bbs.ConvergeLRPStopAuctions(pendingKickDuration, claimedExpirationDuration)
 	})
 
 	Context("when the LRPAuction has invalid JSON", func() {
-		key := path.Join(shared.LRPStopAuctionSchemaRoot, "process-guid", "1")
+		var key = path.Join(shared.LRPStopAuctionSchemaRoot, "process-guid", "1")
+
 		BeforeEach(func() {
 			etcdClient.Create(storeadapter.StoreNode{
 				Key:   key,
@@ -30,71 +37,106 @@ var _ = Describe("LrpAuctionConvergence", func() {
 		})
 
 		It("should be removed", func() {
-			bbs.ConvergeLRPStopAuctions(pendingKickDuration, claimedExpirationDuration)
 			_, err := etcdClient.Get(key)
 			Ω(err).Should(MatchError(storeadapter.ErrorKeyNotFound))
 		})
 	})
 
 	Describe("Kicking pending auctions", func() {
-		var startAuctionEvents <-chan models.LRPStopAuction
-		var auction models.LRPStopAuction
 
-		commenceWatching := func() {
-			startAuctionEvents, _, _ = bbs.WatchForLRPStopAuction()
-		}
+		Context("up until the pending duration has passed", func() {
+			BeforeEach(func() {
+				newPendingStopAuction(processGuid)
+				timeProvider.Increment(pendingKickDuration)
+			})
 
-		BeforeEach(func() {
-			auction = models.LRPStopAuction{
-				Index:       1,
-				ProcessGuid: "process-guid",
-			}
-			err := bbs.RequestLRPStopAuction(auction)
-			Ω(err).ShouldNot(HaveOccurred())
+			It("does not kick the auctions", func() {
+				Consistently(stopAuctionEvents).ShouldNot(Receive())
+			})
 		})
 
-		It("Kicks auctions that haven't been updated in the given amount of time", func() {
-			commenceWatching()
+		Context("when the pending duration has passed", func() {
+			var auction models.LRPStopAuction
 
-			timeProvider.Increment(pendingKickDuration)
-			bbs.ConvergeLRPStopAuctions(pendingKickDuration, claimedExpirationDuration)
-			Consistently(startAuctionEvents).ShouldNot(Receive())
+			BeforeEach(func() {
+				auction = newPendingStopAuction(processGuid)
+				timeProvider.Increment(pendingKickDuration + time.Second)
+				newPendingStopAuction(processGuid)
+			})
 
-			var noticedOnce models.LRPStopAuction
-			timeProvider.Increment(time.Second)
-			bbs.ConvergeLRPStopAuctions(pendingKickDuration, claimedExpirationDuration)
-			Eventually(startAuctionEvents).Should(Receive(&noticedOnce))
-			Ω(noticedOnce.Index).Should(Equal(auction.Index))
+			It("Kicks auctions that haven't been updated in the given amount of time", func() {
+				var noticedOnce models.LRPStopAuction
+				Eventually(stopAuctionEvents).Should(Receive(&noticedOnce))
+				Ω(noticedOnce.Index).Should(Equal(auction.Index))
+
+				Consistently(stopAuctionEvents).ShouldNot(Receive())
+			})
 		})
 	})
 
 	Describe("Deleting very old claimed events", func() {
-		BeforeEach(func() {
-			auction := models.LRPStopAuction{
-				Index:       1,
-				ProcessGuid: "process-guid",
-			}
-			err := bbs.RequestLRPStopAuction(auction)
-			Ω(err).ShouldNot(HaveOccurred())
-			auction.State = models.LRPStopAuctionStatePending
-			auction.UpdatedAt = timeProvider.Time().UnixNano()
+		Context("up until the claimedExpiration duration", func() {
+			BeforeEach(func() {
+				newClaimedStopAuction(processGuid)
+				timeProvider.Increment(claimedExpirationDuration)
+			})
 
-			err = bbs.ClaimLRPStopAuction(auction)
-			Ω(err).ShouldNot(HaveOccurred())
+			It("should not delete claimed events", func() {
+				Ω(bbs.GetAllLRPStopAuctions()).Should(HaveLen(1))
+			})
 		})
 
-		It("should delete claimed events that have expired", func() {
-			timeProvider.Increment(pendingKickDuration)
-			bbs.ConvergeLRPStopAuctions(pendingKickDuration, claimedExpirationDuration)
-			Ω(bbs.GetAllLRPStopAuctions()).Should(HaveLen(1))
+		Context("when we are past the claimedExpiration duration", func() {
+			BeforeEach(func() {
+				newClaimedStopAuction(processGuid)
+				newClaimedStopAuction("other-process")
+				newClaimedStopAuction("process-to-delete")
+				timeProvider.Increment(claimedExpirationDuration + time.Second)
+				newClaimedStopAuction(processGuid)
+				newPendingStopAuction("other-process")
+			})
 
-			timeProvider.Increment(claimedExpirationDuration - pendingKickDuration)
-			bbs.ConvergeLRPStopAuctions(pendingKickDuration, claimedExpirationDuration)
-			Ω(bbs.GetAllLRPStopAuctions()).Should(HaveLen(1))
+			It("should delete claimed events that have expired", func() {
+				Ω(bbs.GetAllLRPStopAuctions()).Should(HaveLen(2))
+			})
 
-			timeProvider.Increment(time.Second)
-			bbs.ConvergeLRPStopAuctions(pendingKickDuration, claimedExpirationDuration)
-			Ω(bbs.GetAllLRPStopAuctions()).Should(BeEmpty())
+			It("should prune stop auction directories for events that have expired", func() {
+				stopAuctionRoot, err := etcdClient.ListRecursively(shared.LRPStopAuctionSchemaRoot)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(stopAuctionRoot.ChildNodes).Should(HaveLen(2))
+			})
 		})
 	})
 })
+
+var auctionIndex = 0
+
+func newStopAuction(processGuid string) models.LRPStopAuction {
+	auctionIndex += 1
+	return models.LRPStopAuction{
+		Index:       auctionIndex,
+		ProcessGuid: processGuid,
+	}
+}
+
+func newPendingStopAuction(processGuid string) models.LRPStopAuction {
+	auction := newStopAuction(processGuid)
+
+	err := bbs.RequestLRPStopAuction(auction)
+	Ω(err).ShouldNot(HaveOccurred())
+	auction.State = models.LRPStopAuctionStatePending
+	auction.UpdatedAt = timeProvider.Time().UnixNano()
+
+	return auction
+}
+
+func newClaimedStopAuction(processGuid string) models.LRPStopAuction {
+	auction := newPendingStopAuction(processGuid)
+
+	err := bbs.ClaimLRPStopAuction(auction)
+	Ω(err).ShouldNot(HaveOccurred())
+	auction.State = models.LRPStopAuctionStateClaimed
+	auction.UpdatedAt = timeProvider.Time().UnixNano()
+
+	return auction
+}

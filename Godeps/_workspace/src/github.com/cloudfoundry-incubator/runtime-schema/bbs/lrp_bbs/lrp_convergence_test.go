@@ -35,21 +35,31 @@ var _ = Describe("LrpConvergence", func() {
 		bbs.ReportActualLRPAsStarting(actualLrp2, executorID)
 	})
 
-	Context("when no executor is missing", func() {
-		It("should not prune any LRPs", func() {
+	Describe("pruning LRPs by executor", func() {
+		JustBeforeEach(func() {
 			bbs.ConvergeLRPs()
-			Ω(bbs.GetAllActualLRPs()).Should(HaveLen(2))
-		})
-	})
-
-	Context("when an executor is missing", func() {
-		BeforeEach(func() {
-			etcdClient.Delete(shared.ExecutorSchemaPath(executorID))
 		})
 
-		It("should delete LRPs associated with said executor", func() {
-			bbs.ConvergeLRPs()
-			Ω(bbs.GetAllActualLRPs()).Should(BeEmpty())
+		Context("when no executor is missing", func() {
+			It("should not prune any LRPs", func() {
+				Ω(bbs.GetAllActualLRPs()).Should(HaveLen(2))
+			})
+		})
+
+		Context("when an executor is missing", func() {
+			BeforeEach(func() {
+				etcdClient.Delete(shared.ExecutorSchemaPath(executorID))
+			})
+
+			It("should delete LRPs associated with said executor", func() {
+				Ω(bbs.GetAllActualLRPs()).Should(BeEmpty())
+			})
+
+			It("should prune LRP directories for apps that are no longer running", func() {
+				actual, err := etcdClient.ListRecursively(shared.ActualLRPSchemaRoot)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(actual.ChildNodes).Should(BeEmpty())
+			})
 		})
 	})
 

@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/cloudfoundry-incubator/delta_force/delta_force"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/prune"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
@@ -22,7 +23,7 @@ func (bbs *LRPBBS) ConvergeLRPs() {
 		return
 	}
 
-	node, err := bbs.store.ListRecursively(shared.DesiredLRPSchemaRoot)
+	desiredLRPRoot, err := bbs.store.ListRecursively(shared.DesiredLRPSchemaRoot)
 	if err != nil && err != storeadapter.ErrorKeyNotFound {
 		bbs.logger.Error("failed-to-fetch-desired-lrps", err)
 		return
@@ -32,7 +33,7 @@ func (bbs *LRPBBS) ConvergeLRPs() {
 	var keysToDelete []string
 	knownDesiredProcessGuids := map[string]bool{}
 
-	for _, node := range node.ChildNodes {
+	for _, node := range desiredLRPRoot.ChildNodes {
 		desiredLRP, err := models.NewDesiredLRPFromJSON(node.Value)
 
 		if err != nil {
@@ -127,39 +128,39 @@ func (bbs *LRPBBS) needsReconciliation(desiredLRP models.DesiredLRP, actualLRPsF
 }
 
 func (bbs *LRPBBS) pruneActualsWithMissingExecutors() (map[string][]models.ActualLRP, error) {
-	executorState, err := bbs.store.ListRecursively(shared.ExecutorSchemaRoot)
+	actualsByProcessGuid := map[string][]models.ActualLRP{}
+
+	executorRoot, err := bbs.store.ListRecursively(shared.ExecutorSchemaRoot)
 	if err == storeadapter.ErrorKeyNotFound {
-		executorState = storeadapter.StoreNode{}
+		executorRoot = storeadapter.StoreNode{}
 	} else if err != nil {
 		bbs.logger.Error("failed-to-get-executors", err)
 		return nil, err
 	}
 
-	actuals, err := bbs.GetAllActualLRPs()
-	if err != nil {
-		bbs.logger.Error("failed-to-get-actual-lrps", err)
-		return nil, err
-	}
+	err = prune.Prune(bbs.store, shared.ActualLRPSchemaRoot, func(node storeadapter.StoreNode) (shouldKeep bool) {
+		actual, err := models.NewActualLRPFromJSON(node.Value)
+		if err != nil {
+			return false
+		}
 
-	keysToDelete := []string{}
-	actualsByProcessGuid := map[string][]models.ActualLRP{}
-
-	for _, actual := range actuals {
-		_, executorIsAlive := executorState.Lookup(actual.ExecutorID)
-
-		if executorIsAlive {
-			actualsByProcessGuid[actual.ProcessGuid] = append(actualsByProcessGuid[actual.ProcessGuid], actual)
-		} else {
+		if _, ok := executorRoot.Lookup(actual.ExecutorID); !ok {
 			bbs.logger.Info("detected-actual-with-missing-executor", lager.Data{
 				"actual":      actual,
 				"executor-id": actual.ExecutorID,
 			})
-
-			keysToDelete = append(keysToDelete, shared.ActualLRPSchemaPath(actual.ProcessGuid, actual.Index, actual.InstanceGuid))
+			return false
 		}
+
+		actualsByProcessGuid[actual.ProcessGuid] = append(actualsByProcessGuid[actual.ProcessGuid], actual)
+		return true
+	})
+
+	if err != nil {
+		bbs.logger.Error("failed-to-prune-actual-lrps", err)
+		return nil, err
 	}
 
-	bbs.store.Delete(keysToDelete...)
 	return actualsByProcessGuid, nil
 }
 

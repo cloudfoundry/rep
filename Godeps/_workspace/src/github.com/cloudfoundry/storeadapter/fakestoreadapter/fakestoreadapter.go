@@ -43,11 +43,11 @@ type FakeStoreAdapter struct {
 
 	rootNode *containerNode
 
-	MaintainedNodeName string
+	MaintainedNodeName  string
 	MaintainedNodeValue []byte
-	MaintainNodeError  error
-	MaintainNodeStatus chan bool
-	ReleaseNodeChannel chan chan bool
+	MaintainNodeError   error
+	MaintainNodeStatus  chan bool
+	ReleaseNodeChannel  chan chan bool
 
 	eventChannel chan storeadapter.WatchEvent
 	sendEvents   bool
@@ -277,6 +277,10 @@ func (adapter *FakeStoreAdapter) Delete(keys ...string) error {
 	}
 
 	return nil
+}
+
+func (adapter *FakeStoreAdapter) DeleteLeaves(keys ...string) error {
+	panic("not implemented")
 }
 
 func (adapter *FakeStoreAdapter) CompareAndDelete(node storeadapter.StoreNode) error {

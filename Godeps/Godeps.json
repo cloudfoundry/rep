@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/cloudfoundry-incubator/rep",
-	"GoVersion": "go1.3",
+	"GoVersion": "go1.3.1",
 	"Packages": [
 		"./..."
 	],
@@ -39,19 +39,23 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/api",
-			"Rev": "721a2fbf0e7a5ede7870ce565f5e0ddef18a5640"
+			"Rev": "6e6986bf37e332cc996a2aeab5d873d39a5ac49a"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/client",
-			"Rev": "721a2fbf0e7a5ede7870ce565f5e0ddef18a5640"
+			"Rev": "6e6986bf37e332cc996a2aeab5d873d39a5ac49a"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "b30103f18c98748a527aba9370a070bdcd4ac51b"
+			"Rev": "ab0a2903cc6204e2df53c7812bbdaa1d0305f1e2"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/heartbeater",
+			"Rev": "ab0a2903cc6204e2df53c7812bbdaa1d0305f1e2"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "b30103f18c98748a527aba9370a070bdcd4ac51b"
+			"Rev": "ab0a2903cc6204e2df53c7812bbdaa1d0305f1e2"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
@@ -63,11 +67,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
-			"Rev": "a697022fe6e9677a6bb5eae8544de042ba0d7365"
+			"Rev": "652efe1a1fcf3fdb5b08d7474594eb250be6009c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/yagnats",
-			"Rev": "8e98f972ab3eabfb6d44065cd0b30f170d3db794"
+			"Rev": "07171a8863c377fb14a44dee402dff9e1282bc49"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-etcd/etcd",
@@ -80,8 +84,8 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Comment": "v1.1.0",
-			"Rev": "aa7870df5380d9da6904a29ba19e208694e0d0c1"
+			"Comment": "v1.1.0-1-g32204a3",
+			"Rev": "32204a3eab0576cbea19f5ff8b27d3a928647ea6"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
@@ -90,11 +94,15 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/lager",
-			"Rev": "a004360d09b571b9479b56638e60a0a6b26d5b21"
+			"Rev": "ada65d2c262ba5474d357bf57bc0f8b8deaa9196"
+		},
+		{
+			"ImportPath": "github.com/pivotal-golang/timer",
+			"Rev": "108ae5fe1875ef7ccef96ad14020b7825fad1983"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
-			"Rev": "af08fa508af584a5dcce105e889a21ab44181351"
+			"Rev": "82bc852c28d76c55d89bb16ffa2fe2240e5cc9ad"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/rata",

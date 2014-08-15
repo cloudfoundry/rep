@@ -26,12 +26,20 @@ func FileServerSchemaPath(segments ...string) string {
 	return path.Join(append([]string{FileServerSchemaRoot}, segments...)...)
 }
 
+func LRPStartAuctionProcessDir(lrp models.LRPStartAuction) string {
+	return path.Join(LRPStartAuctionSchemaRoot, lrp.DesiredLRP.ProcessGuid)
+}
+
 func LRPStartAuctionSchemaPath(lrp models.LRPStartAuction) string {
-	return path.Join(LRPStartAuctionSchemaRoot, lrp.DesiredLRP.ProcessGuid, strconv.Itoa(lrp.Index))
+	return path.Join(LRPStartAuctionProcessDir(lrp), strconv.Itoa(lrp.Index))
+}
+
+func LRPStopAuctionProcessDir(lrp models.LRPStopAuction) string {
+	return path.Join(LRPStopAuctionSchemaRoot, lrp.ProcessGuid)
 }
 
 func LRPStopAuctionSchemaPath(lrp models.LRPStopAuction) string {
-	return path.Join(LRPStopAuctionSchemaRoot, lrp.ProcessGuid, strconv.Itoa(lrp.Index))
+	return path.Join(LRPStopAuctionProcessDir(lrp), strconv.Itoa(lrp.Index))
 }
 
 func StopLRPInstanceSchemaPath(stopInstance models.StopLRPInstance) string {
@@ -42,8 +50,16 @@ func ActualLRPSchemaPathFromStopLRPInstance(stopInstance models.StopLRPInstance)
 	return path.Join(ActualLRPSchemaRoot, stopInstance.ProcessGuid, strconv.Itoa(stopInstance.Index), stopInstance.InstanceGuid)
 }
 
+func ActualLRPProcessDir(processGuid string) string {
+	return path.Join(ActualLRPSchemaRoot, processGuid)
+}
+
+func ActualLRPIndexDir(processGuid string, index int) string {
+	return path.Join(ActualLRPProcessDir(processGuid), strconv.Itoa(index))
+}
+
 func ActualLRPSchemaPath(processGuid string, index int, instanceGuid string) string {
-	return path.Join(ActualLRPSchemaRoot, processGuid, strconv.Itoa(index), instanceGuid)
+	return path.Join(ActualLRPIndexDir(processGuid, index), instanceGuid)
 }
 
 func DesiredLRPSchemaPath(lrp models.DesiredLRP) string {

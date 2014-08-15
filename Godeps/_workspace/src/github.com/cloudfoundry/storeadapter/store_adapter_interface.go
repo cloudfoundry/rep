@@ -30,6 +30,11 @@ type StoreAdapter interface {
 	// deleted or don't actually exist, an error is returned.
 	Delete(keys ...string) error
 
+	// DeleteLeaves removes a set of empty directories and key-value pairs
+	// from the store. If any fail to be deleted or don't actually exist,
+	// an error is returned.
+	DeleteLeaves(keys ...string) error
+
 	// CompareAndDelete and don't delete if the compare fails.
 	CompareAndDelete(StoreNode) error
 

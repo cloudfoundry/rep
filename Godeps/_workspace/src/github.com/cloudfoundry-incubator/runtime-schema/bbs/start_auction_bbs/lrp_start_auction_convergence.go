@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/prune"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
@@ -16,57 +17,52 @@ type compareAndSwappableLRPStartAuction struct {
 }
 
 func (bbs *StartAuctionBBS) ConvergeLRPStartAuctions(kickPendingDuration time.Duration, expireClaimedDuration time.Duration) {
-	node, err := bbs.store.ListRecursively(shared.LRPStartAuctionSchemaRoot)
-	if err != nil && err != storeadapter.ErrorKeyNotFound {
-		bbs.logger.Error("failed-to-get-start-auctions", err)
+	auctionsToCAS := []compareAndSwappableLRPStartAuction{}
+
+	err := prune.Prune(bbs.store, shared.LRPStartAuctionSchemaRoot, func(auctionNode storeadapter.StoreNode) (shouldKeep bool) {
+		auction, err := models.NewLRPStartAuctionFromJSON(auctionNode.Value)
+		if err != nil {
+			bbs.logger.Info("detected-invalid-start-auction-json", lager.Data{
+				"error":   err.Error(),
+				"payload": auctionNode.Value,
+			})
+			return false
+		}
+
+		updatedAt := time.Unix(0, auction.UpdatedAt)
+
+		switch auction.State {
+		case models.LRPStartAuctionStatePending:
+			if bbs.timeProvider.Time().Sub(updatedAt) > kickPendingDuration {
+				bbs.logger.Info("detected-pending-auction", lager.Data{
+					"auction":       auction,
+					"kick-duration": kickPendingDuration,
+				})
+
+				auctionsToCAS = append(auctionsToCAS, compareAndSwappableLRPStartAuction{
+					OldIndex:           auctionNode.Index,
+					NewLRPStartAuction: auction,
+				})
+			}
+
+		case models.LRPStartAuctionStateClaimed:
+			if bbs.timeProvider.Time().Sub(updatedAt) > expireClaimedDuration {
+				bbs.logger.Info("detected-expired-claim", lager.Data{
+					"auction":             auction,
+					"expiration-duration": expireClaimedDuration,
+				})
+				return false
+			}
+		}
+
+		return true
+	})
+
+	if err != nil {
+		bbs.logger.Error("failed-to-prune-start-auctions", err)
 		return
 	}
 
-	var keysToDelete []string
-	var auctionsToCAS []compareAndSwappableLRPStartAuction
-
-	for _, node := range node.ChildNodes {
-		for _, node := range node.ChildNodes {
-			auction, err := models.NewLRPStartAuctionFromJSON(node.Value)
-			if err != nil {
-				bbs.logger.Info("detected-invalid-start-auction-json", lager.Data{
-					"error":   err.Error(),
-					"payload": node.Value,
-				})
-
-				keysToDelete = append(keysToDelete, node.Key)
-				continue
-			}
-
-			updatedAt := time.Unix(0, auction.UpdatedAt)
-			switch auction.State {
-			case models.LRPStartAuctionStatePending:
-				if bbs.timeProvider.Time().Sub(updatedAt) > kickPendingDuration {
-					bbs.logger.Info("detected-pending-auction", lager.Data{
-						"auction":       auction,
-						"kick-duration": kickPendingDuration,
-					})
-
-					auctionsToCAS = append(auctionsToCAS, compareAndSwappableLRPStartAuction{
-						OldIndex:           node.Index,
-						NewLRPStartAuction: auction,
-					})
-				}
-
-			case models.LRPStartAuctionStateClaimed:
-				if bbs.timeProvider.Time().Sub(updatedAt) > expireClaimedDuration {
-					bbs.logger.Info("detected-expired-claim", lager.Data{
-						"auction":             auction,
-						"expiration-duration": expireClaimedDuration,
-					})
-
-					keysToDelete = append(keysToDelete, node.Key)
-				}
-			}
-		}
-	}
-
-	bbs.store.Delete(keysToDelete...)
 	bbs.batchCompareAndSwapLRPStartAuctions(auctionsToCAS)
 }
 

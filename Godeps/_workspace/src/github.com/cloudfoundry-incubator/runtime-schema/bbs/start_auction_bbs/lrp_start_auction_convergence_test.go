@@ -6,22 +6,30 @@ import (
 
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	"github.com/cloudfoundry/storeadapter"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
+const (
+	processGuid               = "process-guid"
+	pendingKickDuration       = 30 * time.Second
+	claimedExpirationDuration = 5 * time.Minute
+)
+
 var _ = Describe("LRPStartAuction Convergence", func() {
-	var pendingKickDuration time.Duration
-	var claimedExpirationDuration time.Duration
-	BeforeEach(func() {
-		pendingKickDuration = 30 * time.Second
-		claimedExpirationDuration = 5 * time.Minute
+	var startAuctionEvents <-chan models.LRPStartAuction
+
+	JustBeforeEach(func() {
+		startAuctionEvents, _, _ = bbs.WatchForLRPStartAuction()
+		bbs.ConvergeLRPStartAuctions(pendingKickDuration, claimedExpirationDuration)
 	})
 
 	Context("when the LRPAuction has invalid JSON", func() {
-		key := path.Join(shared.LRPStartAuctionSchemaRoot, "process-guid", "1")
+		var key = path.Join(shared.LRPStartAuctionSchemaRoot, "process-guid", "1")
+
 		BeforeEach(func() {
 			etcdClient.Create(storeadapter.StoreNode{
 				Key:   key,
@@ -30,103 +38,120 @@ var _ = Describe("LRPStartAuction Convergence", func() {
 		})
 
 		It("should be removed", func() {
-			bbs.ConvergeLRPStartAuctions(pendingKickDuration, claimedExpirationDuration)
 			_, err := etcdClient.Get(key)
 			Ω(err).Should(MatchError(storeadapter.ErrorKeyNotFound))
 		})
 	})
 
 	Describe("Kicking pending auctions", func() {
-		var startAuctionEvents <-chan models.LRPStartAuction
-		var auction models.LRPStartAuction
+		Context("up until the pending duration has passed", func() {
+			BeforeEach(func() {
+				newPendingStartAuction(processGuid)
+				timeProvider.Increment(pendingKickDuration)
+			})
 
-		commenceWatching := func() {
-			startAuctionEvents, _, _ = bbs.WatchForLRPStartAuction()
-		}
-
-		BeforeEach(func() {
-			auction = models.LRPStartAuction{
-				Index:        1,
-				InstanceGuid: "instance-guid",
-
-				DesiredLRP: models.DesiredLRP{
-					Domain:      "tests",
-					ProcessGuid: "some-guid",
-					Stack:       "some-stack",
-					Instances:   1,
-					Actions: []models.ExecutorAction{
-						{
-							Action: models.DownloadAction{
-								From: "http://example.com",
-								To:   "/tmp/internet",
-							},
-						},
-					},
-				},
-			}
-
-			err := bbs.RequestLRPStartAuction(auction)
-			Ω(err).ShouldNot(HaveOccurred())
+			It("does not kick the auctions", func() {
+				Consistently(startAuctionEvents).ShouldNot(Receive())
+			})
 		})
 
-		It("Kicks auctions that haven't been updated in the given amount of time", func() {
-			commenceWatching()
+		Context("when the pending duration has passed", func() {
+			var auction models.LRPStartAuction
 
-			timeProvider.Increment(pendingKickDuration)
-			bbs.ConvergeLRPStartAuctions(pendingKickDuration, claimedExpirationDuration)
-			Consistently(startAuctionEvents).ShouldNot(Receive())
+			BeforeEach(func() {
+				auction = newPendingStartAuction(processGuid)
+				timeProvider.Increment(pendingKickDuration + time.Second)
+				newPendingStartAuction(processGuid)
+			})
 
-			var noticedOnce models.LRPStartAuction
-			timeProvider.Increment(time.Second)
-			bbs.ConvergeLRPStartAuctions(pendingKickDuration, claimedExpirationDuration)
-			Eventually(startAuctionEvents).Should(Receive(&noticedOnce))
-			Ω(noticedOnce.Index).Should(Equal(auction.Index))
+			It("Only kicks auctions that haven't been updated in the given amount of time", func() {
+				var noticedOnce models.LRPStartAuction
+				Eventually(startAuctionEvents).Should(Receive(&noticedOnce))
+				Ω(noticedOnce.Index).Should(Equal(auction.Index))
+
+				Consistently(startAuctionEvents).ShouldNot(Receive())
+			})
 		})
 	})
 
 	Describe("Deleting very old claimed events", func() {
-		BeforeEach(func() {
-			auction := models.LRPStartAuction{
-				Index:        1,
-				InstanceGuid: "instance-guid",
+		Context("up until the claimedExpiration duration", func() {
+			BeforeEach(func() {
+				newClaimedStartAuction(processGuid)
+				timeProvider.Increment(claimedExpirationDuration)
+			})
 
-				DesiredLRP: models.DesiredLRP{
-					Domain:      "tests",
-					ProcessGuid: "some-guid",
-					Stack:       "some-stack",
-					Instances:   1,
-					Actions: []models.ExecutorAction{
-						{
-							Action: models.DownloadAction{
-								From: "http://example.com",
-								To:   "/tmp/internet",
-							},
-						},
-					},
-				},
-			}
-
-			err := bbs.RequestLRPStartAuction(auction)
-			Ω(err).ShouldNot(HaveOccurred())
-			auction.State = models.LRPStartAuctionStatePending
-			auction.UpdatedAt = timeProvider.Time().UnixNano()
-
-			err = bbs.ClaimLRPStartAuction(auction)
-			Ω(err).ShouldNot(HaveOccurred())
+			It("should not delete claimed events", func() {
+				Ω(bbs.GetAllLRPStartAuctions()).Should(HaveLen(1))
+			})
 		})
 
-		It("should delete claimed events that have expired", func() {
-			timeProvider.Increment(pendingKickDuration)
-			bbs.ConvergeLRPStartAuctions(pendingKickDuration, claimedExpirationDuration)
-			Ω(bbs.GetAllLRPStartAuctions()).Should(HaveLen(1))
+		Context("when we are past the claimedExpiration duration", func() {
+			BeforeEach(func() {
+				newClaimedStartAuction(processGuid)
+				newClaimedStartAuction("other-process")
+				newClaimedStartAuction("process-to-delete")
+				timeProvider.Increment(claimedExpirationDuration + 1*time.Second)
+				newClaimedStartAuction(processGuid)
+				newPendingStartAuction("other-process")
+			})
 
-			timeProvider.Increment(claimedExpirationDuration - pendingKickDuration)
-			bbs.ConvergeLRPStartAuctions(pendingKickDuration, claimedExpirationDuration)
-			Ω(bbs.GetAllLRPStartAuctions()).Should(HaveLen(1))
+			It("should delete claimed events that have expired", func() {
+				Ω(bbs.GetAllLRPStartAuctions()).Should(HaveLen(2))
+			})
 
-			timeProvider.Increment(time.Second)
-			bbs.ConvergeLRPStartAuctions(pendingKickDuration, claimedExpirationDuration)
-			Ω(bbs.GetAllLRPStartAuctions()).Should(BeEmpty())
+			It("should prune start auction directories for events that have expired", func() {
+				startedAuctionRoot, err := etcdClient.ListRecursively(shared.LRPStartAuctionSchemaRoot)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(startedAuctionRoot.ChildNodes).Should(HaveLen(2))
+			})
 		})
 	})
 })
+
+var auctionIndex = 0
+
+func newStartAuction(processGuid string) models.LRPStartAuction {
+	auctionIndex += 1
+	return models.LRPStartAuction{
+		Index:        auctionIndex,
+		InstanceGuid: factories.GenerateGuid(),
+
+		DesiredLRP: models.DesiredLRP{
+			Domain:      "tests",
+			ProcessGuid: processGuid,
+			Stack:       "some-stack",
+			Instances:   1,
+			Actions: []models.ExecutorAction{
+				{
+					Action: models.DownloadAction{
+						From: "http://example.com",
+						To:   "/tmp/internet",
+					},
+				},
+			},
+		},
+	}
+}
+
+func newPendingStartAuction(processGuid string) models.LRPStartAuction {
+	auction := newStartAuction(processGuid)
+
+	err := bbs.RequestLRPStartAuction(auction)
+	Ω(err).ShouldNot(HaveOccurred())
+	auction.State = models.LRPStartAuctionStatePending
+	auction.UpdatedAt = timeProvider.Time().UnixNano()
+
+	return auction
+}
+
+func newClaimedStartAuction(processGuid string) models.LRPStartAuction {
+	auction := newPendingStartAuction(processGuid)
+
+	err := bbs.ClaimLRPStartAuction(auction)
+	Ω(err).ShouldNot(HaveOccurred())
+	auction.State = models.LRPStartAuctionStateClaimed
+	auction.UpdatedAt = timeProvider.Time().UnixNano()
+
+	return auction
+}

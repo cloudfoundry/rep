@@ -79,13 +79,9 @@ func (bbs *TaskBBS) ConvergeTask(timeToClaim time.Duration, convergenceInterval 
 			}
 		case models.TaskStateClaimed:
 			_, executorIsAlive := executorState.Lookup(task.ExecutorID)
-
 			if !executorIsAlive {
 				logError(task, "executor-disappeared")
 				scheduleForCASByIndex(node.Index, markTaskFailed(task, "executor disappeared before completion"))
-			} else if shouldKickTask {
-				logError(task, "failed-to-start")
-				scheduleForCASByIndex(node.Index, demoteToPending(task))
 			}
 		case models.TaskStateRunning:
 			_, executorIsAlive := executorState.Lookup(task.ExecutorID)
@@ -147,13 +143,6 @@ func (bbs *TaskBBS) batchCompareAndSwapTasks(tasksToCAS []compareAndSwappableTas
 	}
 
 	waitGroup.Wait()
-}
-
-func demoteToPending(task models.Task) models.Task {
-	task.State = models.TaskStatePending
-	task.ExecutorID = ""
-	task.ContainerHandle = ""
-	return task
 }
 
 func demoteToCompleted(task models.Task) models.Task {
