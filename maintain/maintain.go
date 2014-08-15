@@ -2,30 +2,29 @@ package maintain
 
 import (
 	"os"
-	"syscall"
 	"time"
 
 	executorapi "github.com/cloudfoundry-incubator/executor/api"
-	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
+	"github.com/pivotal-golang/timer"
+	"github.com/tedsuo/ifrit"
 )
 
 type Maintainer struct {
-	executorPresence  models.ExecutorPresence
-	bbs               Bbs.RepBBS
+	heartbeater       ifrit.Runner
 	executorClient    executorapi.Client
 	logger            lager.Logger
 	heartbeatInterval time.Duration
+	timer             timer.Timer
 }
 
-func New(executorPresence models.ExecutorPresence, executorClient executorapi.Client, bbs Bbs.RepBBS, logger lager.Logger, heartbeatInterval time.Duration) *Maintainer {
+func New(executorClient executorapi.Client, heartbeater ifrit.Runner, logger lager.Logger, heartbeatInterval time.Duration, timer timer.Timer) *Maintainer {
 	return &Maintainer{
-		executorPresence:  executorPresence,
-		bbs:               bbs,
+		heartbeater:       heartbeater,
 		executorClient:    executorClient,
 		logger:            logger.Session("maintainer"),
 		heartbeatInterval: heartbeatInterval,
+		timer:             timer,
 	}
 }
 
@@ -37,64 +36,41 @@ func (m *Maintainer) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error 
 		}
 
 		m.logger.Error("failed-to-ping-executor-on-start", err)
-		time.Sleep(time.Second)
+		m.timer.Sleep(time.Second)
 	}
 
-	presence, status, err := m.bbs.MaintainExecutorPresence(m.heartbeatInterval, m.executorPresence)
-	if err != nil {
-		m.logger.Error("failed-to-start-maintaining-presence", err)
-		return err
-	}
+	heartbeatProcess := ifrit.Envoke(m.heartbeater)
+	heartbeatExitChan := heartbeatProcess.Wait()
 
 	close(ready)
 
-	var pingTickerChan <-chan time.Time
-	var pingTicker *time.Ticker
+	ticker := m.timer.Every(500 * time.Millisecond)
 
 	for {
 		select {
-		case sig := <-sigChan:
-			switch sig {
-			case syscall.SIGINT, syscall.SIGTERM:
-				presence.Remove()
-				return nil
-			}
+		case err := <-heartbeatExitChan:
+			m.logger.Error("lost-lock", err)
+			heartbeatExitChan = nil
 
-		case locked, ok := <-status:
-			if !ok {
-				return nil
-			}
+		case <-sigChan:
+			heartbeatProcess.Signal(os.Kill)
+			<-heartbeatProcess.Wait()
+			return nil
 
-			if !locked {
-				m.logger.Error("lost-lock", nil)
-				continue
-			}
-
+		case <-ticker:
 			err := m.executorClient.Ping()
 			if err != nil {
-				m.logger.Error("failed-to-ping-executor", err)
-				status = nil
-				presence.Remove()
-				pingTicker = time.NewTicker(time.Second)
-				pingTickerChan = pingTicker.C
+				heartbeatProcess.Signal(os.Kill)
+				heartbeatExitChan = nil
+			} else if heartbeatExitChan == nil {
+				heartbeatProcess = ifrit.Envoke(m.heartbeater)
+				heartbeatExitChan = heartbeatProcess.Wait()
 			}
 
-		case <-pingTickerChan:
-			err := m.executorClient.Ping()
-			if err != nil {
-				continue
-			}
-
-			presence, status, err = m.bbs.MaintainExecutorPresence(m.heartbeatInterval, m.executorPresence)
 			if err != nil {
 				m.logger.Error("failed-to-restart-maintaining-presence", err)
-				status = nil
 				continue
 			}
-
-			pingTicker.Stop()
-			pingTickerChan = nil
-			pingTicker = nil
 		}
 	}
 }

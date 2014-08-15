@@ -2,14 +2,15 @@ package maintain_test
 
 import (
 	"errors"
+	"os"
 	"syscall"
 	"time"
 
 	fake_client "github.com/cloudfoundry-incubator/executor/api/fakes"
 	"github.com/cloudfoundry-incubator/rep/maintain"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	maintain_fakes "github.com/cloudfoundry-incubator/rep/maintain/fakes"
 	"github.com/pivotal-golang/lager/lagertest"
+	"github.com/pivotal-golang/timer/fake_timer"
 	"github.com/tedsuo/ifrit"
 
 	. "github.com/onsi/ginkgo"
@@ -19,157 +20,164 @@ import (
 
 var _ = Describe("Maintain Presence", func() {
 	var (
-		executorPresence  models.ExecutorPresence
 		heartbeatInterval = 500 * time.Millisecond
 
-		fakeBBS    *fake_bbs.FakeRepBBS
-		fakeClient *fake_client.FakeClient
-		logger     *lagertest.TestLogger
+		fakeHeartbeater *maintain_fakes.FakeRunner
+		fakeClient      *fake_client.FakeClient
+		logger          *lagertest.TestLogger
 
-		maintainer      ifrit.Runner
-		maintainProcess ifrit.Process
-
-		presence           *fake_bbs.FakePresence
-		maintainStatusChan chan bool
+		maintainer        ifrit.Runner
+		maintainProcess   ifrit.Process
+		heartbeaterErrors chan error
+		fakeTimer         *fake_timer.FakeTimer
+		pingErrors        chan error
 	)
 
 	BeforeEach(func() {
-		fakeClient = new(fake_client.FakeClient)
-
-		presence = &fake_bbs.FakePresence{}
-		maintainStatusChan = make(chan bool)
-
-		executorPresence = models.ExecutorPresence{
-			ExecutorID: "executor-id",
-			Stack:      "lucid64",
+		pingErrors = make(chan error, 1)
+		fakeClient = &fake_client.FakeClient{
+			PingStub: func() error {
+				return <-pingErrors
+			},
 		}
 
-		fakeBBS = &fake_bbs.FakeRepBBS{}
-		fakeBBS.MaintainExecutorPresenceReturns(presence, maintainStatusChan, nil)
+		heartbeaterErrors = make(chan error)
+		fakeHeartbeater = &maintain_fakes.FakeRunner{
+			RunStub: func(sigChan <-chan os.Signal, ready chan<- struct{}) error {
+				close(ready)
+				return <-heartbeaterErrors
+			},
+		}
 
 		logger = lagertest.NewTestLogger("test")
+		fakeTimer = fake_timer.NewFakeTimer(time.Now())
 
-		maintainer = maintain.New(executorPresence, fakeClient, fakeBBS, logger, heartbeatInterval)
+		maintainer = maintain.New(fakeClient, fakeHeartbeater, logger, heartbeatInterval, fakeTimer)
 	})
 
 	AfterEach(func() {
-		if maintainProcess != nil {
-			maintainProcess.Signal(syscall.SIGTERM)
-			<-maintainProcess.Wait()
-		}
+		maintainProcess.Signal(syscall.SIGTERM)
+		close(heartbeaterErrors)
+		Eventually(maintainProcess.Wait()).Should(Receive())
 	})
 
-	Describe("starting up", func() {
-		It("pings the executor", func() {
+	It("pings the executor", func() {
+		pingErrors <- nil
+		maintainProcess = ifrit.Envoke(maintainer)
+		Ω(fakeClient.PingCallCount()).Should(Equal(1))
+	})
+
+	Context("when pinging the executor fails", func() {
+		It("keeps pinging until it succeeds, then starts heartbeating the executor's presence", func() {
+			ready := make(chan struct{})
+			go func() {
+				maintainProcess = ifrit.Envoke(maintainer)
+				close(ready)
+			}()
+
+			for i := 1; i <= 4; i++ {
+				fakeTimer.Elapse(1 * time.Second)
+				pingErrors <- errors.New("ping failed")
+				Eventually(fakeClient.PingCallCount).Should(Equal(i))
+				Ω(ready).ShouldNot(BeClosed())
+			}
+
+			pingErrors <- nil
+			fakeTimer.Elapse(1 * time.Second)
+			Eventually(fakeClient.PingCallCount).Should(Equal(5))
+
+			Eventually(ready).Should(BeClosed())
+			Ω(fakeHeartbeater.RunCallCount()).Should(Equal(1))
+		})
+	})
+
+	Context("when pinging the executor succeeds", func() {
+		BeforeEach(func() {
+			pingErrors <- nil
+
 			maintainProcess = ifrit.Envoke(maintainer)
-			Ω(fakeClient.PingCallCount()).Should(Equal(1))
 		})
 
-		Context("when pinging the executor fails", func() {
+		It("starts maintaining presence", func() {
+			Ω(fakeHeartbeater.RunCallCount()).Should(Equal(1))
+		})
+
+		It("continues pings the executor on an interval", func() {
+			for i := 1; i < 5; i++ {
+				pingErrors <- nil
+				fakeTimer.Elapse(1 * time.Second)
+				Eventually(fakeClient.PingCallCount).Should(Equal(i))
+			}
+		})
+
+		Context("when the executor ping fails", func() {
 			BeforeEach(func() {
-				pingResults := make(chan error, 3)
-				pingResults <- errors.New("wham")
-				pingResults <- errors.New("bam")
-				pingResults <- nil
+				pingErrors <- errors.New("failed to ping")
+				fakeTimer.Elapse(1 * time.Second)
+			})
 
-				fakeClient.PingStub = func() error {
-					select {
-					case err := <-pingResults:
-						Ω(fakeBBS.MaintainExecutorPresenceCallCount()).Should(BeZero())
-						return err
-					}
+			It("stops heartbeating the executor's presence", func() {
+				sigChan, _ := fakeHeartbeater.RunArgsForCall(0)
+				Eventually(sigChan).Should(Receive(Equal(os.Kill)))
+			})
 
-					return nil
+			It("continues pinging the executor", func() {
+				for i := 2; i < 6; i++ {
+					pingErrors <- errors.New("failed again")
+					fakeTimer.Elapse(1 * time.Second)
+					Eventually(fakeClient.PingCallCount).Should(Equal(i))
 				}
 			})
 
-			It("keeps trying until it succeeds, before maintaining presence", func() {
-				maintainProcess = ifrit.Envoke(maintainer)
-				Ω(fakeBBS.MaintainExecutorPresenceCallCount()).Should(Equal(1))
-			})
-		})
-	})
-
-	Context("when running", func() {
-		BeforeEach(func() {
-			maintainProcess = ifrit.Envoke(maintainer)
-		})
-
-		It("should already have started maintaining presence", func() {
-			Ω(fakeBBS.MaintainExecutorPresenceCallCount()).Should(Equal(1))
-			interval, maintainedPresence := fakeBBS.MaintainExecutorPresenceArgsForCall(0)
-			Ω(interval).Should(Equal(heartbeatInterval))
-			Ω(maintainedPresence).Should(Equal(executorPresence))
-		})
-
-		It("should ping the executor on each maintain tick", func() {
-			maintainStatusChan <- true
-			Eventually(fakeClient.PingCallCount).Should(Equal(2))
-
-			maintainStatusChan <- true
-			Eventually(fakeClient.PingCallCount).Should(Equal(3))
-		})
-
-		Context("and the executor ping fails", func() {
-			BeforeEach(func() {
-				fakeClient.PingReturns(errors.New("bam"))
-
-				pings := fakeClient.PingCallCount()
-				maintainStatusChan <- true
-				Eventually(fakeClient.PingCallCount).Should(Equal(pings + 1))
-			})
-
-			It("should remove presence", func() {
-				Eventually(presence.Removed).Should(BeTrue())
-			})
-
-			It("should start pinging the executor without relying on its presence being maintained", func() {
-				Eventually(fakeClient.PingCallCount, 10*heartbeatInterval).Should(Equal(2))
-				Eventually(fakeClient.PingCallCount, 10*heartbeatInterval).Should(Equal(3))
-			})
-
-			Context("and then the executor ping succeeds", func() {
-				var newMaintainStatusChan chan bool
-
+			Context("when the executor ping succeeds again", func() {
 				BeforeEach(func() {
-					newMaintainStatusChan = make(chan bool)
-					fakeBBS.MaintainExecutorPresenceReturns(presence, newMaintainStatusChan, nil)
+					heartbeaterErrors <- nil
 
-					fakeClient.PingReturns(nil) //healthy again
-					Eventually(fakeClient.PingCallCount, 10*heartbeatInterval).Should(Equal(2))
+					Eventually(fakeClient.PingCallCount).Should(Equal(2))
+
+					pingErrors <- nil
+					fakeTimer.Elapse(1 * time.Second)
+					Eventually(fakeClient.PingCallCount).Should(Equal(3))
 				})
 
-				It("should attempt to reestablish presence", func() {
-					Eventually(fakeBBS.MaintainExecutorPresenceCallCount, 10*heartbeatInterval).Should(Equal(2))
+				It("begins heartbeating the executor's presence again", func() {
+					Eventually(fakeHeartbeater.RunCallCount, 10*heartbeatInterval).Should(Equal(2))
 				})
 
-				It("should ping the executor on each maintain tick", func() {
-					Ω(fakeClient.PingCallCount()).Should(Equal(2))
-
-					select {
-					case newMaintainStatusChan <- true:
-					case <-time.Tick(time.Second):
-						Fail("newMaintainStatusChan not called in time")
+				It("continues to ping the executor", func() {
+					for i := 4; i < 6; i++ {
+						pingErrors <- nil
+						fakeTimer.Elapse(1 * time.Second)
+						Eventually(fakeClient.PingCallCount).Should(Equal(i))
 					}
-
-					Eventually(fakeClient.PingCallCount, 10*heartbeatInterval).Should(Equal(4))
 				})
 			})
 		})
 
-		Context("when we fail to maintain our presence", func() {
+		Context("when heartbeating fails", func() {
 			BeforeEach(func() {
-				maintainStatusChan <- false
+				heartbeaterErrors <- errors.New("heartbeating failed")
 			})
 
 			It("does not shut down", func() {
 				Consistently(maintainProcess.Wait()).ShouldNot(Receive(), "should not shut down")
 			})
 
-			It("continues to retry", func() {
-				Ω(fakeClient.PingCallCount()).Should(Equal(1))
-				maintainStatusChan <- true
-				Eventually(fakeClient.PingCallCount).Should(Equal(2))
+			It("continues pinging the executor", func() {
+				for i := 2; i < 6; i++ {
+					pingErrors <- nil
+					fakeTimer.Elapse(1 * time.Second)
+					Eventually(fakeClient.PingCallCount).Should(Equal(i))
+				}
+			})
+
+			It("tries to restart heartbeating each time the ping succeeds", func() {
+				Ω(fakeHeartbeater.RunCallCount()).Should(Equal(1))
+
+				pingErrors <- nil
+				fakeTimer.Elapse(1 * time.Second)
+
+				Eventually(fakeHeartbeater.RunCallCount).Should(Equal(2))
 			})
 
 			It("logs an error message", func() {
