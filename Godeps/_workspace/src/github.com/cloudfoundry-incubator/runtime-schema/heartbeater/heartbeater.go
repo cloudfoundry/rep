@@ -66,8 +66,14 @@ func (h Heartbeater) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 
 	for {
 		select {
-		case <-signals:
-			return nil
+		case sig := <-signals:
+			switch sig {
+			case os.Kill:
+				return nil
+			default:
+				h.Client.CompareAndDelete(node)
+				return nil
+			}
 
 		case <-connectionTimeout:
 			logger.Info("connection-timed-out")

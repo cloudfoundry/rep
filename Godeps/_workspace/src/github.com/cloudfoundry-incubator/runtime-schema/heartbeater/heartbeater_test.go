@@ -70,6 +70,29 @@ var _ = Describe("Heartbeater", func() {
 		It("continuously writes the given node to the store", func() {
 			Consistently(matchtHeartbeatNode(expectedHeartbeatNode), heartbeatInterval*4).ShouldNot(HaveOccurred())
 		})
+
+		Context("and it is sent a signal", func() {
+			BeforeEach(func() {
+				heartBeat.Signal(os.Interrupt)
+			})
+
+			It("exits and deletes the node from the store", func() {
+				Eventually(heartBeat.Wait()).Should(Receive(BeNil()))
+				_, err := etcdClient.Get(expectedHeartbeatNode.Key)
+				Ω(err).Should(Equal(storeadapter.ErrorKeyNotFound))
+			})
+		})
+
+		Context("and it is sent the kill signal", func() {
+			BeforeEach(func() {
+				heartBeat.Signal(os.Kill)
+			})
+
+			It("exits and does not delete the node from the store", func() {
+				Eventually(heartBeat.Wait()).Should(Receive(BeNil()))
+				Ω(matchtHeartbeatNode(expectedHeartbeatNode)()).ShouldNot(HaveOccurred())
+			})
+		})
 	})
 
 	Context("when the node is deleted after we have aquired a lock", func() {

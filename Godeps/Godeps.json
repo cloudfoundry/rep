@@ -11,19 +11,19 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctionrep",
-			"Rev": "0327579e8a3d5960b90cb14667eb5ed14a9d36ea"
+			"Rev": "80b09411754998aef91abfbcc2642ff800c1d8ed"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctiontypes",
-			"Rev": "0327579e8a3d5960b90cb14667eb5ed14a9d36ea"
+			"Rev": "80b09411754998aef91abfbcc2642ff800c1d8ed"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats",
-			"Rev": "0327579e8a3d5960b90cb14667eb5ed14a9d36ea"
+			"Rev": "80b09411754998aef91abfbcc2642ff800c1d8ed"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/util",
-			"Rev": "0327579e8a3d5960b90cb14667eb5ed14a9d36ea"
+			"Rev": "80b09411754998aef91abfbcc2642ff800c1d8ed"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/cf-debug-server",
@@ -39,31 +39,35 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/api",
-			"Rev": "6e6986bf37e332cc996a2aeab5d873d39a5ac49a"
+			"Rev": "08ce482c14e81ad98ba2acfe5ab8005dee81f0d8"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/client",
-			"Rev": "6e6986bf37e332cc996a2aeab5d873d39a5ac49a"
+			"Rev": "08ce482c14e81ad98ba2acfe5ab8005dee81f0d8"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "ab0a2903cc6204e2df53c7812bbdaa1d0305f1e2"
+			"Rev": "538875d73b153d53c129dbc7085206853785fdf9"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/heartbeater",
-			"Rev": "ab0a2903cc6204e2df53c7812bbdaa1d0305f1e2"
+			"Rev": "538875d73b153d53c129dbc7085206853785fdf9"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "ab0a2903cc6204e2df53c7812bbdaa1d0305f1e2"
+			"Rev": "538875d73b153d53c129dbc7085206853785fdf9"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/gunk/group_runner",
+			"Rev": "d3d2d94e738fb19b5ae6504be161fd0eacc3f22d"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
-			"Rev": "2bb7ab04e15bdae68f68e4aa7ef79b43a371e088"
+			"Rev": "d3d2d94e738fb19b5ae6504be161fd0eacc3f22d"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/timeprovider",
-			"Rev": "2bb7ab04e15bdae68f68e4aa7ef79b43a371e088"
+			"Rev": "d3d2d94e738fb19b5ae6504be161fd0eacc3f22d"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
@@ -84,8 +88,8 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Comment": "v1.1.0-1-g32204a3",
-			"Rev": "32204a3eab0576cbea19f5ff8b27d3a928647ea6"
+			"Comment": "v1.1.0-2-g6225000",
+			"Rev": "6225000f34637a7aac336f8cadb9cd49ce10efef"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
@@ -94,15 +98,15 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/lager",
-			"Rev": "ada65d2c262ba5474d357bf57bc0f8b8deaa9196"
+			"Rev": "24bc7249ba26ad2f1493363b9dcedf86023f47d7"
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/timer",
-			"Rev": "108ae5fe1875ef7ccef96ad14020b7825fad1983"
+			"Rev": "79a02f14345f482a54a963bda76bf1d17dbf3dc9"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
-			"Rev": "82bc852c28d76c55d89bb16ffa2fe2240e5cc9ad"
+			"Rev": "82dbb8f9b53dba16c9d5c3e0c74fa581d65f8579"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/rata",

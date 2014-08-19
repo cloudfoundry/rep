@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/cloudfoundry-incubator/auction/auctionrep"
@@ -28,6 +27,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/heartbeater"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry/gunk/group_runner"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
@@ -36,7 +36,6 @@ import (
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/timer"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
 	"github.com/tedsuo/ifrit/sigmon"
 	"github.com/tedsuo/rata"
@@ -125,38 +124,17 @@ func main() {
 	executorClient := client.New(http.DefaultClient, *executorURL)
 	lrpStopper := initializeLRPStopper(bbs, executorClient, logger)
 
-	group := grouper.EnvokeGroup(grouper.RunGroup{
-		"maintainer":        initializeMaintainer(*executorID, executorClient, store, logger),
-		"task-rep":          initializeTaskRep(*executorID, bbs, logger, executorClient),
-		"stop-lrp-listener": initializeStopLRPListener(lrpStopper, bbs, logger),
-		"api-server":        initializeAPIServer(*executorID, bbs, logger, executorClient),
-		"auction-server":    initializeAuctionNatsServer(*executorID, lrpStopper, bbs, executorClient, logger),
-	})
-
-	monitor := ifrit.Envoke(sigmon.New(group))
-
+	monitor := ifrit.Envoke(sigmon.New(group_runner.New([]group_runner.Member{
+		{"maintainer", initializeMaintainer(*executorID, executorClient, store, logger)},
+		{"task-rep", initializeTaskRep(*executorID, bbs, logger, executorClient)},
+		{"stop-lrp-listener", initializeStopLRPListener(lrpStopper, bbs, logger)},
+		{"api-server", initializeAPIServer(*executorID, bbs, logger, executorClient)},
+		{"auction-server", initializeAuctionNatsServer(*executorID, lrpStopper, bbs, executorClient, logger)},
+	})))
 	logger.Info("started")
 
-	workerExited := group.Exits()
-	monitorExited := monitor.Wait()
-
-	for {
-		select {
-		case member := <-workerExited:
-			logger.Info("process-exited", lager.Data{
-				"member": member.Name,
-			})
-
-			monitor.Signal(syscall.SIGTERM)
-		case err := <-monitorExited:
-			if err != nil {
-				logger.Error("exited-with-failure", err)
-				os.Exit(1)
-			}
-
-			os.Exit(0)
-		}
-	}
+	<-monitor.Wait()
+	logger.Info("shutting-down")
 }
 
 func initializeStore() *etcdstoreadapter.ETCDStoreAdapter {
