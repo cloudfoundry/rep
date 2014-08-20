@@ -4,7 +4,6 @@ import (
 	"flag"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -24,8 +23,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep/stop_lrp_listener"
 	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
-	"github.com/cloudfoundry-incubator/runtime-schema/heartbeater"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gunk/group_runner"
 	"github.com/cloudfoundry/gunk/timeprovider"
@@ -119,42 +116,46 @@ func main() {
 	cf_debug_server.Run()
 
 	logger := cf_lager.New("rep")
-	store := initializeStore()
-	bbs := initializeRepBBS(store, logger)
+	bbs := initializeRepBBS(logger)
 	executorClient := client.New(http.DefaultClient, *executorURL)
 	lrpStopper := initializeLRPStopper(bbs, executorClient, logger)
-
-	monitor := ifrit.Envoke(sigmon.New(group_runner.New([]group_runner.Member{
-		{"maintainer", initializeMaintainer(*executorID, executorClient, store, logger)},
+	group := group_runner.New([]group_runner.Member{
+		{"heartbeater", initializeExecutorHeartbeat(bbs, executorClient, logger)},
 		{"task-rep", initializeTaskRep(*executorID, bbs, logger, executorClient)},
 		{"stop-lrp-listener", initializeStopLRPListener(lrpStopper, bbs, logger)},
 		{"api-server", initializeAPIServer(*executorID, bbs, logger, executorClient)},
 		{"auction-server", initializeAuctionNatsServer(*executorID, lrpStopper, bbs, executorClient, logger)},
-	})))
+	})
 
+	monitor := ifrit.Envoke(sigmon.New(group))
 	logger.Info("started")
 
 	<-monitor.Wait()
 	logger.Info("shutting-down")
 }
 
-func initializeStore() *etcdstoreadapter.ETCDStoreAdapter {
-	return etcdstoreadapter.NewETCDStoreAdapter(
+func initializeExecutorHeartbeat(bbs Bbs.RepBBS, executorClient executorapi.Client, logger lager.Logger) ifrit.Runner {
+	executorPresence := models.ExecutorPresence{
+		ExecutorID: *executorID,
+		Stack:      *stack,
+	}
+
+	heartbeat := bbs.NewExecutorHeartbeat(executorPresence, *heartbeatInterval)
+	return maintain.New(executorClient, heartbeat, logger, *heartbeatInterval, timer.NewTimer())
+}
+
+func initializeRepBBS(logger lager.Logger) Bbs.RepBBS {
+	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
 		strings.Split(*etcdCluster, ","),
 		workerpool.NewWorkerPool(10),
 	)
-}
-
-func initializeRepBBS(etcdAdapter *etcdstoreadapter.ETCDStoreAdapter, logger lager.Logger) Bbs.RepBBS {
-	bbs := Bbs.NewRepBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
 
 	err := etcdAdapter.Connect()
 	if err != nil {
 		logger.Fatal("failed-to-connect-to-etcd", err)
-		os.Exit(1)
 	}
 
-	return bbs
+	return Bbs.NewRepBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
 }
 
 func initializeTaskRep(executorID string, bbs Bbs.RepBBS, logger lager.Logger, executorClient executorapi.Client) *task_scheduler.TaskScheduler {
@@ -191,23 +192,6 @@ func initializeAPIServer(executorID string, bbs Bbs.RepBBS, logger lager.Logger,
 		panic("failed to initialize api server: " + err.Error())
 	}
 	return http_server.New(*listenAddr, apiHandler)
-}
-
-func initializeMaintainer(executorID string, executorClient executorapi.Client, etcdAdapter *etcdstoreadapter.ETCDStoreAdapter, logger lager.Logger) *maintain.Maintainer {
-	executorPresence := models.ExecutorPresence{
-		ExecutorID: executorID,
-		Stack:      *stack,
-	}
-
-	heartbeater := heartbeater.New(
-		etcdAdapter,
-		shared.ExecutorSchemaPath(executorPresence.ExecutorID),
-		string(executorPresence.ToJSON()),
-		500*time.Millisecond,
-		logger,
-	)
-
-	return maintain.New(executorClient, heartbeater, logger, *heartbeatInterval, timer.NewTimer())
 }
 
 func initializeNatsClient(logger lager.Logger) yagnats.NATSClient {
