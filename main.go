@@ -131,6 +131,7 @@ func main() {
 		{"api-server", initializeAPIServer(*executorID, bbs, logger, executorClient)},
 		{"auction-server", initializeAuctionNatsServer(*executorID, lrpStopper, bbs, executorClient, logger)},
 	})))
+
 	logger.Info("started")
 
 	<-monitor.Wait()
