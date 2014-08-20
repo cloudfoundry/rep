@@ -2,26 +2,23 @@
 package fake_bbs
 
 import (
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/services_bbs"
-
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
-
 	"sync"
 	"time"
+
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/tedsuo/ifrit"
 )
 
 type FakeRepBBS struct {
-	MaintainExecutorPresenceStub        func(heartbeatInterval time.Duration, executorPresence models.ExecutorPresence) (services_bbs.Presence, <-chan bool, error)
-	maintainExecutorPresenceMutex       sync.RWMutex
-	maintainExecutorPresenceArgsForCall []struct {
-		heartbeatInterval time.Duration
-		executorPresence  models.ExecutorPresence
+	NewExecutorHeartbeatStub        func(executorPresence models.ExecutorPresence, interval time.Duration) ifrit.Runner
+	newExecutorHeartbeatMutex       sync.RWMutex
+	newExecutorHeartbeatArgsForCall []struct {
+		executorPresence models.ExecutorPresence
+		interval         time.Duration
 	}
-	maintainExecutorPresenceReturns struct {
-		result1 services_bbs.Presence
-		result2 <-chan bool
-		result3 error
+	newExecutorHeartbeatReturns struct {
+		result1 ifrit.Runner
 	}
 	WatchForDesiredTaskStub        func() (<-chan models.Task, chan<- bool, <-chan error)
 	watchForDesiredTaskMutex       sync.RWMutex
@@ -115,45 +112,43 @@ type FakeRepBBS struct {
 	}
 }
 
-func (fake *FakeRepBBS) MaintainExecutorPresence(heartbeatInterval time.Duration, executorPresence models.ExecutorPresence) (services_bbs.Presence, <-chan bool, error) {
-	fake.maintainExecutorPresenceMutex.Lock()
-	defer fake.maintainExecutorPresenceMutex.Unlock()
-	fake.maintainExecutorPresenceArgsForCall = append(fake.maintainExecutorPresenceArgsForCall, struct {
-		heartbeatInterval time.Duration
-		executorPresence  models.ExecutorPresence
-	}{heartbeatInterval, executorPresence})
-	if fake.MaintainExecutorPresenceStub != nil {
-		return fake.MaintainExecutorPresenceStub(heartbeatInterval, executorPresence)
+func (fake *FakeRepBBS) NewExecutorHeartbeat(executorPresence models.ExecutorPresence, interval time.Duration) ifrit.Runner {
+	fake.newExecutorHeartbeatMutex.Lock()
+	fake.newExecutorHeartbeatArgsForCall = append(fake.newExecutorHeartbeatArgsForCall, struct {
+		executorPresence models.ExecutorPresence
+		interval         time.Duration
+	}{executorPresence, interval})
+	fake.newExecutorHeartbeatMutex.Unlock()
+	if fake.NewExecutorHeartbeatStub != nil {
+		return fake.NewExecutorHeartbeatStub(executorPresence, interval)
 	} else {
-		return fake.maintainExecutorPresenceReturns.result1, fake.maintainExecutorPresenceReturns.result2, fake.maintainExecutorPresenceReturns.result3
+		return fake.newExecutorHeartbeatReturns.result1
 	}
 }
 
-func (fake *FakeRepBBS) MaintainExecutorPresenceCallCount() int {
-	fake.maintainExecutorPresenceMutex.RLock()
-	defer fake.maintainExecutorPresenceMutex.RUnlock()
-	return len(fake.maintainExecutorPresenceArgsForCall)
+func (fake *FakeRepBBS) NewExecutorHeartbeatCallCount() int {
+	fake.newExecutorHeartbeatMutex.RLock()
+	defer fake.newExecutorHeartbeatMutex.RUnlock()
+	return len(fake.newExecutorHeartbeatArgsForCall)
 }
 
-func (fake *FakeRepBBS) MaintainExecutorPresenceArgsForCall(i int) (time.Duration, models.ExecutorPresence) {
-	fake.maintainExecutorPresenceMutex.RLock()
-	defer fake.maintainExecutorPresenceMutex.RUnlock()
-	return fake.maintainExecutorPresenceArgsForCall[i].heartbeatInterval, fake.maintainExecutorPresenceArgsForCall[i].executorPresence
+func (fake *FakeRepBBS) NewExecutorHeartbeatArgsForCall(i int) (models.ExecutorPresence, time.Duration) {
+	fake.newExecutorHeartbeatMutex.RLock()
+	defer fake.newExecutorHeartbeatMutex.RUnlock()
+	return fake.newExecutorHeartbeatArgsForCall[i].executorPresence, fake.newExecutorHeartbeatArgsForCall[i].interval
 }
 
-func (fake *FakeRepBBS) MaintainExecutorPresenceReturns(result1 services_bbs.Presence, result2 <-chan bool, result3 error) {
-	fake.MaintainExecutorPresenceStub = nil
-	fake.maintainExecutorPresenceReturns = struct {
-		result1 services_bbs.Presence
-		result2 <-chan bool
-		result3 error
-	}{result1, result2, result3}
+func (fake *FakeRepBBS) NewExecutorHeartbeatReturns(result1 ifrit.Runner) {
+	fake.NewExecutorHeartbeatStub = nil
+	fake.newExecutorHeartbeatReturns = struct {
+		result1 ifrit.Runner
+	}{result1}
 }
 
 func (fake *FakeRepBBS) WatchForDesiredTask() (<-chan models.Task, chan<- bool, <-chan error) {
 	fake.watchForDesiredTaskMutex.Lock()
-	defer fake.watchForDesiredTaskMutex.Unlock()
 	fake.watchForDesiredTaskArgsForCall = append(fake.watchForDesiredTaskArgsForCall, struct{}{})
+	fake.watchForDesiredTaskMutex.Unlock()
 	if fake.WatchForDesiredTaskStub != nil {
 		return fake.WatchForDesiredTaskStub()
 	} else {
@@ -178,11 +173,11 @@ func (fake *FakeRepBBS) WatchForDesiredTaskReturns(result1 <-chan models.Task, r
 
 func (fake *FakeRepBBS) ClaimTask(taskGuid string, executorID string) error {
 	fake.claimTaskMutex.Lock()
-	defer fake.claimTaskMutex.Unlock()
 	fake.claimTaskArgsForCall = append(fake.claimTaskArgsForCall, struct {
 		taskGuid   string
 		executorID string
 	}{taskGuid, executorID})
+	fake.claimTaskMutex.Unlock()
 	if fake.ClaimTaskStub != nil {
 		return fake.ClaimTaskStub(taskGuid, executorID)
 	} else {
@@ -211,12 +206,12 @@ func (fake *FakeRepBBS) ClaimTaskReturns(result1 error) {
 
 func (fake *FakeRepBBS) StartTask(taskGuid string, executorID string, containerHandle string) error {
 	fake.startTaskMutex.Lock()
-	defer fake.startTaskMutex.Unlock()
 	fake.startTaskArgsForCall = append(fake.startTaskArgsForCall, struct {
 		taskGuid        string
 		executorID      string
 		containerHandle string
 	}{taskGuid, executorID, containerHandle})
+	fake.startTaskMutex.Unlock()
 	if fake.StartTaskStub != nil {
 		return fake.StartTaskStub(taskGuid, executorID, containerHandle)
 	} else {
@@ -245,13 +240,13 @@ func (fake *FakeRepBBS) StartTaskReturns(result1 error) {
 
 func (fake *FakeRepBBS) CompleteTask(taskGuid string, failed bool, failureReason string, result string) error {
 	fake.completeTaskMutex.Lock()
-	defer fake.completeTaskMutex.Unlock()
 	fake.completeTaskArgsForCall = append(fake.completeTaskArgsForCall, struct {
 		taskGuid      string
 		failed        bool
 		failureReason string
 		result        string
 	}{taskGuid, failed, failureReason, result})
+	fake.completeTaskMutex.Unlock()
 	if fake.CompleteTaskStub != nil {
 		return fake.CompleteTaskStub(taskGuid, failed, failureReason, result)
 	} else {
@@ -280,11 +275,11 @@ func (fake *FakeRepBBS) CompleteTaskReturns(result1 error) {
 
 func (fake *FakeRepBBS) ReportActualLRPAsStarting(lrp models.ActualLRP, executorID string) error {
 	fake.reportActualLRPAsStartingMutex.Lock()
-	defer fake.reportActualLRPAsStartingMutex.Unlock()
 	fake.reportActualLRPAsStartingArgsForCall = append(fake.reportActualLRPAsStartingArgsForCall, struct {
 		lrp        models.ActualLRP
 		executorID string
 	}{lrp, executorID})
+	fake.reportActualLRPAsStartingMutex.Unlock()
 	if fake.ReportActualLRPAsStartingStub != nil {
 		return fake.ReportActualLRPAsStartingStub(lrp, executorID)
 	} else {
@@ -313,11 +308,11 @@ func (fake *FakeRepBBS) ReportActualLRPAsStartingReturns(result1 error) {
 
 func (fake *FakeRepBBS) ReportActualLRPAsRunning(lrp models.ActualLRP, executorId string) error {
 	fake.reportActualLRPAsRunningMutex.Lock()
-	defer fake.reportActualLRPAsRunningMutex.Unlock()
 	fake.reportActualLRPAsRunningArgsForCall = append(fake.reportActualLRPAsRunningArgsForCall, struct {
 		lrp        models.ActualLRP
 		executorId string
 	}{lrp, executorId})
+	fake.reportActualLRPAsRunningMutex.Unlock()
 	if fake.ReportActualLRPAsRunningStub != nil {
 		return fake.ReportActualLRPAsRunningStub(lrp, executorId)
 	} else {
@@ -346,10 +341,10 @@ func (fake *FakeRepBBS) ReportActualLRPAsRunningReturns(result1 error) {
 
 func (fake *FakeRepBBS) RemoveActualLRP(lrp models.ActualLRP) error {
 	fake.removeActualLRPMutex.Lock()
-	defer fake.removeActualLRPMutex.Unlock()
 	fake.removeActualLRPArgsForCall = append(fake.removeActualLRPArgsForCall, struct {
 		lrp models.ActualLRP
 	}{lrp})
+	fake.removeActualLRPMutex.Unlock()
 	if fake.RemoveActualLRPStub != nil {
 		return fake.RemoveActualLRPStub(lrp)
 	} else {
@@ -378,12 +373,12 @@ func (fake *FakeRepBBS) RemoveActualLRPReturns(result1 error) {
 
 func (fake *FakeRepBBS) RemoveActualLRPForIndex(processGuid string, index int, instanceGuid string) error {
 	fake.removeActualLRPForIndexMutex.Lock()
-	defer fake.removeActualLRPForIndexMutex.Unlock()
 	fake.removeActualLRPForIndexArgsForCall = append(fake.removeActualLRPForIndexArgsForCall, struct {
 		processGuid  string
 		index        int
 		instanceGuid string
 	}{processGuid, index, instanceGuid})
+	fake.removeActualLRPForIndexMutex.Unlock()
 	if fake.RemoveActualLRPForIndexStub != nil {
 		return fake.RemoveActualLRPForIndexStub(processGuid, index, instanceGuid)
 	} else {
@@ -412,8 +407,8 @@ func (fake *FakeRepBBS) RemoveActualLRPForIndexReturns(result1 error) {
 
 func (fake *FakeRepBBS) WatchForStopLRPInstance() (<-chan models.StopLRPInstance, chan<- bool, <-chan error) {
 	fake.watchForStopLRPInstanceMutex.Lock()
-	defer fake.watchForStopLRPInstanceMutex.Unlock()
 	fake.watchForStopLRPInstanceArgsForCall = append(fake.watchForStopLRPInstanceArgsForCall, struct{}{})
+	fake.watchForStopLRPInstanceMutex.Unlock()
 	if fake.WatchForStopLRPInstanceStub != nil {
 		return fake.WatchForStopLRPInstanceStub()
 	} else {
@@ -438,10 +433,10 @@ func (fake *FakeRepBBS) WatchForStopLRPInstanceReturns(result1 <-chan models.Sto
 
 func (fake *FakeRepBBS) ResolveStopLRPInstance(stopInstance models.StopLRPInstance) error {
 	fake.resolveStopLRPInstanceMutex.Lock()
-	defer fake.resolveStopLRPInstanceMutex.Unlock()
 	fake.resolveStopLRPInstanceArgsForCall = append(fake.resolveStopLRPInstanceArgsForCall, struct {
 		stopInstance models.StopLRPInstance
 	}{stopInstance})
+	fake.resolveStopLRPInstanceMutex.Unlock()
 	if fake.ResolveStopLRPInstanceStub != nil {
 		return fake.ResolveStopLRPInstanceStub(stopInstance)
 	} else {

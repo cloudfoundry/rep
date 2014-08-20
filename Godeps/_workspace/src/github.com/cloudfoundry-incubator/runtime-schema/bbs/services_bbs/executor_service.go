@@ -4,14 +4,14 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
+	"github.com/cloudfoundry-incubator/runtime-schema/heartbeater"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
+	"github.com/tedsuo/ifrit"
 )
 
-func (bbs *ServicesBBS) MaintainExecutorPresence(heartbeatInterval time.Duration, executorPresence models.ExecutorPresence) (Presence, <-chan bool, error) {
-	presence := NewPresence(bbs.store, shared.ExecutorSchemaPath(executorPresence.ExecutorID), executorPresence.ToJSON())
-	status, err := presence.Maintain(heartbeatInterval)
-	return presence, status, err
+func (bbs *ServicesBBS) NewExecutorHeartbeat(executorPresence models.ExecutorPresence, interval time.Duration) ifrit.Runner {
+	return heartbeater.New(bbs.store, shared.ExecutorSchemaPath(executorPresence.ExecutorID), string(executorPresence.ToJSON()), interval, bbs.logger)
 }
 
 func (bbs *ServicesBBS) GetAllExecutors() ([]models.ExecutorPresence, error) {

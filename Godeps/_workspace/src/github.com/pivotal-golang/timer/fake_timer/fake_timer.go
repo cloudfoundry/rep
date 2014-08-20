@@ -7,21 +7,25 @@ import (
 
 type FakeTimer struct {
 	sync.RWMutex
-	now           time.Time
+	startTime     time.Time
+	elapsedTime   time.Duration
 	afterRequests []afterRequest
 }
 
-func NewFakeTimer(now time.Time) *FakeTimer {
-	return &FakeTimer{now: now}
+func NewFakeTimer(t time.Time) *FakeTimer {
+	return &FakeTimer{
+		startTime:     t,
+		elapsedTime:   0,
+		afterRequests: []afterRequest{},
+	}
 }
 
 func (t *FakeTimer) After(d time.Duration) <-chan time.Time {
 	t.Lock()
 	defer t.Unlock()
-
 	result := make(chan time.Time, 1)
 	t.afterRequests = append(t.afterRequests, afterRequest{
-		completionTime: t.now.Add(d),
+		completionTime: t.Now().Add(d),
 		channel:        result,
 	})
 	return result
@@ -35,6 +39,7 @@ func (t *FakeTimer) Every(d time.Duration) <-chan time.Time {
 			result <- time
 		}
 	}()
+
 	return result
 }
 
@@ -43,10 +48,7 @@ func (t *FakeTimer) Sleep(d time.Duration) {
 }
 
 func (t *FakeTimer) Now() time.Time {
-	t.RLock()
-	defer t.RUnlock()
-
-	return t.now
+	return t.startTime.Add(t.elapsedTime)
 }
 
 func (t *FakeTimer) Elapse(d time.Duration) {
@@ -56,12 +58,13 @@ func (t *FakeTimer) Elapse(d time.Duration) {
 	t.Lock()
 	defer t.Unlock()
 
-	t.now = t.now.Add(d)
+	t.elapsedTime += d
+	currentTime := t.Now()
 
 	remainingReqs := []afterRequest{}
 	for _, req := range t.afterRequests {
-		if !req.completionTime.After(t.now) {
-			req.channel <- t.now
+		if !req.completionTime.After(currentTime) {
+			req.channel <- currentTime
 		} else {
 			remainingReqs = append(remainingReqs, req)
 		}

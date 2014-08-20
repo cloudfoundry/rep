@@ -1,82 +1,71 @@
 package services_bbs_test
 
 import (
+	"os"
 	"time"
 
-	"github.com/cloudfoundry/storeadapter"
 	"github.com/pivotal-golang/lager/lagertest"
+	"github.com/tedsuo/ifrit"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	. "github.com/cloudfoundry-incubator/runtime-schema/bbs/services_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
-	. "github.com/cloudfoundry/storeadapter/storenodematchers"
-	"github.com/cloudfoundry/storeadapter/test_helpers"
 )
 
 var _ = Describe("Fetching available file servers", func() {
 	var (
-		bbs           *ServicesBBS
-		fileServerURL string
-		fileServerId  string
-		interval      time.Duration
-		status        <-chan bool
-		err           error
-		presence      Presence
+		bbs      *ServicesBBS
+		interval time.Duration
 	)
 
 	BeforeEach(func() {
+		interval = 1 * time.Second
 		bbs = New(etcdClient, lagertest.NewTestLogger("test"))
 	})
 
 	Describe("MaintainFileServerPresence", func() {
 		var fileServerURL string
 		var fileServerId string
+		var heartbeat ifrit.Process
 
 		BeforeEach(func() {
 			fileServerURL = "stubFileServerURL"
 			fileServerId = factories.GenerateGuid()
-			interval = 1 * time.Second
 
-			presence, status, err = bbs.MaintainFileServerPresence(interval, fileServerURL, fileServerId)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			reporter := test_helpers.NewStatusReporter(status)
-			Eventually(reporter.Locked).Should(BeTrue())
+			heartbeat = ifrit.Envoke(bbs.NewFileServerHeartbeat(fileServerURL, fileServerId, interval))
 		})
 
 		AfterEach(func() {
-			presence.Remove()
+			heartbeat.Signal(os.Interrupt)
+			Eventually(heartbeat.Wait()).Should(Receive(BeNil()))
 		})
 
 		It("should put /file_server/FILE_SERVER_ID in the store with a TTL", func() {
 			node, err := etcdClient.Get("/v1/file_server/" + fileServerId)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(node).Should(MatchStoreNode(storeadapter.StoreNode{
-				Key:   "/v1/file_server/" + fileServerId,
-				Value: []byte(fileServerURL),
-				TTL:   uint64(interval.Seconds()), // move to config one day
-			}))
+			Ω(node.TTL).ShouldNot(BeZero())
+			Ω(node.Value).Should(Equal([]byte(fileServerURL)))
 		})
 	})
 
 	Describe("Getting file servers", func() {
+		var fileServerURL string
+		var fileServerId string
+		var heartbeat ifrit.Process
+
 		Context("when there are available file servers", func() {
 			BeforeEach(func() {
 				fileServerURL = "http://128.70.3.29:8012"
 				fileServerId = factories.GenerateGuid()
-				interval = 1 * time.Second
 
-				presence, status, err = bbs.MaintainFileServerPresence(interval, fileServerURL, fileServerId)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				reporter := test_helpers.NewStatusReporter(status)
-				Eventually(reporter.Locked).Should(BeTrue())
+				heartbeat = ifrit.Envoke(bbs.NewFileServerHeartbeat(fileServerURL, fileServerId, interval))
 			})
 
 			AfterEach(func() {
-				presence.Remove()
+				heartbeat.Signal(os.Interrupt)
+				Eventually(heartbeat.Wait()).Should(Receive(BeNil()))
 			})
 
 			Describe("GetAvailableFileServer", func() {
@@ -97,37 +86,25 @@ var _ = Describe("Fetching available file servers", func() {
 		})
 
 		Context("when there are several available file servers", func() {
-			var (
-				otherFileServerURL string
-				otherPresence      Presence
-			)
+			var otherFileServerURL string
+			var otherHeartbeat ifrit.Process
 
 			BeforeEach(func() {
 				fileServerURL = "http://guy"
-				otherFileServerURL = "http://other.guy"
-
 				fileServerId = factories.GenerateGuid()
+
+				otherFileServerURL = "http://other.guy"
 				otherFileServerId := factories.GenerateGuid()
 
-				interval = 1 * time.Second
-
-				presence, status, err = bbs.MaintainFileServerPresence(interval, fileServerURL, fileServerId)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				reporter := test_helpers.NewStatusReporter(status)
-
-				otherPresence, status, err = bbs.MaintainFileServerPresence(interval, otherFileServerURL, otherFileServerId)
-
-				Ω(err).ShouldNot(HaveOccurred())
-				otherReporter := test_helpers.NewStatusReporter(status)
-
-				Eventually(reporter.Locked).Should(BeTrue())
-				Eventually(otherReporter.Locked).Should(BeTrue())
+				heartbeat = ifrit.Envoke(bbs.NewFileServerHeartbeat(fileServerURL, fileServerId, interval))
+				otherHeartbeat = ifrit.Envoke(bbs.NewFileServerHeartbeat(otherFileServerURL, otherFileServerId, interval))
 			})
 
 			AfterEach(func() {
-				presence.Remove()
-				otherPresence.Remove()
+				heartbeat.Signal(os.Interrupt)
+				Eventually(heartbeat.Wait()).Should(Receive(BeNil()))
+				otherHeartbeat.Signal(os.Interrupt)
+				Eventually(otherHeartbeat.Wait()).Should(Receive(BeNil()))
 			})
 
 			Describe("GetAvailableFileServer", func() {

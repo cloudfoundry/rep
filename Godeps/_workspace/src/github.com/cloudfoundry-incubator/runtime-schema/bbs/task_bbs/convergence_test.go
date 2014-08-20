@@ -1,6 +1,7 @@
 package task_bbs_test
 
 import (
+	"os"
 	"path"
 	"time"
 
@@ -10,10 +11,10 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gunk/timeprovider/faketimeprovider"
 	"github.com/cloudfoundry/storeadapter"
-	"github.com/cloudfoundry/storeadapter/test_helpers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-golang/lager/lagertest"
+	"github.com/tedsuo/ifrit"
 )
 
 var _ = Describe("Convergence of Tasks", func() {
@@ -24,7 +25,6 @@ var _ = Describe("Convergence of Tasks", func() {
 	var timeProvider *faketimeprovider.FakeTimeProvider
 	var err error
 	var servicesBBS *services_bbs.ServicesBBS
-	var presence services_bbs.Presence
 
 	BeforeEach(func() {
 		err = nil
@@ -128,6 +128,8 @@ var _ = Describe("Convergence of Tasks", func() {
 		})
 
 		Context("when a Task is claimed", func() {
+			var heartbeat ifrit.Process
+
 			BeforeEach(func() {
 				err = bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -135,16 +137,15 @@ var _ = Describe("Convergence of Tasks", func() {
 				err = bbs.ClaimTask(task.Guid, "executor-id")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				var status <-chan bool
-				presence, status, err = servicesBBS.MaintainExecutorPresence(time.Minute, models.ExecutorPresence{
+				executorPresence := models.ExecutorPresence{
 					ExecutorID: "executor-id",
-				})
-				Ω(err).ShouldNot(HaveOccurred())
-				test_helpers.NewStatusReporter(status)
+				}
+				heartbeat = ifrit.Envoke(servicesBBS.NewExecutorHeartbeat(executorPresence, time.Minute))
 			})
 
 			AfterEach(func() {
-				presence.Remove()
+				heartbeat.Signal(os.Interrupt)
+				Eventually(heartbeat.Wait()).Should(Receive(BeNil()))
 			})
 
 			It("should do nothing", func() {
@@ -158,7 +159,8 @@ var _ = Describe("Convergence of Tasks", func() {
 
 			Context("when the associated executor is missing", func() {
 				BeforeEach(func() {
-					presence.Remove()
+					heartbeat.Signal(os.Interrupt)
+					Eventually(heartbeat.Wait()).Should(Receive(BeNil()))
 				})
 
 				It("should mark the Task as completed & failed", func() {
@@ -180,6 +182,8 @@ var _ = Describe("Convergence of Tasks", func() {
 		})
 
 		Context("when a Task is running", func() {
+			var heartbeater ifrit.Process
+
 			BeforeEach(func() {
 				err = bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -190,16 +194,13 @@ var _ = Describe("Convergence of Tasks", func() {
 				err = bbs.StartTask(task.Guid, "executor-id", "container-handle")
 				Ω(err).ShouldNot(HaveOccurred())
 
-				var status <-chan bool
-				presence, status, err = servicesBBS.MaintainExecutorPresence(time.Minute, models.ExecutorPresence{
+				heartbeater = ifrit.Envoke(servicesBBS.NewExecutorHeartbeat(models.ExecutorPresence{
 					ExecutorID: "executor-id",
-				})
-				Ω(err).ShouldNot(HaveOccurred())
-				test_helpers.NewStatusReporter(status)
+				}, time.Minute))
 			})
 
 			AfterEach(func() {
-				presence.Remove()
+				heartbeater.Signal(os.Interrupt)
 			})
 
 			It("should do nothing", func() {
@@ -213,7 +214,7 @@ var _ = Describe("Convergence of Tasks", func() {
 
 			Context("when the associated executor is missing", func() {
 				BeforeEach(func() {
-					presence.Remove()
+					heartbeater.Signal(os.Interrupt)
 				})
 
 				It("should mark the Task as completed & failed", func() {

@@ -47,15 +47,15 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "290ca505f2ecc164ba4651b1878a4676537544ee"
+			"Rev": "4664f1dff19485bee39602bf645711ba2a4d14fd"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/heartbeater",
-			"Rev": "290ca505f2ecc164ba4651b1878a4676537544ee"
+			"Rev": "4664f1dff19485bee39602bf645711ba2a4d14fd"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "290ca505f2ecc164ba4651b1878a4676537544ee"
+			"Rev": "4664f1dff19485bee39602bf645711ba2a4d14fd"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/group_runner",
@@ -102,11 +102,11 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/timer",
-			"Rev": "79a02f14345f482a54a963bda76bf1d17dbf3dc9"
+			"Rev": "108ae5fe1875ef7ccef96ad14020b7825fad1983"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
-			"Rev": "82dbb8f9b53dba16c9d5c3e0c74fa581d65f8579"
+			"Rev": "0addc90d7dcebcf87ef0fc89240c58bd1c475d8f"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/rata",

@@ -6,14 +6,13 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
+	"github.com/cloudfoundry-incubator/runtime-schema/heartbeater"
 	"github.com/cloudfoundry/storeadapter"
+	"github.com/tedsuo/ifrit"
 )
 
-func (bbs *ServicesBBS) MaintainFileServerPresence(heartbeatInterval time.Duration, fileServerURL string, fileServerId string) (Presence, <-chan bool, error) {
-	key := shared.FileServerSchemaPath(fileServerId)
-	presence := NewPresence(bbs.store, key, []byte(fileServerURL))
-	status, err := presence.Maintain(heartbeatInterval)
-	return presence, status, err
+func (bbs *ServicesBBS) NewFileServerHeartbeat(fileserverURL, fileserverId string, interval time.Duration) ifrit.Runner {
+	return heartbeater.New(bbs.store, shared.FileServerSchemaPath(fileserverId), fileserverURL, interval, bbs.logger)
 }
 
 func (bbs *ServicesBBS) GetAvailableFileServer() (string, error) {

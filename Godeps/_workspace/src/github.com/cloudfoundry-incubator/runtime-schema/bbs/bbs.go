@@ -20,7 +20,7 @@ import (
 
 type RepBBS interface {
 	//services
-	MaintainExecutorPresence(heartbeatInterval time.Duration, executorPresence models.ExecutorPresence) (services_bbs.Presence, <-chan bool, error)
+	NewExecutorHeartbeat(executorPresence models.ExecutorPresence, interval time.Duration) ifrit.Runner
 
 	//task
 	WatchForDesiredTask() (<-chan models.Task, chan<- bool, <-chan error)
@@ -114,11 +114,7 @@ type MetricsBBS interface {
 
 type FileServerBBS interface {
 	//services
-	MaintainFileServerPresence(
-		heartbeatInterval time.Duration,
-		fileServerURL string,
-		fileServerId string,
-	) (presence services_bbs.Presence, disappeared <-chan bool, err error)
+	NewFileServerHeartbeat(fileserverURL, fileserverId string, interval time.Duration) ifrit.Runner
 }
 
 type RouteEmitterBBS interface {
