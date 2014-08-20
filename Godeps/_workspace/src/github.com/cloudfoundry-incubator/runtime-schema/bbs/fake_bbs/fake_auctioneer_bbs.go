@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/fake_runner"
 )
 
 type FakeAuctioneerBBS struct {
@@ -51,8 +53,9 @@ func NewFakeAuctioneerBBS() *FakeAuctioneerBBS {
 	}
 }
 
-func (bbs *FakeAuctioneerBBS) MaintainAuctioneerLock(interval time.Duration, auctioneerID string) (<-chan bool, chan<- chan bool, error) {
-	return bbs.LockChannel, bbs.ReleaseLockChannel, bbs.LockError
+func (bbs *FakeAuctioneerBBS) NewAuctioneerLock(auctioneerID string, interval time.Duration) ifrit.Runner {
+	panic("unimplemented")
+	return new(fake_runner.FakeRunner)
 }
 
 func (bbs *FakeAuctioneerBBS) GetAllExecutors() ([]models.ExecutorPresence, error) {

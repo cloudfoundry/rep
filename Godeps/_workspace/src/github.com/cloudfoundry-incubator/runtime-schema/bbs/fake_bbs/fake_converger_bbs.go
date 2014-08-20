@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/fake_runner"
 )
 
 type FakeConvergerBBS struct {
@@ -134,11 +136,9 @@ func (fakeBBS *FakeConvergerBBS) CallsToConvergeTasks() int {
 	return fakeBBS.callsToConvergeTasks
 }
 
-func (fakeBBS *FakeConvergerBBS) MaintainConvergeLock(interval time.Duration, executorID string) (<-chan bool, chan<- chan bool, error) {
-	fakeBBS.Lock()
-	defer fakeBBS.Unlock()
-
-	return fakeBBS.ConvergeLockStatusChan, fakeBBS.ConvergeLockStopChan, fakeBBS.maintainConvergeLockError
+func (fakeBBS *FakeConvergerBBS) NewConvergeLock(convergerID string, interval time.Duration) ifrit.Runner {
+	panic("unimplemented")
+	return new(fake_runner.FakeRunner)
 }
 
 func (fakeBBS *FakeConvergerBBS) SetMaintainConvergeLockError(err error) {

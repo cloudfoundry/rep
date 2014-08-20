@@ -11,19 +11,19 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctionrep",
-			"Rev": "80b09411754998aef91abfbcc2642ff800c1d8ed"
+			"Rev": "01c4553853e64a383676420c67a8a2941f01d132"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctiontypes",
-			"Rev": "80b09411754998aef91abfbcc2642ff800c1d8ed"
+			"Rev": "01c4553853e64a383676420c67a8a2941f01d132"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats",
-			"Rev": "80b09411754998aef91abfbcc2642ff800c1d8ed"
+			"Rev": "01c4553853e64a383676420c67a8a2941f01d132"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/util",
-			"Rev": "80b09411754998aef91abfbcc2642ff800c1d8ed"
+			"Rev": "01c4553853e64a383676420c67a8a2941f01d132"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/cf-debug-server",
@@ -39,23 +39,23 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/api",
-			"Rev": "08ce482c14e81ad98ba2acfe5ab8005dee81f0d8"
+			"Rev": "98da7d2ce9502f556dadacc8a9aa07a2d90a2b1d"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/client",
-			"Rev": "08ce482c14e81ad98ba2acfe5ab8005dee81f0d8"
+			"Rev": "98da7d2ce9502f556dadacc8a9aa07a2d90a2b1d"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "538875d73b153d53c129dbc7085206853785fdf9"
+			"Rev": "290ca505f2ecc164ba4651b1878a4676537544ee"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/heartbeater",
-			"Rev": "538875d73b153d53c129dbc7085206853785fdf9"
+			"Rev": "290ca505f2ecc164ba4651b1878a4676537544ee"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "538875d73b153d53c129dbc7085206853785fdf9"
+			"Rev": "290ca505f2ecc164ba4651b1878a4676537544ee"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/group_runner",
@@ -88,8 +88,8 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Comment": "v1.1.0-2-g6225000",
-			"Rev": "6225000f34637a7aac336f8cadb9cd49ce10efef"
+			"Comment": "v1.1.0-3-gd79a7e7",
+			"Rev": "d79a7e77e6d3738a0e83e9f6564a1aa1dfcbfeaa"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",

@@ -13,6 +13,7 @@ import (
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/pivotal-golang/lager"
+	"github.com/tedsuo/ifrit"
 )
 
 //Bulletin Board System/Store
@@ -55,7 +56,7 @@ type ConvergerBBS interface {
 	ConvergeTask(timeToClaim time.Duration, converganceInterval time.Duration)
 
 	//lock
-	MaintainConvergeLock(interval time.Duration, executorID string) (disappeared <-chan bool, stop chan<- chan bool, err error)
+	NewConvergeLock(convergerID string, interval time.Duration) ifrit.Runner
 
 	//services
 	GetAvailableFileServer() (string, error)
@@ -89,7 +90,7 @@ type AuctioneerBBS interface {
 	ResolveLRPStopAuction(models.LRPStopAuction) error
 
 	//lock
-	MaintainAuctioneerLock(interval time.Duration, auctioneerID string) (<-chan bool, chan<- chan bool, error)
+	NewAuctioneerLock(auctioneerID string, interval time.Duration) ifrit.Runner
 }
 
 type StagerBBS interface {
@@ -194,7 +195,7 @@ func NewVeritasBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.Ti
 
 func NewBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger lager.Logger) *BBS {
 	return &BBS{
-		LockBBS:         lock_bbs.New(store),
+		LockBBS:         lock_bbs.New(store, logger.Session("lock-bbs")),
 		LRPBBS:          lrp_bbs.New(store, timeProvider, logger.Session("lrp-bbs")),
 		StartAuctionBBS: start_auction_bbs.New(store, timeProvider, logger.Session("lrp-start-auction-bbs")),
 		StopAuctionBBS:  stop_auction_bbs.New(store, timeProvider, logger.Session("lrp-stop-auction-bbs")),

@@ -48,13 +48,13 @@ func (h Heartbeater) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 
 	err := h.Client.CompareAndSwap(node, node)
 	if err != nil {
-		logger.Info("initial-compare-and-swap-failed", lager.Data{"error": err})
+		logger.Info("initial-compare-and-swap-failed", lager.Data{"error": err.Error()})
 		for {
 			err := h.Client.Create(node)
 			if err == nil {
 				break
 			}
-			logger.Info("create-failed", lager.Data{"error": err})
+			logger.Info("create-failed", lager.Data{"error": err.Error()})
 			time.Sleep(h.Interval)
 		}
 	}
