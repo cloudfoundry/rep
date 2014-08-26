@@ -11,19 +11,19 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctionrep",
-			"Rev": "01c4553853e64a383676420c67a8a2941f01d132"
+			"Rev": "59f7fc3323e8013edcfa0e3d8beafda0e49d2362"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctiontypes",
-			"Rev": "01c4553853e64a383676420c67a8a2941f01d132"
+			"Rev": "59f7fc3323e8013edcfa0e3d8beafda0e49d2362"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats",
-			"Rev": "01c4553853e64a383676420c67a8a2941f01d132"
+			"Rev": "59f7fc3323e8013edcfa0e3d8beafda0e49d2362"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/util",
-			"Rev": "01c4553853e64a383676420c67a8a2941f01d132"
+			"Rev": "59f7fc3323e8013edcfa0e3d8beafda0e49d2362"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/cf-debug-server",
@@ -39,11 +39,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/api",
-			"Rev": "98da7d2ce9502f556dadacc8a9aa07a2d90a2b1d"
+			"Rev": "47749da85e7d88f09619cfbd60ce28754b7dd05e"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/client",
-			"Rev": "98da7d2ce9502f556dadacc8a9aa07a2d90a2b1d"
+			"Rev": "47749da85e7d88f09619cfbd60ce28754b7dd05e"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
@@ -102,7 +102,7 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/timer",
-			"Rev": "108ae5fe1875ef7ccef96ad14020b7825fad1983"
+			"Rev": "79a02f14345f482a54a963bda76bf1d17dbf3dc9"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
