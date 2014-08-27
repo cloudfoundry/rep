@@ -36,6 +36,9 @@ func (stopper *lrpStopper) StopInstance(stopInstance models.StopLRPInstance) err
 
 	_, err := stopper.client.GetContainer(containerId)
 	if err != nil {
+		stopLog.Error("failed-to-get-container", err, lager.Data{
+			"container-id": containerId,
+		})
 		return err
 	}
 
@@ -45,19 +48,27 @@ func (stopper *lrpStopper) StopInstance(stopInstance models.StopLRPInstance) err
 
 	err = stopper.bbs.ResolveStopLRPInstance(stopInstance)
 	if err != nil {
-		stopLog.Error("failed-to-resolve-stop", err)
+		stopLog.Error("failed-to-resolve-stop", err, lager.Data{
+			"stopInstance-guid": stopInstance.InstanceGuid,
+		})
 		return err
 	}
 
 	err = stopper.client.DeleteContainer(containerId)
 	if err != nil {
-		stopLog.Error("failed-to-delete-container", err)
+		stopLog.Error("failed-to-delete-container", err, lager.Data{
+			"container-id": containerId,
+		})
 		return err
 	}
 
 	err = stopper.bbs.RemoveActualLRPForIndex(stopInstance.ProcessGuid, stopInstance.Index, stopInstance.InstanceGuid)
 	if err != nil {
-		stopLog.Error("failed-to-remove-actual-lrp", err)
+		stopLog.Error("failed-to-remove-actual-lrp", err, lager.Data{
+			"process-guid":       stopInstance.ProcessGuid,
+			"stopInstance-index": stopInstance.Index,
+			"stopInstance-guid":  stopInstance.InstanceGuid,
+		})
 		return err
 	}
 
