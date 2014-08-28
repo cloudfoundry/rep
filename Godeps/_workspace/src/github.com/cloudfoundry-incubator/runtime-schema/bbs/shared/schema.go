@@ -17,6 +17,7 @@ const ActualLRPSchemaRoot = SchemaRoot + "actual"
 const DesiredLRPSchemaRoot = SchemaRoot + "desired"
 const TaskSchemaRoot = SchemaRoot + "task"
 const LockSchemaRoot = SchemaRoot + "locks"
+const FreshnessSchemaRoot = SchemaRoot + "freshness"
 
 func ExecutorSchemaPath(executorID string) string {
 	return path.Join(ExecutorSchemaRoot, executorID)
@@ -76,4 +77,8 @@ func TaskSchemaPath(taskGuid string) string {
 
 func LockSchemaPath(lockName string) string {
 	return path.Join(LockSchemaRoot, lockName)
+}
+
+func FreshnessSchemaPath(domain string) string {
+	return path.Join(FreshnessSchemaRoot, domain)
 }

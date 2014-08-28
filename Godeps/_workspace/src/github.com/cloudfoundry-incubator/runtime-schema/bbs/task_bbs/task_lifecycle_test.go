@@ -261,19 +261,38 @@ var _ = Describe("Task BBS", func() {
 			})
 		})
 
-		Context("When completing a Task that is not in the running state", func() {
+		Context("When completing a Task that is not in the running/claimed state", func() {
 			It("returns an error", func() {
 				err = bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				err = bbs.CompleteTask(task.Guid, true, "because i said so", "a result")
 				Ω(err).Should(HaveOccurred())
+			})
+
+			It("has no error when Task is in claimed state", func() {
+				err = bbs.DesireTask(task)
+				Ω(err).ShouldNot(HaveOccurred())
 
 				err = bbs.ClaimTask(task.Guid, "executor-ID")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				err = bbs.CompleteTask(task.Guid, true, "because i said so", "a result")
-				Ω(err).Should(HaveOccurred())
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("has no error when Task is in running state", func() {
+				err = bbs.DesireTask(task)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				err = bbs.ClaimTask(task.Guid, "executor-ID")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				err = bbs.StartTask(task.Guid, "executor-ID", "container-handle")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				err = bbs.CompleteTask(task.Guid, true, "because i said so", "a result")
+				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})
 	})

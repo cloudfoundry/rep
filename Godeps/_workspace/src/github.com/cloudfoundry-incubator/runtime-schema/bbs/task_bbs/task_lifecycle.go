@@ -94,8 +94,8 @@ func (bbs *TaskBBS) CompleteTask(taskGuid string, failed bool, failureReason str
 		return fmt.Errorf("cannot complete non-existing task: %s", err.Error())
 	}
 
-	if task.State != models.TaskStateRunning {
-		return errors.New("cannot complete task in non-running state")
+	if task.State != models.TaskStateRunning && task.State != models.TaskStateClaimed {
+		return errors.New("cannot complete task in non-running/non-claimed state")
 	}
 
 	task.UpdatedAt = bbs.timeProvider.Time().UnixNano()

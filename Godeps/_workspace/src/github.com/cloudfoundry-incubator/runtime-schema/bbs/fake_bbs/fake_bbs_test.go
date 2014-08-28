@@ -27,7 +27,7 @@ var _ = Describe("FakeBbs", func() {
 		Ω(stagerBBS).ShouldNot(BeNil())
 
 		var metricsBBS bbs.MetricsBBS
-		metricsBBS = NewFakeMetricsBBS()
+		metricsBBS = new(FakeMetricsBBS)
 		Ω(metricsBBS).ShouldNot(BeNil())
 
 		var routeEmitterBBS bbs.RouteEmitterBBS

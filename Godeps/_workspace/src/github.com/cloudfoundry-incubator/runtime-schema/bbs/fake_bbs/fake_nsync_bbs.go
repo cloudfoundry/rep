@@ -7,6 +7,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 
 	"sync"
+	"time"
 )
 
 type FakeNsyncBBS struct {
@@ -41,6 +42,15 @@ type FakeNsyncBBS struct {
 		change models.DesiredLRPChange
 	}
 	changeDesiredLRPReturns struct {
+		result1 error
+	}
+	BumpFreshnessStub        func(domain string, ttl time.Duration) error
+	bumpFreshnessMutex       sync.RWMutex
+	bumpFreshnessArgsForCall []struct {
+		domain string
+		ttl    time.Duration
+	}
+	bumpFreshnessReturns struct {
 		result1 error
 	}
 }
@@ -166,6 +176,38 @@ func (fake *FakeNsyncBBS) ChangeDesiredLRPArgsForCall(i int) models.DesiredLRPCh
 
 func (fake *FakeNsyncBBS) ChangeDesiredLRPReturns(result1 error) {
 	fake.changeDesiredLRPReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeNsyncBBS) BumpFreshness(domain string, ttl time.Duration) error {
+	fake.bumpFreshnessMutex.Lock()
+	defer fake.bumpFreshnessMutex.Unlock()
+	fake.bumpFreshnessArgsForCall = append(fake.bumpFreshnessArgsForCall, struct {
+		domain string
+		ttl    time.Duration
+	}{domain, ttl})
+	if fake.BumpFreshnessStub != nil {
+		return fake.BumpFreshnessStub(domain, ttl)
+	} else {
+		return fake.bumpFreshnessReturns.result1
+	}
+}
+
+func (fake *FakeNsyncBBS) BumpFreshnessCallCount() int {
+	fake.bumpFreshnessMutex.RLock()
+	defer fake.bumpFreshnessMutex.RUnlock()
+	return len(fake.bumpFreshnessArgsForCall)
+}
+
+func (fake *FakeNsyncBBS) BumpFreshnessArgsForCall(i int) (string, time.Duration) {
+	fake.bumpFreshnessMutex.RLock()
+	defer fake.bumpFreshnessMutex.RUnlock()
+	return fake.bumpFreshnessArgsForCall[i].domain, fake.bumpFreshnessArgsForCall[i].ttl
+}
+
+func (fake *FakeNsyncBBS) BumpFreshnessReturns(result1 error) {
+	fake.bumpFreshnessReturns = struct {
 		result1 error
 	}{result1}
 }
