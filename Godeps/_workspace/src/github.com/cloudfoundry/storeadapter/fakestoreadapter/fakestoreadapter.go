@@ -119,6 +119,8 @@ func (adapter *FakeStoreAdapter) setMulti(nodes []storeadapter.StoreNode) error 
 		prevNode, err := adapter.get(node.Key)
 		if err == nil {
 			eventType = storeadapter.UpdateEvent
+		} else {
+			eventType = storeadapter.CreateEvent
 		}
 
 		if adapter.SetErrInjector != nil && adapter.SetErrInjector.KeyRegexp.MatchString(node.Key) {

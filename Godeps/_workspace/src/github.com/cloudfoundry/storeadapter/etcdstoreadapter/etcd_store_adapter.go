@@ -1,6 +1,7 @@
 package etcdstoreadapter
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -327,7 +328,14 @@ func (adapter *ETCDStoreAdapter) dispatchWatchEvents(key string, events chan<- s
 			}
 		}
 
-		events <- adapter.makeWatchEvent(response)
+		event, err := adapter.makeWatchEvent(response)
+		if err != nil {
+			errors <- err
+			return
+		} else {
+			events <- event
+		}
+
 		index = response.Node.ModifiedIndex + 1
 	}
 }
@@ -389,12 +397,12 @@ func (adapter *ETCDStoreAdapter) makeStoreNode(etcdNode *etcd.Node) *storeadapte
 	}
 }
 
-func (adapter *ETCDStoreAdapter) makeWatchEvent(event *etcd.Response) storeadapter.WatchEvent {
+func (adapter *ETCDStoreAdapter) makeWatchEvent(event *etcd.Response) (storeadapter.WatchEvent, error) {
 	var eventType storeadapter.EventType
 
 	node := event.Node
 	switch event.Action {
-	case "delete":
+	case "delete", "compareAndDelete":
 		eventType = storeadapter.DeleteEvent
 		node = nil
 	case "create":
@@ -405,15 +413,14 @@ func (adapter *ETCDStoreAdapter) makeWatchEvent(event *etcd.Response) storeadapt
 		eventType = storeadapter.ExpireEvent
 		node = nil
 	default:
-		println("unhandled event type", event.Action)
-		return storeadapter.WatchEvent{}
+		return storeadapter.WatchEvent{}, fmt.Errorf("unknown event: %s", event.Action)
 	}
 
 	return storeadapter.WatchEvent{
 		Type:     eventType,
 		Node:     adapter.makeStoreNode(node),
 		PrevNode: adapter.makeStoreNode(event.PrevNode),
-	}
+	}, nil
 }
 
 func (adapter *ETCDStoreAdapter) MaintainNode(storeNode storeadapter.StoreNode) (<-chan bool, chan (chan bool), error) {

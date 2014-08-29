@@ -962,6 +962,36 @@ var _ = Describe("ETCD Store Adapter", func() {
 			}, 5.0)
 		})
 
+		Context("when a node under the key is compare-and-deleted", func() {
+			BeforeEach(func() {
+				err := adapter.SetMulti([]StoreNode{
+					{
+						Key:   "/foo/a",
+						Value: []byte("some value"),
+					},
+				})
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("sends an event with DeleteEvent type and the previous node", func(done Done) {
+				events, _, _ := adapter.Watch("/foo")
+
+				err := adapter.CompareAndDelete(StoreNode{
+					Key:   "/foo/a",
+					Value: []byte("some value"),
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				event := <-events
+				Expect(event.Type).To(Equal(DeleteEvent))
+				Expect(event.Node).To(BeNil())
+				Expect(event.PrevNode.Key).To(Equal("/foo/a"))
+				Expect(string(event.PrevNode.Value)).To(Equal("some value"))
+
+				close(done)
+			}, 5.0)
+		})
+
 		Context("when a node under the key expires", func() {
 			BeforeEach(func() {
 				err := adapter.SetMulti([]StoreNode{

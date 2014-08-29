@@ -141,6 +141,7 @@ type VeritasBBS interface {
 	GetAllStopLRPInstances() ([]models.StopLRPInstance, error)
 	DesireLRP(models.DesiredLRP) error
 	RemoveDesiredLRPByProcessGuid(guid string) error
+	GetAllFreshness() ([]string, error)
 
 	//start auctions
 	GetAllLRPStartAuctions() ([]models.LRPStartAuction, error)

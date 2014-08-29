@@ -11,19 +11,19 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctionrep",
-			"Rev": "59f7fc3323e8013edcfa0e3d8beafda0e49d2362"
+			"Rev": "0d3b594274569a7d77e7f02572c2f4fac0c250c1"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctiontypes",
-			"Rev": "59f7fc3323e8013edcfa0e3d8beafda0e49d2362"
+			"Rev": "0d3b594274569a7d77e7f02572c2f4fac0c250c1"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats",
-			"Rev": "59f7fc3323e8013edcfa0e3d8beafda0e49d2362"
+			"Rev": "0d3b594274569a7d77e7f02572c2f4fac0c250c1"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/util",
-			"Rev": "59f7fc3323e8013edcfa0e3d8beafda0e49d2362"
+			"Rev": "0d3b594274569a7d77e7f02572c2f4fac0c250c1"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/cf-debug-server",
@@ -39,23 +39,23 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/api",
-			"Rev": "47749da85e7d88f09619cfbd60ce28754b7dd05e"
+			"Rev": "0967b329676a3a9891226943af988e58e49ec0eb"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/client",
-			"Rev": "47749da85e7d88f09619cfbd60ce28754b7dd05e"
+			"Rev": "0967b329676a3a9891226943af988e58e49ec0eb"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "f3bf350692eaed6efae7ee1074f99d35edc2ff67"
+			"Rev": "c08b36cbd586a7ef869c45bb669fd82b159f8504"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/heartbeater",
-			"Rev": "f3bf350692eaed6efae7ee1074f99d35edc2ff67"
+			"Rev": "c08b36cbd586a7ef869c45bb669fd82b159f8504"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "f3bf350692eaed6efae7ee1074f99d35edc2ff67"
+			"Rev": "c08b36cbd586a7ef869c45bb669fd82b159f8504"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/group_runner",
@@ -71,7 +71,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
-			"Rev": "652efe1a1fcf3fdb5b08d7474594eb250be6009c"
+			"Rev": "e10c6142b2e0f06521f41dec4612ff468d79abf2"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/yagnats",
@@ -88,8 +88,8 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Comment": "v1.1.0-3-gd79a7e7",
-			"Rev": "d79a7e77e6d3738a0e83e9f6564a1aa1dfcbfeaa"
+			"Comment": "v1.1.0-6-g527974d",
+			"Rev": "527974d5873391de9d8a25b761b5fc1382e9279e"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",

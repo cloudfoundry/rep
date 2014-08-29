@@ -9,7 +9,8 @@ type WatchEvent struct {
 type EventType int
 
 const (
-	CreateEvent = EventType(iota)
+	InvalidEvent = EventType(iota)
+	CreateEvent
 	DeleteEvent
 	ExpireEvent
 	UpdateEvent
