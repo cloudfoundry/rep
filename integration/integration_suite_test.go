@@ -22,8 +22,12 @@ func TestRepresentativeMain(t *testing.T) {
 	RunSpecs(t, "Integration Suite")
 }
 
-var _ = BeforeSuite(func() {
-	var err error
+var _ = SynchronizedBeforeSuite(func() []byte {
+	representative, err := gexec.Build("github.com/cloudfoundry-incubator/rep", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+	return []byte(representative)
+}, func(representative []byte) {
+	representativePath = string(representative)
 
 	executorID = "the-rep-id-" + strconv.Itoa(GinkgoParallelNode())
 
@@ -33,9 +37,6 @@ var _ = BeforeSuite(func() {
 
 	natsRunner = natsrunner.NewNATSRunner(natsPort)
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
-
-	representativePath, err = gexec.Build("github.com/cloudfoundry-incubator/rep", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
 })
 
 var _ = BeforeEach(func() {
@@ -43,19 +44,21 @@ var _ = BeforeEach(func() {
 	natsRunner.Start()
 })
 
-var _ = AfterEach(func(done Done) {
+var _ = AfterEach(func() {
 	natsRunner.Stop()
 	etcdRunner.Stop()
-	close(done)
 })
 
-var _ = AfterSuite(func(done Done) {
-	gexec.CleanupBuildArtifacts()
+var _ = SynchronizedAfterSuite(func() {
 	if etcdRunner != nil {
 		etcdRunner.Stop()
+	}
+	if natsRunner != nil {
+		natsRunner.Stop()
 	}
 	if runner != nil {
 		runner.KillWithFire()
 	}
-	close(done)
+}, func() {
+	gexec.CleanupBuildArtifacts()
 })
