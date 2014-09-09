@@ -2,11 +2,13 @@
 package fake_bbs
 
 import (
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+
+	"github.com/cloudfoundry-incubator/runtime-schema/models"
+
 	"sync"
 	"time"
 
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/tedsuo/ifrit"
 )
 
@@ -23,7 +25,7 @@ type FakeRepBBS struct {
 	WatchForDesiredTaskStub        func() (<-chan models.Task, chan<- bool, <-chan error)
 	watchForDesiredTaskMutex       sync.RWMutex
 	watchForDesiredTaskArgsForCall []struct{}
-	watchForDesiredTaskReturns struct {
+	watchForDesiredTaskReturns     struct {
 		result1 <-chan models.Task
 		result2 chan<- bool
 		result3 <-chan error
@@ -58,14 +60,17 @@ type FakeRepBBS struct {
 	completeTaskReturns struct {
 		result1 error
 	}
-	ReportActualLRPAsStartingStub        func(lrp models.ActualLRP, executorID string) error
+	ReportActualLRPAsStartingStub        func(processGuid, instanceGuid, executorID string, index int) (models.ActualLRP, error)
 	reportActualLRPAsStartingMutex       sync.RWMutex
 	reportActualLRPAsStartingArgsForCall []struct {
-		lrp        models.ActualLRP
-		executorID string
+		processGuid  string
+		instanceGuid string
+		executorID   string
+		index        int
 	}
 	reportActualLRPAsStartingReturns struct {
-		result1 error
+		result1 models.ActualLRP
+		result2 error
 	}
 	ReportActualLRPAsRunningStub        func(lrp models.ActualLRP, executorId string) error
 	reportActualLRPAsRunningMutex       sync.RWMutex
@@ -97,7 +102,7 @@ type FakeRepBBS struct {
 	WatchForStopLRPInstanceStub        func() (<-chan models.StopLRPInstance, chan<- bool, <-chan error)
 	watchForStopLRPInstanceMutex       sync.RWMutex
 	watchForStopLRPInstanceArgsForCall []struct{}
-	watchForStopLRPInstanceReturns struct {
+	watchForStopLRPInstanceReturns     struct {
 		result1 <-chan models.StopLRPInstance
 		result2 chan<- bool
 		result3 <-chan error
@@ -273,17 +278,19 @@ func (fake *FakeRepBBS) CompleteTaskReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *FakeRepBBS) ReportActualLRPAsStarting(lrp models.ActualLRP, executorID string) error {
+func (fake *FakeRepBBS) ReportActualLRPAsStarting(processGuid string, instanceGuid string, executorID string, index int) (models.ActualLRP, error) {
 	fake.reportActualLRPAsStartingMutex.Lock()
 	fake.reportActualLRPAsStartingArgsForCall = append(fake.reportActualLRPAsStartingArgsForCall, struct {
-		lrp        models.ActualLRP
-		executorID string
-	}{lrp, executorID})
+		processGuid  string
+		instanceGuid string
+		executorID   string
+		index        int
+	}{processGuid, instanceGuid, executorID, index})
 	fake.reportActualLRPAsStartingMutex.Unlock()
 	if fake.ReportActualLRPAsStartingStub != nil {
-		return fake.ReportActualLRPAsStartingStub(lrp, executorID)
+		return fake.ReportActualLRPAsStartingStub(processGuid, instanceGuid, executorID, index)
 	} else {
-		return fake.reportActualLRPAsStartingReturns.result1
+		return fake.reportActualLRPAsStartingReturns.result1, fake.reportActualLRPAsStartingReturns.result2
 	}
 }
 
@@ -293,17 +300,18 @@ func (fake *FakeRepBBS) ReportActualLRPAsStartingCallCount() int {
 	return len(fake.reportActualLRPAsStartingArgsForCall)
 }
 
-func (fake *FakeRepBBS) ReportActualLRPAsStartingArgsForCall(i int) (models.ActualLRP, string) {
+func (fake *FakeRepBBS) ReportActualLRPAsStartingArgsForCall(i int) (string, string, string, int) {
 	fake.reportActualLRPAsStartingMutex.RLock()
 	defer fake.reportActualLRPAsStartingMutex.RUnlock()
-	return fake.reportActualLRPAsStartingArgsForCall[i].lrp, fake.reportActualLRPAsStartingArgsForCall[i].executorID
+	return fake.reportActualLRPAsStartingArgsForCall[i].processGuid, fake.reportActualLRPAsStartingArgsForCall[i].instanceGuid, fake.reportActualLRPAsStartingArgsForCall[i].executorID, fake.reportActualLRPAsStartingArgsForCall[i].index
 }
 
-func (fake *FakeRepBBS) ReportActualLRPAsStartingReturns(result1 error) {
+func (fake *FakeRepBBS) ReportActualLRPAsStartingReturns(result1 models.ActualLRP, result2 error) {
 	fake.ReportActualLRPAsStartingStub = nil
 	fake.reportActualLRPAsStartingReturns = struct {
-		result1 error
-	}{result1}
+		result1 models.ActualLRP
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeRepBBS) ReportActualLRPAsRunning(lrp models.ActualLRP, executorId string) error {

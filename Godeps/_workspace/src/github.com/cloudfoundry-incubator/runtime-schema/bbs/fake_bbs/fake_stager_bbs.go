@@ -2,16 +2,16 @@
 package fake_bbs
 
 import (
-	"sync"
 	. "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"sync"
 )
 
 type FakeStagerBBS struct {
 	WatchForCompletedTaskStub        func() (<-chan models.Task, chan<- bool, <-chan error)
 	watchForCompletedTaskMutex       sync.RWMutex
 	watchForCompletedTaskArgsForCall []struct{}
-	watchForCompletedTaskReturns struct {
+	watchForCompletedTaskReturns     struct {
 		result1 <-chan models.Task
 		result2 chan<- bool
 		result3 <-chan error
@@ -43,7 +43,7 @@ type FakeStagerBBS struct {
 	GetAvailableFileServerStub        func() (string, error)
 	getAvailableFileServerMutex       sync.RWMutex
 	getAvailableFileServerArgsForCall []struct{}
-	getAvailableFileServerReturns struct {
+	getAvailableFileServerReturns     struct {
 		result1 string
 		result2 error
 	}

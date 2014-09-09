@@ -29,7 +29,7 @@ type RepBBS interface {
 	CompleteTask(taskGuid string, failed bool, failureReason string, result string) error
 
 	///lrp
-	ReportActualLRPAsStarting(lrp models.ActualLRP, executorID string) error
+	ReportActualLRPAsStarting(processGuid, instanceGuid, executorID string, index int) (models.ActualLRP, error)
 	ReportActualLRPAsRunning(lrp models.ActualLRP, executorId string) error
 	RemoveActualLRP(lrp models.ActualLRP) error
 	RemoveActualLRPForIndex(processGuid string, index int, instanceGuid string) error

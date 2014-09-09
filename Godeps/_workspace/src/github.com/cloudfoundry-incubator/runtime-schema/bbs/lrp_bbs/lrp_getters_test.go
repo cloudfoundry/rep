@@ -9,7 +9,9 @@ import (
 )
 
 var _ = Describe("LrpGetters", func() {
-	var lrp1, lrp2, lrp3 models.ActualLRP
+	var runningLrp1, newLrp, runningLrp2 models.ActualLRP
+	var newLrpProcessGuid, newLrpInstanceGuid, newLrpExecutorId string
+	var newLrpIndex int
 	var desiredLrp1, desiredLrp2, desiredLrp3 models.DesiredLRP
 
 	BeforeEach(func() {
@@ -55,7 +57,12 @@ var _ = Describe("LrpGetters", func() {
 			},
 		}
 
-		lrp1 = models.ActualLRP{
+		newLrpProcessGuid = "guidA"
+		newLrpInstanceGuid = "some-instance-guid"
+		newLrpIndex = 2
+		newLrpExecutorId = "executor-id"
+
+		runningLrp1 = models.ActualLRP{
 			ProcessGuid:  "guidA",
 			Index:        1,
 			InstanceGuid: "some-instance-guid",
@@ -64,16 +71,7 @@ var _ = Describe("LrpGetters", func() {
 			ExecutorID:   "executor-id",
 		}
 
-		lrp2 = models.ActualLRP{
-			ProcessGuid:  "guidA",
-			Index:        2,
-			InstanceGuid: "some-instance-guid",
-			State:        models.ActualLRPStateStarting,
-			Since:        timeProvider.Time().UnixNano(),
-			ExecutorID:   "executor-id",
-		}
-
-		lrp3 = models.ActualLRP{
+		runningLrp2 = models.ActualLRP{
 			ProcessGuid:  "guidB",
 			Index:        2,
 			InstanceGuid: "some-instance-guid",
@@ -160,13 +158,13 @@ var _ = Describe("LrpGetters", func() {
 
 	Describe("GetAllActualLRPs", func() {
 		BeforeEach(func() {
-			err := bbs.ReportActualLRPAsRunning(lrp1, "executor-id")
+			err := bbs.ReportActualLRPAsRunning(runningLrp1, "executor-id")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.ReportActualLRPAsStarting(lrp2, "executor-id")
+			newLrp, err = bbs.ReportActualLRPAsStarting(newLrpProcessGuid, newLrpInstanceGuid, newLrpExecutorId, newLrpIndex)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.ReportActualLRPAsRunning(lrp3, "executor-id")
+			err = bbs.ReportActualLRPAsRunning(runningLrp2, "executor-id")
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -175,21 +173,21 @@ var _ = Describe("LrpGetters", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(all).Should(HaveLen(3))
-			Ω(all).Should(ContainElement(lrp1))
-			Ω(all).Should(ContainElement(lrp2))
-			Ω(all).Should(ContainElement(lrp3))
+			Ω(all).Should(ContainElement(runningLrp1))
+			Ω(all).Should(ContainElement(newLrp))
+			Ω(all).Should(ContainElement(runningLrp2))
 		})
 	})
 
 	Describe("GetRunningActualLRPs", func() {
 		BeforeEach(func() {
-			err := bbs.ReportActualLRPAsRunning(lrp1, "executor-id")
+			err := bbs.ReportActualLRPAsRunning(runningLrp1, "executor-id")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.ReportActualLRPAsStarting(lrp2, "executor-id")
+			newLrp, err = bbs.ReportActualLRPAsStarting(newLrpProcessGuid, newLrpInstanceGuid, newLrpExecutorId, newLrpIndex)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.ReportActualLRPAsRunning(lrp3, "executor-id")
+			err = bbs.ReportActualLRPAsRunning(runningLrp2, "executor-id")
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -198,20 +196,20 @@ var _ = Describe("LrpGetters", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(all).Should(HaveLen(2))
-			Ω(all).Should(ContainElement(lrp1))
-			Ω(all).Should(ContainElement(lrp3))
+			Ω(all).Should(ContainElement(runningLrp1))
+			Ω(all).Should(ContainElement(runningLrp2))
 		})
 	})
 
 	Describe("GetActualLRPsByProcessGuid", func() {
 		BeforeEach(func() {
-			err := bbs.ReportActualLRPAsRunning(lrp1, "executor-id")
+			err := bbs.ReportActualLRPAsRunning(runningLrp1, "executor-id")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.ReportActualLRPAsStarting(lrp2, "executor-id")
+			newLrp, err = bbs.ReportActualLRPAsStarting(newLrpProcessGuid, newLrpInstanceGuid, newLrpExecutorId, newLrpIndex)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.ReportActualLRPAsRunning(lrp3, "executor-id")
+			err = bbs.ReportActualLRPAsRunning(runningLrp2, "executor-id")
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -219,20 +217,20 @@ var _ = Describe("LrpGetters", func() {
 			lrps, err := bbs.GetActualLRPsByProcessGuid("guidA")
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(lrps).Should(HaveLen(2))
-			Ω(lrps).Should(ContainElement(lrp1))
-			Ω(lrps).Should(ContainElement(lrp2))
+			Ω(lrps).Should(ContainElement(runningLrp1))
+			Ω(lrps).Should(ContainElement(newLrp))
 		})
 	})
 
 	Describe("GetRunningActualLRPsByProcessGuid", func() {
 		BeforeEach(func() {
-			err := bbs.ReportActualLRPAsRunning(lrp1, "executor-id")
+			err := bbs.ReportActualLRPAsRunning(runningLrp1, "executor-id")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.ReportActualLRPAsStarting(lrp2, "executor-id")
+			newLrp, err = bbs.ReportActualLRPAsStarting(newLrpProcessGuid, newLrpInstanceGuid, newLrpExecutorId, newLrpIndex)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.ReportActualLRPAsRunning(lrp3, "executor-id")
+			err = bbs.ReportActualLRPAsRunning(runningLrp2, "executor-id")
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -240,7 +238,7 @@ var _ = Describe("LrpGetters", func() {
 			lrps, err := bbs.GetRunningActualLRPsByProcessGuid("guidA")
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(lrps).Should(HaveLen(1))
-			Ω(lrps).Should(ContainElement(lrp1))
+			Ω(lrps).Should(ContainElement(runningLrp1))
 		})
 	})
 })

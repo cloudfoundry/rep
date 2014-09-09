@@ -88,15 +88,25 @@ var _ = Describe("LrpWatchers", func() {
 
 	Describe("WatchForActualLRPChanges", func() {
 		var (
-			events <-chan models.ActualLRPChange
-			stop   chan<- bool
-			errors <-chan error
-			lrp    models.ActualLRP
+			events                                         <-chan models.ActualLRPChange
+			stop                                           chan<- bool
+			errors                                         <-chan error
+			lrp                                            models.ActualLRP
+			lrpProcessGuid, lrpInstanceGuid, lrpExecutorId string
+			lrpIndex                                       int
 		)
 
 		BeforeEach(func() {
-			lrp = models.ActualLRP{ProcessGuid: "some-process-guid", InstanceGuid: "some-instance-guid", State: models.ActualLRPStateStarting, Since: timeProvider.Time().UnixNano(), ExecutorID: "executor-id"}
+			lrpProcessGuid = "some-process-guid"
+			lrpInstanceGuid = "some-instance-guid"
+			lrpExecutorId = "executor-id"
+			lrpIndex = 0
+
 			events, stop, errors = bbs.WatchForActualLRPChanges()
+
+			var err error
+			lrp, err = bbs.ReportActualLRPAsStarting(lrpProcessGuid, lrpInstanceGuid, lrpExecutorId, lrpIndex)
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
@@ -104,9 +114,6 @@ var _ = Describe("LrpWatchers", func() {
 		})
 
 		It("sends an event down the pipe for creates", func() {
-			err := bbs.ReportActualLRPAsStarting(lrp, "executor-id")
-			Ω(err).ShouldNot(HaveOccurred())
-
 			Eventually(events).Should(Receive(Equal(models.ActualLRPChange{
 				Before: nil,
 				After:  &lrp,
@@ -114,16 +121,13 @@ var _ = Describe("LrpWatchers", func() {
 		})
 
 		It("sends an event down the pipe for updates", func() {
-			err := bbs.ReportActualLRPAsStarting(lrp, "executor-id")
-			Ω(err).ShouldNot(HaveOccurred())
-
 			Eventually(events).Should(Receive())
 
 			changedLRP := lrp
 			changedLRP.State = models.ActualLRPStateRunning
 			changedLRP.ExecutorID = "executor-id"
 
-			err = bbs.ReportActualLRPAsRunning(changedLRP, "executor-id")
+			err := bbs.ReportActualLRPAsRunning(changedLRP, "executor-id")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(events).Should(Receive(Equal(models.ActualLRPChange{
@@ -133,12 +137,9 @@ var _ = Describe("LrpWatchers", func() {
 		})
 
 		It("sends an event down the pipe for delete", func() {
-			err := bbs.ReportActualLRPAsStarting(lrp, "executor-id")
-			Ω(err).ShouldNot(HaveOccurred())
-
 			Eventually(events).Should(Receive())
 
-			err = bbs.RemoveActualLRP(lrp)
+			err := bbs.RemoveActualLRP(lrp)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(events).Should(Receive(Equal(models.ActualLRPChange{
@@ -147,5 +148,4 @@ var _ = Describe("LrpWatchers", func() {
 			})))
 		})
 	})
-
 })

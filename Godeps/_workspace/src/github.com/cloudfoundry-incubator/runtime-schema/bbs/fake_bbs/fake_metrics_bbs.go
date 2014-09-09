@@ -13,21 +13,21 @@ type FakeMetricsBBS struct {
 	GetAllTasksStub        func() ([]models.Task, error)
 	getAllTasksMutex       sync.RWMutex
 	getAllTasksArgsForCall []struct{}
-	getAllTasksReturns struct {
+	getAllTasksReturns     struct {
 		result1 []models.Task
 		result2 error
 	}
 	GetServiceRegistrationsStub        func() (models.ServiceRegistrations, error)
 	getServiceRegistrationsMutex       sync.RWMutex
 	getServiceRegistrationsArgsForCall []struct{}
-	getServiceRegistrationsReturns struct {
+	getServiceRegistrationsReturns     struct {
 		result1 models.ServiceRegistrations
 		result2 error
 	}
 	GetAllFreshnessStub        func() ([]string, error)
 	getAllFreshnessMutex       sync.RWMutex
 	getAllFreshnessArgsForCall []struct{}
-	getAllFreshnessReturns struct {
+	getAllFreshnessReturns     struct {
 		result1 []string
 		result2 error
 	}

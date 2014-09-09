@@ -20,19 +20,10 @@ var _ = Describe("LrpConvergence", func() {
 			Value: []byte{},
 		})
 
-		actualLrp1 := models.ActualLRP{
-			ProcessGuid:  processGuid,
-			InstanceGuid: "instance-guid-1",
-			Index:        0,
-		}
-		bbs.ReportActualLRPAsStarting(actualLrp1, executorID)
-
-		actualLrp2 := models.ActualLRP{
-			ProcessGuid:  processGuid,
-			InstanceGuid: "instance-guid-2",
-			Index:        1,
-		}
-		bbs.ReportActualLRPAsStarting(actualLrp2, executorID)
+		_, err := bbs.ReportActualLRPAsStarting(processGuid, "instance-guid-1", executorID, 0)
+		Ω(err).ShouldNot(HaveOccurred())
+		_, err = bbs.ReportActualLRPAsStarting(processGuid, "instance-guid-2", executorID, 1)
+		Ω(err).ShouldNot(HaveOccurred())
 	})
 
 	Describe("pruning LRPs by executor", func() {
@@ -154,13 +145,7 @@ var _ = Describe("LrpConvergence", func() {
 
 		Context("when there are duplicate actual LRPs", func() {
 			BeforeEach(func() {
-				actualLrp := models.ActualLRP{
-					ProcessGuid:  processGuid,
-					InstanceGuid: "instance-guid-duplicate",
-					Index:        0,
-				}
-
-				bbs.ReportActualLRPAsStarting(actualLrp, executorID)
+				bbs.ReportActualLRPAsStarting(processGuid, "instance-guid-duplicate", executorID, 0)
 				bbs.DesireLRP(desiredLRP)
 			})
 

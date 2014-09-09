@@ -1,6 +1,8 @@
 package lrp_bbs_test
 
 import (
+	"fmt"
+
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
 	. "github.com/onsi/ginkgo"
@@ -72,28 +74,21 @@ var _ = Describe("LRP", func() {
 	})
 
 	Describe("Adding and removing actual LRPs", func() {
-		var lrp models.ActualLRP
+		var processGuid, instanceGuid string
+		var index int
 
 		BeforeEach(func() {
-			lrp = models.ActualLRP{
-				ProcessGuid:  "some-process-guid",
-				InstanceGuid: "some-instance-guid",
-				Index:        1,
-
-				Host: "1.2.3.4",
-				Ports: []models.PortMapping{
-					{ContainerPort: 8080, HostPort: 65100},
-					{ContainerPort: 8081, HostPort: 65101},
-				},
-			}
+			processGuid = "some-process-guid"
+			instanceGuid = "some-instance-guid"
+			index = 1
 		})
 
 		Describe("ReportActualLRPAsStarting", func() {
 			It("creates /v1/actual/<process-guid>/<index>/<instance-guid>", func() {
-				err := bbs.ReportActualLRPAsStarting(lrp, executorID)
+				lrp, err := bbs.ReportActualLRPAsStarting(processGuid, instanceGuid, executorID, index)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				node, err := etcdClient.Get("/v1/actual/some-process-guid/1/some-instance-guid")
+				node, err := etcdClient.Get(fmt.Sprintf("/v1/actual/%s/%d/%s", processGuid, index, instanceGuid))
 				Ω(err).ShouldNot(HaveOccurred())
 
 				expectedLRP := lrp
@@ -105,20 +100,33 @@ var _ = Describe("LRP", func() {
 
 			Context("when the store is out of commission", func() {
 				itRetriesUntilStoreComesBack(func() error {
-					return bbs.ReportActualLRPAsStarting(lrp, executorID)
+					_, err := bbs.ReportActualLRPAsStarting(processGuid, instanceGuid, executorID, index)
+					return err
 				})
 			})
 		})
 
 		Describe("ReportActualLRPAsRunning", func() {
+			var startedLRP models.ActualLRP
+
+			BeforeEach(func() {
+				startedLRP = models.ActualLRP{
+					InstanceGuid: instanceGuid,
+					ProcessGuid:  processGuid,
+					ExecutorID:   executorID,
+					Index:        index,
+					Since:        timeProvider.Time().UnixNano(),
+				}
+			})
+
 			It("creates /v1/actual/<process-guid>/<index>/<instance-guid>", func() {
-				err := bbs.ReportActualLRPAsRunning(lrp, executorID)
+				err := bbs.ReportActualLRPAsRunning(startedLRP, executorID)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				node, err := etcdClient.Get("/v1/actual/some-process-guid/1/some-instance-guid")
+				node, err := etcdClient.Get(fmt.Sprintf("/v1/actual/%s/%d/%s", processGuid, index, instanceGuid))
 				Ω(err).ShouldNot(HaveOccurred())
 
-				expectedLRP := lrp
+				expectedLRP := startedLRP
 				expectedLRP.State = models.ActualLRPStateRunning
 				expectedLRP.Since = timeProvider.Time().UnixNano()
 				expectedLRP.ExecutorID = executorID
@@ -127,21 +135,30 @@ var _ = Describe("LRP", func() {
 
 			Context("when the store is out of commission", func() {
 				itRetriesUntilStoreComesBack(func() error {
-					return bbs.ReportActualLRPAsRunning(lrp, executorID)
+					return bbs.ReportActualLRPAsRunning(startedLRP, executorID)
 				})
 			})
 		})
 
 		Describe("RemoveActualLRP", func() {
+			var processGuid, instanceGuid string
+			var index int
+			var lrp models.ActualLRP
+
 			BeforeEach(func() {
-				bbs.ReportActualLRPAsStarting(lrp, executorID)
+				processGuid = "some-process-guid"
+				instanceGuid = "some-instance-guid"
+				index = 1
+				var err error
+				lrp, err = bbs.ReportActualLRPAsStarting(processGuid, instanceGuid, executorID, index)
+				Ω(err).ShouldNot(HaveOccurred())
 			})
 
 			It("should remove the LRP", func() {
 				err := bbs.RemoveActualLRP(lrp)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				_, err = etcdClient.Get("/v1/actual/some-process-guid/1/some-instance-guid")
+				_, err = etcdClient.Get(fmt.Sprintf("/v1/actual/%s/%d/%s", processGuid, index, instanceGuid))
 				Ω(err).Should(MatchError(storeadapter.ErrorKeyNotFound))
 			})
 
@@ -153,15 +170,24 @@ var _ = Describe("LRP", func() {
 		})
 
 		Describe("RemoveActualLRPForIndex", func() {
+			var processGuid, instanceGuid string
+			var index int
+			var lrp models.ActualLRP
+
 			BeforeEach(func() {
-				bbs.ReportActualLRPAsStarting(lrp, executorID)
+				processGuid = "some-process-guid"
+				instanceGuid = "some-instance-guid"
+				index = 1
+				var err error
+				lrp, err = bbs.ReportActualLRPAsStarting(processGuid, instanceGuid, executorID, index)
+				Ω(err).ShouldNot(HaveOccurred())
 			})
 
 			It("should remove the LRP", func() {
 				err := bbs.RemoveActualLRPForIndex(lrp.ProcessGuid, lrp.Index, lrp.InstanceGuid)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				_, err = etcdClient.Get("/v1/actual/some-process-guid/1/some-instance-guid")
+				_, err = etcdClient.Get(fmt.Sprintf("/v1/actual/%s/%d/%s", processGuid, index, instanceGuid))
 				Ω(err).Should(MatchError(storeadapter.ErrorKeyNotFound))
 			})
 
