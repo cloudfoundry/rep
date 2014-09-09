@@ -114,7 +114,7 @@
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
-			"Rev": "0addc90d7dcebcf87ef0fc89240c58bd1c475d8f"
+			"Rev": "fcdd56f5f4e33c55e7f7edbd911abbadba2e49ed"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/rata",
