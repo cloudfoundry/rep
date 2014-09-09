@@ -129,7 +129,7 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 		Index:        startAuction.Index,
 	}
 
-	err := a.bbs.ReportActualLRPAsStarting(lrp, a.executorID)
+	lrp, err := a.bbs.ReportActualLRPAsStarting(startAuction.DesiredLRP.ProcessGuid, startAuction.InstanceGuid, a.executorID, startAuction.Index)
 
 	if err != nil {
 		auctionLog.Error("failed-to-mark-starting", err)

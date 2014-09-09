@@ -299,6 +299,7 @@ var _ = Describe("AuctionDelegate", func() {
 		var expectedRootFS = "docker://docker.com/docker"
 		var startAuction models.LRPStartAuction
 		var err, initializeError, startingErr, runError error
+		var expectedLrp models.ActualLRP
 
 		BeforeEach(func() {
 			initializeError, startingErr, runError = nil, nil, nil
@@ -325,11 +326,18 @@ var _ = Describe("AuctionDelegate", func() {
 				InstanceGuid: "instance-guid",
 				Index:        2,
 			}
+
+			expectedLrp = models.ActualLRP{
+				ProcessGuid:  startAuction.DesiredLRP.ProcessGuid,
+				InstanceGuid: startAuction.InstanceGuid,
+				Index:        startAuction.Index,
+				ExecutorID:   "some-executor-id",
+			}
 		})
 
 		JustBeforeEach(func() {
 			client.InitializeContainerReturns(api.Container{}, initializeError)
-			bbs.ReportActualLRPAsStartingReturns(startingErr)
+			bbs.ReportActualLRPAsStartingReturns(expectedLrp, startingErr)
 			client.RunReturns(runError)
 			client.DeleteContainerReturns(nil)
 
@@ -355,13 +363,12 @@ var _ = Describe("AuctionDelegate", func() {
 
 			It("should mark the instance as STARTING in etcd", func() {
 				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
-				actualLRP, executorGuid := bbs.ReportActualLRPAsStartingArgsForCall(0)
-				Ω(actualLRP).Should(Equal(models.ActualLRP{
-					ProcessGuid:  startAuction.DesiredLRP.ProcessGuid,
-					InstanceGuid: startAuction.InstanceGuid,
-					Index:        startAuction.Index,
-				}))
-				Ω(executorGuid).Should(Equal("some-executor-id"))
+
+				actualProcessGuid, actualInstanceGuid, actualExecutorID, actualIndex := bbs.ReportActualLRPAsStartingArgsForCall(0)
+				Ω(actualProcessGuid).Should(Equal(expectedLrp.ProcessGuid))
+				Ω(actualInstanceGuid).Should(Equal(expectedLrp.InstanceGuid))
+				Ω(actualExecutorID).Should(Equal(expectedLrp.ExecutorID))
+				Ω(actualIndex).Should(Equal(expectedLrp.Index))
 			})
 
 			It("should attempt to run the correct actions in the correct container", func() {
@@ -449,13 +456,12 @@ var _ = Describe("AuctionDelegate", func() {
 
 			It("should mark the instance as STARTING in etcd", func() {
 				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
-				actualLRP, executorGuid := bbs.ReportActualLRPAsStartingArgsForCall(0)
-				Ω(actualLRP).Should(Equal(models.ActualLRP{
-					ProcessGuid:  startAuction.DesiredLRP.ProcessGuid,
-					InstanceGuid: startAuction.InstanceGuid,
-					Index:        startAuction.Index,
-				}))
-				Ω(executorGuid).Should(Equal("some-executor-id"))
+
+				actualProcessGuid, actualInstanceGuid, actualExecutorID, actualIndex := bbs.ReportActualLRPAsStartingArgsForCall(0)
+				Ω(actualProcessGuid).Should(Equal(expectedLrp.ProcessGuid))
+				Ω(actualInstanceGuid).Should(Equal(expectedLrp.InstanceGuid))
+				Ω(actualExecutorID).Should(Equal(expectedLrp.ExecutorID))
+				Ω(actualIndex).Should(Equal(expectedLrp.Index))
 			})
 
 			It("does not attempt to remove the STARTING LRP from etcd", func() {
@@ -496,13 +502,12 @@ var _ = Describe("AuctionDelegate", func() {
 
 			It("should mark the instance as STARTING in etcd", func() {
 				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
-				actualLRP, executorGuid := bbs.ReportActualLRPAsStartingArgsForCall(0)
-				Ω(actualLRP).Should(Equal(models.ActualLRP{
-					ProcessGuid:  startAuction.DesiredLRP.ProcessGuid,
-					InstanceGuid: startAuction.InstanceGuid,
-					Index:        startAuction.Index,
-				}))
-				Ω(executorGuid).Should(Equal("some-executor-id"))
+
+				actualProcessGuid, actualInstanceGuid, actualExecutorID, actualIndex := bbs.ReportActualLRPAsStartingArgsForCall(0)
+				Ω(actualProcessGuid).Should(Equal(expectedLrp.ProcessGuid))
+				Ω(actualInstanceGuid).Should(Equal(expectedLrp.InstanceGuid))
+				Ω(actualExecutorID).Should(Equal(expectedLrp.ExecutorID))
+				Ω(actualIndex).Should(Equal(expectedLrp.Index))
 			})
 
 			It("should remove the STARTING LRP from etcd", func() {
