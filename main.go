@@ -30,7 +30,6 @@ import (
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
 	"github.com/cloudfoundry/yagnats"
-	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/timer"
 	"github.com/tedsuo/ifrit"
@@ -188,14 +187,6 @@ func initializeTaskRep(executorID string, bbs Bbs.RepBBS, logger lager.Logger, e
 	)
 
 	return task_scheduler.New(executorID, callbackGenerator, bbs, logger, *stack, executorClient)
-}
-
-func generateExecutorID() string {
-	uuid, err := uuid.NewV4()
-	if err != nil {
-		panic("Failed to generate a random guid....:" + err.Error())
-	}
-	return uuid.String()
 }
 
 func initializeLRPStopper(bbs Bbs.RepBBS, executorClient executorapi.Client, logger lager.Logger) lrp_stopper.LRPStopper {
