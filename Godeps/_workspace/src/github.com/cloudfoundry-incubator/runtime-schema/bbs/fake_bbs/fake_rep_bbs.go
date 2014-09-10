@@ -60,6 +60,15 @@ type FakeRepBBS struct {
 	completeTaskReturns struct {
 		result1 error
 	}
+	GetAllActualLRPsByExecutorIDStub        func(executorID string) ([]models.ActualLRP, error)
+	getAllActualLRPsByExecutorIDMutex       sync.RWMutex
+	getAllActualLRPsByExecutorIDArgsForCall []struct {
+		executorID string
+	}
+	getAllActualLRPsByExecutorIDReturns struct {
+		result1 []models.ActualLRP
+		result2 error
+	}
 	ReportActualLRPAsStartingStub        func(processGuid, instanceGuid, executorID string, index int) (models.ActualLRP, error)
 	reportActualLRPAsStartingMutex       sync.RWMutex
 	reportActualLRPAsStartingArgsForCall []struct {
@@ -276,6 +285,39 @@ func (fake *FakeRepBBS) CompleteTaskReturns(result1 error) {
 	fake.completeTaskReturns = struct {
 		result1 error
 	}{result1}
+}
+
+func (fake *FakeRepBBS) GetAllActualLRPsByExecutorID(executorID string) ([]models.ActualLRP, error) {
+	fake.getAllActualLRPsByExecutorIDMutex.Lock()
+	fake.getAllActualLRPsByExecutorIDArgsForCall = append(fake.getAllActualLRPsByExecutorIDArgsForCall, struct {
+		executorID string
+	}{executorID})
+	fake.getAllActualLRPsByExecutorIDMutex.Unlock()
+	if fake.GetAllActualLRPsByExecutorIDStub != nil {
+		return fake.GetAllActualLRPsByExecutorIDStub(executorID)
+	} else {
+		return fake.getAllActualLRPsByExecutorIDReturns.result1, fake.getAllActualLRPsByExecutorIDReturns.result2
+	}
+}
+
+func (fake *FakeRepBBS) GetAllActualLRPsByExecutorIDCallCount() int {
+	fake.getAllActualLRPsByExecutorIDMutex.RLock()
+	defer fake.getAllActualLRPsByExecutorIDMutex.RUnlock()
+	return len(fake.getAllActualLRPsByExecutorIDArgsForCall)
+}
+
+func (fake *FakeRepBBS) GetAllActualLRPsByExecutorIDArgsForCall(i int) string {
+	fake.getAllActualLRPsByExecutorIDMutex.RLock()
+	defer fake.getAllActualLRPsByExecutorIDMutex.RUnlock()
+	return fake.getAllActualLRPsByExecutorIDArgsForCall[i].executorID
+}
+
+func (fake *FakeRepBBS) GetAllActualLRPsByExecutorIDReturns(result1 []models.ActualLRP, result2 error) {
+	fake.GetAllActualLRPsByExecutorIDStub = nil
+	fake.getAllActualLRPsByExecutorIDReturns = struct {
+		result1 []models.ActualLRP
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeRepBBS) ReportActualLRPAsStarting(processGuid string, instanceGuid string, executorID string, index int) (models.ActualLRP, error) {

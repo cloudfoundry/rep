@@ -179,6 +179,34 @@ var _ = Describe("LrpGetters", func() {
 		})
 	})
 
+	Describe("GetAllActualLRPsByExecutorID", func() {
+		BeforeEach(func() {
+			err := bbs.ReportActualLRPAsRunning(runningLrp1, "executor-id")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			newLrp, err = bbs.ReportActualLRPAsStarting(newLrpProcessGuid, newLrpInstanceGuid, newLrpExecutorId, newLrpIndex)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			_, err = bbs.ReportActualLRPAsStarting("some-other-process", "some-other-instance", "some-other-executor", 0)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = bbs.ReportActualLRPAsRunning(runningLrp2, "executor-id")
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("returns actual long running processes belongs to 'executor-id'", func() {
+			actualLrpsForMainExecutor, err := bbs.GetAllActualLRPsByExecutorID("executor-id")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(actualLrpsForMainExecutor).Should(ConsistOf(runningLrp1, newLrp, runningLrp2))
+
+			actualLrpsForOtherExecutor, err := bbs.GetAllActualLRPsByExecutorID("some-other-executor")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(actualLrpsForOtherExecutor).Should(HaveLen(1))
+		})
+	})
+
 	Describe("GetRunningActualLRPs", func() {
 		BeforeEach(func() {
 			err := bbs.ReportActualLRPAsRunning(runningLrp1, "executor-id")
