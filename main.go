@@ -118,6 +118,8 @@ func main() {
 
 	logger := cf_lager.New("rep")
 	bbs := initializeRepBBS(logger)
+	removeActualLrpFromBBS(bbs, *executorID, logger)
+
 	executorClient := client.New(http.DefaultClient, *executorURL)
 	lrpStopper := initializeLRPStopper(bbs, executorClient, logger)
 	group := group_runner.New([]group_runner.Member{
@@ -133,6 +135,26 @@ func main() {
 
 	<-monitor.Wait()
 	logger.Info("shutting-down")
+}
+
+func removeActualLrpFromBBS(bbs Bbs.RepBBS, executorID string, logger lager.Logger) {
+	for {
+		lrps, err := bbs.GetAllActualLRPsByExecutorID(executorID)
+		if err != nil {
+			logger.Error("failed-to-get-actual-lrps-by-executor-id", err, lager.Data{"executor-id": executorID})
+			continue
+		}
+
+		for _, lrp := range lrps {
+			err = bbs.RemoveActualLRP(lrp)
+			if err != nil {
+				logger.Error("failed-to-remove-actual-lrps", err, lager.Data{"executor-id": executorID, "actual-lrp": lrp, "total-lrps": len(lrps)})
+				continue
+			}
+		}
+
+		break
+	}
 }
 
 func initializeExecutorHeartbeat(bbs Bbs.RepBBS, executorClient executorapi.Client, logger lager.Logger) ifrit.Runner {

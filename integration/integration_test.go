@@ -58,6 +58,52 @@ var _ = Describe("The Rep", func() {
 		close(done)
 	})
 
+	Describe("when a rep starts up", func() {
+		BeforeEach(func() {
+			_, err := bbs.ReportActualLRPAsStarting("some-process-guid1", "some-instance-guid1", executorID, 0)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			lrp2rep1, err := bbs.ReportActualLRPAsStarting("some-process-guid2", "some-instance-guid2", executorID, 0)
+			Ω(err).ShouldNot(HaveOccurred())
+			err = bbs.ReportActualLRPAsRunning(lrp2rep1, executorID)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			_, err = bbs.ReportActualLRPAsStarting("some-process-guid3", "some-instance-guid3", "different-executor-id", 0)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			lrp2rep2, err := bbs.ReportActualLRPAsStarting("some-process-guid4", "some-instance-guid4", "different-executor-id", 0)
+			Ω(err).ShouldNot(HaveOccurred())
+			err = bbs.ReportActualLRPAsRunning(lrp2rep2, "different-executor-id")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			runner.Stop()
+			actualLrpsForRep1 := func() ([]models.ActualLRP, error) {
+				return bbs.GetAllActualLRPsByExecutorID(executorID)
+			}
+			Consistently(actualLrpsForRep1).Should(HaveLen(2))
+			actualLrpsForRep2 := func() ([]models.ActualLRP, error) {
+				return bbs.GetAllActualLRPsByExecutorID("different-executor-id")
+			}
+			Consistently(actualLrpsForRep2).Should(HaveLen(2))
+		})
+
+		JustBeforeEach(func() {
+			runner.Start()
+		})
+
+		It("should delete its corresponding actual LRPs", func() {
+			actualLrpsForRep1 := func() ([]models.ActualLRP, error) {
+				return bbs.GetAllActualLRPsByExecutorID(executorID)
+			}
+			Eventually(actualLrpsForRep1).Should(BeEmpty())
+
+			actualLrpsForRep2 := func() ([]models.ActualLRP, error) {
+				return bbs.GetAllActualLRPsByExecutorID("different-executor-id")
+			}
+			Consistently(actualLrpsForRep2).Should(HaveLen(2))
+		})
+	})
+
 	Describe("when an interrupt signal is sent to the representative", func() {
 		BeforeEach(func() {
 			runner.Stop()
