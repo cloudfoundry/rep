@@ -12,13 +12,15 @@ type LRPStopper interface {
 }
 
 type lrpStopper struct {
+	guid   string
 	bbs    Bbs.RepBBS
 	client executorapi.Client
 	logger lager.Logger
 }
 
-func New(bbs Bbs.RepBBS, client executorapi.Client, logger lager.Logger) LRPStopper {
+func New(guid string, bbs Bbs.RepBBS, client executorapi.Client, logger lager.Logger) LRPStopper {
 	return &lrpStopper{
+		guid:   guid,
 		bbs:    bbs,
 		client: client,
 		logger: logger.Session("lrp-stopper"),
@@ -34,12 +36,14 @@ func (stopper *lrpStopper) StopInstance(stopInstance models.StopLRPInstance) err
 
 	containerId := stopInstance.LRPIdentifier().OpaqueID()
 
-	_, err := stopper.client.GetContainer(containerId)
+	isResponsible, err := stopper.isResponsible(stopInstance.ProcessGuid, stopInstance.InstanceGuid)
 	if err != nil {
-		stopLog.Error("failed-to-get-container", err, lager.Data{
-			"container-id": containerId,
-		})
+		stopLog.Error("failed-to-fetch-actual-lrps", err)
 		return err
+	}
+
+	if !isResponsible {
+		return nil
 	}
 
 	stopLog.Info("stopping", lager.Data{
@@ -55,7 +59,13 @@ func (stopper *lrpStopper) StopInstance(stopInstance models.StopLRPInstance) err
 	}
 
 	err = stopper.client.DeleteContainer(containerId)
-	if err != nil {
+	switch err {
+	case nil:
+	case executorapi.ErrContainerNotFound:
+		stopLog.Info("container-already-gon", lager.Data{
+			"container-id": containerId,
+		})
+	default:
 		stopLog.Error("failed-to-delete-container", err, lager.Data{
 			"container-id": containerId,
 		})
@@ -73,4 +83,19 @@ func (stopper *lrpStopper) StopInstance(stopInstance models.StopLRPInstance) err
 	}
 
 	return nil
+}
+
+func (stopper *lrpStopper) isResponsible(processGuid, instanceGuid string) (bool, error) {
+	actuals, err := stopper.bbs.GetActualLRPsByProcessGuid(processGuid)
+	if err != nil {
+		return false, err
+	}
+
+	for _, actual := range actuals {
+		if actual.InstanceGuid == instanceGuid && actual.ExecutorID == stopper.guid {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

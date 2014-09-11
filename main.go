@@ -120,7 +120,7 @@ func main() {
 	removeActualLrpFromBBS(bbs, *executorID, logger)
 
 	executorClient := client.New(http.DefaultClient, *executorURL)
-	lrpStopper := initializeLRPStopper(bbs, executorClient, logger)
+	lrpStopper := initializeLRPStopper(*executorID, bbs, executorClient, logger)
 	group := group_runner.New([]group_runner.Member{
 		{"heartbeater", initializeExecutorHeartbeat(bbs, executorClient, logger)},
 		{"task-rep", initializeTaskRep(*executorID, bbs, logger, executorClient)},
@@ -189,8 +189,8 @@ func initializeTaskRep(executorID string, bbs Bbs.RepBBS, logger lager.Logger, e
 	return task_scheduler.New(executorID, callbackGenerator, bbs, logger, *stack, executorClient)
 }
 
-func initializeLRPStopper(bbs Bbs.RepBBS, executorClient executorapi.Client, logger lager.Logger) lrp_stopper.LRPStopper {
-	return lrp_stopper.New(bbs, executorClient, logger)
+func initializeLRPStopper(guid string, bbs Bbs.RepBBS, executorClient executorapi.Client, logger lager.Logger) lrp_stopper.LRPStopper {
+	return lrp_stopper.New(guid, bbs, executorClient, logger)
 }
 
 func initializeStopLRPListener(stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, logger lager.Logger) ifrit.Runner {

@@ -203,12 +203,6 @@ var _ = Describe("The Rep", func() {
 		BeforeEach(func() {
 			fakeExecutor.AppendHandlers(
 				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("GET", "/containers/some-process-guid.3.some-instance-guid"),
-					ghttp.RespondWithJSONEncoded(http.StatusOK, api.Container{
-						Guid: "some-instance-guid",
-					}),
-				),
-				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("DELETE", "/containers/some-process-guid.3.some-instance-guid"),
 					ghttp.RespondWith(http.StatusOK, nil),
 				),
@@ -218,7 +212,7 @@ var _ = Describe("The Rep", func() {
 				ProcessGuid:  "some-process-guid",
 				InstanceGuid: "some-instance-guid",
 				Index:        3,
-			}, "executor-guid")
+			}, executorID)
 
 			bbs.RequestStopLRPInstance(models.StopLRPInstance{
 				ProcessGuid:  "some-process-guid",

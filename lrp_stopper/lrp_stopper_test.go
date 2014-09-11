@@ -18,6 +18,7 @@ import (
 
 var _ = Describe("LRP Stopper", func() {
 	var (
+		executorID   string = "the-executor-id"
 		stopper      LRPStopper
 		bbs          *fake_bbs.FakeRepBBS
 		client       *fake_client.FakeClient
@@ -36,7 +37,7 @@ var _ = Describe("LRP Stopper", func() {
 		client = new(fake_client.FakeClient)
 		logger = lagertest.NewTestLogger("test")
 
-		stopper = New(bbs, client, logger)
+		stopper = New(executorID, bbs, client, logger)
 	})
 
 	Context("when told to stop an instance", func() {
@@ -46,26 +47,32 @@ var _ = Describe("LRP Stopper", func() {
 			returnedError = stopper.StopInstance(stopInstance)
 		})
 
-		Context("when the instance is one that is running on the executor", func() {
+		Context("when the instance is running on the executor", func() {
 			BeforeEach(func() {
-				client.GetContainerReturns(api.Container{Guid: stopInstance.LRPIdentifier().OpaqueID()}, nil)
+				bbs.GetActualLRPsByProcessGuidReturns([]models.ActualLRP{
+					{
+						ProcessGuid:  stopInstance.ProcessGuid,
+						InstanceGuid: "some-other-instance-guid",
+						Index:        1234,
+						ExecutorID:   "some-other-executor-id",
+					},
+					{
+						ProcessGuid:  stopInstance.ProcessGuid,
+						InstanceGuid: stopInstance.InstanceGuid,
+						Index:        stopInstance.Index,
+						ExecutorID:   executorID,
+					},
+				}, nil)
 			})
 
-			It("should ensure the container exists", func() {
-				Ω(client.GetContainerCallCount()).Should(Equal(1))
-
-				allocationGuid := client.GetContainerArgsForCall(0)
-				Ω(allocationGuid).Should(Equal(stopInstance.LRPIdentifier().OpaqueID()))
-			})
-
-			It("should attempt to delete the container", func() {
+			It("attempts to delete the container", func() {
 				Ω(client.DeleteContainerCallCount()).Should(Equal(1))
 
 				allocationGuid := client.DeleteContainerArgsForCall(0)
 				Ω(allocationGuid).Should(Equal(stopInstance.LRPIdentifier().OpaqueID()))
 			})
 
-			It("should mark the LRP as stopped", func() {
+			It("marks the LRP as stopped", func() {
 				processGuid, index, instanceGuid := bbs.RemoveActualLRPForIndexArgsForCall(0)
 				Ω(processGuid).Should(Equal(stopInstance.ProcessGuid))
 				Ω(index).Should(Equal(stopInstance.Index))
@@ -76,63 +83,108 @@ var _ = Describe("LRP Stopper", func() {
 				Ω(bbs.ResolveStopLRPInstanceArgsForCall(0)).Should(Equal(stopInstance))
 			})
 
-			It("should not error", func() {
+			It("succeeds", func() {
 				Ω(returnedError).ShouldNot(HaveOccurred())
 			})
-		})
 
-		Context("when resolving the LRP fails", func() {
-			BeforeEach(func() {
-				client.GetContainerReturns(api.Container{Guid: stopInstance.LRPIdentifier().OpaqueID()}, nil)
-				bbs.ResolveStopLRPInstanceReturns(errors.New("oops"))
+			Context("when resolving the stop command fails", func() {
+				BeforeEach(func() {
+					bbs.ResolveStopLRPInstanceReturns(errors.New("oops"))
+				})
+
+				It("does not attempt to delete the container", func() {
+					Ω(client.DeleteContainerCallCount()).Should(Equal(0))
+				})
+
+				It("returns an error", func() {
+					Ω(returnedError).Should(MatchError(errors.New("oops")))
+				})
 			})
 
-			It("should not attempt to delete the container", func() {
-				Ω(client.DeleteContainerCallCount()).Should(Equal(0))
+			Context("when deleting the container fails", func() {
+				BeforeEach(func() {
+					client.DeleteContainerReturns(errors.New("Couldn't delete that"))
+				})
+
+				It("does not mark the LRP as stopped", func() {
+					Ω(bbs.RemoveActualLRPForIndexCallCount()).Should(Equal(0))
+				})
 			})
 
-			It("should bubble up the error", func() {
-				Ω(returnedError).Should(MatchError(errors.New("oops")))
+			Context("when the executor returns 'not found'", func() {
+				BeforeEach(func() {
+					client.DeleteContainerReturns(api.ErrContainerNotFound)
+				})
+
+				It("marks the LRP as stopped", func() {
+					processGuid, index, instanceGuid := bbs.RemoveActualLRPForIndexArgsForCall(0)
+					Ω(processGuid).Should(Equal(stopInstance.ProcessGuid))
+					Ω(index).Should(Equal(stopInstance.Index))
+					Ω(instanceGuid).Should(Equal(stopInstance.InstanceGuid))
+				})
+
+				It("succeeds because the container is apparently already gone", func() {
+					Ω(returnedError).ShouldNot(HaveOccurred())
+				})
+
+				It("deletes the stop command from the queue", func() {
+					Ω(bbs.ResolveStopLRPInstanceArgsForCall(0)).Should(Equal(stopInstance))
+				})
+			})
+
+			Context("when marking the LRP as stopped fails", func() {
+				var expectedError = errors.New("ker-blewie")
+
+				BeforeEach(func() {
+					bbs.RemoveActualLRPForIndexReturns(expectedError)
+				})
+
+				It("returns an error", func() {
+					Ω(returnedError).Should(Equal(expectedError))
+				})
 			})
 		})
 
 		Context("when the instance is not running on the executor", func() {
 			BeforeEach(func() {
-				client.GetContainerReturns(api.Container{}, errors.New("nope"))
+				bbs.GetActualLRPsByProcessGuidReturns([]models.ActualLRP{
+					{
+						ProcessGuid:  stopInstance.ProcessGuid,
+						InstanceGuid: "some-other-instance-guid",
+						Index:        1234,
+						ExecutorID:   "some-other-executor-id",
+					},
+				}, nil)
 			})
 
-			It("should not attempt to delete the container", func() {
+			It("does not attempt to delete the container", func() {
 				Ω(client.DeleteContainerCallCount()).Should(Equal(0))
 			})
 
-			It("should not attempt to mark the LRP as stopped", func() {
+			It("does not mark the LRP as stopped", func() {
 				Ω(bbs.ResolveStopLRPInstanceCallCount()).Should(Equal(0))
 			})
 
-			It("should bubble up the error", func() {
-				Ω(returnedError).Should(MatchError(errors.New("nope")))
+			It("succeeds (as a noop)", func() {
+				Ω(returnedError).ShouldNot(HaveOccurred())
 			})
 		})
 
-		Context("when deleting the container fails", func() {
+		Context("when getting the actual LRPs for the stop instance fails", func() {
 			BeforeEach(func() {
-				client.DeleteContainerReturns(errors.New("Couldn't delete that"))
+				bbs.GetActualLRPsByProcessGuidReturns(nil, errors.New("store is down"))
 			})
 
-			It("does not mark the LRP as stopped", func() {
-				Ω(bbs.RemoveActualLRPForIndexCallCount()).Should(Equal(0))
-			})
-		})
-
-		Context("when marking the LRP as stopped fails", func() {
-			var expectedError = errors.New("ker-blewie")
-
-			BeforeEach(func() {
-				bbs.RemoveActualLRPForIndexReturns(expectedError)
+			It("returns an error", func() {
+				Ω(returnedError).Should(Equal(errors.New("store is down")))
 			})
 
-			It("bubbles uo the error", func() {
-				Ω(returnedError).Should(Equal(expectedError))
+			It("doesn't resolve the stop command", func() {
+				Ω(bbs.ResolveStopLRPInstanceCallCount()).Should(Equal(0))
+			})
+
+			It("doesn't delete the container", func() {
+				Ω(client.DeleteContainerCallCount()).Should(Equal(0))
 			})
 		})
 	})

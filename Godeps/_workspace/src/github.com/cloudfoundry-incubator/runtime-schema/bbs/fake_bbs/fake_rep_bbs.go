@@ -2,13 +2,11 @@
 package fake_bbs
 
 import (
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
-
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
-
 	"sync"
 	"time"
 
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/tedsuo/ifrit"
 )
 
@@ -25,7 +23,7 @@ type FakeRepBBS struct {
 	WatchForDesiredTaskStub        func() (<-chan models.Task, chan<- bool, <-chan error)
 	watchForDesiredTaskMutex       sync.RWMutex
 	watchForDesiredTaskArgsForCall []struct{}
-	watchForDesiredTaskReturns     struct {
+	watchForDesiredTaskReturns struct {
 		result1 <-chan models.Task
 		result2 chan<- bool
 		result3 <-chan error
@@ -59,6 +57,15 @@ type FakeRepBBS struct {
 	}
 	completeTaskReturns struct {
 		result1 error
+	}
+	GetActualLRPsByProcessGuidStub        func(string) ([]models.ActualLRP, error)
+	getActualLRPsByProcessGuidMutex       sync.RWMutex
+	getActualLRPsByProcessGuidArgsForCall []struct {
+		arg1 string
+	}
+	getActualLRPsByProcessGuidReturns struct {
+		result1 []models.ActualLRP
+		result2 error
 	}
 	GetAllActualLRPsByExecutorIDStub        func(executorID string) ([]models.ActualLRP, error)
 	getAllActualLRPsByExecutorIDMutex       sync.RWMutex
@@ -111,7 +118,7 @@ type FakeRepBBS struct {
 	WatchForStopLRPInstanceStub        func() (<-chan models.StopLRPInstance, chan<- bool, <-chan error)
 	watchForStopLRPInstanceMutex       sync.RWMutex
 	watchForStopLRPInstanceArgsForCall []struct{}
-	watchForStopLRPInstanceReturns     struct {
+	watchForStopLRPInstanceReturns struct {
 		result1 <-chan models.StopLRPInstance
 		result2 chan<- bool
 		result3 <-chan error
@@ -285,6 +292,39 @@ func (fake *FakeRepBBS) CompleteTaskReturns(result1 error) {
 	fake.completeTaskReturns = struct {
 		result1 error
 	}{result1}
+}
+
+func (fake *FakeRepBBS) GetActualLRPsByProcessGuid(arg1 string) ([]models.ActualLRP, error) {
+	fake.getActualLRPsByProcessGuidMutex.Lock()
+	fake.getActualLRPsByProcessGuidArgsForCall = append(fake.getActualLRPsByProcessGuidArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.getActualLRPsByProcessGuidMutex.Unlock()
+	if fake.GetActualLRPsByProcessGuidStub != nil {
+		return fake.GetActualLRPsByProcessGuidStub(arg1)
+	} else {
+		return fake.getActualLRPsByProcessGuidReturns.result1, fake.getActualLRPsByProcessGuidReturns.result2
+	}
+}
+
+func (fake *FakeRepBBS) GetActualLRPsByProcessGuidCallCount() int {
+	fake.getActualLRPsByProcessGuidMutex.RLock()
+	defer fake.getActualLRPsByProcessGuidMutex.RUnlock()
+	return len(fake.getActualLRPsByProcessGuidArgsForCall)
+}
+
+func (fake *FakeRepBBS) GetActualLRPsByProcessGuidArgsForCall(i int) string {
+	fake.getActualLRPsByProcessGuidMutex.RLock()
+	defer fake.getActualLRPsByProcessGuidMutex.RUnlock()
+	return fake.getActualLRPsByProcessGuidArgsForCall[i].arg1
+}
+
+func (fake *FakeRepBBS) GetActualLRPsByProcessGuidReturns(result1 []models.ActualLRP, result2 error) {
+	fake.GetActualLRPsByProcessGuidStub = nil
+	fake.getActualLRPsByProcessGuidReturns = struct {
+		result1 []models.ActualLRP
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeRepBBS) GetAllActualLRPsByExecutorID(executorID string) ([]models.ActualLRP, error) {
