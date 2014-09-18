@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -208,25 +209,19 @@ func initializeAPIServer(executorID string, bbs Bbs.RepBBS, logger lager.Logger,
 	return http_server.New(*listenAddr, apiHandler)
 }
 
-func initializeNatsClient(logger lager.Logger) yagnats.NATSClient {
-	natsClient := yagnats.NewClient()
-
-	natsMembers := []yagnats.ConnectionProvider{}
+func initializeNatsClient(logger lager.Logger) yagnats.ApceraWrapperNATSClient {
+	natsMembers := []string{}
 	for _, addr := range strings.Split(*natsAddresses, ",") {
-		natsMembers = append(
-			natsMembers,
-			&yagnats.ConnectionInfo{
-				Addr:     addr,
-				Username: *natsUsername,
-				Password: *natsPassword,
-			},
-		)
+		uri := url.URL{
+			Scheme: "nats",
+			User:   url.UserPassword(*natsUsername, *natsPassword),
+			Host:   addr,
+		}
+		natsMembers = append(natsMembers, uri.String())
 	}
+	natsClient := yagnats.NewApceraClientWrapper(natsMembers)
 
-	err := natsClient.Connect(&yagnats.ConnectionCluster{
-		Members: natsMembers,
-	})
-
+	err := natsClient.Connect()
 	if err != nil {
 		logger.Fatal("failed-to-connect-to-nats", err)
 	}
