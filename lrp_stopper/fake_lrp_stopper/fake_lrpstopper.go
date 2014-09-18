@@ -2,9 +2,9 @@
 package fake_lrp_stopper
 
 import (
-	"sync"
 	. "github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"sync"
 )
 
 type FakeLRPStopper struct {
