@@ -4,7 +4,6 @@ import (
 	"flag"
 	"log"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -27,6 +26,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	_ "github.com/cloudfoundry/dropsonde/autowire"
 	"github.com/cloudfoundry/gunk/group_runner"
+	"github.com/cloudfoundry/gunk/natsclientrunner"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
@@ -120,14 +120,22 @@ func main() {
 	bbs := initializeRepBBS(logger)
 	removeActualLrpFromBBS(bbs, *executorID, logger)
 
+	natsClient := natsclientrunner.NewClient(
+		*natsAddresses,
+		*natsUsername,
+		*natsPassword,
+	)
+	natsClientRunner := natsclientrunner.New(natsClient, logger)
+
 	executorClient := client.New(http.DefaultClient, *executorURL)
 	lrpStopper := initializeLRPStopper(*executorID, bbs, executorClient, logger)
 	group := group_runner.New([]group_runner.Member{
+		{"nats-client", natsClientRunner},
 		{"heartbeater", initializeExecutorHeartbeat(bbs, executorClient, logger)},
 		{"task-rep", initializeTaskRep(*executorID, bbs, logger, executorClient)},
 		{"stop-lrp-listener", initializeStopLRPListener(lrpStopper, bbs, logger)},
 		{"api-server", initializeAPIServer(*executorID, bbs, logger, executorClient)},
-		{"auction-server", initializeAuctionNatsServer(*executorID, lrpStopper, bbs, executorClient, logger)},
+		{"auction-server", initializeAuctionNatsServer(*executorID, lrpStopper, bbs, executorClient, natsClient, logger)},
 	})
 
 	monitor := ifrit.Envoke(sigmon.New(group))
@@ -209,29 +217,15 @@ func initializeAPIServer(executorID string, bbs Bbs.RepBBS, logger lager.Logger,
 	return http_server.New(*listenAddr, apiHandler)
 }
 
-func initializeNatsClient(logger lager.Logger) yagnats.ApceraWrapperNATSClient {
-	natsMembers := []string{}
-	for _, addr := range strings.Split(*natsAddresses, ",") {
-		uri := url.URL{
-			Scheme: "nats",
-			User:   url.UserPassword(*natsUsername, *natsPassword),
-			Host:   addr,
-		}
-		natsMembers = append(natsMembers, uri.String())
-	}
-	natsClient := yagnats.NewApceraClientWrapper(natsMembers)
-
-	err := natsClient.Connect()
-	if err != nil {
-		logger.Fatal("failed-to-connect-to-nats", err)
-	}
-
-	return natsClient
-}
-
-func initializeAuctionNatsServer(executorID string, stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, executorClient executorapi.Client, logger lager.Logger) *auction_nats_server.AuctionNATSServer {
+func initializeAuctionNatsServer(
+	executorID string,
+	stopper lrp_stopper.LRPStopper,
+	bbs Bbs.RepBBS,
+	executorClient executorapi.Client,
+	natsClient yagnats.ApceraWrapperNATSClient,
+	logger lager.Logger,
+) *auction_nats_server.AuctionNATSServer {
 	auctionDelegate := auction_delegate.New(executorID, stopper, bbs, executorClient, logger)
 	auctionRep := auctionrep.New(executorID, auctionDelegate)
-	natsClient := initializeNatsClient(logger)
 	return auction_nats_server.New(natsClient, auctionRep, logger)
 }
