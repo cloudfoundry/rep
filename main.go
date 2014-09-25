@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -120,12 +121,8 @@ func main() {
 	bbs := initializeRepBBS(logger)
 	removeActualLrpFromBBS(bbs, *executorID, logger)
 
-	natsClient := natsclientrunner.NewClient(
-		*natsAddresses,
-		*natsUsername,
-		*natsPassword,
-	)
-	natsClientRunner := natsclientrunner.New(natsClient, logger)
+	var natsClient yagnats.NATSConn
+	natsClientRunner := natsclientrunner.New(*natsAddresses, *natsUsername, *natsPassword, logger, &natsClient)
 
 	executorClient := client.New(http.DefaultClient, *executorURL)
 	lrpStopper := initializeLRPStopper(*executorID, bbs, executorClient, logger)
@@ -135,8 +132,10 @@ func main() {
 		{"task-rep", initializeTaskRep(*executorID, bbs, logger, executorClient)},
 		{"stop-lrp-listener", initializeStopLRPListener(lrpStopper, bbs, logger)},
 		{"api-server", initializeAPIServer(*executorID, bbs, logger, executorClient)},
-		{"auction-server", initializeAuctionNatsServer(*executorID, lrpStopper, bbs, executorClient, natsClient, logger)},
-	})
+		{"auction-server", ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
+			return initializeAuctionNatsServer(*executorID, lrpStopper, bbs, executorClient, natsClient, logger).Run(signals, ready)
+		}),
+		}})
 
 	monitor := ifrit.Envoke(sigmon.New(group))
 	logger.Info("started")
@@ -222,7 +221,7 @@ func initializeAuctionNatsServer(
 	stopper lrp_stopper.LRPStopper,
 	bbs Bbs.RepBBS,
 	executorClient executorapi.Client,
-	natsClient yagnats.ApceraWrapperNATSClient,
+	natsClient yagnats.NATSConn,
 	logger lager.Logger,
 ) *auction_nats_server.AuctionNATSServer {
 	auctionDelegate := auction_delegate.New(executorID, stopper, bbs, executorClient, logger)
