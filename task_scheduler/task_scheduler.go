@@ -104,26 +104,31 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		return
 	}
 
-	taskLog := s.logger.Session("task-request")
+	taskLog := s.logger.Session("task-request", lager.Data{"taskGuid": task.Guid})
 
+	taskLog.Info("allocating-container")
 	_, err = s.client.AllocateContainer(task.Guid, executorapi.ContainerAllocationRequest{
 		DiskMB:   task.DiskMB,
 		MemoryMB: task.MemoryMB,
 	})
 	if err != nil {
-		taskLog.Error("failed-to-allocate", err)
+		taskLog.Error("failed-to-allocate-container", err)
 		return
 	}
+	taskLog.Info("successfully-allocated-container")
 
 	s.sleepForARandomInterval()
 
+	taskLog.Info("claiming-task", lager.Data{"executorID": s.executorID})
 	err = s.bbs.ClaimTask(task.Guid, s.executorID)
 	if err != nil {
-		taskLog.Error("failed-to-claim-task", err)
+		taskLog.Info("failed-to-claim-task", lager.Data{"error": err.Error()})
 		s.client.DeleteContainer(task.Guid)
 		return
 	}
+	taskLog.Info("successfully-claimed-task")
 
+	taskLog.Info("initializing-container")
 	container, err := s.client.InitializeContainer(task.Guid, executorapi.ContainerInitializationRequest{
 		CpuPercent: task.CpuPercent,
 		Log: executorapi.LogConfig{
@@ -137,13 +142,17 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		s.markTaskAsFailed(taskLog, task.Guid, err)
 		return
 	}
+	taskLog = taskLog.WithData(lager.Data{"containerHandle": container.ContainerHandle})
+	taskLog.Info("successfully-initialized-container")
 
+	taskLog.Info("starting-task")
 	err = s.bbs.StartTask(task.Guid, s.executorID, container.ContainerHandle)
 	if err != nil {
 		taskLog.Error("failed-to-mark-task-started", err)
 		s.client.DeleteContainer(task.Guid)
 		return
 	}
+	taskLog.Info("successfully-started-task")
 
 	callbackRequest, err := s.callbackGenerator.CreateRequest(routes.TaskCompleted, rata.Params{
 		"guid": task.Guid,
@@ -153,23 +162,27 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		return
 	}
 
+	taskLog.Info("running-task")
 	err = s.client.Run(task.Guid, executorapi.ContainerRunRequest{
 		Actions:     task.Actions,
 		CompleteURL: callbackRequest.URL.String(),
 	})
 	if err != nil {
-		taskLog.Error("failed-to-run-actions", err)
+		taskLog.Error("failed-to-run-task", err)
 		return
 	}
+	taskLog.Info("successfully-ran-task")
 
 	return
 }
 
 func (s *TaskScheduler) markTaskAsFailed(taskLog lager.Logger, taskGuid string, err error) {
+	taskLog.Info("complete-task")
 	err = s.bbs.CompleteTask(taskGuid, true, "Failed to initialize container - "+err.Error(), "")
 	if err != nil {
-		taskLog.Error("failed-to-mark-task-failed", err)
+		taskLog.Error("failed-to-complete-task", err)
 	}
+	taskLog.Info("successfully-completed-task")
 }
 
 func (s *TaskScheduler) sleepForARandomInterval() {
