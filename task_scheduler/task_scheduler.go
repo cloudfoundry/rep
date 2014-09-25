@@ -17,6 +17,8 @@ import (
 
 const ServerCloseErrMsg = "use of closed network connection"
 
+var random = rand.New(rand.NewSource(time.Now().UnixNano()))
+
 type TaskScheduler struct {
 	callbackGenerator *rata.RequestGenerator
 
@@ -171,6 +173,6 @@ func (s *TaskScheduler) markTaskAsFailed(taskLog lager.Logger, taskGuid string, 
 }
 
 func (s *TaskScheduler) sleepForARandomInterval() {
-	interval := rand.New(rand.NewSource(time.Now().UnixNano())).Intn(100)
+	interval := random.Intn(1000)
 	time.Sleep(time.Duration(interval) * time.Millisecond)
 }
