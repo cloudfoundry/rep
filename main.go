@@ -26,7 +26,6 @@ import (
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	_ "github.com/cloudfoundry/dropsonde/autowire"
-	"github.com/cloudfoundry/gunk/group_runner"
 	"github.com/cloudfoundry/gunk/natsclientrunner"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
@@ -35,6 +34,7 @@ import (
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/timer"
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
 	"github.com/tedsuo/ifrit/sigmon"
 	"github.com/tedsuo/rata"
@@ -126,7 +126,8 @@ func main() {
 
 	executorClient := client.New(http.DefaultClient, *executorURL)
 	lrpStopper := initializeLRPStopper(*executorID, bbs, executorClient, logger)
-	group := group_runner.New([]group_runner.Member{
+
+	group := grouper.NewOrdered(os.Interrupt, grouper.Members{
 		{"nats-client", natsClientRunner},
 		{"heartbeater", initializeExecutorHeartbeat(bbs, executorClient, logger)},
 		{"task-rep", initializeTaskRep(*executorID, bbs, logger, executorClient)},
