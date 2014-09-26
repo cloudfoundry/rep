@@ -22,6 +22,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const claimWaitTimeout = task_scheduler.MaxClaimWaitInMillis * time.Millisecond * 2
+
 var _ = Describe("TaskScheduler", func() {
 	var logger lager.Logger
 
@@ -156,7 +158,7 @@ var _ = Describe("TaskScheduler", func() {
 				})
 
 				It("should claim the task", func() {
-					Eventually(fakeBBS.ClaimTaskCallCount).Should(Equal(1))
+					Eventually(fakeBBS.ClaimTaskCallCount, claimWaitTimeout).Should(Equal(1))
 					taskGuid, executorGuid := fakeBBS.ClaimTaskArgsForCall(0)
 					Ω(taskGuid).Should(Equal(task.Guid))
 					Ω(executorGuid).Should(Equal("some-executor-id"))
@@ -187,7 +189,7 @@ var _ = Describe("TaskScheduler", func() {
 						})
 
 						It("should start the task", func() {
-							Eventually(fakeBBS.StartTaskCallCount).Should(Equal(1))
+							Eventually(fakeBBS.StartTaskCallCount, claimWaitTimeout).Should(Equal(1))
 							taskGuid, executorGuid, containerHandle := fakeBBS.StartTaskArgsForCall(0)
 							Ω(taskGuid).Should(Equal(task.Guid))
 							Ω(executorGuid).Should(Equal("some-executor-id"))
@@ -216,9 +218,9 @@ var _ = Describe("TaskScheduler", func() {
 							})
 
 							It("makes all calls to the executor", func() {
-								Eventually(allocateCalled).Should(Receive())
-								Eventually(initCalled).Should(Receive())
-								Eventually(reqChan).Should(Receive())
+								Eventually(allocateCalled, claimWaitTimeout).Should(Receive())
+								Eventually(initCalled, claimWaitTimeout).Should(Receive())
+								Eventually(reqChan, claimWaitTimeout).Should(Receive())
 							})
 						})
 
@@ -228,7 +230,7 @@ var _ = Describe("TaskScheduler", func() {
 							})
 
 							It("deletes the container", func() {
-								Eventually(deletedContainerGuid).Should(Receive(Equal(task.Guid)))
+								Eventually(deletedContainerGuid, claimWaitTimeout).Should(Receive(Equal(task.Guid)))
 							})
 						})
 					})
@@ -243,11 +245,11 @@ var _ = Describe("TaskScheduler", func() {
 						})
 
 						It("deletes the container", func() {
-							Eventually(deletedContainerGuid).Should(Receive(Equal(task.Guid)))
+							Eventually(deletedContainerGuid, claimWaitTimeout).Should(Receive(Equal(task.Guid)))
 						})
 
 						It("marks the task as failed", func() {
-							Eventually(fakeBBS.CompleteTaskCallCount).Should(Equal(1))
+							Eventually(fakeBBS.CompleteTaskCallCount, claimWaitTimeout).Should(Equal(1))
 							taskGuid, failed, failureReason, _ := fakeBBS.CompleteTaskArgsForCall(0)
 							Ω(taskGuid).Should(Equal(task.Guid))
 							Ω(failed).Should(BeTrue())
@@ -262,7 +264,7 @@ var _ = Describe("TaskScheduler", func() {
 					})
 
 					It("deletes the resource allocation on the executor", func() {
-						Eventually(deletedContainerGuid).Should(Receive(Equal(task.Guid)))
+						Eventually(deletedContainerGuid, claimWaitTimeout).Should(Receive(Equal(task.Guid)))
 					})
 				})
 			})

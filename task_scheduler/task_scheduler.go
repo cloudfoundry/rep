@@ -16,6 +16,7 @@ import (
 )
 
 const ServerCloseErrMsg = "use of closed network connection"
+const MaxClaimWaitInMillis = 1000
 
 var random = rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -186,6 +187,6 @@ func (s *TaskScheduler) markTaskAsFailed(taskLog lager.Logger, taskGuid string, 
 }
 
 func (s *TaskScheduler) sleepForARandomInterval() {
-	interval := random.Intn(1000)
+	interval := random.Intn(MaxClaimWaitInMillis)
 	time.Sleep(time.Duration(interval) * time.Millisecond)
 }
