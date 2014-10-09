@@ -1,4 +1,4 @@
-package reprunner
+package testrunner
 
 import (
 	"os/exec"

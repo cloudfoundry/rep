@@ -1,4 +1,4 @@
-package integration_test
+package main_test
 
 import (
 	"strconv"
@@ -17,9 +17,9 @@ var etcdRunner *etcdstorerunner.ETCDClusterRunner
 var natsRunner *natsrunner.NATSRunner
 var etcdPort, natsPort, schedulerPort int
 
-func TestRepresentativeMain(t *testing.T) {
+func TestRep(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Integration Suite")
+	RunSpecs(t, "Rep Suite")
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {

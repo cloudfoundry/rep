@@ -1,4 +1,4 @@
-package integration_test
+package main_test
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/auction/communication/nats/auction_nats_client"
 	"github.com/cloudfoundry-incubator/executor/api"
-	"github.com/cloudfoundry-incubator/rep/reprunner"
+	"github.com/cloudfoundry-incubator/rep/testrunner"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -20,7 +20,7 @@ import (
 	"github.com/onsi/gomega/ghttp"
 )
 
-var runner *reprunner.Runner
+var runner *testrunner.Runner
 
 var _ = Describe("The Rep", func() {
 	var (
@@ -36,7 +36,7 @@ var _ = Describe("The Rep", func() {
 
 		bbs = Bbs.NewBBS(etcdRunner.Adapter(), timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
 
-		runner = reprunner.New(
+		runner = testrunner.New(
 			representativePath,
 			executorID,
 			"the-stack",
