@@ -188,7 +188,7 @@ var _ = Describe("The Rep", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			executorID := executors[0].ExecutorID
 
-			client, err := auction_nats_client.New(natsRunner.MessageBus, time.Second, lagertest.NewTestLogger("test"))
+			client, err := auction_nats_client.New(natsRunner.Client, time.Second, lagertest.NewTestLogger("test"))
 			Ω(err).ShouldNot(HaveOccurred())
 			resources := client.TotalResources(executorID)
 			Ω(resources).Should(Equal(auctiontypes.Resources{

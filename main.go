@@ -26,11 +26,10 @@ import (
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	_ "github.com/cloudfoundry/dropsonde/autowire"
-	"github.com/cloudfoundry/gunk/natsclientrunner"
+	"github.com/cloudfoundry/gunk/diegonats"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
-	"github.com/cloudfoundry/yagnats"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/timer"
 	"github.com/tedsuo/ifrit"
@@ -121,8 +120,8 @@ func main() {
 	bbs := initializeRepBBS(logger)
 	removeActualLrpFromBBS(bbs, *executorID, logger)
 
-	var natsClient yagnats.NATSConn
-	natsClientRunner := natsclientrunner.New(*natsAddresses, *natsUsername, *natsPassword, logger, &natsClient)
+	natsClient := diegonats.NewClient()
+	natsClientRunner := diegonats.NewClientRunner(*natsAddresses, *natsUsername, *natsPassword, logger, natsClient)
 
 	executorClient := client.New(http.DefaultClient, *executorURL)
 	lrpStopper := initializeLRPStopper(*executorID, bbs, executorClient, logger)
@@ -222,7 +221,7 @@ func initializeAuctionNatsServer(
 	stopper lrp_stopper.LRPStopper,
 	bbs Bbs.RepBBS,
 	executorClient executorapi.Client,
-	natsClient yagnats.NATSConn,
+	natsClient diegonats.NATSClient,
 	logger lager.Logger,
 ) *auction_nats_server.AuctionNATSServer {
 	auctionDelegate := auction_delegate.New(executorID, stopper, bbs, executorClient, logger)

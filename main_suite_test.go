@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/cloudfoundry/gunk/natsrunner"
+	"github.com/cloudfoundry/gunk/diegonats"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -14,7 +14,7 @@ import (
 var executorID string
 var representativePath string
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
-var natsRunner *natsrunner.NATSRunner
+var natsRunner *diegonats.NATSRunner
 var etcdPort, natsPort, schedulerPort int
 
 func TestRep(t *testing.T) {
@@ -35,7 +35,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	natsPort = 4222 + GinkgoParallelNode()
 	schedulerPort = 56000 + GinkgoParallelNode()
 
-	natsRunner = natsrunner.NewNATSRunner(natsPort)
+	natsRunner = diegonats.NewRunner(natsPort)
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
 })
 
