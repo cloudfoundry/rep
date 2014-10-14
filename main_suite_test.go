@@ -9,12 +9,15 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/ginkgomon"
 )
 
 var executorID string
 var representativePath string
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
-var natsRunner *diegonats.NATSRunner
+var gnatsdProcess ifrit.Process
+var natsClient diegonats.NATSClient
 var etcdPort, natsPort, schedulerPort int
 
 func TestRep(t *testing.T) {
@@ -35,26 +38,22 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	natsPort = 4222 + GinkgoParallelNode()
 	schedulerPort = 56000 + GinkgoParallelNode()
 
-	natsRunner = diegonats.NewRunner(natsPort)
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
 })
 
 var _ = BeforeEach(func() {
 	etcdRunner.Start()
-	natsRunner.Start()
+	gnatsdProcess, natsClient = diegonats.StartGnatsd(natsPort)
 })
 
 var _ = AfterEach(func() {
-	natsRunner.Stop()
+	ginkgomon.Interrupt(gnatsdProcess)
 	etcdRunner.Stop()
 })
 
 var _ = SynchronizedAfterSuite(func() {
 	if etcdRunner != nil {
 		etcdRunner.Stop()
-	}
-	if natsRunner != nil {
-		natsRunner.Stop()
 	}
 	if runner != nil {
 		runner.KillWithFire()
