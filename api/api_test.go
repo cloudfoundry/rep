@@ -17,6 +17,8 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
+	"github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/rata"
@@ -71,6 +73,7 @@ var _ = Describe("Callback API", func() {
 
 				ExecutorID:      "some-executor-id",
 				ContainerHandle: "some-container-handle",
+				ResultFile:      "some-file",
 
 				Actions: []models.ExecutorAction{
 					{
@@ -104,9 +107,21 @@ var _ = Describe("Callback API", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
-		Describe("when the task succeeds", func() {
+		Context("when the task succeeds", func() {
 			BeforeEach(func() {
-				result.Result = "42"
+				dest := gbytes.NewBuffer()
+				test_helper.WriteTar(
+					dest,
+					[]test_helper.ArchiveFile{{
+						Name: "some-file",
+						Body: "42",
+						Mode: 0600,
+						Dir:  false,
+					}},
+				)
+				fakeExecutor.GetFilesReturns(dest, nil)
+
+				fakeBBS.GetTaskByGuidReturns(task, nil)
 			})
 
 			It("responds to the onComplete hook", func() {
@@ -121,9 +136,143 @@ var _ = Describe("Callback API", func() {
 				Ω(failureReason).Should(BeEmpty())
 				Ω(result).Should(Equal("42"))
 			})
+
+			It("deletes the container", func() {
+				Ω(fakeExecutor.DeleteContainerCallCount()).Should(Equal(1))
+				Ω(fakeExecutor.DeleteContainerArgsForCall(0)).Should(Equal(task.Guid))
+			})
 		})
 
-		Describe("when the task fails", func() {
+		Context("when the task succeeds but getting the task fails", func() {
+			BeforeEach(func() {
+				dest := gbytes.NewBuffer()
+				test_helper.WriteTar(
+					dest,
+					[]test_helper.ArchiveFile{{
+						Name: "some-file",
+						Body: "42",
+						Mode: 0600,
+						Dir:  false,
+					}},
+				)
+				fakeExecutor.GetFilesReturns(dest, nil)
+
+				fakeBBS.GetTaskByGuidReturns(models.Task{}, errors.New("nope"))
+			})
+
+			It("responds to the onComplete hook", func() {
+				Ω(resp.StatusCode).Should(Equal(http.StatusOK))
+			})
+
+			It("records the job result as a failure", func() {
+				Eventually(fakeBBS.CompleteTaskCallCount).Should(Equal(1))
+				taskGuid, failed, failureReason, result := fakeBBS.CompleteTaskArgsForCall(0)
+				Ω(taskGuid).Should(Equal(task.Guid))
+				Ω(failed).Should(BeTrue())
+				Ω(failureReason).Should(Equal("failed to fetch task: 'nope'"))
+				Ω(result).Should(Equal(""))
+			})
+
+			It("deletes the container", func() {
+				Ω(fakeExecutor.DeleteContainerCallCount()).Should(Equal(1))
+				Ω(fakeExecutor.DeleteContainerArgsForCall(0)).Should(Equal(task.Guid))
+			})
+		})
+
+		Context("when the task succeeds but getting the result file stream fails", func() {
+			BeforeEach(func() {
+				fakeExecutor.GetFilesReturns(nil, errors.New("nope"))
+
+				fakeBBS.GetTaskByGuidReturns(task, nil)
+			})
+
+			It("responds to the onComplete hook", func() {
+				Ω(resp.StatusCode).Should(Equal(http.StatusOK))
+			})
+
+			It("records the job result as a failure", func() {
+				Eventually(fakeBBS.CompleteTaskCallCount).Should(Equal(1))
+				taskGuid, failed, failureReason, result := fakeBBS.CompleteTaskArgsForCall(0)
+				Ω(taskGuid).Should(Equal(task.Guid))
+				Ω(failed).Should(BeTrue())
+				Ω(failureReason).Should(Equal("failed to fetch result: 'nope'"))
+				Ω(result).Should(Equal(""))
+			})
+
+			It("deletes the container", func() {
+				Ω(fakeExecutor.DeleteContainerCallCount()).Should(Equal(1))
+				Ω(fakeExecutor.DeleteContainerArgsForCall(0)).Should(Equal(task.Guid))
+			})
+		})
+
+		Context("when the task succeeds but getting the contents of the result file fails", func() {
+			BeforeEach(func() {
+				dest := gbytes.NewBuffer()
+				test_helper.WriteTar(
+					dest,
+					[]test_helper.ArchiveFile{},
+				)
+				fakeExecutor.GetFilesReturns(dest, nil)
+
+				fakeBBS.GetTaskByGuidReturns(task, nil)
+			})
+
+			It("responds to the onComplete hook", func() {
+				Ω(resp.StatusCode).Should(Equal(http.StatusOK))
+			})
+
+			It("records the job result as a failure", func() {
+				Eventually(fakeBBS.CompleteTaskCallCount).Should(Equal(1))
+				taskGuid, failed, failureReason, result := fakeBBS.CompleteTaskArgsForCall(0)
+				Ω(taskGuid).Should(Equal(task.Guid))
+				Ω(failed).Should(BeTrue())
+				Ω(failureReason).Should(ContainSubstring("failed to read contents of the result file"))
+				Ω(result).Should(Equal(""))
+			})
+
+			It("deletes the container", func() {
+				Ω(fakeExecutor.DeleteContainerCallCount()).Should(Equal(1))
+				Ω(fakeExecutor.DeleteContainerArgsForCall(0)).Should(Equal(task.Guid))
+			})
+		})
+
+		Context("when the task succeeds but the contents of the result file is too big", func() {
+			BeforeEach(func() {
+				dest := gbytes.NewBuffer()
+				test_helper.WriteTar(
+					dest,
+					[]test_helper.ArchiveFile{{
+						Name: "some-file",
+						Body: string(make([]byte, 10241)),
+						Mode: 0600,
+						Dir:  false,
+					}},
+				)
+				fakeExecutor.GetFilesReturns(dest, nil)
+
+				fakeBBS.GetTaskByGuidReturns(task, nil)
+			})
+
+			It("responds to the onComplete hook", func() {
+				Ω(resp.StatusCode).Should(Equal(http.StatusOK))
+			})
+
+			It("records the job result as a failure", func() {
+				Eventually(fakeBBS.CompleteTaskCallCount).Should(Equal(1))
+				taskGuid, failed, failureReason, result := fakeBBS.CompleteTaskArgsForCall(0)
+				Ω(taskGuid).Should(Equal(task.Guid))
+				Ω(failed).Should(BeTrue())
+				Ω(failureReason).Should(Equal("result file size is 10241, max bytes allowed is 10240"))
+				Ω(result).Should(Equal(""))
+			})
+
+			It("deletes the container", func() {
+				Ω(fakeExecutor.DeleteContainerCallCount()).Should(Equal(1))
+				Ω(fakeExecutor.DeleteContainerArgsForCall(0)).Should(Equal(task.Guid))
+			})
+		})
+
+		Context("when the task fails", func() {
 			BeforeEach(func() {
 				result.Failed = true
 				result.FailureReason = "it didn't work"
@@ -133,6 +282,10 @@ var _ = Describe("Callback API", func() {
 				Ω(resp.StatusCode).Should(Equal(http.StatusOK))
 			})
 
+			It("Does not attempt to fetch the result file", func() {
+				Ω(fakeExecutor.GetFilesCallCount()).Should(BeZero())
+			})
+
 			It("records the job failure", func() {
 				Eventually(fakeBBS.CompleteTaskCallCount).Should(Equal(1))
 				taskGuid, failed, failureReason, result := fakeBBS.CompleteTaskArgsForCall(0)
@@ -140,6 +293,11 @@ var _ = Describe("Callback API", func() {
 				Ω(failed).Should(BeTrue())
 				Ω(failureReason).Should(Equal("it didn't work"))
 				Ω(result).Should(BeEmpty())
+			})
+
+			It("deletes the container", func() {
+				Ω(fakeExecutor.DeleteContainerCallCount()).Should(Equal(1))
+				Ω(fakeExecutor.DeleteContainerArgsForCall(0)).Should(Equal(task.Guid))
 			})
 		})
 	})
