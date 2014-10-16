@@ -105,10 +105,10 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		return
 	}
 
-	taskLog := s.logger.Session("task-request", lager.Data{"taskGuid": task.Guid})
+	taskLog := s.logger.Session("task-request", lager.Data{"taskGuid": task.TaskGuid})
 
 	taskLog.Info("allocating-container")
-	_, err = s.client.AllocateContainer(task.Guid, executorapi.ContainerAllocationRequest{
+	_, err = s.client.AllocateContainer(task.TaskGuid, executorapi.ContainerAllocationRequest{
 		DiskMB:   task.DiskMB,
 		MemoryMB: task.MemoryMB,
 	})
@@ -121,16 +121,16 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	s.sleepForARandomInterval()
 
 	taskLog.Info("claiming-task", lager.Data{"executorID": s.executorID})
-	err = s.bbs.ClaimTask(task.Guid, s.executorID)
+	err = s.bbs.ClaimTask(task.TaskGuid, s.executorID)
 	if err != nil {
 		taskLog.Info("failed-to-claim-task", lager.Data{"error": err.Error()})
-		s.client.DeleteContainer(task.Guid)
+		s.client.DeleteContainer(task.TaskGuid)
 		return
 	}
 	taskLog.Info("successfully-claimed-task")
 
 	taskLog.Info("initializing-container")
-	container, err := s.client.InitializeContainer(task.Guid, executorapi.ContainerInitializationRequest{
+	container, err := s.client.InitializeContainer(task.TaskGuid, executorapi.ContainerInitializationRequest{
 		CpuPercent: task.CpuPercent,
 		Log: executorapi.LogConfig{
 			Guid:       task.Log.Guid,
@@ -139,24 +139,24 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	})
 	if err != nil {
 		taskLog.Error("failed-to-initialize-container", err)
-		s.client.DeleteContainer(task.Guid)
-		s.markTaskAsFailed(taskLog, task.Guid, err)
+		s.client.DeleteContainer(task.TaskGuid)
+		s.markTaskAsFailed(taskLog, task.TaskGuid, err)
 		return
 	}
 	taskLog = taskLog.WithData(lager.Data{"containerHandle": container.ContainerHandle})
 	taskLog.Info("successfully-initialized-container")
 
 	taskLog.Info("starting-task")
-	err = s.bbs.StartTask(task.Guid, s.executorID, container.ContainerHandle)
+	err = s.bbs.StartTask(task.TaskGuid, s.executorID, container.ContainerHandle)
 	if err != nil {
 		taskLog.Error("failed-to-mark-task-started", err)
-		s.client.DeleteContainer(task.Guid)
+		s.client.DeleteContainer(task.TaskGuid)
 		return
 	}
 	taskLog.Info("successfully-started-task")
 
 	callbackRequest, err := s.callbackGenerator.CreateRequest(routes.TaskCompleted, rata.Params{
-		"guid": task.Guid,
+		"guid": task.TaskGuid,
 	}, nil)
 	if err != nil {
 		taskLog.Error("failed-to-generate-callback-request", err)
@@ -164,7 +164,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	}
 
 	taskLog.Info("running-task")
-	err = s.client.Run(task.Guid, executorapi.ContainerRunRequest{
+	err = s.client.Run(task.TaskGuid, executorapi.ContainerRunRequest{
 		Actions:     task.Actions,
 		CompleteURL: callbackRequest.URL.String(),
 	})

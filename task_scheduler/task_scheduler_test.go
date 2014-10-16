@@ -57,7 +57,7 @@ var _ = Describe("TaskScheduler", func() {
 			fakeBBS.WatchForDesiredTaskReturns(desiredTaskChan, watchStopChan, watchErrorChan)
 
 			task = models.Task{
-				Guid:       "task-guid-123",
+				TaskGuid:   "task-guid-123",
 				Stack:      correctStack,
 				MemoryMB:   64,
 				DiskMB:     1024,
@@ -147,7 +147,7 @@ var _ = Describe("TaskScheduler", func() {
 						Ω(fakeBBS.ClaimTaskCallCount()).Should(Equal(0))
 						Ω(req.MemoryMB).Should(Equal(64))
 						Ω(req.DiskMB).Should(Equal(1024))
-						Ω(containerGuid).Should(Equal(task.Guid))
+						Ω(containerGuid).Should(Equal(task.TaskGuid))
 						return api.Container{Guid: containerGuid}, nil
 					}
 
@@ -160,7 +160,7 @@ var _ = Describe("TaskScheduler", func() {
 				It("should claim the task", func() {
 					Eventually(fakeBBS.ClaimTaskCallCount, claimWaitTimeout).Should(Equal(1))
 					taskGuid, executorGuid := fakeBBS.ClaimTaskArgsForCall(0)
-					Ω(taskGuid).Should(Equal(task.Guid))
+					Ω(taskGuid).Should(Equal(task.TaskGuid))
 					Ω(executorGuid).Should(Equal("some-executor-id"))
 				})
 
@@ -175,7 +175,7 @@ var _ = Describe("TaskScheduler", func() {
 								defer GinkgoRecover()
 
 								initCalled <- struct{}{}
-								Ω(allocationGuid).Should(Equal(task.Guid))
+								Ω(allocationGuid).Should(Equal(task.TaskGuid))
 								Ω(req.CpuPercent).Should(Equal(0.5))
 								Ω(req.Log).Should(Equal(api.LogConfig{
 									Guid:       task.Log.Guid,
@@ -191,7 +191,7 @@ var _ = Describe("TaskScheduler", func() {
 						It("should start the task", func() {
 							Eventually(fakeBBS.StartTaskCallCount, claimWaitTimeout).Should(Equal(1))
 							taskGuid, executorGuid, containerHandle := fakeBBS.StartTaskArgsForCall(0)
-							Ω(taskGuid).Should(Equal(task.Guid))
+							Ω(taskGuid).Should(Equal(task.TaskGuid))
 							Ω(executorGuid).Should(Equal("some-executor-id"))
 							Ω(containerHandle).Should(Equal("the-container-handle"))
 						})
@@ -209,7 +209,7 @@ var _ = Describe("TaskScheduler", func() {
 
 									Ω(fakeBBS.StartTaskCallCount()).Should(Equal(1))
 
-									Ω(allocationGuid).Should(Equal(task.Guid))
+									Ω(allocationGuid).Should(Equal(task.TaskGuid))
 									Ω(req.Actions).Should(Equal(task.Actions))
 
 									reqChan <- req
@@ -230,7 +230,7 @@ var _ = Describe("TaskScheduler", func() {
 							})
 
 							It("deletes the container", func() {
-								Eventually(deletedContainerGuid, claimWaitTimeout).Should(Receive(Equal(task.Guid)))
+								Eventually(deletedContainerGuid, claimWaitTimeout).Should(Receive(Equal(task.TaskGuid)))
 							})
 						})
 					})
@@ -245,13 +245,13 @@ var _ = Describe("TaskScheduler", func() {
 						})
 
 						It("deletes the container", func() {
-							Eventually(deletedContainerGuid, claimWaitTimeout).Should(Receive(Equal(task.Guid)))
+							Eventually(deletedContainerGuid, claimWaitTimeout).Should(Receive(Equal(task.TaskGuid)))
 						})
 
 						It("marks the task as failed", func() {
 							Eventually(fakeBBS.CompleteTaskCallCount, claimWaitTimeout).Should(Equal(1))
 							taskGuid, failed, failureReason, _ := fakeBBS.CompleteTaskArgsForCall(0)
-							Ω(taskGuid).Should(Equal(task.Guid))
+							Ω(taskGuid).Should(Equal(task.TaskGuid))
 							Ω(failed).Should(BeTrue())
 							Ω(failureReason).Should(ContainSubstring("Failed to initialize container - Can't initialize"))
 						})
@@ -264,7 +264,7 @@ var _ = Describe("TaskScheduler", func() {
 					})
 
 					It("deletes the resource allocation on the executor", func() {
-						Eventually(deletedContainerGuid, claimWaitTimeout).Should(Receive(Equal(task.Guid)))
+						Eventually(deletedContainerGuid, claimWaitTimeout).Should(Receive(Equal(task.TaskGuid)))
 					})
 				})
 			})
@@ -294,7 +294,7 @@ var _ = Describe("TaskScheduler", func() {
 
 			BeforeEach(func() {
 				task = models.Task{
-					Guid:       "task-guid-123",
+					TaskGuid:   "task-guid-123",
 					Stack:      "asd;oubhasdfbuvasfb",
 					MemoryMB:   64,
 					DiskMB:     1024,

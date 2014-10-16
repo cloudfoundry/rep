@@ -63,7 +63,7 @@ var _ = Describe("Callback API", func() {
 
 		BeforeEach(func() {
 			task = models.Task{
-				Guid:       "task-guid-123",
+				TaskGuid:   "task-guid-123",
 				Stack:      "some-stack",
 				MemoryMB:   64,
 				DiskMB:     1024,
@@ -97,7 +97,7 @@ var _ = Describe("Callback API", func() {
 			body, err := json.Marshal(result)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			request, err := http.NewRequest("PUT", server.URL+"/task_completed/"+task.Guid, bytes.NewReader(body))
+			request, err := http.NewRequest("PUT", server.URL+"/task_completed/"+task.TaskGuid, bytes.NewReader(body))
 			Ω(err).ShouldNot(HaveOccurred())
 
 			resp, err = httpClient.Do(request)
@@ -116,7 +116,7 @@ var _ = Describe("Callback API", func() {
 			It("records the job result", func() {
 				Eventually(fakeBBS.CompleteTaskCallCount).Should(Equal(1))
 				taskGuid, failed, failureReason, result := fakeBBS.CompleteTaskArgsForCall(0)
-				Ω(taskGuid).Should(Equal(task.Guid))
+				Ω(taskGuid).Should(Equal(task.TaskGuid))
 				Ω(failed).Should(BeFalse())
 				Ω(failureReason).Should(BeEmpty())
 				Ω(result).Should(Equal("42"))
@@ -136,7 +136,7 @@ var _ = Describe("Callback API", func() {
 			It("records the job failure", func() {
 				Eventually(fakeBBS.CompleteTaskCallCount).Should(Equal(1))
 				taskGuid, failed, failureReason, result := fakeBBS.CompleteTaskArgsForCall(0)
-				Ω(taskGuid).Should(Equal(task.Guid))
+				Ω(taskGuid).Should(Equal(task.TaskGuid))
 				Ω(failed).Should(BeTrue())
 				Ω(failureReason).Should(Equal("it didn't work"))
 				Ω(result).Should(BeEmpty())
