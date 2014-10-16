@@ -139,7 +139,7 @@ var _ = Describe("Callback API", func() {
 
 			It("deletes the container", func() {
 				Ω(fakeExecutor.DeleteContainerCallCount()).Should(Equal(1))
-				Ω(fakeExecutor.DeleteContainerArgsForCall(0)).Should(Equal(task.Guid))
+				Ω(fakeExecutor.DeleteContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
 			})
 		})
 
@@ -167,7 +167,7 @@ var _ = Describe("Callback API", func() {
 			It("records the job result as a failure", func() {
 				Eventually(fakeBBS.CompleteTaskCallCount).Should(Equal(1))
 				taskGuid, failed, failureReason, result := fakeBBS.CompleteTaskArgsForCall(0)
-				Ω(taskGuid).Should(Equal(task.Guid))
+				Ω(taskGuid).Should(Equal(task.TaskGuid))
 				Ω(failed).Should(BeTrue())
 				Ω(failureReason).Should(Equal("failed to fetch task: 'nope'"))
 				Ω(result).Should(Equal(""))
@@ -175,7 +175,7 @@ var _ = Describe("Callback API", func() {
 
 			It("deletes the container", func() {
 				Ω(fakeExecutor.DeleteContainerCallCount()).Should(Equal(1))
-				Ω(fakeExecutor.DeleteContainerArgsForCall(0)).Should(Equal(task.Guid))
+				Ω(fakeExecutor.DeleteContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
 			})
 		})
 
@@ -193,7 +193,7 @@ var _ = Describe("Callback API", func() {
 			It("records the job result as a failure", func() {
 				Eventually(fakeBBS.CompleteTaskCallCount).Should(Equal(1))
 				taskGuid, failed, failureReason, result := fakeBBS.CompleteTaskArgsForCall(0)
-				Ω(taskGuid).Should(Equal(task.Guid))
+				Ω(taskGuid).Should(Equal(task.TaskGuid))
 				Ω(failed).Should(BeTrue())
 				Ω(failureReason).Should(Equal("failed to fetch result: 'nope'"))
 				Ω(result).Should(Equal(""))
@@ -201,7 +201,7 @@ var _ = Describe("Callback API", func() {
 
 			It("deletes the container", func() {
 				Ω(fakeExecutor.DeleteContainerCallCount()).Should(Equal(1))
-				Ω(fakeExecutor.DeleteContainerArgsForCall(0)).Should(Equal(task.Guid))
+				Ω(fakeExecutor.DeleteContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
 			})
 		})
 
@@ -224,7 +224,7 @@ var _ = Describe("Callback API", func() {
 			It("records the job result as a failure", func() {
 				Eventually(fakeBBS.CompleteTaskCallCount).Should(Equal(1))
 				taskGuid, failed, failureReason, result := fakeBBS.CompleteTaskArgsForCall(0)
-				Ω(taskGuid).Should(Equal(task.Guid))
+				Ω(taskGuid).Should(Equal(task.TaskGuid))
 				Ω(failed).Should(BeTrue())
 				Ω(failureReason).Should(ContainSubstring("failed to read contents of the result file"))
 				Ω(result).Should(Equal(""))
@@ -232,7 +232,7 @@ var _ = Describe("Callback API", func() {
 
 			It("deletes the container", func() {
 				Ω(fakeExecutor.DeleteContainerCallCount()).Should(Equal(1))
-				Ω(fakeExecutor.DeleteContainerArgsForCall(0)).Should(Equal(task.Guid))
+				Ω(fakeExecutor.DeleteContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
 			})
 		})
 
@@ -260,7 +260,7 @@ var _ = Describe("Callback API", func() {
 			It("records the job result as a failure", func() {
 				Eventually(fakeBBS.CompleteTaskCallCount).Should(Equal(1))
 				taskGuid, failed, failureReason, result := fakeBBS.CompleteTaskArgsForCall(0)
-				Ω(taskGuid).Should(Equal(task.Guid))
+				Ω(taskGuid).Should(Equal(task.TaskGuid))
 				Ω(failed).Should(BeTrue())
 				Ω(failureReason).Should(Equal("result file size is 10241, max bytes allowed is 10240"))
 				Ω(result).Should(Equal(""))
@@ -268,7 +268,7 @@ var _ = Describe("Callback API", func() {
 
 			It("deletes the container", func() {
 				Ω(fakeExecutor.DeleteContainerCallCount()).Should(Equal(1))
-				Ω(fakeExecutor.DeleteContainerArgsForCall(0)).Should(Equal(task.Guid))
+				Ω(fakeExecutor.DeleteContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
 			})
 		})
 
@@ -297,7 +297,7 @@ var _ = Describe("Callback API", func() {
 
 			It("deletes the container", func() {
 				Ω(fakeExecutor.DeleteContainerCallCount()).Should(Equal(1))
-				Ω(fakeExecutor.DeleteContainerArgsForCall(0)).Should(Equal(task.Guid))
+				Ω(fakeExecutor.DeleteContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
 			})
 		})
 	})
