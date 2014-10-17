@@ -6,7 +6,7 @@ import (
 	"syscall"
 	"time"
 
-	fake_client "github.com/cloudfoundry-incubator/executor/api/fakes"
+	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep/maintain"
 	maintain_fakes "github.com/cloudfoundry-incubator/rep/maintain/fakes"
 	"github.com/pivotal-golang/lager/lagertest"

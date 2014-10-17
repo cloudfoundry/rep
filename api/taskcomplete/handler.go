@@ -6,20 +6,20 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/cloudfoundry-incubator/executor/api"
+	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/pivotal-golang/lager"
 )
 
 type handler struct {
 	bbs            bbs.RepBBS
-	executorClient api.Client
+	executorClient executor.Client
 	logger         lager.Logger
 }
 
 const MAX_RESULT_SIZE = 1024 * 10
 
-func NewHandler(bbs bbs.RepBBS, executorClient api.Client, logger lager.Logger) http.Handler {
+func NewHandler(bbs bbs.RepBBS, executorClient executor.Client, logger lager.Logger) http.Handler {
 	return &handler{
 		bbs:            bbs,
 		executorClient: executorClient,
@@ -30,7 +30,7 @@ func NewHandler(bbs bbs.RepBBS, executorClient api.Client, logger lager.Logger) 
 func (handler *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	var runResult api.ContainerRunResult
+	var runResult executor.ContainerRunResult
 	err := json.NewDecoder(r.Body).Decode(&runResult)
 	if err != nil {
 		handler.logger.Error("failed-to-unmarshal", err)

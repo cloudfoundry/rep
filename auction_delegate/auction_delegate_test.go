@@ -4,8 +4,8 @@ import (
 	"errors"
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
-	"github.com/cloudfoundry-incubator/executor/api"
-	fake_client "github.com/cloudfoundry-incubator/executor/api/fakes"
+	executor "github.com/cloudfoundry-incubator/executor"
+	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
 	. "github.com/cloudfoundry-incubator/rep/auction_delegate"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper/fake_lrp_stopper"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
@@ -34,7 +34,7 @@ var _ = Describe("AuctionDelegate", func() {
 	Describe("Remaining Resources", func() {
 		Context("when the client returns a succesful response", func() {
 			BeforeEach(func() {
-				resources := api.ExecutorResources{
+				resources := executor.ExecutorResources{
 					MemoryMB:   1024,
 					DiskMB:     2048,
 					Containers: 4,
@@ -55,7 +55,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 		Context("when the client returns an error", func() {
 			BeforeEach(func() {
-				client.RemainingResourcesReturns(api.ExecutorResources{}, clientFetchError)
+				client.RemainingResourcesReturns(executor.ExecutorResources{}, clientFetchError)
 			})
 
 			It("should return the error", func() {
@@ -68,7 +68,7 @@ var _ = Describe("AuctionDelegate", func() {
 	Describe("Total Resources", func() {
 		Context("when the client returns a succesful response", func() {
 			BeforeEach(func() {
-				resources := api.ExecutorResources{
+				resources := executor.ExecutorResources{
 					MemoryMB:   1024,
 					DiskMB:     2048,
 					Containers: 4,
@@ -89,7 +89,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 		Context("when the client returns an error", func() {
 			BeforeEach(func() {
-				client.TotalResourcesReturns(api.ExecutorResources{}, clientFetchError)
+				client.TotalResourcesReturns(executor.ExecutorResources{}, clientFetchError)
 			})
 
 			It("should return the error", func() {
@@ -102,14 +102,14 @@ var _ = Describe("AuctionDelegate", func() {
 	Describe("NumInstancesForProcessGuid", func() {
 		Context("when the client returns a succesful response", func() {
 			BeforeEach(func() {
-				containers := []api.Container{
-					api.Container{
+				containers := []executor.Container{
+					executor.Container{
 						Guid: "the-first-app-guid.17.first",
 					},
-					api.Container{
+					executor.Container{
 						Guid: "the-second-app-guid.14.second",
 					},
-					api.Container{
+					executor.Container{
 						Guid: "the-first-app-guid.92.third",
 					},
 				}
@@ -137,7 +137,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 		Context("when the client returns an error", func() {
 			BeforeEach(func() {
-				client.ListContainersReturns([]api.Container{}, clientFetchError)
+				client.ListContainersReturns([]executor.Container{}, clientFetchError)
 			})
 
 			It("should return the error", func() {
@@ -150,17 +150,17 @@ var _ = Describe("AuctionDelegate", func() {
 	Describe("InstanceGuidsForProcessGuidAndIndex", func() {
 		Context("when the client returns a succesful response", func() {
 			BeforeEach(func() {
-				containers := []api.Container{
-					api.Container{
+				containers := []executor.Container{
+					executor.Container{
 						Guid: "requested-app-guid.17.first",
 					},
-					api.Container{
+					executor.Container{
 						Guid: "requested-app-guid.17.second",
 					},
-					api.Container{
+					executor.Container{
 						Guid: "requested-app-guid.18.third",
 					},
-					api.Container{
+					executor.Container{
 						Guid: "other-app-guid.17.fourth",
 					},
 				}
@@ -194,7 +194,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 		Context("when the client returns an error", func() {
 			BeforeEach(func() {
-				client.ListContainersReturns([]api.Container{}, clientFetchError)
+				client.ListContainersReturns([]executor.Container{}, clientFetchError)
 			})
 
 			It("should return the error", func() {
@@ -224,7 +224,7 @@ var _ = Describe("AuctionDelegate", func() {
 					Index:        17,
 				}
 
-				client.AllocateContainerReturns(api.Container{}, nil)
+				client.AllocateContainerReturns(executor.Container{}, nil)
 			})
 
 			It("should not return an error", func() {
@@ -236,7 +236,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 				allocationGuid, req := client.AllocateContainerArgsForCall(0)
 				Ω(allocationGuid).Should(Equal(auctionInfo.LRPIdentifier().OpaqueID()))
-				Ω(req).Should(Equal(api.ContainerAllocationRequest{
+				Ω(req).Should(Equal(executor.ContainerAllocationRequest{
 					MemoryMB: auctionInfo.MemoryMB,
 					DiskMB:   auctionInfo.DiskMB,
 				}))
@@ -245,7 +245,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 		Context("when the client returns an error", func() {
 			BeforeEach(func() {
-				client.AllocateContainerReturns(api.Container{}, clientFetchError)
+				client.AllocateContainerReturns(executor.Container{}, clientFetchError)
 			})
 
 			It("should return the error", func() {
@@ -336,7 +336,7 @@ var _ = Describe("AuctionDelegate", func() {
 		})
 
 		JustBeforeEach(func() {
-			client.InitializeContainerReturns(api.Container{}, initializeError)
+			client.InitializeContainerReturns(executor.Container{}, initializeError)
 			bbs.ReportActualLRPAsStartingReturns(expectedLrp, startingErr)
 			client.RunReturns(runError)
 			client.DeleteContainerReturns(nil)
@@ -354,10 +354,10 @@ var _ = Describe("AuctionDelegate", func() {
 				Ω(client.InitializeContainerCallCount()).Should(Equal(1))
 				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
-				Ω(initRequest).Should(Equal(api.ContainerInitializationRequest{
+				Ω(initRequest).Should(Equal(executor.ContainerInitializationRequest{
 					RootFSPath: expectedRootFS,
-					Ports:      []api.PortMapping{{ContainerPort: 8080}},
-					Log:        api.LogConfig{Guid: "log-guid", Index: &two},
+					Ports:      []executor.PortMapping{{ContainerPort: 8080}},
+					Log:        executor.LogConfig{Guid: "log-guid", Index: &two},
 				}))
 			})
 
@@ -386,7 +386,7 @@ var _ = Describe("AuctionDelegate", func() {
 				allocationGuid, runRequest := client.RunArgsForCall(0)
 
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
-				Ω(runRequest.Env).Should(Equal([]api.EnvironmentVariable{
+				Ω(runRequest.Env).Should(Equal([]executor.EnvironmentVariable{
 					{Name: "CF_INSTANCE_GUID", Value: "instance-guid"},
 					{Name: "CF_INSTANCE_INDEX", Value: "2"},
 				}))
@@ -415,10 +415,10 @@ var _ = Describe("AuctionDelegate", func() {
 				Ω(client.InitializeContainerCallCount()).Should(Equal(1))
 				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
-				Ω(initRequest).Should(Equal(api.ContainerInitializationRequest{
+				Ω(initRequest).Should(Equal(executor.ContainerInitializationRequest{
 					RootFSPath: expectedRootFS,
-					Ports:      []api.PortMapping{{ContainerPort: 8080}},
-					Log:        api.LogConfig{Guid: "log-guid", Index: &two},
+					Ports:      []executor.PortMapping{{ContainerPort: 8080}},
+					Log:        executor.LogConfig{Guid: "log-guid", Index: &two},
 				}))
 			})
 
@@ -493,10 +493,10 @@ var _ = Describe("AuctionDelegate", func() {
 				Ω(client.InitializeContainerCallCount()).Should(Equal(1))
 				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
-				Ω(initRequest).Should(Equal(api.ContainerInitializationRequest{
+				Ω(initRequest).Should(Equal(executor.ContainerInitializationRequest{
 					RootFSPath: expectedRootFS,
-					Ports:      []api.PortMapping{{ContainerPort: 8080}},
-					Log:        api.LogConfig{Guid: "log-guid", Index: &two},
+					Ports:      []executor.PortMapping{{ContainerPort: 8080}},
+					Log:        executor.LogConfig{Guid: "log-guid", Index: &two},
 				}))
 			})
 

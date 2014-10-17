@@ -7,7 +7,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/auction/communication/nats/auction_nats_client"
-	"github.com/cloudfoundry-incubator/executor/api"
+	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep/testrunner"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gunk/timeprovider"
@@ -174,7 +174,7 @@ var _ = Describe("The Rep", func() {
 		BeforeEach(func() {
 			fakeExecutor.AppendHandlers(ghttp.CombineHandlers(
 				ghttp.VerifyRequest("GET", "/resources/total"),
-				ghttp.RespondWithJSONEncoded(http.StatusOK, api.ExecutorResources{
+				ghttp.RespondWithJSONEncoded(http.StatusOK, executor.ExecutorResources{
 					MemoryMB:   1024,
 					DiskMB:     2048,
 					Containers: 4,

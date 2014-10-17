@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	executorapi "github.com/cloudfoundry-incubator/executor/api"
+	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep/routes"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -27,7 +27,7 @@ type TaskScheduler struct {
 	bbs        bbs.RepBBS
 	logger     lager.Logger
 	stack      string
-	client     executorapi.Client
+	client     executor.Client
 	inFlight   *sync.WaitGroup
 }
 
@@ -37,7 +37,7 @@ func New(
 	bbs bbs.RepBBS,
 	logger lager.Logger,
 	stack string,
-	executorClient executorapi.Client,
+	executorClient executor.Client,
 ) *TaskScheduler {
 	return &TaskScheduler{
 		executorID:        executorID,
@@ -108,7 +108,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	taskLog := s.logger.Session("task-request", lager.Data{"taskGuid": task.TaskGuid})
 
 	taskLog.Info("allocating-container")
-	_, err = s.client.AllocateContainer(task.TaskGuid, executorapi.ContainerAllocationRequest{
+	_, err = s.client.AllocateContainer(task.TaskGuid, executor.ContainerAllocationRequest{
 		DiskMB:   task.DiskMB,
 		MemoryMB: task.MemoryMB,
 	})
@@ -130,9 +130,9 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	taskLog.Info("successfully-claimed-task")
 
 	taskLog.Info("initializing-container")
-	container, err := s.client.InitializeContainer(task.TaskGuid, executorapi.ContainerInitializationRequest{
+	container, err := s.client.InitializeContainer(task.TaskGuid, executor.ContainerInitializationRequest{
 		CpuPercent: task.CpuPercent,
-		Log: executorapi.LogConfig{
+		Log: executor.LogConfig{
 			Guid:       task.Log.Guid,
 			SourceName: task.Log.SourceName,
 		},
@@ -164,7 +164,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	}
 
 	taskLog.Info("running-task")
-	err = s.client.Run(task.TaskGuid, executorapi.ContainerRunRequest{
+	err = s.client.Run(task.TaskGuid, executor.ContainerRunRequest{
 		Actions:     task.Actions,
 		CompleteURL: callbackRequest.URL.String(),
 	})

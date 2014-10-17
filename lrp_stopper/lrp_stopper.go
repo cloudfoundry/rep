@@ -1,7 +1,7 @@
 package lrp_stopper
 
 import (
-	executorapi "github.com/cloudfoundry-incubator/executor/api"
+	"github.com/cloudfoundry-incubator/executor"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
@@ -14,11 +14,11 @@ type LRPStopper interface {
 type lrpStopper struct {
 	guid   string
 	bbs    Bbs.RepBBS
-	client executorapi.Client
+	client executor.Client
 	logger lager.Logger
 }
 
-func New(guid string, bbs Bbs.RepBBS, client executorapi.Client, logger lager.Logger) LRPStopper {
+func New(guid string, bbs Bbs.RepBBS, client executor.Client, logger lager.Logger) LRPStopper {
 	return &lrpStopper{
 		guid:   guid,
 		bbs:    bbs,
@@ -61,7 +61,7 @@ func (stopper *lrpStopper) StopInstance(stopInstance models.StopLRPInstance) err
 	err = stopper.client.DeleteContainer(containerId)
 	switch err {
 	case nil:
-	case executorapi.ErrContainerNotFound:
+	case executor.ErrContainerNotFound:
 		stopLog.Info("container-already-gon", lager.Data{
 			"container-id": containerId,
 		})

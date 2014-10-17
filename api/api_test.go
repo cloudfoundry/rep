@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	executorAPI "github.com/cloudfoundry-incubator/executor/api"
-	fake_client "github.com/cloudfoundry-incubator/executor/api/fakes"
+	"github.com/cloudfoundry-incubator/executor"
+	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep/api"
 	"github.com/cloudfoundry-incubator/rep/api/lrprunning"
 	"github.com/cloudfoundry-incubator/rep/api/taskcomplete"
@@ -59,7 +59,7 @@ var _ = Describe("Callback API", func() {
 
 	Describe("PUT /task_completed/:guid", func() {
 		var task models.Task
-		var result executorAPI.ContainerRunResult
+		var result executor.ContainerRunResult
 
 		var resp *http.Response
 
@@ -91,7 +91,7 @@ var _ = Describe("Callback API", func() {
 				},
 			}
 
-			result = executorAPI.ContainerRunResult{
+			result = executor.ContainerRunResult{
 				Guid: "task-guid-123",
 			}
 		})
@@ -331,8 +331,8 @@ var _ = Describe("Callback API", func() {
 
 		Context("when the guid is found on the executor", func() {
 			BeforeEach(func() {
-				container := executorAPI.Container{
-					Ports: []executorAPI.PortMapping{
+				container := executor.Container{
+					Ports: []executor.PortMapping{
 						{ContainerPort: 8080, HostPort: 1234},
 						{ContainerPort: 8081, HostPort: 1235},
 					},
@@ -367,7 +367,7 @@ var _ = Describe("Callback API", func() {
 			disaster := errors.New("oh no!")
 
 			BeforeEach(func() {
-				fakeExecutor.GetContainerReturns(executorAPI.Container{}, disaster)
+				fakeExecutor.GetContainerReturns(executor.Container{}, disaster)
 			})
 
 			It("returns 400", func() {

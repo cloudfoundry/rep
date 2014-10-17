@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	executorapi "github.com/cloudfoundry-incubator/executor/api"
+	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
@@ -13,7 +13,7 @@ import (
 type handler struct {
 	executorID string
 	bbs        bbs.RepBBS
-	executor   executorapi.Client
+	executor   executor.Client
 	lrpHost    string
 	logger     lager.Logger
 }
@@ -21,7 +21,7 @@ type handler struct {
 func NewHandler(
 	executorID string,
 	bbs bbs.RepBBS,
-	executor executorapi.Client,
+	executor executor.Client,
 	lrpHost string,
 	logger lager.Logger,
 ) http.Handler {

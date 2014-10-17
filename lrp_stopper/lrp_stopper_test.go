@@ -3,8 +3,8 @@ package lrp_stopper_test
 import (
 	"errors"
 
-	"github.com/cloudfoundry-incubator/executor/api"
-	fake_client "github.com/cloudfoundry-incubator/executor/api/fakes"
+	"github.com/cloudfoundry-incubator/executor"
+	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
 	. "github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -113,7 +113,7 @@ var _ = Describe("LRP Stopper", func() {
 
 			Context("when the executor returns 'not found'", func() {
 				BeforeEach(func() {
-					client.DeleteContainerReturns(api.ErrContainerNotFound)
+					client.DeleteContainerReturns(executor.ErrContainerNotFound)
 				})
 
 				It("marks the LRP as stopped", func() {

@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	executorapi "github.com/cloudfoundry-incubator/executor/api"
+	"github.com/cloudfoundry-incubator/executor"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/timer"
 	"github.com/tedsuo/ifrit"
@@ -12,13 +12,13 @@ import (
 
 type Maintainer struct {
 	heartbeater       ifrit.Runner
-	executorClient    executorapi.Client
+	executorClient    executor.Client
 	logger            lager.Logger
 	heartbeatInterval time.Duration
 	timer             timer.Timer
 }
 
-func New(executorClient executorapi.Client, heartbeater ifrit.Runner, logger lager.Logger, heartbeatInterval time.Duration, timer timer.Timer) *Maintainer {
+func New(executorClient executor.Client, heartbeater ifrit.Runner, logger lager.Logger, heartbeatInterval time.Duration, timer timer.Timer) *Maintainer {
 	return &Maintainer{
 		heartbeater:       heartbeater,
 		executorClient:    executorClient,
