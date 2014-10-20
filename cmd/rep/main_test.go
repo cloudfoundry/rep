@@ -8,7 +8,7 @@ import (
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/auction/communication/nats/auction_nats_client"
 	"github.com/cloudfoundry-incubator/executor"
-	"github.com/cloudfoundry-incubator/rep/testrunner"
+	"github.com/cloudfoundry-incubator/rep/cmd/rep/testrunner"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/pivotal-golang/lager/lagertest"
