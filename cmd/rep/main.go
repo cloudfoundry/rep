@@ -149,6 +149,7 @@ func removeActualLrpFromBBS(bbs Bbs.RepBBS, executorID string, logger lager.Logg
 		lrps, err := bbs.GetAllActualLRPsByExecutorID(executorID)
 		if err != nil {
 			logger.Error("failed-to-get-actual-lrps-by-executor-id", err, lager.Data{"executor-id": executorID})
+			time.Sleep(time.Second)
 			continue
 		}
 
@@ -156,6 +157,7 @@ func removeActualLrpFromBBS(bbs Bbs.RepBBS, executorID string, logger lager.Logg
 			err = bbs.RemoveActualLRP(lrp)
 			if err != nil {
 				logger.Error("failed-to-remove-actual-lrps", err, lager.Data{"executor-id": executorID, "actual-lrp": lrp, "total-lrps": len(lrps)})
+				time.Sleep(time.Second)
 				continue
 			}
 		}
