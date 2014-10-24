@@ -109,8 +109,13 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 
 	taskLog.Info("allocating-container")
 	_, err = s.client.AllocateContainer(task.TaskGuid, executor.ContainerAllocationRequest{
-		DiskMB:   task.DiskMB,
-		MemoryMB: task.MemoryMB,
+		DiskMB:     task.DiskMB,
+		MemoryMB:   task.MemoryMB,
+		CpuPercent: task.CpuPercent,
+		Log: executor.LogConfig{
+			Guid:       task.Log.Guid,
+			SourceName: task.Log.SourceName,
+		},
 	})
 	if err != nil {
 		taskLog.Error("failed-to-allocate-container", err)
@@ -130,13 +135,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	taskLog.Info("successfully-claimed-task")
 
 	taskLog.Info("initializing-container")
-	container, err := s.client.InitializeContainer(task.TaskGuid, executor.ContainerInitializationRequest{
-		CpuPercent: task.CpuPercent,
-		Log: executor.LogConfig{
-			Guid:       task.Log.Guid,
-			SourceName: task.Log.SourceName,
-		},
-	})
+	container, err := s.client.InitializeContainer(task.TaskGuid)
 	if err != nil {
 		taskLog.Error("failed-to-initialize-container", err)
 		s.client.DeleteContainer(task.TaskGuid)

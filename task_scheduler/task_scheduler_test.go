@@ -140,9 +140,16 @@ var _ = Describe("TaskScheduler", func() {
 
 						allocateCalled <- struct{}{}
 						Ω(fakeBBS.ClaimTaskCallCount()).Should(Equal(0))
+
+						Ω(containerGuid).Should(Equal(task.TaskGuid))
 						Ω(req.MemoryMB).Should(Equal(64))
 						Ω(req.DiskMB).Should(Equal(1024))
-						Ω(containerGuid).Should(Equal(task.TaskGuid))
+						Ω(req.CpuPercent).Should(Equal(0.5))
+						Ω(req.Log).Should(Equal(executor.LogConfig{
+							Guid:       task.Log.Guid,
+							SourceName: task.Log.SourceName,
+						}))
+
 						return executor.Container{Guid: containerGuid}, nil
 					}
 
@@ -166,16 +173,11 @@ var _ = Describe("TaskScheduler", func() {
 						BeforeEach(func() {
 							initCalled = make(chan struct{}, 1)
 
-							fakeClient.InitializeContainerStub = func(allocationGuid string, req executor.ContainerInitializationRequest) (executor.Container, error) {
+							fakeClient.InitializeContainerStub = func(allocationGuid string) (executor.Container, error) {
 								defer GinkgoRecover()
 
 								initCalled <- struct{}{}
 								Ω(allocationGuid).Should(Equal(task.TaskGuid))
-								Ω(req.CpuPercent).Should(Equal(0.5))
-								Ω(req.Log).Should(Equal(executor.LogConfig{
-									Guid:       task.Log.Guid,
-									SourceName: task.Log.SourceName,
-								}))
 
 								Ω(fakeBBS.ClaimTaskCallCount()).Should(Equal(1))
 								Ω(fakeBBS.StartTaskCallCount()).Should(Equal(0))

@@ -87,16 +87,23 @@ func (a *AuctionDelegate) InstanceGuidsForProcessGuidAndIndex(processGuid string
 	return instanceGuids, nil
 }
 
-func (a *AuctionDelegate) Reserve(auctionInfo auctiontypes.StartAuctionInfo) error {
+func (a *AuctionDelegate) Reserve(startAuction models.LRPStartAuction) error {
 	reserveLog := a.logger.Session("reservation")
 
 	reserveLog.Info("reserve", lager.Data{
-		"auction-info": auctionInfo,
+		"start-auction": startAuction,
 	})
 
-	_, err := a.client.AllocateContainer(auctionInfo.LRPIdentifier().OpaqueID(), executor.ContainerAllocationRequest{
-		MemoryMB: auctionInfo.MemoryMB,
-		DiskMB:   auctionInfo.DiskMB,
+	_, err := a.client.AllocateContainer(startAuction.LRPIdentifier().OpaqueID(), executor.ContainerAllocationRequest{
+		MemoryMB:   startAuction.DesiredLRP.MemoryMB,
+		DiskMB:     startAuction.DesiredLRP.DiskMB,
+		RootFSPath: startAuction.DesiredLRP.RootFSPath,
+		Ports:      a.convertPortMappings(startAuction.DesiredLRP.Ports),
+		Log: executor.LogConfig{
+			Guid:       startAuction.DesiredLRP.Log.Guid,
+			SourceName: startAuction.DesiredLRP.Log.SourceName,
+			Index:      &startAuction.Index,
+		},
 	})
 	if err != nil {
 		reserveLog.Error("failed-to-reserve", err)
@@ -105,8 +112,8 @@ func (a *AuctionDelegate) Reserve(auctionInfo auctiontypes.StartAuctionInfo) err
 	return err
 }
 
-func (a *AuctionDelegate) ReleaseReservation(auctionInfo auctiontypes.StartAuctionInfo) error {
-	err := a.client.DeleteContainer(auctionInfo.LRPIdentifier().OpaqueID())
+func (a *AuctionDelegate) ReleaseReservation(startAuction models.LRPStartAuction) error {
+	err := a.client.DeleteContainer(startAuction.LRPIdentifier().OpaqueID())
 	if err != nil {
 		a.logger.Error("failed-to-release-reservation", err)
 	}
@@ -137,16 +144,7 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 		return err
 	}
 
-	_, err = a.client.InitializeContainer(containerGuid, executor.ContainerInitializationRequest{
-		RootFSPath: startAuction.DesiredLRP.RootFSPath,
-		Ports:      a.convertPortMappings(startAuction.DesiredLRP.Ports),
-		Log: executor.LogConfig{
-			Guid:       startAuction.DesiredLRP.Log.Guid,
-			SourceName: startAuction.DesiredLRP.Log.SourceName,
-			Index:      &startAuction.Index,
-		},
-	})
-
+	_, err = a.client.InitializeContainer(containerGuid)
 	if err != nil {
 		auctionLog.Error("failed-to-initialize-container", err)
 		a.client.DeleteContainer(containerGuid)

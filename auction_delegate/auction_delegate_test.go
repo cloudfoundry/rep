@@ -207,21 +207,38 @@ var _ = Describe("AuctionDelegate", func() {
 
 	Describe("Reserve", func() {
 		var reserveErr error
-		var auctionInfo auctiontypes.StartAuctionInfo
+		var startAuction models.LRPStartAuction
+		var expectedRootFS = "docker://docker.com/docker"
 
 		JustBeforeEach(func() {
-			reserveErr = delegate.Reserve(auctionInfo)
+			reserveErr = delegate.Reserve(startAuction)
 		})
 
 		Context("when the client returns a succesful response", func() {
-
 			BeforeEach(func() {
-				auctionInfo = auctiontypes.StartAuctionInfo{
-					ProcessGuid:  "process-guid",
+				startAuction = models.LRPStartAuction{
+					DesiredLRP: models.DesiredLRP{
+						Domain:      "tests",
+						RootFSPath:  expectedRootFS,
+						ProcessGuid: "process-guid",
+						DiskMB:      1024,
+						MemoryMB:    2048,
+						Actions: []models.ExecutorAction{
+							{
+								Action: models.DownloadAction{
+									From: "http://example.com/something",
+									To:   "/something",
+								},
+							},
+						},
+						Log: models.LogConfig{Guid: "log-guid"},
+						Ports: []models.PortMapping{
+							{ContainerPort: 8080},
+						},
+					},
+
 					InstanceGuid: "instance-guid",
-					DiskMB:       1024,
-					MemoryMB:     2048,
-					Index:        17,
+					Index:        2,
 				}
 
 				client.AllocateContainerReturns(executor.Container{}, nil)
@@ -234,11 +251,15 @@ var _ = Describe("AuctionDelegate", func() {
 			It("should allocate a container, passing in the correct data", func() {
 				Ω(client.AllocateContainerCallCount()).Should(Equal(1))
 
+				two := 2
 				allocationGuid, req := client.AllocateContainerArgsForCall(0)
-				Ω(allocationGuid).Should(Equal(auctionInfo.LRPIdentifier().OpaqueID()))
+				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 				Ω(req).Should(Equal(executor.ContainerAllocationRequest{
-					MemoryMB: auctionInfo.MemoryMB,
-					DiskMB:   auctionInfo.DiskMB,
+					MemoryMB:   startAuction.DesiredLRP.MemoryMB,
+					DiskMB:     startAuction.DesiredLRP.DiskMB,
+					RootFSPath: expectedRootFS,
+					Ports:      []executor.PortMapping{{ContainerPort: 8080}},
+					Log:        executor.LogConfig{Guid: "log-guid", Index: &two},
 				}))
 			})
 		})
@@ -255,18 +276,21 @@ var _ = Describe("AuctionDelegate", func() {
 	})
 
 	Describe("ReleaseReservation", func() {
-		var auctionInfo auctiontypes.StartAuctionInfo
+		var startAuction models.LRPStartAuction
 		var releaseErr error
 
 		JustBeforeEach(func() {
-			auctionInfo = auctiontypes.StartAuctionInfo{
-				ProcessGuid:  "process-guid",
+			startAuction = models.LRPStartAuction{
+				DesiredLRP: models.DesiredLRP{
+					Domain:      "tests",
+					ProcessGuid: "process-guid",
+				},
+
 				InstanceGuid: "instance-guid",
-				DiskMB:       1024,
-				MemoryMB:     2048,
-				Index:        17,
+				Index:        2,
 			}
-			releaseErr = delegate.ReleaseReservation(auctionInfo)
+
+			releaseErr = delegate.ReleaseReservation(startAuction)
 		})
 
 		Context("when the client returns a succesful response", func() {
@@ -280,7 +304,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 			It("should allocate a container, passing in the correct data", func() {
 				Ω(client.DeleteContainerCallCount()).Should(Equal(1))
-				Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(auctionInfo.LRPIdentifier().OpaqueID()))
+				Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 			})
 		})
 
@@ -309,6 +333,8 @@ var _ = Describe("AuctionDelegate", func() {
 					Domain:      "tests",
 					RootFSPath:  expectedRootFS,
 					ProcessGuid: "process-guid",
+					DiskMB:      1024,
+					MemoryMB:    2048,
 					Actions: []models.ExecutorAction{
 						{
 							Action: models.DownloadAction{
@@ -350,15 +376,9 @@ var _ = Describe("AuctionDelegate", func() {
 			})
 
 			It("should attempt to initialize the correct container", func() {
-				two := 2
 				Ω(client.InitializeContainerCallCount()).Should(Equal(1))
-				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
+				allocationGuid := client.InitializeContainerArgsForCall(0)
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
-				Ω(initRequest).Should(Equal(executor.ContainerInitializationRequest{
-					RootFSPath: expectedRootFS,
-					Ports:      []executor.PortMapping{{ContainerPort: 8080}},
-					Log:        executor.LogConfig{Guid: "log-guid", Index: &two},
-				}))
 			})
 
 			It("should mark the instance as STARTING in etcd", func() {
@@ -411,15 +431,9 @@ var _ = Describe("AuctionDelegate", func() {
 			})
 
 			It("should attempt to initialize the correct container", func() {
-				two := 2
 				Ω(client.InitializeContainerCallCount()).Should(Equal(1))
-				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
+				allocationGuid := client.InitializeContainerArgsForCall(0)
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
-				Ω(initRequest).Should(Equal(executor.ContainerInitializationRequest{
-					RootFSPath: expectedRootFS,
-					Ports:      []executor.PortMapping{{ContainerPort: 8080}},
-					Log:        executor.LogConfig{Guid: "log-guid", Index: &two},
-				}))
 			})
 
 			It("should mark the lrp as starting", func() {
@@ -489,15 +503,9 @@ var _ = Describe("AuctionDelegate", func() {
 			})
 
 			It("should attempt to initialize the correct container", func() {
-				two := 2
 				Ω(client.InitializeContainerCallCount()).Should(Equal(1))
-				allocationGuid, initRequest := client.InitializeContainerArgsForCall(0)
+				allocationGuid := client.InitializeContainerArgsForCall(0)
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
-				Ω(initRequest).Should(Equal(executor.ContainerInitializationRequest{
-					RootFSPath: expectedRootFS,
-					Ports:      []executor.PortMapping{{ContainerPort: 8080}},
-					Log:        executor.LogConfig{Guid: "log-guid", Index: &two},
-				}))
 			})
 
 			It("should mark the instance as STARTING in etcd", func() {
