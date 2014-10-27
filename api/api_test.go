@@ -65,11 +65,11 @@ var _ = Describe("Callback API", func() {
 
 		BeforeEach(func() {
 			task = models.Task{
-				TaskGuid:   "task-guid-123",
-				Stack:      "some-stack",
-				MemoryMB:   64,
-				DiskMB:     1024,
-				CpuPercent: .5,
+				TaskGuid:  "task-guid-123",
+				Stack:     "some-stack",
+				MemoryMB:  64,
+				DiskMB:    1024,
+				CPUWeight: 5,
 
 				ExecutorID:      "some-executor-id",
 				ContainerHandle: "some-container-handle",

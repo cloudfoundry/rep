@@ -57,11 +57,11 @@ var _ = Describe("TaskScheduler", func() {
 			fakeBBS.WatchForDesiredTaskReturns(desiredTaskChan, watchStopChan, watchErrorChan)
 
 			task = models.Task{
-				TaskGuid:   "task-guid-123",
-				Stack:      correctStack,
-				MemoryMB:   64,
-				DiskMB:     1024,
-				CpuPercent: .5,
+				TaskGuid:  "task-guid-123",
+				Stack:     correctStack,
+				MemoryMB:  64,
+				DiskMB:    1024,
+				CPUWeight: 5,
 				Actions: []models.ExecutorAction{
 					{
 						Action: models.RunAction{
@@ -144,7 +144,7 @@ var _ = Describe("TaskScheduler", func() {
 						Ω(containerGuid).Should(Equal(task.TaskGuid))
 						Ω(req.MemoryMB).Should(Equal(64))
 						Ω(req.DiskMB).Should(Equal(1024))
-						Ω(req.CpuPercent).Should(Equal(0.5))
+						Ω(req.CPUWeight).Should(Equal(uint(5)))
 						Ω(req.Log).Should(Equal(executor.LogConfig{
 							Guid:       task.Log.Guid,
 							SourceName: task.Log.SourceName,
@@ -291,12 +291,12 @@ var _ = Describe("TaskScheduler", func() {
 
 			BeforeEach(func() {
 				task = models.Task{
-					TaskGuid:   "task-guid-123",
-					Stack:      "asd;oubhasdfbuvasfb",
-					MemoryMB:   64,
-					DiskMB:     1024,
-					CpuPercent: .5,
-					Actions:    []models.ExecutorAction{},
+					TaskGuid:  "task-guid-123",
+					Stack:     "asd;oubhasdfbuvasfb",
+					MemoryMB:  64,
+					DiskMB:    1024,
+					CPUWeight: 5,
+					Actions:   []models.ExecutorAction{},
 				}
 
 				desiredTaskChan <- task
