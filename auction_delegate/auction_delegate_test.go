@@ -254,12 +254,21 @@ var _ = Describe("AuctionDelegate", func() {
 				two := 2
 				allocationGuid, req := client.AllocateContainerArgsForCall(0)
 				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
-				Ω(req).Should(Equal(executor.ContainerAllocationRequest{
+				Ω(req).Should(Equal(executor.Container{
+					Guid: startAuction.DesiredLRP.ProcessGuid,
+
 					MemoryMB:   startAuction.DesiredLRP.MemoryMB,
 					DiskMB:     startAuction.DesiredLRP.DiskMB,
 					RootFSPath: expectedRootFS,
 					Ports:      []executor.PortMapping{{ContainerPort: 8080}},
 					Log:        executor.LogConfig{Guid: "log-guid", Index: &two},
+
+					Actions: startAuction.DesiredLRP.Actions,
+
+					Env: []executor.EnvironmentVariable{
+						{Name: "CF_INSTANCE_GUID", Value: "instance-guid"},
+						{Name: "CF_INSTANCE_INDEX", Value: "2"},
+					},
 				}))
 			})
 		})
@@ -362,9 +371,8 @@ var _ = Describe("AuctionDelegate", func() {
 		})
 
 		JustBeforeEach(func() {
-			client.InitializeContainerReturns(executor.Container{}, initializeError)
 			bbs.ReportActualLRPAsStartingReturns(expectedLrp, startingErr)
-			client.RunReturns(runError)
+			client.RunContainerReturns(runError)
 			client.DeleteContainerReturns(nil)
 
 			err = delegate.Run(startAuction)
@@ -373,12 +381,6 @@ var _ = Describe("AuctionDelegate", func() {
 		Context("when running succeeds", func() {
 			It("should not return an error", func() {
 				Ω(err).ShouldNot(HaveOccurred())
-			})
-
-			It("should attempt to initialize the correct container", func() {
-				Ω(client.InitializeContainerCallCount()).Should(Equal(1))
-				allocationGuid := client.InitializeContainerArgsForCall(0)
-				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 			})
 
 			It("should mark the instance as STARTING in etcd", func() {
@@ -391,25 +393,9 @@ var _ = Describe("AuctionDelegate", func() {
 				Ω(actualIndex).Should(Equal(expectedLrp.Index))
 			})
 
-			It("should attempt to run the correct actions in the correct container", func() {
-				Ω(client.RunCallCount()).Should(Equal(1))
-
-				allocationGuid, runRequest := client.RunArgsForCall(0)
-
-				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
-				Ω(runRequest.Actions).Should(Equal(startAuction.DesiredLRP.Actions))
-			})
-
-			It("makes the instance guid and index available via container-wide env", func() {
-				Ω(client.RunCallCount()).Should(Equal(1))
-
-				allocationGuid, runRequest := client.RunArgsForCall(0)
-
-				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
-				Ω(runRequest.Env).Should(Equal([]executor.EnvironmentVariable{
-					{Name: "CF_INSTANCE_GUID", Value: "instance-guid"},
-					{Name: "CF_INSTANCE_INDEX", Value: "2"},
-				}))
+			It("should attempt to run the correct container", func() {
+				Ω(client.RunContainerCallCount()).Should(Equal(1))
+				Ω(client.RunContainerArgsForCall(0)).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 			})
 
 			It("does not attempt to remove the STARTING LRP from etcd", func() {
@@ -418,40 +404,6 @@ var _ = Describe("AuctionDelegate", func() {
 
 			It("should not delete the container", func() {
 				Ω(client.DeleteContainerCallCount()).Should(Equal(0))
-			})
-		})
-
-		Context("when the initialize fails", func() {
-			BeforeEach(func() {
-				initializeError = errors.New("Failed to initialize")
-			})
-
-			It("should bubble up the error", func() {
-				Ω(err).Should(Equal(initializeError))
-			})
-
-			It("should attempt to initialize the correct container", func() {
-				Ω(client.InitializeContainerCallCount()).Should(Equal(1))
-				allocationGuid := client.InitializeContainerArgsForCall(0)
-				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
-			})
-
-			It("should mark the lrp as starting", func() {
-				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
-			})
-
-			It("should remove the started lrp", func() {
-				Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
-			})
-
-			It("should not attempt to run the actions", func() {
-				Ω(client.RunCallCount()).Should(Equal(0))
-			})
-
-			It("should delete the container", func() {
-				Ω(client.DeleteContainerCallCount()).Should(Equal(1))
-				allocationGuid := client.DeleteContainerArgsForCall(0)
-				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 			})
 		})
 
@@ -464,10 +416,6 @@ var _ = Describe("AuctionDelegate", func() {
 				Ω(err).Should(Equal(startingErr))
 			})
 
-			It("should not attempt to initialize the correct container", func() {
-				Ω(client.InitializeContainerCallCount()).Should(Equal(0))
-			})
-
 			It("should mark the instance as STARTING in etcd", func() {
 				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
 
@@ -483,7 +431,7 @@ var _ = Describe("AuctionDelegate", func() {
 			})
 
 			It("should not attempt to run the actions", func() {
-				Ω(client.RunCallCount()).Should(Equal(0))
+				Ω(client.RunContainerCallCount()).Should(Equal(0))
 			})
 
 			It("should delete the container", func() {
@@ -500,12 +448,6 @@ var _ = Describe("AuctionDelegate", func() {
 
 			It("should bubble up the error", func() {
 				Ω(err).Should(Equal(runError))
-			})
-
-			It("should attempt to initialize the correct container", func() {
-				Ω(client.InitializeContainerCallCount()).Should(Equal(1))
-				allocationGuid := client.InitializeContainerArgsForCall(0)
-				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
 			})
 
 			It("should mark the instance as STARTING in etcd", func() {

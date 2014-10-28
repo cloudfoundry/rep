@@ -71,9 +71,8 @@ var _ = Describe("Callback API", func() {
 				DiskMB:    1024,
 				CPUWeight: 5,
 
-				ExecutorID:      "some-executor-id",
-				ContainerHandle: "some-container-handle",
-				ResultFile:      "some-file",
+				ExecutorID: "some-executor-id",
+				ResultFile: "some-file",
 
 				Actions: []models.ExecutorAction{
 					{

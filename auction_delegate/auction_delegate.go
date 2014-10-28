@@ -94,15 +94,24 @@ func (a *AuctionDelegate) Reserve(startAuction models.LRPStartAuction) error {
 		"start-auction": startAuction,
 	})
 
-	_, err := a.client.AllocateContainer(startAuction.LRPIdentifier().OpaqueID(), executor.ContainerAllocationRequest{
+	_, err := a.client.AllocateContainer(startAuction.LRPIdentifier().OpaqueID(), executor.Container{
+		Guid: startAuction.DesiredLRP.ProcessGuid,
+
 		MemoryMB:   startAuction.DesiredLRP.MemoryMB,
 		DiskMB:     startAuction.DesiredLRP.DiskMB,
 		RootFSPath: startAuction.DesiredLRP.RootFSPath,
 		Ports:      a.convertPortMappings(startAuction.DesiredLRP.Ports),
+
 		Log: executor.LogConfig{
 			Guid:       startAuction.DesiredLRP.Log.Guid,
 			SourceName: startAuction.DesiredLRP.Log.SourceName,
 			Index:      &startAuction.Index,
+		},
+
+		Actions: startAuction.DesiredLRP.Actions,
+		Env: []executor.EnvironmentVariable{
+			{Name: "CF_INSTANCE_GUID", Value: startAuction.InstanceGuid},
+			{Name: "CF_INSTANCE_INDEX", Value: strconv.Itoa(startAuction.Index)},
 		},
 	})
 	if err != nil {
@@ -144,21 +153,7 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 		return err
 	}
 
-	_, err = a.client.InitializeContainer(containerGuid)
-	if err != nil {
-		auctionLog.Error("failed-to-initialize-container", err)
-		a.client.DeleteContainer(containerGuid)
-		a.bbs.RemoveActualLRP(lrp)
-		return err
-	}
-
-	err = a.client.Run(containerGuid, executor.ContainerRunRequest{
-		Actions: startAuction.DesiredLRP.Actions,
-		Env: []executor.EnvironmentVariable{
-			{Name: "CF_INSTANCE_GUID", Value: startAuction.InstanceGuid},
-			{Name: "CF_INSTANCE_INDEX", Value: strconv.Itoa(startAuction.Index)},
-		},
-	})
+	err = a.client.RunContainer(containerGuid)
 	if err != nil {
 		auctionLog.Error("failed-to-run-actions", err)
 		a.client.DeleteContainer(containerGuid)

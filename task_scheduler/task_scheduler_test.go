@@ -119,7 +119,6 @@ var _ = Describe("TaskScheduler", func() {
 				Eventually(fakeClient.AllocateContainerCallCount, 5).Should(Equal(1))
 				Ω(time.Now().Sub(errorTime)).Should(BeNumerically("~", 3*time.Second, 200*time.Millisecond))
 			})
-
 		})
 
 		Context("when a staging task is desired", func() {
@@ -135,13 +134,14 @@ var _ = Describe("TaskScheduler", func() {
 					allocateCalled = make(chan struct{}, 1)
 					deletedContainerGuid = make(chan string, 1)
 
-					fakeClient.AllocateContainerStub = func(containerGuid string, req executor.ContainerAllocationRequest) (executor.Container, error) {
+					fakeClient.AllocateContainerStub = func(containerGuid string, req executor.Container) (executor.Container, error) {
 						defer GinkgoRecover()
 
 						allocateCalled <- struct{}{}
 						Ω(fakeBBS.ClaimTaskCallCount()).Should(Equal(0))
 
 						Ω(containerGuid).Should(Equal(task.TaskGuid))
+						Ω(req.Guid).Should(Equal(containerGuid))
 						Ω(req.MemoryMB).Should(Equal(64))
 						Ω(req.DiskMB).Should(Equal(1024))
 						Ω(req.CPUWeight).Should(Equal(uint(5)))
@@ -149,6 +149,7 @@ var _ = Describe("TaskScheduler", func() {
 							Guid:       task.Log.Guid,
 							SourceName: task.Log.SourceName,
 						}))
+						Ω(req.Actions).Should(Equal(task.Actions))
 
 						return executor.Container{Guid: containerGuid}, nil
 					}
@@ -167,58 +168,26 @@ var _ = Describe("TaskScheduler", func() {
 				})
 
 				Context("when claiming the task succeeds", func() {
-					Context("when initializing the container succeeds", func() {
-						var initCalled chan struct{}
-
+					Context("when running the container succeeds", func() {
 						BeforeEach(func() {
-							initCalled = make(chan struct{}, 1)
-
-							fakeClient.InitializeContainerStub = func(allocationGuid string) (executor.Container, error) {
+							fakeClient.RunContainerStub = func(allocationGuid string) error {
 								defer GinkgoRecover()
 
-								initCalled <- struct{}{}
 								Ω(allocationGuid).Should(Equal(task.TaskGuid))
 
 								Ω(fakeBBS.ClaimTaskCallCount()).Should(Equal(1))
 								Ω(fakeBBS.StartTaskCallCount()).Should(Equal(0))
-								return executor.Container{ContainerHandle: "the-container-handle"}, nil
+
+								return nil
 							}
 						})
 
 						It("should start the task", func() {
 							Eventually(fakeBBS.StartTaskCallCount, claimWaitTimeout).Should(Equal(1))
-							taskGuid, executorGuid, containerHandle := fakeBBS.StartTaskArgsForCall(0)
+
+							taskGuid, executorGuid := fakeBBS.StartTaskArgsForCall(0)
 							Ω(taskGuid).Should(Equal(task.TaskGuid))
 							Ω(executorGuid).Should(Equal("some-executor-id"))
-							Ω(containerHandle).Should(Equal("the-container-handle"))
-						})
-
-						Context("and the executor successfully starts running the task", func() {
-							var (
-								reqChan chan executor.ContainerRunRequest
-							)
-
-							BeforeEach(func() {
-								reqChan = make(chan executor.ContainerRunRequest, 1)
-
-								fakeClient.RunStub = func(allocationGuid string, req executor.ContainerRunRequest) error {
-									defer GinkgoRecover()
-
-									Ω(fakeBBS.StartTaskCallCount()).Should(Equal(1))
-
-									Ω(allocationGuid).Should(Equal(task.TaskGuid))
-									Ω(req.Actions).Should(Equal(task.Actions))
-
-									reqChan <- req
-									return nil
-								}
-							})
-
-							It("makes all calls to the executor", func() {
-								Eventually(allocateCalled, claimWaitTimeout).Should(Receive())
-								Eventually(initCalled, claimWaitTimeout).Should(Receive())
-								Eventually(reqChan, claimWaitTimeout).Should(Receive())
-							})
 						})
 
 						Context("but starting the task fails", func() {
@@ -232,9 +201,9 @@ var _ = Describe("TaskScheduler", func() {
 						})
 					})
 
-					Context("but initializing the container fails", func() {
+					Context("but running the container fails", func() {
 						BeforeEach(func() {
-							fakeClient.InitializeContainerReturns(executor.Container{}, errors.New("Can't initialize"))
+							fakeClient.RunContainerReturns(errors.New("oh no!"))
 						})
 
 						It("does not mark the job as started", func() {
@@ -250,7 +219,7 @@ var _ = Describe("TaskScheduler", func() {
 							taskGuid, failed, failureReason, _ := fakeBBS.CompleteTaskArgsForCall(0)
 							Ω(taskGuid).Should(Equal(task.TaskGuid))
 							Ω(failed).Should(BeTrue())
-							Ω(failureReason).Should(ContainSubstring("Failed to initialize container - Can't initialize"))
+							Ω(failureReason).Should(ContainSubstring("failed to run container - oh no!"))
 						})
 					})
 				})
@@ -267,7 +236,6 @@ var _ = Describe("TaskScheduler", func() {
 			})
 
 			Context("when reserving the container fails", func() {
-
 				BeforeEach(func() {
 					fakeClient.AllocateContainerReturns(executor.Container{}, errors.New("Something went wrong"))
 				})

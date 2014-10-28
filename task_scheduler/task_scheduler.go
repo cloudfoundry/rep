@@ -107,8 +107,18 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 
 	taskLog := s.logger.Session("task-request", lager.Data{"taskGuid": task.TaskGuid})
 
+	callbackRequest, err := s.callbackGenerator.CreateRequest(routes.TaskCompleted, rata.Params{
+		"guid": task.TaskGuid,
+	}, nil)
+	if err != nil {
+		taskLog.Error("failed-to-generate-callback-request", err)
+		return
+	}
+
 	taskLog.Info("allocating-container")
-	_, err = s.client.AllocateContainer(task.TaskGuid, executor.ContainerAllocationRequest{
+	_, err = s.client.AllocateContainer(task.TaskGuid, executor.Container{
+		Guid: task.TaskGuid,
+
 		DiskMB:    task.DiskMB,
 		MemoryMB:  task.MemoryMB,
 		CPUWeight: task.CPUWeight,
@@ -116,6 +126,9 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 			Guid:       task.Log.Guid,
 			SourceName: task.Log.SourceName,
 		},
+
+		Actions:     task.Actions,
+		CompleteURL: callbackRequest.URL.String(),
 	})
 	if err != nil {
 		taskLog.Error("failed-to-allocate-container", err)
@@ -134,19 +147,20 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	}
 	taskLog.Info("successfully-claimed-task")
 
-	taskLog.Info("initializing-container")
-	container, err := s.client.InitializeContainer(task.TaskGuid)
+	taskLog.Info("running-task")
+
+	err = s.client.RunContainer(task.TaskGuid)
 	if err != nil {
-		taskLog.Error("failed-to-initialize-container", err)
+		taskLog.Error("failed-to-run-task", err)
 		s.client.DeleteContainer(task.TaskGuid)
 		s.markTaskAsFailed(taskLog, task.TaskGuid, err)
 		return
 	}
-	taskLog = taskLog.WithData(lager.Data{"containerHandle": container.ContainerHandle})
-	taskLog.Info("successfully-initialized-container")
+
+	taskLog.Info("successfully-ran-task")
 
 	taskLog.Info("starting-task")
-	err = s.bbs.StartTask(task.TaskGuid, s.executorID, container.ContainerHandle)
+	err = s.bbs.StartTask(task.TaskGuid, s.executorID)
 	if err != nil {
 		taskLog.Error("failed-to-mark-task-started", err)
 		s.client.DeleteContainer(task.TaskGuid)
@@ -154,31 +168,12 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	}
 	taskLog.Info("successfully-started-task")
 
-	callbackRequest, err := s.callbackGenerator.CreateRequest(routes.TaskCompleted, rata.Params{
-		"guid": task.TaskGuid,
-	}, nil)
-	if err != nil {
-		taskLog.Error("failed-to-generate-callback-request", err)
-		return
-	}
-
-	taskLog.Info("running-task")
-	err = s.client.Run(task.TaskGuid, executor.ContainerRunRequest{
-		Actions:     task.Actions,
-		CompleteURL: callbackRequest.URL.String(),
-	})
-	if err != nil {
-		taskLog.Error("failed-to-run-task", err)
-		return
-	}
-	taskLog.Info("successfully-ran-task")
-
 	return
 }
 
 func (s *TaskScheduler) markTaskAsFailed(taskLog lager.Logger, taskGuid string, err error) {
 	taskLog.Info("complete-task")
-	err = s.bbs.CompleteTask(taskGuid, true, "Failed to initialize container - "+err.Error(), "")
+	err = s.bbs.CompleteTask(taskGuid, true, "failed to run container - "+err.Error(), "")
 	if err != nil {
 		taskLog.Error("failed-to-complete-task", err)
 	}
