@@ -223,6 +223,7 @@ var _ = Describe("AuctionDelegate", func() {
 						ProcessGuid: "process-guid",
 						DiskMB:      1024,
 						MemoryMB:    2048,
+						CPUWeight:   42,
 						Actions: []models.ExecutorAction{
 							{
 								Action: models.DownloadAction{
@@ -259,6 +260,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 					MemoryMB:   startAuction.DesiredLRP.MemoryMB,
 					DiskMB:     startAuction.DesiredLRP.DiskMB,
+					CPUWeight:  startAuction.DesiredLRP.CPUWeight,
 					RootFSPath: expectedRootFS,
 					Ports:      []executor.PortMapping{{ContainerPort: 8080}},
 					Log:        executor.LogConfig{Guid: "log-guid", Index: &two},

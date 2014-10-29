@@ -99,6 +99,7 @@ func (a *AuctionDelegate) Reserve(startAuction models.LRPStartAuction) error {
 
 		MemoryMB:   startAuction.DesiredLRP.MemoryMB,
 		DiskMB:     startAuction.DesiredLRP.DiskMB,
+		CPUWeight:  startAuction.DesiredLRP.CPUWeight,
 		RootFSPath: startAuction.DesiredLRP.RootFSPath,
 		Ports:      a.convertPortMappings(startAuction.DesiredLRP.Ports),
 
