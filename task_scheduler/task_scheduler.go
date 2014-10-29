@@ -119,9 +119,10 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	_, err = s.client.AllocateContainer(task.TaskGuid, executor.Container{
 		Guid: task.TaskGuid,
 
-		DiskMB:    task.DiskMB,
-		MemoryMB:  task.MemoryMB,
-		CPUWeight: task.CPUWeight,
+		DiskMB:     task.DiskMB,
+		MemoryMB:   task.MemoryMB,
+		CPUWeight:  task.CPUWeight,
+		RootFSPath: task.RootFSPath,
 		Log: executor.LogConfig{
 			Guid:       task.Log.Guid,
 			SourceName: task.Log.SourceName,

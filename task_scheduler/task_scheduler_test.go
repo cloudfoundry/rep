@@ -57,11 +57,12 @@ var _ = Describe("TaskScheduler", func() {
 			fakeBBS.WatchForDesiredTaskReturns(desiredTaskChan, watchStopChan, watchErrorChan)
 
 			task = models.Task{
-				TaskGuid:  "task-guid-123",
-				Stack:     correctStack,
-				MemoryMB:  64,
-				DiskMB:    1024,
-				CPUWeight: 5,
+				TaskGuid:   "task-guid-123",
+				Stack:      correctStack,
+				RootFSPath: "the-rootfs-path",
+				MemoryMB:   64,
+				DiskMB:     1024,
+				CPUWeight:  5,
 				Actions: []models.ExecutorAction{
 					{
 						Action: models.RunAction{
@@ -144,6 +145,7 @@ var _ = Describe("TaskScheduler", func() {
 						Ω(req.Guid).Should(Equal(containerGuid))
 						Ω(req.MemoryMB).Should(Equal(64))
 						Ω(req.DiskMB).Should(Equal(1024))
+						Ω(req.RootFSPath).Should(Equal("the-rootfs-path"))
 						Ω(req.CPUWeight).Should(Equal(uint(5)))
 						Ω(req.Log).Should(Equal(executor.LogConfig{
 							Guid:       task.Log.Guid,
