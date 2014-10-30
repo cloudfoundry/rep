@@ -94,8 +94,8 @@ func (a *AuctionDelegate) Reserve(startAuction models.LRPStartAuction) error {
 		"start-auction": startAuction,
 	})
 
-	_, err := a.client.AllocateContainer(startAuction.LRPIdentifier().OpaqueID(), executor.Container{
-		Guid: startAuction.DesiredLRP.ProcessGuid,
+	_, err := a.client.AllocateContainer(executor.Container{
+		Guid: startAuction.LRPIdentifier().OpaqueID(),
 
 		MemoryMB:   startAuction.DesiredLRP.MemoryMB,
 		DiskMB:     startAuction.DesiredLRP.DiskMB,

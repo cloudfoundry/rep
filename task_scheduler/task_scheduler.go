@@ -116,7 +116,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	}
 
 	taskLog.Info("allocating-container")
-	_, err = s.client.AllocateContainer(task.TaskGuid, executor.Container{
+	_, err = s.client.AllocateContainer(executor.Container{
 		Guid: task.TaskGuid,
 
 		DiskMB:     task.DiskMB,

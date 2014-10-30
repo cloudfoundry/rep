@@ -253,10 +253,8 @@ var _ = Describe("AuctionDelegate", func() {
 				Ω(client.AllocateContainerCallCount()).Should(Equal(1))
 
 				two := 2
-				allocationGuid, req := client.AllocateContainerArgsForCall(0)
-				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
-				Ω(req).Should(Equal(executor.Container{
-					Guid: startAuction.DesiredLRP.ProcessGuid,
+				Ω(client.AllocateContainerArgsForCall(0)).Should(Equal(executor.Container{
+					Guid: startAuction.LRPIdentifier().OpaqueID(),
 
 					MemoryMB:   startAuction.DesiredLRP.MemoryMB,
 					DiskMB:     startAuction.DesiredLRP.DiskMB,

@@ -135,14 +135,13 @@ var _ = Describe("TaskScheduler", func() {
 					allocateCalled = make(chan struct{}, 1)
 					deletedContainerGuid = make(chan string, 1)
 
-					fakeClient.AllocateContainerStub = func(containerGuid string, req executor.Container) (executor.Container, error) {
+					fakeClient.AllocateContainerStub = func(req executor.Container) (executor.Container, error) {
 						defer GinkgoRecover()
 
 						allocateCalled <- struct{}{}
 						Ω(fakeBBS.ClaimTaskCallCount()).Should(Equal(0))
 
-						Ω(containerGuid).Should(Equal(task.TaskGuid))
-						Ω(req.Guid).Should(Equal(containerGuid))
+						Ω(req.Guid).Should(Equal(task.TaskGuid))
 						Ω(req.MemoryMB).Should(Equal(64))
 						Ω(req.DiskMB).Should(Equal(1024))
 						Ω(req.RootFSPath).Should(Equal("the-rootfs-path"))
@@ -153,7 +152,7 @@ var _ = Describe("TaskScheduler", func() {
 						}))
 						Ω(req.Actions).Should(Equal(task.Actions))
 
-						return executor.Container{Guid: containerGuid}, nil
+						return req, nil
 					}
 
 					fakeClient.DeleteContainerStub = func(allocationGuid string) error {
