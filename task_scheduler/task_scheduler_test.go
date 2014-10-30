@@ -31,7 +31,7 @@ var _ = Describe("TaskScheduler", func() {
 		logger = lagertest.NewTestLogger("test")
 	})
 
-	Context("when a game scheduler is running", func() {
+	Context("when a task scheduler is running", func() {
 		var (
 			fakeExecutor  *ghttp.Server
 			fakeBBS       *fake_bbs.FakeRepBBS
@@ -122,7 +122,7 @@ var _ = Describe("TaskScheduler", func() {
 			})
 		})
 
-		Context("when a staging task is desired", func() {
+		Context("when a task is desired", func() {
 			JustBeforeEach(func() {
 				desiredTaskChan <- task
 			})
