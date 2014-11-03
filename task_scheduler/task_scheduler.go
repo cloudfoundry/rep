@@ -9,14 +9,17 @@ import (
 
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep/routes"
+	"github.com/cloudfoundry-incubator/rep/tallyman"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
 )
 
-const ServerCloseErrMsg = "use of closed network connection"
-const MaxClaimWaitInMillis = 1000
+const (
+	ServerCloseErrMsg    = "use of closed network connection"
+	MaxClaimWaitInMillis = 1000
+)
 
 var random = rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -118,6 +121,8 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	taskLog.Info("allocating-container")
 	_, err = s.client.AllocateContainer(executor.Container{
 		Guid: task.TaskGuid,
+
+		Tags: executor.Tags{tallyman.LifecycleTag: tallyman.TaskLifecycle},
 
 		DiskMB:     task.DiskMB,
 		MemoryMB:   task.MemoryMB,

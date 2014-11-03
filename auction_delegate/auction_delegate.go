@@ -6,6 +6,7 @@ import (
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
+	"github.com/cloudfoundry-incubator/rep/tallyman"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
@@ -46,7 +47,7 @@ func (a *AuctionDelegate) TotalResources() (auctiontypes.Resources, error) {
 }
 
 func (a *AuctionDelegate) NumInstancesForProcessGuid(processGuid string) (int, error) {
-	containers, err := a.client.ListContainers()
+	containers, err := a.client.ListContainers(nil)
 	if err != nil {
 		a.logger.Error("failed-to-list-containers", err)
 		return 0, err
@@ -67,7 +68,7 @@ func (a *AuctionDelegate) NumInstancesForProcessGuid(processGuid string) (int, e
 }
 
 func (a *AuctionDelegate) InstanceGuidsForProcessGuidAndIndex(processGuid string, index int) ([]string, error) {
-	containers, err := a.client.ListContainers()
+	containers, err := a.client.ListContainers(nil)
 	if err != nil {
 		a.logger.Error("failed-to-list-containers", err)
 		return []string{}, err
@@ -84,6 +85,7 @@ func (a *AuctionDelegate) InstanceGuidsForProcessGuidAndIndex(processGuid string
 			instanceGuids = append(instanceGuids, identifier.InstanceGuid)
 		}
 	}
+
 	return instanceGuids, nil
 }
 
@@ -96,6 +98,10 @@ func (a *AuctionDelegate) Reserve(startAuction models.LRPStartAuction) error {
 
 	_, err := a.client.AllocateContainer(executor.Container{
 		Guid: startAuction.LRPIdentifier().OpaqueID(),
+
+		Tags: executor.Tags{
+			tallyman.LifecycleTag: tallyman.LRPLifecycle,
+		},
 
 		MemoryMB:   startAuction.DesiredLRP.MemoryMB,
 		DiskMB:     startAuction.DesiredLRP.DiskMB,

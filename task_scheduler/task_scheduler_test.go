@@ -77,7 +77,6 @@ var _ = Describe("TaskScheduler", func() {
 					SourceName: "XYZ",
 				},
 			}
-
 		})
 
 		BeforeEach(func() {
@@ -142,6 +141,9 @@ var _ = Describe("TaskScheduler", func() {
 						Ω(fakeBBS.ClaimTaskCallCount()).Should(Equal(0))
 
 						Ω(req.Guid).Should(Equal(task.TaskGuid))
+						Ω(req.Tags).Should(Equal(executor.Tags{
+							"lifecycle": "task",
+						}))
 						Ω(req.MemoryMB).Should(Equal(64))
 						Ω(req.DiskMB).Should(Equal(1024))
 						Ω(req.RootFSPath).Should(Equal("the-rootfs-path"))

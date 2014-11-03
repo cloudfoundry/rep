@@ -256,6 +256,10 @@ var _ = Describe("AuctionDelegate", func() {
 				Ω(client.AllocateContainerArgsForCall(0)).Should(Equal(executor.Container{
 					Guid: startAuction.LRPIdentifier().OpaqueID(),
 
+					Tags: executor.Tags{
+						"lifecycle": "lrp",
+					},
+
 					MemoryMB:   startAuction.DesiredLRP.MemoryMB,
 					DiskMB:     startAuction.DesiredLRP.DiskMB,
 					CPUWeight:  startAuction.DesiredLRP.CPUWeight,
