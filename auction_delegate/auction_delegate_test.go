@@ -8,6 +8,7 @@ import (
 	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
 	. "github.com/cloudfoundry-incubator/rep/auction_delegate"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper/fake_lrp_stopper"
+	"github.com/cloudfoundry-incubator/rep/tallyman"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -104,34 +105,36 @@ var _ = Describe("AuctionDelegate", func() {
 			BeforeEach(func() {
 				containers := []executor.Container{
 					executor.Container{
-						Guid: "the-first-app-guid.17.first",
+						Guid: "first",
+						Tags: executor.Tags{
+							ProcessGuidTag:  "the-first-app-guid",
+							ProcessIndexTag: "17",
+						},
 					},
 					executor.Container{
-						Guid: "the-second-app-guid.14.second",
-					},
-					executor.Container{
-						Guid: "the-first-app-guid.92.third",
+						Guid: "third",
+						Tags: executor.Tags{
+							ProcessGuidTag:  "the-first-app-guid",
+							ProcessIndexTag: "92",
+						},
 					},
 				}
+
 				client.ListContainersReturns(containers, nil)
 			})
 
-			It("Should use the client to get the resources", func() {
+			It("returns the count of the containers that were returned", func() {
 				instances, err := delegate.NumInstancesForProcessGuid("the-first-app-guid")
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(instances).Should(Equal(2))
-
-				instances, err = delegate.NumInstancesForProcessGuid("the-second-app-guid")
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(instances).Should(Equal(1))
 			})
 
-			Context("when there are no matching app guids", func() {
-				It("should return 0", func() {
-					instances, err := delegate.NumInstancesForProcessGuid("nope")
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(instances).Should(Equal(0))
-				})
+			It("filters by process guid", func() {
+				_, err := delegate.NumInstancesForProcessGuid("the-first-app-guid")
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(client.ListContainersArgsForCall(0)).Should(Equal(executor.Tags{
+					ProcessGuidTag: "the-first-app-guid",
+				}))
 			})
 		})
 
@@ -152,16 +155,10 @@ var _ = Describe("AuctionDelegate", func() {
 			BeforeEach(func() {
 				containers := []executor.Container{
 					executor.Container{
-						Guid: "requested-app-guid.17.first",
+						Guid: "first",
 					},
 					executor.Container{
-						Guid: "requested-app-guid.17.second",
-					},
-					executor.Container{
-						Guid: "requested-app-guid.18.third",
-					},
-					executor.Container{
-						Guid: "other-app-guid.17.fourth",
+						Guid: "second",
 					},
 				}
 				client.ListContainersReturns(containers, nil)
@@ -175,20 +172,13 @@ var _ = Describe("AuctionDelegate", func() {
 				Ω(instanceGuids).Should(ContainElement("second"))
 			})
 
-			Context("when there are no matching app guids", func() {
-				It("should return empty", func() {
-					instanceGuids, err := delegate.InstanceGuidsForProcessGuidAndIndex("nope", 17)
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(instanceGuids).Should(BeEmpty())
-				})
-			})
-
-			Context("when there are no matching indexes", func() {
-				It("should return empty", func() {
-					instanceGuids, err := delegate.InstanceGuidsForProcessGuidAndIndex("requested-app-guid", 19)
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(instanceGuids).Should(BeEmpty())
-				})
+			It("filters by process guid and index", func() {
+				_, err := delegate.InstanceGuidsForProcessGuidAndIndex("requested-app-guid", 17)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(client.ListContainersArgsForCall(0)).Should(Equal(executor.Tags{
+					ProcessGuidTag:  "requested-app-guid",
+					ProcessIndexTag: "17",
+				}))
 			})
 		})
 
@@ -258,10 +248,12 @@ var _ = Describe("AuctionDelegate", func() {
 
 				two := 2
 				Ω(client.AllocateContainerArgsForCall(0)).Should(Equal(executor.Container{
-					Guid: startAuction.LRPIdentifier().OpaqueID(),
+					Guid: startAuction.InstanceGuid,
 
 					Tags: executor.Tags{
-						"lifecycle": "lrp",
+						tallyman.LifecycleTag: tallyman.LRPLifecycle,
+						ProcessGuidTag:        startAuction.DesiredLRP.ProcessGuid,
+						ProcessIndexTag:       "2",
 					},
 
 					MemoryMB:   startAuction.DesiredLRP.MemoryMB,
@@ -323,7 +315,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 			It("should allocate a container, passing in the correct data", func() {
 				Ω(client.DeleteContainerCallCount()).Should(Equal(1))
-				Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
+				Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(startAuction.InstanceGuid))
 			})
 		})
 
@@ -405,7 +397,7 @@ var _ = Describe("AuctionDelegate", func() {
 
 			It("should attempt to run the correct container", func() {
 				Ω(client.RunContainerCallCount()).Should(Equal(1))
-				Ω(client.RunContainerArgsForCall(0)).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
+				Ω(client.RunContainerArgsForCall(0)).Should(Equal(startAuction.InstanceGuid))
 			})
 
 			It("does not attempt to remove the STARTING LRP from etcd", func() {
@@ -447,7 +439,7 @@ var _ = Describe("AuctionDelegate", func() {
 			It("should delete the container", func() {
 				Ω(client.DeleteContainerCallCount()).Should(Equal(1))
 				allocationGuid := client.DeleteContainerArgsForCall(0)
-				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
+				Ω(allocationGuid).Should(Equal(startAuction.InstanceGuid))
 			})
 		})
 
@@ -478,7 +470,7 @@ var _ = Describe("AuctionDelegate", func() {
 			It("should delete the container", func() {
 				Ω(client.DeleteContainerCallCount()).Should(Equal(1))
 				allocationGuid := client.DeleteContainerArgsForCall(0)
-				Ω(allocationGuid).Should(Equal(startAuction.LRPIdentifier().OpaqueID()))
+				Ω(allocationGuid).Should(Equal(startAuction.InstanceGuid))
 			})
 		})
 	})

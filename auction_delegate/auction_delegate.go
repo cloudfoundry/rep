@@ -12,6 +12,11 @@ import (
 	"github.com/pivotal-golang/lager"
 )
 
+const (
+	ProcessGuidTag  = "process-guid"
+	ProcessIndexTag = "process-index"
+)
+
 type AuctionDelegate struct {
 	executorID string
 	lrpStopper lrp_stopper.LRPStopper
@@ -47,28 +52,22 @@ func (a *AuctionDelegate) TotalResources() (auctiontypes.Resources, error) {
 }
 
 func (a *AuctionDelegate) NumInstancesForProcessGuid(processGuid string) (int, error) {
-	containers, err := a.client.ListContainers(nil)
+	containers, err := a.client.ListContainers(executor.Tags{
+		ProcessGuidTag: processGuid,
+	})
 	if err != nil {
 		a.logger.Error("failed-to-list-containers", err)
 		return 0, err
 	}
 
-	count := 0
-	for _, container := range containers {
-		identifier, err := models.LRPIdentifierFromOpaqueID(container.Guid)
-		if err != nil {
-			continue
-		}
-
-		if identifier.ProcessGuid == processGuid {
-			count++
-		}
-	}
-	return count, nil
+	return len(containers), nil
 }
 
 func (a *AuctionDelegate) InstanceGuidsForProcessGuidAndIndex(processGuid string, index int) ([]string, error) {
-	containers, err := a.client.ListContainers(nil)
+	containers, err := a.client.ListContainers(executor.Tags{
+		ProcessGuidTag:  processGuid,
+		ProcessIndexTag: strconv.Itoa(index),
+	})
 	if err != nil {
 		a.logger.Error("failed-to-list-containers", err)
 		return []string{}, err
@@ -76,14 +75,7 @@ func (a *AuctionDelegate) InstanceGuidsForProcessGuidAndIndex(processGuid string
 
 	instanceGuids := []string{}
 	for _, container := range containers {
-		identifier, err := models.LRPIdentifierFromOpaqueID(container.Guid)
-		if err != nil {
-			continue
-		}
-
-		if identifier.ProcessGuid == processGuid && identifier.Index == index {
-			instanceGuids = append(instanceGuids, identifier.InstanceGuid)
-		}
+		instanceGuids = append(instanceGuids, container.Guid)
 	}
 
 	return instanceGuids, nil
@@ -97,10 +89,12 @@ func (a *AuctionDelegate) Reserve(startAuction models.LRPStartAuction) error {
 	})
 
 	_, err := a.client.AllocateContainer(executor.Container{
-		Guid: startAuction.LRPIdentifier().OpaqueID(),
+		Guid: startAuction.InstanceGuid,
 
 		Tags: executor.Tags{
 			tallyman.LifecycleTag: tallyman.LRPLifecycle,
+			ProcessGuidTag:        startAuction.DesiredLRP.ProcessGuid,
+			ProcessIndexTag:       strconv.Itoa(startAuction.Index),
 		},
 
 		MemoryMB:   startAuction.DesiredLRP.MemoryMB,
@@ -129,7 +123,7 @@ func (a *AuctionDelegate) Reserve(startAuction models.LRPStartAuction) error {
 }
 
 func (a *AuctionDelegate) ReleaseReservation(startAuction models.LRPStartAuction) error {
-	err := a.client.DeleteContainer(startAuction.LRPIdentifier().OpaqueID())
+	err := a.client.DeleteContainer(startAuction.InstanceGuid)
 	if err != nil {
 		a.logger.Error("failed-to-release-reservation", err)
 	}
@@ -144,7 +138,7 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 		"start-auction": startAuction,
 	})
 
-	containerGuid := startAuction.LRPIdentifier().OpaqueID()
+	containerGuid := startAuction.InstanceGuid
 
 	lrp := models.ActualLRP{
 		ProcessGuid:  startAuction.DesiredLRP.ProcessGuid,

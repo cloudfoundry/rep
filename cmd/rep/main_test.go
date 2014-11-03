@@ -203,7 +203,7 @@ var _ = Describe("The Rep", func() {
 		BeforeEach(func() {
 			fakeExecutor.AppendHandlers(
 				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("DELETE", "/containers/some-process-guid.3.some-instance-guid"),
+					ghttp.VerifyRequest("DELETE", "/containers/some-instance-guid"),
 					ghttp.RespondWith(http.StatusOK, nil),
 				),
 			)

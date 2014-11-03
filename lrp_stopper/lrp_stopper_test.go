@@ -69,7 +69,7 @@ var _ = Describe("LRP Stopper", func() {
 				Ω(client.DeleteContainerCallCount()).Should(Equal(1))
 
 				allocationGuid := client.DeleteContainerArgsForCall(0)
-				Ω(allocationGuid).Should(Equal(stopInstance.LRPIdentifier().OpaqueID()))
+				Ω(allocationGuid).Should(Equal(stopInstance.InstanceGuid))
 			})
 
 			It("marks the LRP as stopped", func() {

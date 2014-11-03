@@ -34,7 +34,7 @@ func (stopper *lrpStopper) StopInstance(stopInstance models.StopLRPInstance) err
 
 	stopLog.Info("received")
 
-	containerId := stopInstance.LRPIdentifier().OpaqueID()
+	containerId := stopInstance.InstanceGuid
 
 	isResponsible, err := stopper.isResponsible(stopInstance.ProcessGuid, stopInstance.InstanceGuid)
 	if err != nil {

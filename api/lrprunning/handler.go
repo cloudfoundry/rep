@@ -46,14 +46,7 @@ func (handler *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	instanceGuid := r.FormValue(":instance_guid")
 
-	identifier := models.LRPIdentifier{
-		ProcessGuid:  processGuid,
-		Index:        index,
-		InstanceGuid: instanceGuid,
-	}
-
-	container, err := handler.executor.GetContainer(identifier.OpaqueID())
-
+	container, err := handler.executor.GetContainer(instanceGuid)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
