@@ -224,6 +224,10 @@ var _ = Describe("AuctionDelegate", func() {
 						DiskMB:      1024,
 						MemoryMB:    2048,
 						CPUWeight:   42,
+						EnvironmentVariables: []models.EnvironmentVariable{
+							{Name: "var1", Value: "val1"},
+							{Name: "var2", Value: "val2"},
+						},
 						Actions: []models.ExecutorAction{
 							{
 								Action: models.DownloadAction{
@@ -272,6 +276,8 @@ var _ = Describe("AuctionDelegate", func() {
 					Env: []executor.EnvironmentVariable{
 						{Name: "CF_INSTANCE_GUID", Value: "instance-guid"},
 						{Name: "CF_INSTANCE_INDEX", Value: "2"},
+						{Name: "var1", Value: "val1"},
+						{Name: "var2", Value: "val2"},
 					},
 				}))
 			})

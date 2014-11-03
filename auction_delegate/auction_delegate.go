@@ -116,10 +116,10 @@ func (a *AuctionDelegate) Reserve(startAuction models.LRPStartAuction) error {
 		},
 
 		Actions: startAuction.DesiredLRP.Actions,
-		Env: []executor.EnvironmentVariable{
+		Env: append([]executor.EnvironmentVariable{
 			{Name: "CF_INSTANCE_GUID", Value: startAuction.InstanceGuid},
 			{Name: "CF_INSTANCE_INDEX", Value: strconv.Itoa(startAuction.Index)},
-		},
+		}, executor.EnvironmentVariablesFromModel(startAuction.DesiredLRP.EnvironmentVariables)...),
 	})
 	if err != nil {
 		reserveLog.Error("failed-to-reserve", err)
