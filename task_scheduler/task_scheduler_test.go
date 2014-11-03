@@ -76,6 +76,10 @@ var _ = Describe("TaskScheduler", func() {
 					Guid:       "some-guid",
 					SourceName: "XYZ",
 				},
+				EnvironmentVariables: []models.EnvironmentVariable{
+					{Name: "var1", Value: "val1"},
+					{Name: "var2", Value: "val2"},
+				},
 			}
 		})
 
@@ -153,6 +157,10 @@ var _ = Describe("TaskScheduler", func() {
 							SourceName: task.Log.SourceName,
 						}))
 						Ω(req.Actions).Should(Equal(task.Actions))
+						Ω(req.Env).Should(Equal([]executor.EnvironmentVariable{
+							{Name: "var1", Value: "val1"},
+							{Name: "var2", Value: "val2"},
+						}))
 
 						return req, nil
 					}

@@ -135,6 +135,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 
 		Actions:     task.Actions,
 		CompleteURL: callbackRequest.URL.String(),
+		Env:         executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
 	})
 	if err != nil {
 		taskLog.Error("failed-to-allocate-container", err)
