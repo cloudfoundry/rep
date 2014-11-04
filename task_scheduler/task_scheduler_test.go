@@ -9,10 +9,8 @@ import (
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/rata"
 
 	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
-	"github.com/cloudfoundry-incubator/rep/routes"
 	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -86,10 +84,6 @@ var _ = Describe("TaskScheduler", func() {
 		BeforeEach(func() {
 			taskScheduler = ifrit.Envoke(task_scheduler.New(
 				"some-executor-id",
-				rata.NewRequestGenerator(
-					routes.TaskCompleted,
-					routes.Routes,
-				),
 				fakeBBS,
 				logger,
 				correctStack,
@@ -146,7 +140,8 @@ var _ = Describe("TaskScheduler", func() {
 
 						Ω(req.Guid).Should(Equal(task.TaskGuid))
 						Ω(req.Tags).Should(Equal(executor.Tags{
-							"lifecycle": "task",
+							"lifecycle":   "task",
+							"result-file": task.ResultFile,
 						}))
 						Ω(req.MemoryMB).Should(Equal(64))
 						Ω(req.DiskMB).Should(Equal(1024))

@@ -8,12 +8,10 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/executor"
-	"github.com/cloudfoundry-incubator/rep/routes"
 	"github.com/cloudfoundry-incubator/rep/tallyman"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
-	"github.com/tedsuo/rata"
 )
 
 const (
@@ -24,8 +22,6 @@ const (
 var random = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 type TaskScheduler struct {
-	callbackGenerator *rata.RequestGenerator
-
 	executorID string
 	bbs        bbs.RepBBS
 	logger     lager.Logger
@@ -36,15 +32,13 @@ type TaskScheduler struct {
 
 func New(
 	executorID string,
-	callbackGenerator *rata.RequestGenerator,
 	bbs bbs.RepBBS,
 	logger lager.Logger,
 	stack string,
 	executorClient executor.Client,
 ) *TaskScheduler {
 	return &TaskScheduler{
-		executorID:        executorID,
-		callbackGenerator: callbackGenerator,
+		executorID: executorID,
 
 		bbs:    bbs,
 		logger: logger.Session("task-scheduler"),
@@ -110,19 +104,14 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 
 	taskLog := s.logger.Session("task-request", lager.Data{"taskGuid": task.TaskGuid})
 
-	callbackRequest, err := s.callbackGenerator.CreateRequest(routes.TaskCompleted, rata.Params{
-		"guid": task.TaskGuid,
-	}, nil)
-	if err != nil {
-		taskLog.Error("failed-to-generate-callback-request", err)
-		return
-	}
-
 	taskLog.Info("allocating-container")
 	_, err = s.client.AllocateContainer(executor.Container{
 		Guid: task.TaskGuid,
 
-		Tags: executor.Tags{tallyman.LifecycleTag: tallyman.TaskLifecycle},
+		Tags: executor.Tags{
+			tallyman.LifecycleTag:  tallyman.TaskLifecycle,
+			tallyman.ResultFileTag: task.ResultFile,
+		},
 
 		DiskMB:     task.DiskMB,
 		MemoryMB:   task.MemoryMB,
@@ -133,9 +122,8 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 			SourceName: task.Log.SourceName,
 		},
 
-		Actions:     task.Actions,
-		CompleteURL: callbackRequest.URL.String(),
-		Env:         executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
+		Actions: task.Actions,
+		Env:     executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
 	})
 	if err != nil {
 		taskLog.Error("failed-to-allocate-container", err)

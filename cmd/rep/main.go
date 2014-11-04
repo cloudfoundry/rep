@@ -16,12 +16,11 @@ import (
 	executorclient "github.com/cloudfoundry-incubator/executor/http/client"
 	"github.com/cloudfoundry-incubator/rep/api"
 	"github.com/cloudfoundry-incubator/rep/api/lrprunning"
-	"github.com/cloudfoundry-incubator/rep/api/taskcomplete"
 	"github.com/cloudfoundry-incubator/rep/auction_delegate"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
-	"github.com/cloudfoundry-incubator/rep/routes"
 	"github.com/cloudfoundry-incubator/rep/stop_lrp_listener"
+	"github.com/cloudfoundry-incubator/rep/tallyman"
 	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -36,7 +35,6 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
 	"github.com/tedsuo/ifrit/sigmon"
-	"github.com/tedsuo/rata"
 )
 
 var etcdCluster = flag.String(
@@ -99,6 +97,12 @@ var executorID = flag.String(
 	"the ID used by the rep to identify itself to external systems - must be specified",
 )
 
+var taskCompletePollingInterval = flag.Duration(
+	"taskCompletePollingInterval",
+	30*time.Second,
+	"how unresponsive staging should feel",
+)
+
 func main() {
 	flag.Parse()
 
@@ -134,14 +138,33 @@ func main() {
 		{"api-server", initializeAPIServer(*executorID, bbs, logger, executorClient)},
 		{"auction-server", ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
 			return initializeAuctionNatsServer(*executorID, lrpStopper, bbs, executorClient, natsClient, logger).Run(signals, ready)
-		}),
-		}})
+		})},
+		{"tallyman", initializeTallyman(logger, *taskCompletePollingInterval, executorClient, bbs)},
+	})
 
 	monitor := ifrit.Envoke(sigmon.New(group))
 	logger.Info("started")
 
 	<-monitor.Wait()
 	logger.Info("shutting-down")
+}
+
+func initializeTallyman(
+	logger lager.Logger,
+	pollInterval time.Duration,
+	executorClient executor.Client,
+	bbs Bbs.RepBBS,
+) ifrit.Runner {
+	return tallyman.NewPoller(
+		pollInterval,
+		timer.NewTimer(),
+		executorClient,
+		tallyman.NewProcessor(
+			logger,
+			bbs,
+			executorClient,
+		),
+	)
 }
 
 func removeActualLrpFromBBS(bbs Bbs.RepBBS, executorID string, logger lager.Logger) {
@@ -191,12 +214,7 @@ func initializeRepBBS(logger lager.Logger) Bbs.RepBBS {
 }
 
 func initializeTaskRep(executorID string, bbs Bbs.RepBBS, logger lager.Logger, executorClient executor.Client) *task_scheduler.TaskScheduler {
-	callbackGenerator := rata.NewRequestGenerator(
-		"http://"+*listenAddr,
-		routes.Routes,
-	)
-
-	return task_scheduler.New(executorID, callbackGenerator, bbs, logger, *stack, executorClient)
+	return task_scheduler.New(executorID, bbs, logger, *stack, executorClient)
 }
 
 func initializeLRPStopper(guid string, bbs Bbs.RepBBS, executorClient executor.Client, logger lager.Logger) lrp_stopper.LRPStopper {
@@ -208,13 +226,13 @@ func initializeStopLRPListener(stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, l
 }
 
 func initializeAPIServer(executorID string, bbs Bbs.RepBBS, logger lager.Logger, executorClient executor.Client) ifrit.Runner {
-	taskCompleteHandler := taskcomplete.NewHandler(bbs, executorClient, logger)
 	lrpRunningHandler := lrprunning.NewHandler(executorID, bbs, executorClient, *lrpHost, logger)
 
-	apiHandler, err := api.NewServer(taskCompleteHandler, lrpRunningHandler)
+	apiHandler, err := api.NewServer(lrpRunningHandler)
 	if err != nil {
 		panic("failed to initialize api server: " + err.Error())
 	}
+
 	return http_server.New(*listenAddr, apiHandler)
 }
 
