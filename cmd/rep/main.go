@@ -64,7 +64,7 @@ var natsPassword = flag.String(
 var heartbeatInterval = flag.Duration(
 	"heartbeatInterval",
 	60*time.Second,
-	"the interval, in seconds, between heartbeats for maintaining presence",
+	"the interval between heartbeats for maintaining presence",
 )
 
 var executorURL = flag.String(
@@ -99,8 +99,8 @@ var executorID = flag.String(
 
 var taskCompletePollingInterval = flag.Duration(
 	"taskCompletePollingInterval",
-	30*time.Second,
-	"how unresponsive staging should feel",
+	1*time.Second,
+	"the interval on which to look for completed tasks",
 )
 
 func main() {
