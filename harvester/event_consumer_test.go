@@ -3,6 +3,7 @@ package harvester_test
 import (
 	"errors"
 	"os"
+	"sync"
 
 	"github.com/cloudfoundry-incubator/executor"
 	efakes "github.com/cloudfoundry-incubator/executor/fakes"
@@ -100,6 +101,46 @@ var _ = Describe("EventConsumer", func() {
 				It("does not process the container", func() {
 					Consistently(processor.ProcessCallCount).Should(BeZero())
 				})
+			})
+		})
+
+		Context("when multiple events arrive simultaneously", func() {
+			var completedContainer1, completedContainer2 executor.Container
+			var waitGroup *sync.WaitGroup
+
+			BeforeEach(func() {
+				completedContainer1 = executor.Container{
+					Guid:  "first-completed-guid",
+					State: executor.StateCompleted,
+					Tags:  executor.Tags{LifecycleTag: TaskLifecycle},
+				}
+
+				completedContainer2 = executor.Container{
+					Guid:  "second-completed-guid",
+					State: executor.StateCompleted,
+					Tags:  executor.Tags{LifecycleTag: TaskLifecycle},
+				}
+
+				waitGroup = &sync.WaitGroup{}
+				waitGroup.Add(2)
+				processor.ProcessStub = func(c executor.Container) {
+					waitGroup.Done()
+					waitGroup.Wait()
+				}
+			})
+
+			It("runs them in parallel", func() {
+				receivedEvents <- executor.ContainerCompleteEvent{
+					Container: completedContainer1,
+				}
+				Eventually(receivedEvents).Should(BeSent(executor.ContainerCompleteEvent{
+					Container: completedContainer2,
+				}))
+
+				waitGroup.Wait()
+
+				Ω(processor.ProcessArgsForCall(0)).Should(Equal(completedContainer1))
+				Ω(processor.ProcessArgsForCall(1)).Should(Equal(completedContainer2))
 			})
 		})
 

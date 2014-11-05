@@ -47,7 +47,7 @@ func (consumer *eventConsumer) Run(signals <-chan os.Signal, ready chan<- struct
 					continue
 				}
 
-				consumer.processor.Process(event.Container)
+				go consumer.processor.Process(event.Container)
 			}
 
 		case <-signals:
