@@ -6,7 +6,7 @@ import (
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
-	"github.com/cloudfoundry-incubator/rep/tallyman"
+	"github.com/cloudfoundry-incubator/rep/harvester"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
@@ -92,7 +92,7 @@ func (a *AuctionDelegate) Reserve(startAuction models.LRPStartAuction) error {
 		Guid: startAuction.InstanceGuid,
 
 		Tags: executor.Tags{
-			tallyman.LifecycleTag: tallyman.LRPLifecycle,
+			harvester.LifecycleTag: harvester.LRPLifecycle,
 			ProcessGuidTag:        startAuction.DesiredLRP.ProcessGuid,
 			ProcessIndexTag:       strconv.Itoa(startAuction.Index),
 		},

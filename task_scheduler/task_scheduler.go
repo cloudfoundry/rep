@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/executor"
-	"github.com/cloudfoundry-incubator/rep/tallyman"
+	"github.com/cloudfoundry-incubator/rep/harvester"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
@@ -109,8 +109,8 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		Guid: task.TaskGuid,
 
 		Tags: executor.Tags{
-			tallyman.LifecycleTag:  tallyman.TaskLifecycle,
-			tallyman.ResultFileTag: task.ResultFile,
+			harvester.LifecycleTag:  harvester.TaskLifecycle,
+			harvester.ResultFileTag: task.ResultFile,
 		},
 
 		DiskMB:     task.DiskMB,

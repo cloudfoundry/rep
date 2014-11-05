@@ -1,4 +1,4 @@
-package tallyman
+package harvester
 
 import (
 	"archive/tar"

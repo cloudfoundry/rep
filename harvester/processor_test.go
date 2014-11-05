@@ -1,11 +1,11 @@
-package tallyman_test
+package harvester_test
 
 import (
 	"errors"
 
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/executor/fakes"
-	. "github.com/cloudfoundry-incubator/rep/tallyman"
+	. "github.com/cloudfoundry-incubator/rep/harvester"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/pivotal-golang/lager/lagertest"

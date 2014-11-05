@@ -1,4 +1,4 @@
-package tallyman
+package harvester
 
 const (
 	LifecycleTag  = "lifecycle"

@@ -8,7 +8,7 @@ import (
 	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
 	. "github.com/cloudfoundry-incubator/rep/auction_delegate"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper/fake_lrp_stopper"
-	"github.com/cloudfoundry-incubator/rep/tallyman"
+	"github.com/cloudfoundry-incubator/rep/harvester"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -251,7 +251,7 @@ var _ = Describe("AuctionDelegate", func() {
 					Guid: startAuction.InstanceGuid,
 
 					Tags: executor.Tags{
-						tallyman.LifecycleTag: tallyman.LRPLifecycle,
+						harvester.LifecycleTag: harvester.LRPLifecycle,
 						ProcessGuidTag:        startAuction.DesiredLRP.ProcessGuid,
 						ProcessIndexTag:       "2",
 					},

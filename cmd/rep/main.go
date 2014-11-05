@@ -20,7 +20,7 @@ import (
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
 	"github.com/cloudfoundry-incubator/rep/stop_lrp_listener"
-	"github.com/cloudfoundry-incubator/rep/tallyman"
+	"github.com/cloudfoundry-incubator/rep/harvester"
 	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -139,7 +139,7 @@ func main() {
 		{"auction-server", ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
 			return initializeAuctionNatsServer(*executorID, lrpStopper, bbs, executorClient, natsClient, logger).Run(signals, ready)
 		})},
-		{"tallyman", initializeTallyman(logger, *taskCompletePollingInterval, executorClient, bbs)},
+		{"harvester", initializeHarvester(logger, *taskCompletePollingInterval, executorClient, bbs)},
 	})
 
 	monitor := ifrit.Envoke(sigmon.New(group))
@@ -149,17 +149,17 @@ func main() {
 	logger.Info("shutting-down")
 }
 
-func initializeTallyman(
+func initializeHarvester(
 	logger lager.Logger,
 	pollInterval time.Duration,
 	executorClient executor.Client,
 	bbs Bbs.RepBBS,
 ) ifrit.Runner {
-	return tallyman.NewPoller(
+	return harvester.NewPoller(
 		pollInterval,
 		timer.NewTimer(),
 		executorClient,
-		tallyman.NewProcessor(
+		harvester.NewProcessor(
 			logger,
 			bbs,
 			executorClient,

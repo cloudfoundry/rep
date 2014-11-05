@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/cloudfoundry-incubator/executor"
-	"github.com/cloudfoundry-incubator/rep/tallyman"
+	"github.com/cloudfoundry-incubator/rep/harvester"
 )
 
 type FakeProcessor struct {
@@ -39,4 +39,4 @@ func (fake *FakeProcessor) ProcessArgsForCall(i int) executor.Container {
 	return fake.processArgsForCall[i].arg1
 }
 
-var _ tallyman.Processor = new(FakeProcessor)
+var _ harvester.Processor = new(FakeProcessor)

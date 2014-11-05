@@ -1,4 +1,4 @@
-package tallyman_test
+package harvester_test
 
 import (
 	"errors"
@@ -7,8 +7,8 @@ import (
 
 	"github.com/cloudfoundry-incubator/executor"
 	efakes "github.com/cloudfoundry-incubator/executor/fakes"
-	. "github.com/cloudfoundry-incubator/rep/tallyman"
-	"github.com/cloudfoundry-incubator/rep/tallyman/fakes"
+	. "github.com/cloudfoundry-incubator/rep/harvester"
+	"github.com/cloudfoundry-incubator/rep/harvester/fakes"
 	"github.com/pivotal-golang/timer/fake_timer"
 	"github.com/tedsuo/ifrit"
 
