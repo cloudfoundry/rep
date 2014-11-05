@@ -17,10 +17,10 @@ import (
 	"github.com/cloudfoundry-incubator/rep/api"
 	"github.com/cloudfoundry-incubator/rep/api/lrprunning"
 	"github.com/cloudfoundry-incubator/rep/auction_delegate"
+	"github.com/cloudfoundry-incubator/rep/harvester"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
 	"github.com/cloudfoundry-incubator/rep/stop_lrp_listener"
-	"github.com/cloudfoundry-incubator/rep/harvester"
 	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -99,7 +99,7 @@ var executorID = flag.String(
 
 var taskCompletePollingInterval = flag.Duration(
 	"taskCompletePollingInterval",
-	1*time.Second,
+	30*time.Second,
 	"the interval on which to look for completed tasks",
 )
 
@@ -130,6 +130,8 @@ func main() {
 	executorClient := executorclient.New(http.DefaultClient, *executorURL)
 	lrpStopper := initializeLRPStopper(*executorID, bbs, executorClient, logger)
 
+	poller, eventConsumer := initializeHarvesters(logger, *taskCompletePollingInterval, executorClient, bbs)
+
 	group := grouper.NewOrdered(os.Interrupt, grouper.Members{
 		{"nats-client", natsClientRunner},
 		{"heartbeater", initializeExecutorHeartbeat(bbs, executorClient, logger)},
@@ -139,7 +141,8 @@ func main() {
 		{"auction-server", ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
 			return initializeAuctionNatsServer(*executorID, lrpStopper, bbs, executorClient, natsClient, logger).Run(signals, ready)
 		})},
-		{"harvester", initializeHarvester(logger, *taskCompletePollingInterval, executorClient, bbs)},
+		{"poller", poller},
+		{"event-consumer", eventConsumer},
 	})
 
 	monitor := ifrit.Envoke(sigmon.New(group))
@@ -149,22 +152,31 @@ func main() {
 	logger.Info("shutting-down")
 }
 
-func initializeHarvester(
+func initializeHarvesters(
 	logger lager.Logger,
 	pollInterval time.Duration,
 	executorClient executor.Client,
 	bbs Bbs.RepBBS,
-) ifrit.Runner {
-	return harvester.NewPoller(
+) (ifrit.Runner, ifrit.Runner) {
+	processor := harvester.NewProcessor(
+		logger,
+		bbs,
+		executorClient,
+	)
+
+	poller := harvester.NewPoller(
 		pollInterval,
 		timer.NewTimer(),
 		executorClient,
-		harvester.NewProcessor(
-			logger,
-			bbs,
-			executorClient,
-		),
+		processor,
 	)
+
+	eventConsumer := harvester.NewEventConsumer(
+		executorClient,
+		processor,
+	)
+
+	return poller, eventConsumer
 }
 
 func removeActualLrpFromBBS(bbs Bbs.RepBBS, executorID string, logger lager.Logger) {
