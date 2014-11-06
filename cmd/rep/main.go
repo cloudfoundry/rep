@@ -24,7 +24,7 @@ import (
 	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	_ "github.com/cloudfoundry/dropsonde/autowire"
+	"github.com/cloudfoundry/dropsonde"
 	"github.com/cloudfoundry/gunk/diegonats"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/gunk/workpool"
@@ -103,6 +103,18 @@ var taskCompletePollingInterval = flag.Duration(
 	"the interval on which to look for completed tasks",
 )
 
+var dropsondeOrigin = flag.String(
+	"dropsondeOrigin",
+	"rep",
+	"Origin identifier for dropsonde-emitted metrics.",
+)
+
+var dropsondeDestination = flag.String(
+	"dropsondeDestination",
+	"localhost:3457",
+	"Destination for dropsonde-emitted metrics.",
+)
+
 func main() {
 	flag.Parse()
 
@@ -121,6 +133,7 @@ func main() {
 	cf_debug_server.Run()
 
 	logger := cf_lager.New("rep")
+	initializeDropsonde(logger)
 	bbs := initializeRepBBS(logger)
 	removeActualLrpFromBBS(bbs, *executorID, logger)
 
@@ -150,6 +163,13 @@ func main() {
 
 	<-monitor.Wait()
 	logger.Info("shutting-down")
+}
+
+func initializeDropsonde(logger lager.Logger) {
+	err := dropsonde.Initialize(*dropsondeOrigin, *dropsondeDestination)
+	if err != nil {
+		logger.Error("failed to initialize dropsonde: %v", err)
+	}
 }
 
 func initializeHarvesters(
