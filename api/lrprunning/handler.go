@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/cloudfoundry-incubator/executor"
+	"github.com/cloudfoundry-incubator/rep/harvester"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
@@ -64,6 +65,7 @@ func (handler *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ProcessGuid:  processGuid,
 		Index:        index,
 		InstanceGuid: instanceGuid,
+		Domain:       container.Tags[harvester.DomainTag],
 
 		Host:  handler.lrpHost,
 		Ports: ports,

@@ -9,6 +9,7 @@ import (
 	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep/api"
 	"github.com/cloudfoundry-incubator/rep/api/lrprunning"
+	"github.com/cloudfoundry-incubator/rep/harvester"
 	"github.com/cloudfoundry-incubator/rep/routes"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -81,6 +82,9 @@ var _ = Describe("Callback API", func() {
 		Context("when the guid is found on the executor", func() {
 			BeforeEach(func() {
 				container := executor.Container{
+					Tags: executor.Tags{
+						harvester.DomainTag: "some-domain",
+					},
 					Ports: []executor.PortMapping{
 						{ContainerPort: 8080, HostPort: 1234},
 						{ContainerPort: 8081, HostPort: 1235},
@@ -95,6 +99,7 @@ var _ = Describe("Callback API", func() {
 					ProcessGuid:  "some-process-guid",
 					Index:        2,
 					InstanceGuid: "some-instance-guid",
+					Domain:       "some-domain",
 
 					Host: "1.2.3.4",
 

@@ -93,6 +93,7 @@ func (a *AuctionDelegate) Reserve(startAuction models.LRPStartAuction) error {
 
 		Tags: executor.Tags{
 			harvester.LifecycleTag: harvester.LRPLifecycle,
+			harvester.DomainTag:    startAuction.DesiredLRP.Domain,
 			ProcessGuidTag:         startAuction.DesiredLRP.ProcessGuid,
 			ProcessIndexTag:        strconv.Itoa(startAuction.Index),
 		},
@@ -140,14 +141,7 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 
 	containerGuid := startAuction.InstanceGuid
 
-	lrp := models.ActualLRP{
-		ProcessGuid:  startAuction.DesiredLRP.ProcessGuid,
-		InstanceGuid: startAuction.InstanceGuid,
-		Index:        startAuction.Index,
-	}
-
-	lrp, err := a.bbs.ReportActualLRPAsStarting(startAuction.DesiredLRP.ProcessGuid, startAuction.InstanceGuid, a.executorID, startAuction.Index)
-
+	lrp, err := a.bbs.ReportActualLRPAsStarting(startAuction.DesiredLRP.ProcessGuid, startAuction.InstanceGuid, a.executorID, startAuction.DesiredLRP.Domain, startAuction.Index)
 	if err != nil {
 		auctionLog.Error("failed-to-mark-starting", err)
 		a.client.DeleteContainer(containerGuid)
