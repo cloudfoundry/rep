@@ -166,7 +166,7 @@ func main() {
 }
 
 func initializeDropsonde(logger lager.Logger) {
-	err := dropsonde.Initialize(*dropsondeOrigin, *dropsondeDestination)
+	err := dropsonde.Initialize(*dropsondeDestination, *dropsondeOrigin)
 	if err != nil {
 		logger.Error("failed to initialize dropsonde: %v", err)
 	}
