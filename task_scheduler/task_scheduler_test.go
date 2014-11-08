@@ -61,13 +61,11 @@ var _ = Describe("TaskScheduler", func() {
 				MemoryMB:   64,
 				DiskMB:     1024,
 				CPUWeight:  5,
-				Actions: []models.ExecutorAction{
-					{
-						Action: models.RunAction{
-							Path:    "the-script",
-							Env:     []models.EnvironmentVariable{{Name: "PATH", Value: "the-path"}},
-							Timeout: 500,
-						},
+				Action: models.ExecutorAction{
+					Action: models.RunAction{
+						Path:    "the-script",
+						Env:     []models.EnvironmentVariable{{Name: "PATH", Value: "the-path"}},
+						Timeout: 500,
 					},
 				},
 				LogGuid:   "some-guid",
@@ -147,7 +145,7 @@ var _ = Describe("TaskScheduler", func() {
 						Ω(req.CPUWeight).Should(Equal(uint(5)))
 						Ω(req.Log.Guid).Should(Equal(task.LogGuid))
 						Ω(req.Log.SourceName).Should(Equal(task.LogSource))
-						Ω(req.Actions).Should(Equal(task.Actions))
+						Ω(req.Action).Should(Equal(task.Action))
 						Ω(req.Env).Should(Equal([]executor.EnvironmentVariable{
 							{Name: "var1", Value: "val1"},
 							{Name: "var2", Value: "val2"},
@@ -266,7 +264,11 @@ var _ = Describe("TaskScheduler", func() {
 					MemoryMB:  64,
 					DiskMB:    1024,
 					CPUWeight: 5,
-					Actions:   []models.ExecutorAction{},
+					Action: models.ExecutorAction{
+						models.RunAction{
+							Path: "ls",
+						},
+					},
 				}
 
 				desiredTaskChan <- task

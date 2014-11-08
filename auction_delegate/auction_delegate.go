@@ -110,7 +110,10 @@ func (a *AuctionDelegate) Reserve(startAuction models.LRPStartAuction) error {
 			Index:      &startAuction.Index,
 		},
 
-		Actions: startAuction.DesiredLRP.Actions,
+		Setup:   startAuction.DesiredLRP.Setup,
+		Action:  startAuction.DesiredLRP.Action,
+		Monitor: startAuction.DesiredLRP.Monitor,
+
 		Env: append([]executor.EnvironmentVariable{
 			{Name: "CF_INSTANCE_GUID", Value: startAuction.InstanceGuid},
 			{Name: "CF_INSTANCE_INDEX", Value: strconv.Itoa(startAuction.Index)},
