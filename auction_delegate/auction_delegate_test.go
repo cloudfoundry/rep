@@ -218,12 +218,10 @@ var _ = Describe("AuctionDelegate", func() {
 							{Name: "var1", Value: "val1"},
 							{Name: "var2", Value: "val2"},
 						},
-						Actions: []models.ExecutorAction{
-							{
-								Action: models.DownloadAction{
-									From: "http://example.com/something",
-									To:   "/something",
-								},
+						Action: &models.ExecutorAction{
+							Action: models.DownloadAction{
+								From: "http://example.com/something",
+								To:   "/something",
 							},
 						},
 						Log: models.LogConfig{Guid: "log-guid"},
@@ -264,7 +262,9 @@ var _ = Describe("AuctionDelegate", func() {
 					Ports:      []executor.PortMapping{{ContainerPort: 8080}},
 					Log:        executor.LogConfig{Guid: "log-guid", Index: &two},
 
-					Actions: startAuction.DesiredLRP.Actions,
+					Setup:   startAuction.DesiredLRP.Setup,
+					Action:  startAuction.DesiredLRP.Action,
+					Monitor: startAuction.DesiredLRP.Monitor,
 
 					Env: []executor.EnvironmentVariable{
 						{Name: "CF_INSTANCE_GUID", Value: "instance-guid"},
@@ -347,12 +347,10 @@ var _ = Describe("AuctionDelegate", func() {
 					ProcessGuid: "process-guid",
 					DiskMB:      1024,
 					MemoryMB:    2048,
-					Actions: []models.ExecutorAction{
-						{
-							Action: models.DownloadAction{
-								From: "http://example.com/something",
-								To:   "/something",
-							},
+					Action: &models.ExecutorAction{
+						Action: models.DownloadAction{
+							From: "http://example.com/something",
+							To:   "/something",
 						},
 					},
 					Log: models.LogConfig{Guid: "log-guid"},
