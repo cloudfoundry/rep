@@ -189,6 +189,9 @@ func initializeHarvesters(
 		timer.NewTimer(),
 		executorClient,
 		processor,
+		bbs,
+		*executorID,
+		logger,
 	)
 
 	eventConsumer := harvester.NewEventConsumer(
