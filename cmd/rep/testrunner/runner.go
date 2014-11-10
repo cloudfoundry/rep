@@ -17,30 +17,36 @@ type Runner struct {
 }
 
 type Config struct {
-	stack             string
-	executorID        string
-	lrpHost           string
-	listenAddr        string
-	executorURL       string
-	etcdCluster       string
-	natsAddr          string
-	logLevel          string
-	heartbeatInterval time.Duration
+	stack                    string
+	executorID               string
+	lrpHost                  string
+	listenAddr               string
+	executorURL              string
+	etcdCluster              string
+	natsAddr                 string
+	logLevel                 string
+	heartbeatInterval        time.Duration
+	actualLRPReapingInterval time.Duration
+	taskReapingInterval      time.Duration
 }
 
-func New(binPath, executorID, stack, lrpHost, listenAddr, executorURL, etcdCluster, natsAddr, logLevel string, heartbeatInterval time.Duration) *Runner {
+func New(
+	binPath, executorID, stack, lrpHost, listenAddr, executorURL, etcdCluster, natsAddr, logLevel string,
+	heartbeatInterval, actualLRPReapingInterval, taskReapingInterval time.Duration) *Runner {
 	return &Runner{
 		binPath: binPath,
 		config: Config{
-			executorID:        executorID,
-			stack:             stack,
-			lrpHost:           lrpHost,
-			listenAddr:        listenAddr,
-			executorURL:       executorURL,
-			etcdCluster:       etcdCluster,
-			natsAddr:          natsAddr,
-			logLevel:          logLevel,
-			heartbeatInterval: heartbeatInterval,
+			executorID:               executorID,
+			stack:                    stack,
+			lrpHost:                  lrpHost,
+			listenAddr:               listenAddr,
+			executorURL:              executorURL,
+			etcdCluster:              etcdCluster,
+			natsAddr:                 natsAddr,
+			logLevel:                 logLevel,
+			heartbeatInterval:        heartbeatInterval,
+			actualLRPReapingInterval: actualLRPReapingInterval,
+			taskReapingInterval:      taskReapingInterval,
 		},
 	}
 }
@@ -62,6 +68,8 @@ func (r *Runner) Start() {
 			"-natsAddresses", r.config.natsAddr,
 			"-logLevel", r.config.logLevel,
 			"-heartbeatInterval", r.config.heartbeatInterval.String(),
+			"-actualLRPReapingInterval", r.config.actualLRPReapingInterval.String(),
+			"-taskReapingInterval", r.config.taskReapingInterval.String(),
 		),
 		gexec.NewPrefixedWriter("\x1b[32m[o]\x1b[32m[rep]\x1b[0m ", ginkgo.GinkgoWriter),
 		gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[32m[rep]\x1b[0m ", ginkgo.GinkgoWriter),

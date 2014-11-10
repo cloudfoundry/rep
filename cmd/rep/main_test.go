@@ -24,8 +24,10 @@ var runner *testrunner.Runner
 
 var _ = Describe("The Rep", func() {
 	var (
-		fakeExecutor *ghttp.Server
-		bbs          *Bbs.BBS
+		fakeExecutor             *ghttp.Server
+		bbs                      *Bbs.BBS
+		actualLRPReapingInterval time.Duration
+		taskReapingInterval      time.Duration
 	)
 
 	BeforeEach(func() {
@@ -35,6 +37,9 @@ var _ = Describe("The Rep", func() {
 		fakeExecutor.RouteToHandler("GET", "/ping", ghttp.RespondWith(http.StatusOK, nil))
 
 		bbs = Bbs.NewBBS(etcdRunner.Adapter(), timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
+
+		actualLRPReapingInterval = 50 * time.Millisecond
+		taskReapingInterval = 50 * time.Millisecond
 
 		runner = testrunner.New(
 			representativePath,
@@ -47,6 +52,8 @@ var _ = Describe("The Rep", func() {
 			fmt.Sprintf("127.0.0.1:%d", natsPort),
 			"info",
 			time.Second,
+			actualLRPReapingInterval,
+			taskReapingInterval,
 		)
 
 		runner.Start()
@@ -196,6 +203,66 @@ var _ = Describe("The Rep", func() {
 				DiskMB:     2048,
 				Containers: 4,
 			}))
+		})
+	})
+
+	Describe("polling the BBS for tasks to reap", func() {
+		var task models.Task
+
+		BeforeEach(func() {
+			fakeExecutor.RouteToHandler(
+				"GET",
+				"/containers/a-new-task-guid",
+				ghttp.RespondWith(http.StatusNotFound, "", http.Header{"X-Executor-Error": []string{"ContainerNotFound"}}),
+			)
+
+			task = models.Task{
+				TaskGuid: "a-new-task-guid",
+				Domain:   "the-domain",
+				Actions: []models.ExecutorAction{
+					{Action: models.RunAction{
+						Path: "the-path",
+						Args: []string{},
+					}},
+				},
+				Stack: "the-stack",
+			}
+
+			err := bbs.DesireTask(task)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = bbs.ClaimTask(task.TaskGuid, executorID)
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("eventually marks tasks with no corresponding container as failed", func() {
+			Eventually(bbs.GetAllCompletedTasks, 5*taskReapingInterval).Should(HaveLen(1))
+
+			completedTasks, err := bbs.GetAllCompletedTasks()
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(completedTasks[0].TaskGuid).Should(Equal(task.TaskGuid))
+			Ω(completedTasks[0].Failed).Should(BeTrue())
+		})
+	})
+
+	Describe("polling the BBS for actual LRPs to reap", func() {
+		var actualLRP models.ActualLRP
+
+		BeforeEach(func() {
+			fakeExecutor.RouteToHandler(
+				"GET",
+				"/containers/a-new-instance-guid",
+				ghttp.RespondWith(http.StatusNotFound, "", http.Header{"X-Executor-Error": []string{"ContainerNotFound"}}),
+			)
+
+			var err error
+			actualLRP, err = bbs.ReportActualLRPAsStarting("process-guid", "a-new-instance-guid", executorID, "the-domain", 0)
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("eventually reaps actual LRPs with no corresponding container", func() {
+			Eventually(bbs.GetAllActualLRPs, 5*actualLRPReapingInterval).Should(BeEmpty())
 		})
 	})
 
