@@ -70,10 +70,8 @@ var _ = Describe("TaskScheduler", func() {
 						},
 					},
 				},
-				Log: models.LogConfig{
-					Guid:       "some-guid",
-					SourceName: "XYZ",
-				},
+				LogGuid:   "some-guid",
+				LogSource: "XYZ",
 				EnvironmentVariables: []models.EnvironmentVariable{
 					{Name: "var1", Value: "val1"},
 					{Name: "var2", Value: "val2"},
@@ -147,10 +145,8 @@ var _ = Describe("TaskScheduler", func() {
 						Ω(req.DiskMB).Should(Equal(1024))
 						Ω(req.RootFSPath).Should(Equal("the-rootfs-path"))
 						Ω(req.CPUWeight).Should(Equal(uint(5)))
-						Ω(req.Log).Should(Equal(executor.LogConfig{
-							Guid:       task.Log.Guid,
-							SourceName: task.Log.SourceName,
-						}))
+						Ω(req.Log.Guid).Should(Equal(task.LogGuid))
+						Ω(req.Log.SourceName).Should(Equal(task.LogSource))
 						Ω(req.Actions).Should(Equal(task.Actions))
 						Ω(req.Env).Should(Equal([]executor.EnvironmentVariable{
 							{Name: "var1", Value: "val1"},

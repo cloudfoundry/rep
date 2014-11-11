@@ -118,8 +118,8 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 		CPUWeight:  task.CPUWeight,
 		RootFSPath: task.RootFSPath,
 		Log: executor.LogConfig{
-			Guid:       task.Log.Guid,
-			SourceName: task.Log.SourceName,
+			Guid:       task.LogGuid,
+			SourceName: task.LogSource,
 		},
 
 		Actions: task.Actions,

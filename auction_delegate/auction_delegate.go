@@ -105,8 +105,8 @@ func (a *AuctionDelegate) Reserve(startAuction models.LRPStartAuction) error {
 		Ports:      a.convertPortMappings(startAuction.DesiredLRP.Ports),
 
 		Log: executor.LogConfig{
-			Guid:       startAuction.DesiredLRP.Log.Guid,
-			SourceName: startAuction.DesiredLRP.Log.SourceName,
+			Guid:       startAuction.DesiredLRP.LogGuid,
+			SourceName: startAuction.DesiredLRP.LogSource,
 			Index:      &startAuction.Index,
 		},
 
