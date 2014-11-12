@@ -5,16 +5,11 @@ import (
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/executor"
-	"github.com/cloudfoundry-incubator/rep/harvester"
+	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
-)
-
-const (
-	ProcessGuidTag  = "process-guid"
-	ProcessIndexTag = "process-index"
 )
 
 type AuctionDelegate struct {
@@ -53,7 +48,7 @@ func (a *AuctionDelegate) TotalResources() (auctiontypes.Resources, error) {
 
 func (a *AuctionDelegate) NumInstancesForProcessGuid(processGuid string) (int, error) {
 	containers, err := a.client.ListContainers(executor.Tags{
-		ProcessGuidTag: processGuid,
+		rep.ProcessGuidTag: processGuid,
 	})
 	if err != nil {
 		a.logger.Error("failed-to-list-containers", err)
@@ -65,8 +60,8 @@ func (a *AuctionDelegate) NumInstancesForProcessGuid(processGuid string) (int, e
 
 func (a *AuctionDelegate) InstanceGuidsForProcessGuidAndIndex(processGuid string, index int) ([]string, error) {
 	containers, err := a.client.ListContainers(executor.Tags{
-		ProcessGuidTag:  processGuid,
-		ProcessIndexTag: strconv.Itoa(index),
+		rep.ProcessGuidTag:  processGuid,
+		rep.ProcessIndexTag: strconv.Itoa(index),
 	})
 	if err != nil {
 		a.logger.Error("failed-to-list-containers", err)
@@ -92,10 +87,10 @@ func (a *AuctionDelegate) Reserve(startAuction models.LRPStartAuction) error {
 		Guid: startAuction.InstanceGuid,
 
 		Tags: executor.Tags{
-			harvester.LifecycleTag: harvester.LRPLifecycle,
-			harvester.DomainTag:    startAuction.DesiredLRP.Domain,
-			ProcessGuidTag:         startAuction.DesiredLRP.ProcessGuid,
-			ProcessIndexTag:        strconv.Itoa(startAuction.Index),
+			rep.LifecycleTag:    rep.LRPLifecycle,
+			rep.DomainTag:       startAuction.DesiredLRP.Domain,
+			rep.ProcessGuidTag:  startAuction.DesiredLRP.ProcessGuid,
+			rep.ProcessIndexTag: strconv.Itoa(startAuction.Index),
 		},
 
 		MemoryMB:   startAuction.DesiredLRP.MemoryMB,

@@ -41,7 +41,6 @@ var _ = Describe("The Rep", func() {
 			executorID,
 			"the-stack",
 			"the-lrp-host",
-			fmt.Sprintf("127.0.0.1:%d", schedulerPort),
 			fakeExecutor.URL(),
 			fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
 			fmt.Sprintf("127.0.0.1:%d", natsPort),
@@ -154,7 +153,7 @@ var _ = Describe("The Rep", func() {
 			bbs.DesireTask(models.Task{
 				TaskGuid: "the-task-guid",
 				Stack:    "the-stack",
-				Action: &models.ExecutorAction{
+				Action: models.ExecutorAction{
 					Action: models.RunAction{
 						Path: "cat",
 						Args: []string{"/tmp/file"},

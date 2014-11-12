@@ -14,8 +14,6 @@ import (
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/executor"
 	executorclient "github.com/cloudfoundry-incubator/executor/http/client"
-	"github.com/cloudfoundry-incubator/rep/api"
-	"github.com/cloudfoundry-incubator/rep/api/lrprunning"
 	"github.com/cloudfoundry-incubator/rep/auction_delegate"
 	"github.com/cloudfoundry-incubator/rep/harvester"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
@@ -33,7 +31,6 @@ import (
 	"github.com/pivotal-golang/timer"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
-	"github.com/tedsuo/ifrit/http_server"
 	"github.com/tedsuo/ifrit/sigmon"
 )
 
@@ -79,12 +76,6 @@ var lrpHost = flag.String(
 	"address to route traffic to for LRP access",
 )
 
-var listenAddr = flag.String(
-	"listenAddr",
-	"0.0.0.0:20515",
-	"host:port to listen on for job completion",
-)
-
 var stack = flag.String(
 	"stack",
 	"",
@@ -97,10 +88,10 @@ var executorID = flag.String(
 	"the ID used by the rep to identify itself to external systems - must be specified",
 )
 
-var taskCompletePollingInterval = flag.Duration(
-	"taskCompletePollingInterval",
+var pollingInterval = flag.Duration(
+	"pollingInterval",
 	30*time.Second,
-	"the interval on which to look for completed tasks",
+	"the interval on which to scan the executor",
 )
 
 var dropsondeOrigin = flag.String(
@@ -143,14 +134,13 @@ func main() {
 	executorClient := executorclient.New(http.DefaultClient, *executorURL)
 	lrpStopper := initializeLRPStopper(*executorID, bbs, executorClient, logger)
 
-	poller, eventConsumer := initializeHarvesters(logger, *taskCompletePollingInterval, executorClient, bbs)
+	poller, eventConsumer := initializeHarvesters(logger, *pollingInterval, executorClient, bbs)
 
 	group := grouper.NewOrdered(os.Interrupt, grouper.Members{
 		{"nats-client", natsClientRunner},
 		{"heartbeater", initializeExecutorHeartbeat(bbs, executorClient, logger)},
 		{"task-rep", initializeTaskRep(*executorID, bbs, logger, executorClient)},
 		{"stop-lrp-listener", initializeStopLRPListener(lrpStopper, bbs, logger)},
-		{"api-server", initializeAPIServer(*executorID, bbs, logger, executorClient)},
 		{"auction-server", ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
 			return initializeAuctionNatsServer(*executorID, lrpStopper, bbs, executorClient, natsClient, logger).Run(signals, ready)
 		})},
@@ -178,22 +168,37 @@ func initializeHarvesters(
 	executorClient executor.Client,
 	bbs Bbs.RepBBS,
 ) (ifrit.Runner, ifrit.Runner) {
-	processor := harvester.NewProcessor(
+	taskProcessor := harvester.NewTaskProcessor(
 		logger,
 		bbs,
 		executorClient,
+	)
+
+	lrpProcessor := harvester.NewLRPProcessor(
+		*executorID,
+		*lrpHost,
+		logger,
+		bbs,
+		executorClient,
+	)
+
+	containerProcessor := harvester.NewContainerProcessor(
+		logger,
+		taskProcessor,
+		lrpProcessor,
 	)
 
 	poller := harvester.NewPoller(
 		pollInterval,
 		timer.NewTimer(),
 		executorClient,
-		processor,
+		containerProcessor,
+		logger,
 	)
 
 	eventConsumer := harvester.NewEventConsumer(
 		executorClient,
-		processor,
+		containerProcessor,
 	)
 
 	return poller, eventConsumer
@@ -255,17 +260,6 @@ func initializeLRPStopper(guid string, bbs Bbs.RepBBS, executorClient executor.C
 
 func initializeStopLRPListener(stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, logger lager.Logger) ifrit.Runner {
 	return stop_lrp_listener.New(stopper, bbs, logger)
-}
-
-func initializeAPIServer(executorID string, bbs Bbs.RepBBS, logger lager.Logger, executorClient executor.Client) ifrit.Runner {
-	lrpRunningHandler := lrprunning.NewHandler(executorID, bbs, executorClient, *lrpHost, logger)
-
-	apiHandler, err := api.NewServer(lrpRunningHandler)
-	if err != nil {
-		panic("failed to initialize api server: " + err.Error())
-	}
-
-	return http_server.New(*listenAddr, apiHandler)
 }
 
 func initializeAuctionNatsServer(
