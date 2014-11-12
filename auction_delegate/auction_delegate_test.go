@@ -6,8 +6,8 @@ import (
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	executor "github.com/cloudfoundry-incubator/executor"
 	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
+	"github.com/cloudfoundry-incubator/rep"
 	. "github.com/cloudfoundry-incubator/rep/auction_delegate"
-	"github.com/cloudfoundry-incubator/rep/harvester"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper/fake_lrp_stopper"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -106,16 +106,28 @@ var _ = Describe("AuctionDelegate", func() {
 				containers := []executor.Container{
 					executor.Container{
 						Guid: "first",
+						Action: models.ExecutorAction{
+							Action: models.DownloadAction{
+								From: "http://example.com/something",
+								To:   "/something",
+							},
+						},
 						Tags: executor.Tags{
-							ProcessGuidTag:  "the-first-app-guid",
-							ProcessIndexTag: "17",
+							rep.ProcessGuidTag:  "the-first-app-guid",
+							rep.ProcessIndexTag: "17",
 						},
 					},
 					executor.Container{
 						Guid: "third",
+						Action: models.ExecutorAction{
+							Action: models.DownloadAction{
+								From: "http://example.com/something",
+								To:   "/something",
+							},
+						},
 						Tags: executor.Tags{
-							ProcessGuidTag:  "the-first-app-guid",
-							ProcessIndexTag: "92",
+							rep.ProcessGuidTag:  "the-first-app-guid",
+							rep.ProcessIndexTag: "92",
 						},
 					},
 				}
@@ -133,7 +145,7 @@ var _ = Describe("AuctionDelegate", func() {
 				_, err := delegate.NumInstancesForProcessGuid("the-first-app-guid")
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(client.ListContainersArgsForCall(0)).Should(Equal(executor.Tags{
-					ProcessGuidTag: "the-first-app-guid",
+					rep.ProcessGuidTag: "the-first-app-guid",
 				}))
 			})
 		})
@@ -156,9 +168,21 @@ var _ = Describe("AuctionDelegate", func() {
 				containers := []executor.Container{
 					executor.Container{
 						Guid: "first",
+						Action: models.ExecutorAction{
+							Action: models.DownloadAction{
+								From: "http://example.com/something",
+								To:   "/something",
+							},
+						},
 					},
 					executor.Container{
 						Guid: "second",
+						Action: models.ExecutorAction{
+							Action: models.DownloadAction{
+								From: "http://example.com/something",
+								To:   "/something",
+							},
+						},
 					},
 				}
 				client.ListContainersReturns(containers, nil)
@@ -176,8 +200,8 @@ var _ = Describe("AuctionDelegate", func() {
 				_, err := delegate.InstanceGuidsForProcessGuidAndIndex("requested-app-guid", 17)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(client.ListContainersArgsForCall(0)).Should(Equal(executor.Tags{
-					ProcessGuidTag:  "requested-app-guid",
-					ProcessIndexTag: "17",
+					rep.ProcessGuidTag:  "requested-app-guid",
+					rep.ProcessIndexTag: "17",
 				}))
 			})
 		})
@@ -218,7 +242,7 @@ var _ = Describe("AuctionDelegate", func() {
 							{Name: "var1", Value: "val1"},
 							{Name: "var2", Value: "val2"},
 						},
-						Action: &models.ExecutorAction{
+						Action: models.ExecutorAction{
 							Action: models.DownloadAction{
 								From: "http://example.com/something",
 								To:   "/something",
@@ -249,10 +273,10 @@ var _ = Describe("AuctionDelegate", func() {
 					Guid: startAuction.InstanceGuid,
 
 					Tags: executor.Tags{
-						harvester.LifecycleTag: harvester.LRPLifecycle,
-						harvester.DomainTag:    "tests",
-						ProcessGuidTag:         startAuction.DesiredLRP.ProcessGuid,
-						ProcessIndexTag:        "2",
+						rep.LifecycleTag:    rep.LRPLifecycle,
+						rep.DomainTag:       "tests",
+						rep.ProcessGuidTag:  startAuction.DesiredLRP.ProcessGuid,
+						rep.ProcessIndexTag: "2",
 					},
 
 					MemoryMB:   startAuction.DesiredLRP.MemoryMB,
@@ -294,6 +318,11 @@ var _ = Describe("AuctionDelegate", func() {
 		JustBeforeEach(func() {
 			startAuction = models.LRPStartAuction{
 				DesiredLRP: models.DesiredLRP{
+					Action: models.ExecutorAction{
+						models.RunAction{
+							Path: "ls",
+						},
+					},
 					Domain:      "tests",
 					ProcessGuid: "process-guid",
 				},
@@ -347,7 +376,7 @@ var _ = Describe("AuctionDelegate", func() {
 					ProcessGuid: "process-guid",
 					DiskMB:      1024,
 					MemoryMB:    2048,
-					Action: &models.ExecutorAction{
+					Action: models.ExecutorAction{
 						Action: models.DownloadAction{
 							From: "http://example.com/something",
 							To:   "/something",

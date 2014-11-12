@@ -7,6 +7,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/executor"
 	efakes "github.com/cloudfoundry-incubator/executor/fakes"
+	"github.com/cloudfoundry-incubator/rep"
 	. "github.com/cloudfoundry-incubator/rep/harvester"
 	"github.com/cloudfoundry-incubator/rep/harvester/fakes"
 	"github.com/tedsuo/ifrit"
@@ -81,7 +82,7 @@ var _ = Describe("EventConsumer", func() {
 			Context("and its lifecycle is task", func() {
 				BeforeEach(func() {
 					completedContainer.Tags = executor.Tags{
-						LifecycleTag: TaskLifecycle,
+						rep.LifecycleTag: rep.TaskLifecycle,
 					}
 				})
 
@@ -94,7 +95,7 @@ var _ = Describe("EventConsumer", func() {
 			Context("and its lifecycle is something else", func() {
 				BeforeEach(func() {
 					completedContainer.Tags = executor.Tags{
-						LifecycleTag: "banana",
+						rep.LifecycleTag: "banana",
 					}
 				})
 
@@ -112,13 +113,13 @@ var _ = Describe("EventConsumer", func() {
 				completedContainer1 = executor.Container{
 					Guid:  "first-completed-guid",
 					State: executor.StateCompleted,
-					Tags:  executor.Tags{LifecycleTag: TaskLifecycle},
+					Tags:  executor.Tags{rep.LifecycleTag: rep.TaskLifecycle},
 				}
 
 				completedContainer2 = executor.Container{
 					Guid:  "second-completed-guid",
 					State: executor.StateCompleted,
-					Tags:  executor.Tags{LifecycleTag: TaskLifecycle},
+					Tags:  executor.Tags{rep.LifecycleTag: rep.TaskLifecycle},
 				}
 
 				waitGroup = &sync.WaitGroup{}

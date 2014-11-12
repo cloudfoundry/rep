@@ -5,29 +5,26 @@ import (
 	"fmt"
 
 	"github.com/cloudfoundry-incubator/executor"
+	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/pivotal-golang/lager"
 )
 
-type Processor interface {
-	Process(executor.Container)
-}
+const MAX_RESULT_SIZE = 1024 * 10
 
-type processor struct {
+type taskProcessor struct {
 	logger lager.Logger
 
 	bbs            bbs.RepBBS
 	executorClient executor.Client
 }
 
-const MAX_RESULT_SIZE = 1024 * 10
-
-func NewProcessor(
+func NewTaskProcessor(
 	logger lager.Logger,
 	bbs bbs.RepBBS,
 	executorClient executor.Client,
 ) Processor {
-	return &processor{
+	return &taskProcessor{
 		logger: logger,
 
 		bbs:            bbs,
@@ -35,8 +32,12 @@ func NewProcessor(
 	}
 }
 
-func (p *processor) Process(container executor.Container) {
-	pLog := p.logger.Session("process", lager.Data{
+func (p *taskProcessor) Process(container executor.Container) {
+	if container.State != executor.StateCompleted {
+		return
+	}
+
+	pLog := p.logger.Session("process-task", lager.Data{
 		"container": container.Guid,
 	})
 
@@ -48,7 +49,7 @@ func (p *processor) Process(container executor.Container) {
 	var err error
 
 	if !taskFailed {
-		resultFile := container.Tags[ResultFileTag]
+		resultFile := container.Tags[rep.ResultFileTag]
 		if resultFile != "" {
 			taskResult, err = p.getResultFile(taskGuid, resultFile)
 			if err != nil {
@@ -71,7 +72,7 @@ func (p *processor) Process(container executor.Container) {
 	}
 }
 
-func (p *processor) getResultFile(guid, resultFile string) (string, error) {
+func (p *taskProcessor) getResultFile(guid, resultFile string) (string, error) {
 	stream, err := p.executorClient.GetFiles(guid, resultFile)
 	if err != nil {
 		return "", err

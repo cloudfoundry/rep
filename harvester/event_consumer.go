@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/cloudfoundry-incubator/executor"
+	"github.com/cloudfoundry-incubator/rep"
 	"github.com/tedsuo/ifrit"
 )
 
@@ -43,7 +44,7 @@ func (consumer *eventConsumer) Run(signals <-chan os.Signal, ready chan<- struct
 					continue
 				}
 
-				if event.Container.Tags[LifecycleTag] != TaskLifecycle {
+				if event.Container.Tags[rep.LifecycleTag] != rep.TaskLifecycle {
 					continue
 				}
 

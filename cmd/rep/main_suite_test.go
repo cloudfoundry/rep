@@ -18,7 +18,7 @@ var representativePath string
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
 var gnatsdProcess ifrit.Process
 var natsClient diegonats.NATSClient
-var etcdPort, natsPort, schedulerPort int
+var etcdPort, natsPort int
 
 func TestRep(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -36,7 +36,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	etcdPort = 4001 + GinkgoParallelNode()
 	natsPort = 4222 + GinkgoParallelNode()
-	schedulerPort = 56000 + GinkgoParallelNode()
 
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
 })

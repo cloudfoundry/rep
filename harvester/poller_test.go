@@ -7,9 +7,9 @@ import (
 
 	"github.com/cloudfoundry-incubator/executor"
 	efakes "github.com/cloudfoundry-incubator/executor/fakes"
+	"github.com/cloudfoundry-incubator/rep"
 	. "github.com/cloudfoundry-incubator/rep/harvester"
 	"github.com/cloudfoundry-incubator/rep/harvester/fakes"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/pivotal-golang/timer/fake_timer"
 	"github.com/tedsuo/ifrit"
@@ -27,7 +27,6 @@ var _ = Describe("Poller", func() {
 		timer        *fake_timer.FakeTimer
 		poller       ifrit.Runner
 		process      ifrit.Process
-		bbs          *fake_bbs.FakeRepBBS
 	)
 
 	BeforeEach(func() {
@@ -36,8 +35,7 @@ var _ = Describe("Poller", func() {
 		executorClient = new(efakes.FakeClient)
 		processor = new(fakes.FakeProcessor)
 
-		bbs = new(fake_bbs.FakeRepBBS)
-		poller = NewPoller(pollInterval, timer, executorClient, processor, bbs, "executor-id", lagertest.NewTestLogger("test"))
+		poller = NewPoller(pollInterval, timer, executorClient, processor, lagertest.NewTestLogger("test"))
 	})
 
 	JustBeforeEach(func() {
@@ -50,60 +48,40 @@ var _ = Describe("Poller", func() {
 	})
 
 	Context("when the timer elapses", func() {
+		var lrpTags = executor.Tags{rep.LifecycleTag: rep.LRPLifecycle}
+		var taskTags = executor.Tags{rep.LifecycleTag: rep.TaskLifecycle}
+
 		JustBeforeEach(func() {
 			timer.Elapse(pollInterval)
 		})
 
-		It("polls executor for tasks", func() {
+		It("polls executor for containers", func() {
 			Eventually(executorClient.ListContainersCallCount).Should(Equal(1))
 
-			Ω(executorClient.ListContainersArgsForCall(0)).Should(Equal(executor.Tags{
-				LifecycleTag: TaskLifecycle,
-			}))
+			Ω(executorClient.ListContainersArgsForCall(0)).Should(BeNil())
 		})
 
-		Context("and the executor returns completed containers", func() {
+		Context("and the executor returns tasks and lrps", func() {
+			containers := []executor.Container{
+				{Guid: "first-completed-task-guid", State: executor.StateCompleted, Tags: taskTags},
+				{Guid: "second-completed-task-guid", State: executor.StateCompleted, Tags: taskTags},
+				{Guid: "first-completed-lrp-guid", State: executor.StateCompleted, Tags: lrpTags},
+				{Guid: "first-completed-foobar-guid", State: executor.StateCompleted, Tags: executor.Tags{rep.LifecycleTag: "foobar"}},
+				{Guid: "created-task-guid", State: executor.StateCreated, Tags: taskTags},
+				{Guid: "initializing-task-guid", State: executor.StateInitializing, Tags: taskTags},
+				{Guid: "reserved-task-guid", State: executor.StateReserved, Tags: taskTags},
+			}
+
 			BeforeEach(func() {
-				executorClient.ListContainersReturns([]executor.Container{
-					{Guid: "first-completed-guid", State: executor.StateCompleted},
-					{Guid: "second-completed-guid", State: executor.StateCompleted},
-					{Guid: "created-guid", State: executor.StateCreated},
-					{Guid: "initializing-guid", State: executor.StateInitializing},
-					{Guid: "reserved-guid", State: executor.StateReserved},
-				}, nil)
+				executorClient.ListContainersReturns(containers, nil)
 			})
 
-			It("processes each of them", func() {
-				Eventually(processor.ProcessCallCount).Should(Equal(2))
+			It("processes all returned containers", func() {
+				Eventually(processor.ProcessCallCount).Should(Equal(7))
 
-				Ω(processor.ProcessArgsForCall(0)).Should(Equal(executor.Container{
-					Guid:  "first-completed-guid",
-					State: executor.StateCompleted,
-				}))
-
-				Ω(processor.ProcessArgsForCall(1)).Should(Equal(executor.Container{
-					Guid:  "second-completed-guid",
-					State: executor.StateCompleted,
-				}))
-			})
-
-			It("does not process the non-completed containers", func() {
-				Eventually(processor.ProcessCallCount).Should(Equal(2))
-				Consistently(processor.ProcessCallCount).Should(Equal(2))
-			})
-		})
-
-		Context("when the executor returns no completed containers", func() {
-			BeforeEach(func() {
-				executorClient.ListContainersReturns([]executor.Container{
-					{Guid: "created-guid", State: executor.StateCreated},
-					{Guid: "initializing-guid", State: executor.StateInitializing},
-					{Guid: "reserved-guid", State: executor.StateReserved},
-				}, nil)
-			})
-
-			It("doesn't process anything", func() {
-				Consistently(processor.ProcessCallCount()).Should(BeZero())
+				for i := 0; i < 7; i++ {
+					Ω(processor.ProcessArgsForCall(i)).Should(Equal(containers[i]))
+				}
 			})
 		})
 
