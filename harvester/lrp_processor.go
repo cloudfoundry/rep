@@ -10,7 +10,7 @@ import (
 )
 
 type lrpProcessor struct {
-	executorId     string
+	cellId         string
 	executorHost   string
 	logger         lager.Logger
 	bbs            bbs.RepBBS
@@ -18,14 +18,14 @@ type lrpProcessor struct {
 }
 
 func NewLRPProcessor(
-	executorId string,
+	cellId string,
 	executorHost string,
 	logger lager.Logger,
 	bbs bbs.RepBBS,
 	executorClient executor.Client,
 ) Processor {
 	return &lrpProcessor{
-		executorId:     executorId,
+		cellId:         cellId,
 		executorHost:   executorHost,
 		logger:         logger,
 		bbs:            bbs,
@@ -45,7 +45,7 @@ func (p *lrpProcessor) Process(container executor.Container) {
 		return
 	}
 
-	actualLrp, err := rep.ActualLRPFromContainer(container, p.executorId, p.executorHost)
+	actualLrp, err := rep.ActualLRPFromContainer(container, p.cellId, p.executorHost)
 	if err != nil {
 		logger.Error("container-lrp-metdata-validation-failed", err)
 		return
@@ -53,7 +53,7 @@ func (p *lrpProcessor) Process(container executor.Container) {
 
 	switch container.State {
 	case executor.StateInitializing:
-		_, err = p.bbs.ReportActualLRPAsStarting(actualLrp.ProcessGuid, actualLrp.InstanceGuid, p.executorId, actualLrp.Domain, actualLrp.Index)
+		_, err = p.bbs.ReportActualLRPAsStarting(actualLrp.ProcessGuid, actualLrp.InstanceGuid, p.cellId, actualLrp.Domain, actualLrp.Index)
 		if err != nil {
 			logger.Error("report-starting-failed", err)
 			return
@@ -63,7 +63,7 @@ func (p *lrpProcessor) Process(container executor.Container) {
 	case executor.StateCreated:
 		switch container.Health {
 		case executor.HealthDown:
-			_, err = p.bbs.ReportActualLRPAsStarting(actualLrp.ProcessGuid, actualLrp.InstanceGuid, p.executorId, actualLrp.Domain, actualLrp.Index)
+			_, err = p.bbs.ReportActualLRPAsStarting(actualLrp.ProcessGuid, actualLrp.InstanceGuid, p.cellId, actualLrp.Domain, actualLrp.Index)
 			if err != nil {
 				logger.Error("report-starting-failed", err)
 				return
@@ -71,7 +71,7 @@ func (p *lrpProcessor) Process(container executor.Container) {
 			logger.Debug("reported-starting")
 
 		case executor.HealthUp, executor.HealthUnmonitored:
-			err := p.bbs.ReportActualLRPAsRunning(actualLrp, p.executorId)
+			err := p.bbs.ReportActualLRPAsRunning(actualLrp, p.cellId)
 			if err != nil {
 				logger.Error("report-running-failed", err)
 				return

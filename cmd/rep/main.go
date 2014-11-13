@@ -83,8 +83,8 @@ var stack = flag.String(
 	"the rep stack - must be specified",
 )
 
-var executorID = flag.String(
-	"executorID",
+var cellID = flag.String(
+	"cellID",
 	"",
 	"the ID used by the rep to identify itself to external systems - must be specified",
 )
@@ -122,8 +122,8 @@ var dropsondeDestination = flag.String(
 func main() {
 	flag.Parse()
 
-	if *executorID == "" {
-		log.Fatalf("-executorID must be specified")
+	if *cellID == "" {
+		log.Fatalf("-cellID must be specified")
 	}
 
 	if *stack == "" {
@@ -139,26 +139,26 @@ func main() {
 	logger := cf_lager.New("rep")
 	initializeDropsonde(logger)
 	bbs := initializeRepBBS(logger)
-	removeActualLrpFromBBS(bbs, *executorID, logger)
+	removeActualLrpFromBBS(bbs, *cellID, logger)
 
 	natsClient := diegonats.NewClient()
 	natsClientRunner := diegonats.NewClientRunner(*natsAddresses, *natsUsername, *natsPassword, logger, natsClient)
 
 	executorClient := executorclient.New(http.DefaultClient, *executorURL)
-	lrpStopper := initializeLRPStopper(*executorID, bbs, executorClient, logger)
+	lrpStopper := initializeLRPStopper(*cellID, bbs, executorClient, logger)
 
-	actualLRPReaper := reaper.NewActualLRPReaper(*actualLRPReapingInterval, timer.NewTimer(), *executorID, bbs, executorClient, logger)
-	taskReaper := reaper.NewTaskReaper(*taskReapingInterval, timer.NewTimer(), *executorID, bbs, executorClient, logger)
+	actualLRPReaper := reaper.NewActualLRPReaper(*actualLRPReapingInterval, timer.NewTimer(), *cellID, bbs, executorClient, logger)
+	taskReaper := reaper.NewTaskReaper(*taskReapingInterval, timer.NewTimer(), *cellID, bbs, executorClient, logger)
 
 	poller, eventConsumer := initializeHarvesters(logger, *pollingInterval, executorClient, bbs)
 
 	group := grouper.NewOrdered(os.Interrupt, grouper.Members{
 		{"nats-client", natsClientRunner},
-		{"heartbeater", initializeExecutorHeartbeat(bbs, executorClient, logger)},
-		{"task-rep", initializeTaskRep(*executorID, bbs, logger, executorClient)},
+		{"heartbeater", initializeCellHeartbeat(bbs, executorClient, logger)},
+		{"task-rep", initializeTaskRep(*cellID, bbs, logger, executorClient)},
 		{"stop-lrp-listener", initializeStopLRPListener(lrpStopper, bbs, logger)},
 		{"auction-server", ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
-			return initializeAuctionNatsServer(*executorID, lrpStopper, bbs, executorClient, natsClient, logger).Run(signals, ready)
+			return initializeAuctionNatsServer(*cellID, lrpStopper, bbs, executorClient, natsClient, logger).Run(signals, ready)
 		})},
 		{"executor-poller", poller},
 		{"actual-lrp-reaper", actualLRPReaper},
@@ -193,7 +193,7 @@ func initializeHarvesters(
 	)
 
 	lrpProcessor := harvester.NewLRPProcessor(
-		*executorID,
+		*cellID,
 		*lrpHost,
 		logger,
 		bbs,
@@ -222,11 +222,11 @@ func initializeHarvesters(
 	return poller, eventConsumer
 }
 
-func removeActualLrpFromBBS(bbs Bbs.RepBBS, executorID string, logger lager.Logger) {
+func removeActualLrpFromBBS(bbs Bbs.RepBBS, cellID string, logger lager.Logger) {
 	for {
-		lrps, err := bbs.GetAllActualLRPsByExecutorID(executorID)
+		lrps, err := bbs.GetAllActualLRPsByCellID(cellID)
 		if err != nil {
-			logger.Error("failed-to-get-actual-lrps-by-executor-id", err, lager.Data{"executor-id": executorID})
+			logger.Error("failed-to-get-actual-lrps-by-cell-id", err, lager.Data{"cell-id": cellID})
 			time.Sleep(time.Second)
 			continue
 		}
@@ -234,7 +234,7 @@ func removeActualLrpFromBBS(bbs Bbs.RepBBS, executorID string, logger lager.Logg
 		for _, lrp := range lrps {
 			err = bbs.RemoveActualLRP(lrp)
 			if err != nil {
-				logger.Error("failed-to-remove-actual-lrps", err, lager.Data{"executor-id": executorID, "actual-lrp": lrp, "total-lrps": len(lrps)})
+				logger.Error("failed-to-remove-actual-lrps", err, lager.Data{"cell-id": cellID, "actual-lrp": lrp, "total-lrps": len(lrps)})
 				time.Sleep(time.Second)
 				continue
 			}
@@ -244,13 +244,13 @@ func removeActualLrpFromBBS(bbs Bbs.RepBBS, executorID string, logger lager.Logg
 	}
 }
 
-func initializeExecutorHeartbeat(bbs Bbs.RepBBS, executorClient executor.Client, logger lager.Logger) ifrit.Runner {
-	executorPresence := models.ExecutorPresence{
-		ExecutorID: *executorID,
-		Stack:      *stack,
+func initializeCellHeartbeat(bbs Bbs.RepBBS, executorClient executor.Client, logger lager.Logger) ifrit.Runner {
+	cellPresence := models.CellPresence{
+		CellID: *cellID,
+		Stack:  *stack,
 	}
 
-	heartbeat := bbs.NewExecutorHeartbeat(executorPresence, *heartbeatInterval)
+	heartbeat := bbs.NewCellHeartbeat(cellPresence, *heartbeatInterval)
 	return maintain.New(executorClient, heartbeat, logger, *heartbeatInterval, timer.NewTimer())
 }
 
@@ -268,8 +268,8 @@ func initializeRepBBS(logger lager.Logger) Bbs.RepBBS {
 	return Bbs.NewRepBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
 }
 
-func initializeTaskRep(executorID string, bbs Bbs.RepBBS, logger lager.Logger, executorClient executor.Client) *task_scheduler.TaskScheduler {
-	return task_scheduler.New(executorID, bbs, logger, *stack, executorClient)
+func initializeTaskRep(cellID string, bbs Bbs.RepBBS, logger lager.Logger, executorClient executor.Client) *task_scheduler.TaskScheduler {
+	return task_scheduler.New(cellID, bbs, logger, *stack, executorClient)
 }
 
 func initializeLRPStopper(guid string, bbs Bbs.RepBBS, executorClient executor.Client, logger lager.Logger) lrp_stopper.LRPStopper {
@@ -281,14 +281,14 @@ func initializeStopLRPListener(stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, l
 }
 
 func initializeAuctionNatsServer(
-	executorID string,
+	cellID string,
 	stopper lrp_stopper.LRPStopper,
 	bbs Bbs.RepBBS,
 	executorClient executor.Client,
 	natsClient diegonats.NATSClient,
 	logger lager.Logger,
 ) *auction_nats_server.AuctionNATSServer {
-	auctionDelegate := auction_delegate.New(executorID, stopper, bbs, executorClient, logger)
-	auctionRep := auctionrep.New(executorID, auctionDelegate)
+	auctionDelegate := auction_delegate.New(cellID, stopper, bbs, executorClient, logger)
+	auctionRep := auctionrep.New(cellID, auctionDelegate)
 	return auction_nats_server.New(natsClient, auctionRep, logger)
 }

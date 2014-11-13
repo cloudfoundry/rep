@@ -22,23 +22,23 @@ const (
 var random = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 type TaskScheduler struct {
-	executorID string
-	bbs        bbs.RepBBS
-	logger     lager.Logger
-	stack      string
-	client     executor.Client
-	inFlight   *sync.WaitGroup
+	cellID   string
+	bbs      bbs.RepBBS
+	logger   lager.Logger
+	stack    string
+	client   executor.Client
+	inFlight *sync.WaitGroup
 }
 
 func New(
-	executorID string,
+	cellID string,
 	bbs bbs.RepBBS,
 	logger lager.Logger,
 	stack string,
 	executorClient executor.Client,
 ) *TaskScheduler {
 	return &TaskScheduler{
-		executorID: executorID,
+		cellID: cellID,
 
 		bbs:    bbs,
 		logger: logger.Session("task-scheduler"),
@@ -134,8 +134,8 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 
 	s.sleepForARandomInterval()
 
-	taskLog.Info("claiming-task", lager.Data{"executorID": s.executorID})
-	err = s.bbs.ClaimTask(task.TaskGuid, s.executorID)
+	taskLog.Info("claiming-task", lager.Data{"cellID": s.cellID})
+	err = s.bbs.ClaimTask(task.TaskGuid, s.cellID)
 	if err != nil {
 		taskLog.Info("failed-to-claim-task", lager.Data{"error": err.Error()})
 		s.client.DeleteContainer(task.TaskGuid)
@@ -156,7 +156,7 @@ func (s *TaskScheduler) handleTaskRequest(task models.Task) {
 	taskLog.Info("successfully-ran-task")
 
 	taskLog.Info("starting-task")
-	err = s.bbs.StartTask(task.TaskGuid, s.executorID)
+	err = s.bbs.StartTask(task.TaskGuid, s.cellID)
 	if err != nil {
 		taskLog.Error("failed-to-mark-task-started", err)
 		s.client.DeleteContainer(task.TaskGuid)

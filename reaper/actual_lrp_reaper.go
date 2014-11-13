@@ -15,7 +15,7 @@ type actualLRPReaper struct {
 	pollInterval time.Duration
 	timer        timer.Timer
 
-	executorID     string
+	cellID         string
 	bbs            bbs.RepBBS
 	executorClient executor.Client
 	logger         lager.Logger
@@ -24,7 +24,7 @@ type actualLRPReaper struct {
 func NewActualLRPReaper(
 	pollInterval time.Duration,
 	timer timer.Timer,
-	executorID string,
+	cellID string,
 	bbs bbs.RepBBS,
 	executorClient executor.Client,
 	logger lager.Logger,
@@ -32,7 +32,7 @@ func NewActualLRPReaper(
 	return &actualLRPReaper{
 		pollInterval:   pollInterval,
 		timer:          timer,
-		executorID:     executorID,
+		cellID:         cellID,
 		bbs:            bbs,
 		executorClient: executorClient,
 		logger:         logger,
@@ -47,9 +47,9 @@ func (r *actualLRPReaper) Run(signals <-chan os.Signal, ready chan<- struct{}) e
 	for {
 		select {
 		case <-ticks:
-			actualLRPs, err := r.bbs.GetAllActualLRPsByExecutorID(r.executorID)
+			actualLRPs, err := r.bbs.GetAllActualLRPsByCellID(r.cellID)
 			if err != nil {
-				r.logger.Error("failed-to-get-actual-lrps-by-executor-id", err, lager.Data{"executor-id": r.executorID})
+				r.logger.Error("failed-to-get-actual-lrps-by-cell-id", err, lager.Data{"cell-id": r.cellID})
 				continue
 			}
 

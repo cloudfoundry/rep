@@ -35,7 +35,7 @@ var _ = Describe("Task Reaper", func() {
 		executorClient = new(efakes.FakeClient)
 
 		bbs = new(fake_bbs.FakeRepBBS)
-		taskReaper = reaper.NewTaskReaper(pollInterval, timer, "executor-id", bbs, executorClient, lagertest.NewTestLogger("test"))
+		taskReaper = reaper.NewTaskReaper(pollInterval, timer, "cell-id", bbs, executorClient, lagertest.NewTestLogger("test"))
 	})
 
 	JustBeforeEach(func() {
@@ -53,13 +53,13 @@ var _ = Describe("Task Reaper", func() {
 		})
 
 		It("gets tasks for this executor from the BBS", func() {
-			Eventually(bbs.GetAllTasksByExecutorIDCallCount).Should(Equal(1))
-			Ω(bbs.GetAllTasksByExecutorIDArgsForCall(0)).Should(Equal("executor-id"))
+			Eventually(bbs.GetAllTasksByCellIDCallCount).Should(Equal(1))
+			Ω(bbs.GetAllTasksByCellIDArgsForCall(0)).Should(Equal("cell-id"))
 		})
 
 		Context("when there are claimed/running tasks for this executor in the BBS", func() {
 			BeforeEach(func() {
-				bbs.GetAllTasksByExecutorIDReturns([]models.Task{
+				bbs.GetAllTasksByCellIDReturns([]models.Task{
 					models.Task{
 						TaskGuid: "task-guid-1",
 						State:    models.TaskStateClaimed,
@@ -114,7 +114,7 @@ var _ = Describe("Task Reaper", func() {
 
 		Context("when getting tasks from the BBS fails", func() {
 			BeforeEach(func() {
-				bbs.GetAllTasksByExecutorIDReturns(nil, errors.New("bbs error"))
+				bbs.GetAllTasksByCellIDReturns(nil, errors.New("bbs error"))
 			})
 			It("does not die", func() {
 				Consistently(process.Wait()).ShouldNot(Receive())
@@ -126,14 +126,14 @@ var _ = Describe("Task Reaper", func() {
 				})
 
 				It("happily continues on to next time", func() {
-					Eventually(bbs.GetAllTasksByExecutorIDCallCount).Should(Equal(2))
+					Eventually(bbs.GetAllTasksByCellIDCallCount).Should(Equal(2))
 				})
 			})
 		})
 
 		Context("when there are completed tasks associated with this executor in the BBS", func() {
 			BeforeEach(func() {
-				bbs.GetAllTasksByExecutorIDReturns([]models.Task{
+				bbs.GetAllTasksByCellIDReturns([]models.Task{
 					models.Task{
 						TaskGuid: "task-guid-1",
 						State:    models.TaskStateCompleted,

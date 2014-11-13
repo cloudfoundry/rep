@@ -22,7 +22,7 @@ const (
 	ProcessIndexTag = "process-index"
 )
 
-func ActualLRPFromContainer(container executor.Container, executorId, executorHost string) (models.ActualLRP, error) {
+func ActualLRPFromContainer(container executor.Container, cellId, executorHost string) (models.ActualLRP, error) {
 	if container.Tags == nil {
 		return models.ActualLRP{}, errors.New("container is missing tags")
 	}
@@ -35,7 +35,7 @@ func ActualLRPFromContainer(container executor.Container, executorId, executorHo
 	actualLrp, err := models.NewActualLRP(
 		container.Tags[ProcessGuidTag],
 		container.Guid,
-		executorId,
+		cellId,
 		container.Tags[DomainTag],
 		processIndex,
 	)

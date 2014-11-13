@@ -13,7 +13,7 @@ import (
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
 
-var executorID string
+var cellID string
 var representativePath string
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
 var gnatsdProcess ifrit.Process
@@ -32,7 +32,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 }, func(representative []byte) {
 	representativePath = string(representative)
 
-	executorID = "the-rep-id-" + strconv.Itoa(GinkgoParallelNode())
+	cellID = "the-rep-id-" + strconv.Itoa(GinkgoParallelNode())
 
 	etcdPort = 4001 + GinkgoParallelNode()
 	natsPort = 4222 + GinkgoParallelNode()

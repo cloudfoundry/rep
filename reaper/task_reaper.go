@@ -16,7 +16,7 @@ type taskReaper struct {
 	pollInterval time.Duration
 	timer        timer.Timer
 
-	executorID     string
+	cellID         string
 	bbs            bbs.RepBBS
 	executorClient executor.Client
 	logger         lager.Logger
@@ -25,7 +25,7 @@ type taskReaper struct {
 func NewTaskReaper(
 	pollInterval time.Duration,
 	timer timer.Timer,
-	executorID string,
+	cellID string,
 	bbs bbs.RepBBS,
 	executorClient executor.Client,
 	logger lager.Logger,
@@ -33,7 +33,7 @@ func NewTaskReaper(
 	return &taskReaper{
 		pollInterval:   pollInterval,
 		timer:          timer,
-		executorID:     executorID,
+		cellID:         cellID,
 		bbs:            bbs,
 		executorClient: executorClient,
 		logger:         logger,
@@ -50,10 +50,10 @@ func (r *taskReaper) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 		case <-ticks:
 			r.logger.Info("reaper-entering-loop")
 
-			r.logger.Info("reaper-getting-tasks-by-executor-id", lager.Data{"executor-id": r.executorID})
-			tasks, err := r.bbs.GetAllTasksByExecutorID(r.executorID)
+			r.logger.Info("reaper-getting-tasks-by-cell-id", lager.Data{"cell-id": r.cellID})
+			tasks, err := r.bbs.GetAllTasksByCellID(r.cellID)
 			if err != nil {
-				r.logger.Error("reaper-failed-to-get-tasks-by-executor-id", err, lager.Data{"executor-id": r.executorID})
+				r.logger.Error("reaper-failed-to-get-tasks-by-cell-id", err, lager.Data{"cell-id": r.cellID})
 				continue
 			}
 

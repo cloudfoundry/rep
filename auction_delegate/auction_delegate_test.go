@@ -28,7 +28,7 @@ var _ = Describe("AuctionDelegate", func() {
 		stopper = &fake_lrp_stopper.FakeLRPStopper{}
 		client = new(fake_client.FakeClient)
 		bbs = &fake_bbs.FakeRepBBS{}
-		delegate = New("some-executor-id", stopper, bbs, client, lagertest.NewTestLogger("test"))
+		delegate = New("some-cell-id", stopper, bbs, client, lagertest.NewTestLogger("test"))
 		clientFetchError = errors.New("Failed to fetch")
 	})
 
@@ -397,7 +397,7 @@ var _ = Describe("AuctionDelegate", func() {
 				InstanceGuid: startAuction.InstanceGuid,
 				Domain:       startAuction.DesiredLRP.Domain,
 				Index:        startAuction.Index,
-				ExecutorID:   "some-executor-id",
+				CellID:       "some-cell-id",
 			}
 		})
 
@@ -417,10 +417,10 @@ var _ = Describe("AuctionDelegate", func() {
 			It("should mark the instance as STARTING in etcd", func() {
 				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
 
-				actualProcessGuid, actualInstanceGuid, actualExecutorID, actualDomain, actualIndex := bbs.ReportActualLRPAsStartingArgsForCall(0)
+				actualProcessGuid, actualInstanceGuid, actualCellID, actualDomain, actualIndex := bbs.ReportActualLRPAsStartingArgsForCall(0)
 				Ω(actualProcessGuid).Should(Equal(expectedLrp.ProcessGuid))
 				Ω(actualInstanceGuid).Should(Equal(expectedLrp.InstanceGuid))
-				Ω(actualExecutorID).Should(Equal(expectedLrp.ExecutorID))
+				Ω(actualCellID).Should(Equal(expectedLrp.CellID))
 				Ω(actualDomain).Should(Equal(expectedLrp.Domain))
 				Ω(actualIndex).Should(Equal(expectedLrp.Index))
 			})
@@ -451,10 +451,10 @@ var _ = Describe("AuctionDelegate", func() {
 			It("should mark the instance as STARTING in etcd", func() {
 				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
 
-				actualProcessGuid, actualInstanceGuid, actualExecutorID, actualDomain, actualIndex := bbs.ReportActualLRPAsStartingArgsForCall(0)
+				actualProcessGuid, actualInstanceGuid, actualCellID, actualDomain, actualIndex := bbs.ReportActualLRPAsStartingArgsForCall(0)
 				Ω(actualProcessGuid).Should(Equal(expectedLrp.ProcessGuid))
 				Ω(actualInstanceGuid).Should(Equal(expectedLrp.InstanceGuid))
-				Ω(actualExecutorID).Should(Equal(expectedLrp.ExecutorID))
+				Ω(actualCellID).Should(Equal(expectedLrp.CellID))
 				Ω(actualDomain).Should(Equal(expectedLrp.Domain))
 				Ω(actualIndex).Should(Equal(expectedLrp.Index))
 			})
@@ -486,10 +486,10 @@ var _ = Describe("AuctionDelegate", func() {
 			It("should mark the instance as STARTING in etcd", func() {
 				Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
 
-				actualProcessGuid, actualInstanceGuid, actualExecutorID, actualDomain, actualIndex := bbs.ReportActualLRPAsStartingArgsForCall(0)
+				actualProcessGuid, actualInstanceGuid, actualCellID, actualDomain, actualIndex := bbs.ReportActualLRPAsStartingArgsForCall(0)
 				Ω(actualProcessGuid).Should(Equal(expectedLrp.ProcessGuid))
 				Ω(actualInstanceGuid).Should(Equal(expectedLrp.InstanceGuid))
-				Ω(actualExecutorID).Should(Equal(expectedLrp.ExecutorID))
+				Ω(actualCellID).Should(Equal(expectedLrp.CellID))
 				Ω(actualDomain).Should(Equal(expectedLrp.Domain))
 				Ω(actualIndex).Should(Equal(expectedLrp.Index))
 			})

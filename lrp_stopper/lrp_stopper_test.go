@@ -18,7 +18,7 @@ import (
 
 var _ = Describe("LRP Stopper", func() {
 	var (
-		executorID   string = "the-executor-id"
+		cellID       string = "the-cell-id"
 		stopper      LRPStopper
 		bbs          *fake_bbs.FakeRepBBS
 		client       *fake_client.FakeClient
@@ -37,7 +37,7 @@ var _ = Describe("LRP Stopper", func() {
 		client = new(fake_client.FakeClient)
 		logger = lagertest.NewTestLogger("test")
 
-		stopper = New(executorID, bbs, client, logger)
+		stopper = New(cellID, bbs, client, logger)
 	})
 
 	Context("when told to stop an instance", func() {
@@ -54,13 +54,13 @@ var _ = Describe("LRP Stopper", func() {
 						ProcessGuid:  stopInstance.ProcessGuid,
 						InstanceGuid: "some-other-instance-guid",
 						Index:        1234,
-						ExecutorID:   "some-other-executor-id",
+						CellID:       "some-other-cell-id",
 					},
 					{
 						ProcessGuid:  stopInstance.ProcessGuid,
 						InstanceGuid: stopInstance.InstanceGuid,
 						Index:        stopInstance.Index,
-						ExecutorID:   executorID,
+						CellID:       cellID,
 					},
 				}, nil)
 			})
@@ -152,7 +152,7 @@ var _ = Describe("LRP Stopper", func() {
 						ProcessGuid:  stopInstance.ProcessGuid,
 						InstanceGuid: "some-other-instance-guid",
 						Index:        1234,
-						ExecutorID:   "some-other-executor-id",
+						CellID:       "some-other-cell-id",
 					},
 				}, nil)
 			})

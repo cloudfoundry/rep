@@ -14,7 +14,7 @@ import (
 )
 
 var _ = Describe("LRP Processor", func() {
-	const expectedExecutorId = "executor-id"
+	const expectedCellId = "cell-id"
 	const expectedExecutorHost = "example.com"
 
 	var (
@@ -35,14 +35,14 @@ var _ = Describe("LRP Processor", func() {
 		It("reports the lrp as running", func() {
 			Ω(bbs.ReportActualLRPAsRunningCallCount()).Should(Equal(1))
 
-			actualLrp, executorId := bbs.ReportActualLRPAsRunningArgsForCall(0)
+			actualLrp, cellId := bbs.ReportActualLRPAsRunningArgsForCall(0)
 
 			Ω(actualLrp.ProcessGuid).Should(Equal("process-guid"))
 			Ω(actualLrp.InstanceGuid).Should(Equal("completed-lrp-guid"))
 			Ω(actualLrp.Domain).Should(Equal("my-domain"))
 			Ω(actualLrp.Index).Should(Equal(999))
 			Ω(actualLrp.Host).Should(Equal(expectedExecutorHost))
-			Ω(executorId).Should(Equal(expectedExecutorId))
+			Ω(cellId).Should(Equal(expectedCellId))
 		})
 	}
 
@@ -50,11 +50,11 @@ var _ = Describe("LRP Processor", func() {
 		It("reports the lrp as starting", func() {
 			Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
 
-			processGuid, instanceGuid, executorId, domain, index := bbs.ReportActualLRPAsStartingArgsForCall(0)
+			processGuid, instanceGuid, cellId, domain, index := bbs.ReportActualLRPAsStartingArgsForCall(0)
 
 			Ω(processGuid).Should(Equal("process-guid"))
 			Ω(instanceGuid).Should(Equal("completed-lrp-guid"))
-			Ω(executorId).Should(Equal(expectedExecutorId))
+			Ω(cellId).Should(Equal(expectedCellId))
 			Ω(domain).Should(Equal("my-domain"))
 			Ω(index).Should(Equal(999))
 		})
@@ -70,7 +70,7 @@ var _ = Describe("LRP Processor", func() {
 			Ω(actualLrp.Domain).Should(Equal("my-domain"))
 			Ω(actualLrp.Index).Should(Equal(999))
 			Ω(actualLrp.Host).Should(Equal(expectedExecutorHost))
-			Ω(actualLrp.ExecutorID).Should(Equal(expectedExecutorId))
+			Ω(actualLrp.CellID).Should(Equal(expectedCellId))
 			Ω(actualLrp.Ports).Should(Equal(ports))
 		})
 	}
@@ -98,7 +98,7 @@ var _ = Describe("LRP Processor", func() {
 			},
 		}
 		processor = harvester.NewLRPProcessor(
-			expectedExecutorId,
+			expectedCellId,
 			expectedExecutorHost,
 			lagertest.NewTestLogger("test"),
 			bbs,

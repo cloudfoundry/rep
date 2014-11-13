@@ -13,16 +13,16 @@ import (
 )
 
 type AuctionDelegate struct {
-	executorID string
+	cellID     string
 	lrpStopper lrp_stopper.LRPStopper
 	bbs        Bbs.RepBBS
 	client     executor.Client
 	logger     lager.Logger
 }
 
-func New(executorID string, lrpStopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, client executor.Client, logger lager.Logger) *AuctionDelegate {
+func New(cellID string, lrpStopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, client executor.Client, logger lager.Logger) *AuctionDelegate {
 	return &AuctionDelegate{
-		executorID: executorID,
+		cellID:     cellID,
 		lrpStopper: lrpStopper,
 		bbs:        bbs,
 		client:     client,
@@ -139,7 +139,7 @@ func (a *AuctionDelegate) Run(startAuction models.LRPStartAuction) error {
 
 	containerGuid := startAuction.InstanceGuid
 
-	lrp, err := a.bbs.ReportActualLRPAsStarting(startAuction.DesiredLRP.ProcessGuid, startAuction.InstanceGuid, a.executorID, startAuction.DesiredLRP.Domain, startAuction.Index)
+	lrp, err := a.bbs.ReportActualLRPAsStarting(startAuction.DesiredLRP.ProcessGuid, startAuction.InstanceGuid, a.cellID, startAuction.DesiredLRP.Domain, startAuction.Index)
 	if err != nil {
 		auctionLog.Error("failed-to-mark-starting", err)
 		a.client.DeleteContainer(containerGuid)

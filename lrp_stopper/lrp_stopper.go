@@ -92,7 +92,7 @@ func (stopper *lrpStopper) isResponsible(processGuid, instanceGuid string) (bool
 	}
 
 	for _, actual := range actuals {
-		if actual.InstanceGuid == instanceGuid && actual.ExecutorID == stopper.guid {
+		if actual.InstanceGuid == instanceGuid && actual.CellID == stopper.guid {
 			return true, nil
 		}
 	}

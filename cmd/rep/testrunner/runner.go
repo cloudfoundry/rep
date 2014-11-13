@@ -18,7 +18,7 @@ type Runner struct {
 
 type Config struct {
 	stack                    string
-	executorID               string
+	cellID                   string
 	lrpHost                  string
 	executorURL              string
 	etcdCluster              string
@@ -30,12 +30,12 @@ type Config struct {
 }
 
 func New(
-	binPath, executorID, stack, lrpHost, executorURL, etcdCluster, natsAddr, logLevel string,
+	binPath, cellID, stack, lrpHost, executorURL, etcdCluster, natsAddr, logLevel string,
 	heartbeatInterval, actualLRPReapingInterval, taskReapingInterval time.Duration) *Runner {
 	return &Runner{
 		binPath: binPath,
 		config: Config{
-			executorID:               executorID,
+			cellID:                   cellID,
 			stack:                    stack,
 			lrpHost:                  lrpHost,
 			executorURL:              executorURL,
@@ -57,7 +57,7 @@ func (r *Runner) Start() {
 	repSession, err := gexec.Start(
 		exec.Command(
 			r.binPath,
-			"-executorID", r.config.executorID,
+			"-cellID", r.config.cellID,
 			"-stack", r.config.stack,
 			"-lrpHost", r.config.lrpHost,
 			"-executorURL", r.config.executorURL,

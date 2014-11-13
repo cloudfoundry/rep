@@ -79,7 +79,7 @@ var _ = Describe("TaskScheduler", func() {
 
 		BeforeEach(func() {
 			taskScheduler = ifrit.Envoke(task_scheduler.New(
-				"some-executor-id",
+				"some-cell-id",
 				fakeBBS,
 				logger,
 				correctStack,
@@ -164,7 +164,7 @@ var _ = Describe("TaskScheduler", func() {
 					Eventually(fakeBBS.ClaimTaskCallCount, claimWaitTimeout).Should(Equal(1))
 					taskGuid, executorGuid := fakeBBS.ClaimTaskArgsForCall(0)
 					Ω(taskGuid).Should(Equal(task.TaskGuid))
-					Ω(executorGuid).Should(Equal("some-executor-id"))
+					Ω(executorGuid).Should(Equal("some-cell-id"))
 				})
 
 				Context("when claiming the task succeeds", func() {
@@ -187,7 +187,7 @@ var _ = Describe("TaskScheduler", func() {
 
 							taskGuid, executorGuid := fakeBBS.StartTaskArgsForCall(0)
 							Ω(taskGuid).Should(Equal(task.TaskGuid))
-							Ω(executorGuid).Should(Equal("some-executor-id"))
+							Ω(executorGuid).Should(Equal("some-cell-id"))
 						})
 
 						Context("but starting the task fails", func() {

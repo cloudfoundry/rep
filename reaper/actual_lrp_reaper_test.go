@@ -35,7 +35,7 @@ var _ = Describe("Task Reaper", func() {
 		executorClient = new(efakes.FakeClient)
 
 		bbs = new(fake_bbs.FakeRepBBS)
-		actualLRPReaper = reaper.NewActualLRPReaper(pollInterval, timer, "executor-id", bbs, executorClient, lagertest.NewTestLogger("test"))
+		actualLRPReaper = reaper.NewActualLRPReaper(pollInterval, timer, "cell-id", bbs, executorClient, lagertest.NewTestLogger("test"))
 	})
 
 	JustBeforeEach(func() {
@@ -53,13 +53,13 @@ var _ = Describe("Task Reaper", func() {
 		})
 
 		It("gets actual LRPs for this executor from the BBS", func() {
-			Eventually(bbs.GetAllActualLRPsByExecutorIDCallCount).Should(Equal(1))
-			Ω(bbs.GetAllActualLRPsByExecutorIDArgsForCall(0)).Should(Equal("executor-id"))
+			Eventually(bbs.GetAllActualLRPsByCellIDCallCount).Should(Equal(1))
+			Ω(bbs.GetAllActualLRPsByCellIDArgsForCall(0)).Should(Equal("cell-id"))
 		})
 
 		Context("when there are actual LRPs for this executor in the BBS", func() {
 			BeforeEach(func() {
-				bbs.GetAllActualLRPsByExecutorIDReturns([]models.ActualLRP{
+				bbs.GetAllActualLRPsByCellIDReturns([]models.ActualLRP{
 					models.ActualLRP{
 						InstanceGuid: "instance-guid-1",
 					},
@@ -108,7 +108,7 @@ var _ = Describe("Task Reaper", func() {
 
 		Context("when getting actual LRPs from the BBS fails", func() {
 			BeforeEach(func() {
-				bbs.GetAllActualLRPsByExecutorIDReturns(nil, errors.New("bbs error"))
+				bbs.GetAllActualLRPsByCellIDReturns(nil, errors.New("bbs error"))
 			})
 
 			It("does not die", func() {
@@ -121,7 +121,7 @@ var _ = Describe("Task Reaper", func() {
 				})
 
 				It("happily continues on to next time", func() {
-					Eventually(bbs.GetAllActualLRPsByExecutorIDCallCount).Should(Equal(2))
+					Eventually(bbs.GetAllActualLRPsByCellIDCallCount).Should(Equal(2))
 				})
 			})
 		})

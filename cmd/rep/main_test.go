@@ -43,7 +43,7 @@ var _ = Describe("The Rep", func() {
 
 		runner = testrunner.New(
 			representativePath,
-			executorID,
+			cellID,
 			"the-stack",
 			"the-lrp-host",
 			fakeExecutor.URL(),
@@ -66,29 +66,29 @@ var _ = Describe("The Rep", func() {
 
 	Describe("when a rep starts up", func() {
 		BeforeEach(func() {
-			_, err := bbs.ReportActualLRPAsStarting("some-process-guid1", "some-instance-guid1", executorID, "domain", 0)
+			_, err := bbs.ReportActualLRPAsStarting("some-process-guid1", "some-instance-guid1", cellID, "domain", 0)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			lrp2rep1, err := bbs.ReportActualLRPAsStarting("some-process-guid2", "some-instance-guid2", executorID, "domain", 0)
+			lrp2rep1, err := bbs.ReportActualLRPAsStarting("some-process-guid2", "some-instance-guid2", cellID, "domain", 0)
 			Ω(err).ShouldNot(HaveOccurred())
-			err = bbs.ReportActualLRPAsRunning(lrp2rep1, executorID)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			_, err = bbs.ReportActualLRPAsStarting("some-process-guid3", "some-instance-guid3", "different-executor-id", "domain", 0)
+			err = bbs.ReportActualLRPAsRunning(lrp2rep1, cellID)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			lrp2rep2, err := bbs.ReportActualLRPAsStarting("some-process-guid4", "some-instance-guid4", "different-executor-id", "domain", 0)
+			_, err = bbs.ReportActualLRPAsStarting("some-process-guid3", "some-instance-guid3", "different-cell-id", "domain", 0)
 			Ω(err).ShouldNot(HaveOccurred())
-			err = bbs.ReportActualLRPAsRunning(lrp2rep2, "different-executor-id")
+
+			lrp2rep2, err := bbs.ReportActualLRPAsStarting("some-process-guid4", "some-instance-guid4", "different-cell-id", "domain", 0)
+			Ω(err).ShouldNot(HaveOccurred())
+			err = bbs.ReportActualLRPAsRunning(lrp2rep2, "different-cell-id")
 			Ω(err).ShouldNot(HaveOccurred())
 
 			runner.Stop()
 			actualLrpsForRep1 := func() ([]models.ActualLRP, error) {
-				return bbs.GetAllActualLRPsByExecutorID(executorID)
+				return bbs.GetAllActualLRPsByCellID(cellID)
 			}
 			Consistently(actualLrpsForRep1).Should(HaveLen(2))
 			actualLrpsForRep2 := func() ([]models.ActualLRP, error) {
-				return bbs.GetAllActualLRPsByExecutorID("different-executor-id")
+				return bbs.GetAllActualLRPsByCellID("different-cell-id")
 			}
 			Consistently(actualLrpsForRep2).Should(HaveLen(2))
 		})
@@ -99,12 +99,12 @@ var _ = Describe("The Rep", func() {
 
 		It("should delete its corresponding actual LRPs", func() {
 			actualLrpsForRep1 := func() ([]models.ActualLRP, error) {
-				return bbs.GetAllActualLRPsByExecutorID(executorID)
+				return bbs.GetAllActualLRPsByCellID(cellID)
 			}
 			Eventually(actualLrpsForRep1).Should(BeEmpty())
 
 			actualLrpsForRep2 := func() ([]models.ActualLRP, error) {
-				return bbs.GetAllActualLRPsByExecutorID("different-executor-id")
+				return bbs.GetAllActualLRPsByCellID("different-cell-id")
 			}
 			Consistently(actualLrpsForRep2).Should(HaveLen(2))
 		})
@@ -121,18 +121,18 @@ var _ = Describe("The Rep", func() {
 	})
 
 	Describe("maintaining presence", func() {
-		var executorPresence models.ExecutorPresence
+		var cellPresence models.CellPresence
 
 		BeforeEach(func() {
-			Eventually(bbs.GetAllExecutors).Should(HaveLen(1))
-			executors, err := bbs.GetAllExecutors()
+			Eventually(bbs.GetAllCells).Should(HaveLen(1))
+			cells, err := bbs.GetAllCells()
 			Ω(err).ShouldNot(HaveOccurred())
-			executorPresence = executors[0]
+			cellPresence = cells[0]
 		})
 
 		It("should maintain presence", func() {
-			Ω(executorPresence.Stack).Should(Equal("the-stack"))
-			Ω(executorPresence.ExecutorID).Should(Equal(executorID))
+			Ω(cellPresence.Stack).Should(Equal("the-stack"))
+			Ω(cellPresence.CellID).Should(Equal(cellID))
 		})
 
 		Context("when the presence fails to be maintained", func() {
@@ -140,10 +140,10 @@ var _ = Describe("The Rep", func() {
 				etcdRunner.Stop()
 				etcdRunner.Start()
 
-				Eventually(bbs.GetAllExecutors, 5).Should(HaveLen(1))
-				executors, err := bbs.GetAllExecutors()
+				Eventually(bbs.GetAllCells, 5).Should(HaveLen(1))
+				cells, err := bbs.GetAllCells()
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(executors[0]).Should(Equal(executorPresence))
+				Ω(cells[0]).Should(Equal(cellPresence))
 
 				Ω(runner.Session).ShouldNot(gexec.Exit())
 			})
@@ -187,14 +187,14 @@ var _ = Describe("The Rep", func() {
 		})
 
 		It("makes a request to the executor", func() {
-			Eventually(bbs.GetAllExecutors).Should(HaveLen(1))
-			executors, err := bbs.GetAllExecutors()
+			Eventually(bbs.GetAllCells).Should(HaveLen(1))
+			cells, err := bbs.GetAllCells()
 			Ω(err).ShouldNot(HaveOccurred())
-			executorID := executors[0].ExecutorID
+			cellID := cells[0].CellID
 
 			client, err := auction_nats_client.New(natsClient, time.Second, lagertest.NewTestLogger("test"))
 			Ω(err).ShouldNot(HaveOccurred())
-			resources := client.TotalResources(executorID)
+			resources := client.TotalResources(cellID)
 			Ω(resources).Should(Equal(auctiontypes.Resources{
 				MemoryMB:   1024,
 				DiskMB:     2048,
@@ -228,7 +228,7 @@ var _ = Describe("The Rep", func() {
 			err := bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.ClaimTask(task.TaskGuid, executorID)
+			err = bbs.ClaimTask(task.TaskGuid, cellID)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -254,7 +254,7 @@ var _ = Describe("The Rep", func() {
 			)
 
 			var err error
-			actualLRP, err = bbs.ReportActualLRPAsStarting("process-guid", "a-new-instance-guid", executorID, "the-domain", 0)
+			actualLRP, err = bbs.ReportActualLRPAsStarting("process-guid", "a-new-instance-guid", cellID, "the-domain", 0)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -277,7 +277,7 @@ var _ = Describe("The Rep", func() {
 				InstanceGuid: "some-instance-guid",
 				Domain:       "the-domain",
 				Index:        3,
-			}, executorID)
+			}, cellID)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			err = bbs.RequestStopLRPInstance(models.StopLRPInstance{
