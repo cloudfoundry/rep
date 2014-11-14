@@ -289,7 +289,16 @@ var _ = Describe("The Rep", func() {
 		})
 
 		It("should delete the container and resolve the StopLRPInstance", func() {
-			Eventually(fakeExecutor.ReceivedRequests).Should(HaveLen(4))
+			findDeleteRequest := func() string {
+				for _, req := range fakeExecutor.ReceivedRequests() {
+					if req.Method == "DELETE" {
+						return req.URL.Path
+					}
+				}
+				return ""
+			}
+
+			Eventually(findDeleteRequest).Should(Equal("/containers/some-instance-guid"))
 			Eventually(bbs.GetAllActualLRPs).Should(BeEmpty())
 			Eventually(bbs.GetAllStopLRPInstances).Should(BeEmpty())
 		})
