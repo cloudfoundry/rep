@@ -91,7 +91,7 @@ var cellID = flag.String(
 
 var pollingInterval = flag.Duration(
 	"pollingInterval",
-	30*time.Second,
+	1*time.Second,
 	"the interval on which to scan the executor",
 )
 
