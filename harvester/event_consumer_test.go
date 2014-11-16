@@ -92,6 +92,19 @@ var _ = Describe("EventConsumer", func() {
 				})
 			})
 
+			Context("and its lifecycle is an LRP", func() {
+				BeforeEach(func() {
+					completedContainer.Tags = executor.Tags{
+						rep.LifecycleTag: rep.LRPLifecycle,
+					}
+				})
+
+				It("processes the completed container", func() {
+					Eventually(processor.ProcessCallCount).Should(Equal(1))
+					Ω(processor.ProcessArgsForCall(0)).Should(Equal(completedContainer))
+				})
+			})
+
 			Context("and its lifecycle is something else", func() {
 				BeforeEach(func() {
 					completedContainer.Tags = executor.Tags{
@@ -103,6 +116,68 @@ var _ = Describe("EventConsumer", func() {
 					Consistently(processor.ProcessCallCount).Should(BeZero())
 				})
 			})
+		})
+
+		Context("when a container health event arrives", func() {
+			container := executor.Container{
+				Guid:  "container-guid",
+				State: executor.StateCreated,
+			}
+
+			JustBeforeEach(func() {
+				receivedEvents <- executor.ContainerHealthEvent{
+					Container: container,
+					Health:    executor.HealthUp,
+				}
+			})
+
+			Context("and it has no tags", func() {
+				BeforeEach(func() {
+					container.Tags = nil
+				})
+
+				It("does not process the container", func() {
+					Consistently(processor.ProcessCallCount).Should(BeZero())
+				})
+			})
+
+			Context("and its lifecycle is an LRP", func() {
+				BeforeEach(func() {
+					container.Tags = executor.Tags{
+						rep.LifecycleTag: rep.LRPLifecycle,
+					}
+				})
+
+				It("processes the container", func() {
+					Eventually(processor.ProcessCallCount).Should(Equal(1))
+					Ω(processor.ProcessArgsForCall(0)).Should(Equal(container))
+				})
+			})
+
+			Context("and its lifecycle is task", func() {
+				BeforeEach(func() {
+					container.Tags = executor.Tags{
+						rep.LifecycleTag: rep.TaskLifecycle,
+					}
+				})
+
+				It("does not process the container", func() {
+					Consistently(processor.ProcessCallCount).Should(BeZero())
+				})
+			})
+
+			Context("and its lifecycle is something else", func() {
+				BeforeEach(func() {
+					container.Tags = executor.Tags{
+						rep.LifecycleTag: "banana",
+					}
+				})
+
+				It("does not process the container", func() {
+					Consistently(processor.ProcessCallCount).Should(BeZero())
+				})
+			})
+
 		})
 
 		Context("when multiple events arrive simultaneously", func() {
