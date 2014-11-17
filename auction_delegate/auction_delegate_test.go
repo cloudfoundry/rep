@@ -249,8 +249,8 @@ var _ = Describe("AuctionDelegate", func() {
 							},
 						},
 						LogGuid: "log-guid",
-						Ports: []models.PortMapping{
-							{ContainerPort: 8080},
+						Ports: []uint32{
+							8080,
 						},
 					},
 
@@ -383,8 +383,8 @@ var _ = Describe("AuctionDelegate", func() {
 						},
 					},
 					LogGuid: "log-guid",
-					Ports: []models.PortMapping{
-						{ContainerPort: 8080},
+					Ports: []uint32{
+						8080,
 					},
 				},
 

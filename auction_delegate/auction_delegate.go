@@ -165,12 +165,11 @@ func (a *AuctionDelegate) Stop(stopInstance models.StopLRPInstance) error {
 	return a.lrpStopper.StopInstance(stopInstance)
 }
 
-func (a *AuctionDelegate) convertPortMappings(portMappings []models.PortMapping) []executor.PortMapping {
+func (a *AuctionDelegate) convertPortMappings(containerPorts []uint32) []executor.PortMapping {
 	out := []executor.PortMapping{}
-	for _, portMapping := range portMappings {
+	for _, port := range containerPorts {
 		out = append(out, executor.PortMapping{
-			ContainerPort: portMapping.ContainerPort,
-			HostPort:      portMapping.HostPort,
+			ContainerPort: port,
 		})
 	}
 
