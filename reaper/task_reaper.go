@@ -65,7 +65,7 @@ func (r *taskReaper) Run(signals <-chan os.Signal, ready chan<- struct{}) error 
 
 func (r *taskReaper) markTasksWithMissingContainersAsCompleted() {
 	r.logger.Info("reaper-getting-tasks-by-cell-id", lager.Data{"cell-id": r.cellID})
-	tasks, err := r.bbs.GetAllTasksByCellID(r.cellID)
+	tasks, err := r.bbs.TasksByCellID(r.cellID)
 	if err != nil {
 		r.logger.Error("reaper-failed-to-get-tasks-by-cell-id", err, lager.Data{"cell-id": r.cellID})
 		return
@@ -101,7 +101,7 @@ func (r *taskReaper) deleteCompletedContainers() {
 	}
 
 	for _, container := range containers {
-		task, err := r.bbs.GetTaskByGuid(container.Guid)
+		task, err := r.bbs.TaskByGuid(container.Guid)
 
 		taskExists := true
 		if err == storeadapter.ErrorKeyNotFound {

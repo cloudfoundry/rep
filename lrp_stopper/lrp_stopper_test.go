@@ -49,7 +49,7 @@ var _ = Describe("LRP Stopper", func() {
 
 		Context("when the instance is running on the executor", func() {
 			BeforeEach(func() {
-				bbs.GetActualLRPsByProcessGuidReturns([]models.ActualLRP{
+				bbs.ActualLRPsByProcessGuidReturns([]models.ActualLRP{
 					{
 						ProcessGuid:  stopInstance.ProcessGuid,
 						InstanceGuid: "some-other-instance-guid",
@@ -147,7 +147,7 @@ var _ = Describe("LRP Stopper", func() {
 
 		Context("when the instance is not running on the executor", func() {
 			BeforeEach(func() {
-				bbs.GetActualLRPsByProcessGuidReturns([]models.ActualLRP{
+				bbs.ActualLRPsByProcessGuidReturns([]models.ActualLRP{
 					{
 						ProcessGuid:  stopInstance.ProcessGuid,
 						InstanceGuid: "some-other-instance-guid",
@@ -172,7 +172,7 @@ var _ = Describe("LRP Stopper", func() {
 
 		Context("when getting the actual LRPs for the stop instance fails", func() {
 			BeforeEach(func() {
-				bbs.GetActualLRPsByProcessGuidReturns(nil, errors.New("store is down"))
+				bbs.ActualLRPsByProcessGuidReturns(nil, errors.New("store is down"))
 			})
 
 			It("returns an error", func() {

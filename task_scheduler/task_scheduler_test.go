@@ -63,8 +63,8 @@ var _ = Describe("TaskScheduler", func() {
 				CPUWeight:  5,
 				Action: models.ExecutorAction{
 					Action: models.RunAction{
-						Path:    "the-script",
-						Env:     []models.EnvironmentVariable{{Name: "PATH", Value: "the-path"}},
+						Path: "the-script",
+						Env:  []models.EnvironmentVariable{{Name: "PATH", Value: "the-path"}},
 					},
 				},
 				LogGuid:   "some-guid",

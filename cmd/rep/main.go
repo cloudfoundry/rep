@@ -224,7 +224,7 @@ func initializeHarvesters(
 
 func removeActualLrpFromBBS(bbs Bbs.RepBBS, cellID string, logger lager.Logger) {
 	for {
-		lrps, err := bbs.GetAllActualLRPsByCellID(cellID)
+		lrps, err := bbs.ActualLRPsByCellID(cellID)
 		if err != nil {
 			logger.Error("failed-to-get-actual-lrps-by-cell-id", err, lager.Data{"cell-id": cellID})
 			time.Sleep(time.Second)

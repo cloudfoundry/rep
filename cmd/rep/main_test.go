@@ -84,11 +84,11 @@ var _ = Describe("The Rep", func() {
 
 			runner.Stop()
 			actualLrpsForRep1 := func() ([]models.ActualLRP, error) {
-				return bbs.GetAllActualLRPsByCellID(cellID)
+				return bbs.ActualLRPsByCellID(cellID)
 			}
 			Consistently(actualLrpsForRep1).Should(HaveLen(2))
 			actualLrpsForRep2 := func() ([]models.ActualLRP, error) {
-				return bbs.GetAllActualLRPsByCellID("different-cell-id")
+				return bbs.ActualLRPsByCellID("different-cell-id")
 			}
 			Consistently(actualLrpsForRep2).Should(HaveLen(2))
 		})
@@ -99,12 +99,12 @@ var _ = Describe("The Rep", func() {
 
 		It("should delete its corresponding actual LRPs", func() {
 			actualLrpsForRep1 := func() ([]models.ActualLRP, error) {
-				return bbs.GetAllActualLRPsByCellID(cellID)
+				return bbs.ActualLRPsByCellID(cellID)
 			}
 			Eventually(actualLrpsForRep1).Should(BeEmpty())
 
 			actualLrpsForRep2 := func() ([]models.ActualLRP, error) {
-				return bbs.GetAllActualLRPsByCellID("different-cell-id")
+				return bbs.ActualLRPsByCellID("different-cell-id")
 			}
 			Consistently(actualLrpsForRep2).Should(HaveLen(2))
 		})
@@ -124,8 +124,8 @@ var _ = Describe("The Rep", func() {
 		var cellPresence models.CellPresence
 
 		BeforeEach(func() {
-			Eventually(bbs.GetAllCells).Should(HaveLen(1))
-			cells, err := bbs.GetAllCells()
+			Eventually(bbs.Cells).Should(HaveLen(1))
+			cells, err := bbs.Cells()
 			Ω(err).ShouldNot(HaveOccurred())
 			cellPresence = cells[0]
 		})
@@ -140,8 +140,8 @@ var _ = Describe("The Rep", func() {
 				etcdRunner.Stop()
 				etcdRunner.Start()
 
-				Eventually(bbs.GetAllCells, 5).Should(HaveLen(1))
-				cells, err := bbs.GetAllCells()
+				Eventually(bbs.Cells, 5).Should(HaveLen(1))
+				cells, err := bbs.Cells()
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(cells[0]).Should(Equal(cellPresence))
 
@@ -187,8 +187,8 @@ var _ = Describe("The Rep", func() {
 		})
 
 		It("makes a request to the executor", func() {
-			Eventually(bbs.GetAllCells).Should(HaveLen(1))
-			cells, err := bbs.GetAllCells()
+			Eventually(bbs.Cells).Should(HaveLen(1))
+			cells, err := bbs.Cells()
 			Ω(err).ShouldNot(HaveOccurred())
 			cellID := cells[0].CellID
 
@@ -259,7 +259,7 @@ var _ = Describe("The Rep", func() {
 		})
 
 		It("eventually reaps actual LRPs with no corresponding container", func() {
-			Eventually(bbs.GetAllActualLRPs, 5*actualLRPReapingInterval).Should(BeEmpty())
+			Eventually(bbs.ActualLRPs, 5*actualLRPReapingInterval).Should(BeEmpty())
 		})
 	})
 
@@ -299,8 +299,8 @@ var _ = Describe("The Rep", func() {
 			}
 
 			Eventually(findDeleteRequest).Should(Equal("/containers/some-instance-guid"))
-			Eventually(bbs.GetAllActualLRPs).Should(BeEmpty())
-			Eventually(bbs.GetAllStopLRPInstances).Should(BeEmpty())
+			Eventually(bbs.ActualLRPs).Should(BeEmpty())
+			Eventually(bbs.StopLRPInstances).Should(BeEmpty())
 		})
 	})
 })

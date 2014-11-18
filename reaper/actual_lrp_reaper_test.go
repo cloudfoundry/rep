@@ -53,13 +53,13 @@ var _ = Describe("Task Reaper", func() {
 		})
 
 		It("gets actual LRPs for this executor from the BBS", func() {
-			Eventually(bbs.GetAllActualLRPsByCellIDCallCount).Should(Equal(1))
-			Ω(bbs.GetAllActualLRPsByCellIDArgsForCall(0)).Should(Equal("cell-id"))
+			Eventually(bbs.ActualLRPsByCellIDCallCount).Should(Equal(1))
+			Ω(bbs.ActualLRPsByCellIDArgsForCall(0)).Should(Equal("cell-id"))
 		})
 
 		Context("when there are actual LRPs for this executor in the BBS", func() {
 			BeforeEach(func() {
-				bbs.GetAllActualLRPsByCellIDReturns([]models.ActualLRP{
+				bbs.ActualLRPsByCellIDReturns([]models.ActualLRP{
 					models.ActualLRP{
 						InstanceGuid: "instance-guid-1",
 					},
@@ -108,7 +108,7 @@ var _ = Describe("Task Reaper", func() {
 
 		Context("when getting actual LRPs from the BBS fails", func() {
 			BeforeEach(func() {
-				bbs.GetAllActualLRPsByCellIDReturns(nil, errors.New("bbs error"))
+				bbs.ActualLRPsByCellIDReturns(nil, errors.New("bbs error"))
 			})
 
 			It("does not die", func() {
@@ -121,7 +121,7 @@ var _ = Describe("Task Reaper", func() {
 				})
 
 				It("happily continues on to next time", func() {
-					Eventually(bbs.GetAllActualLRPsByCellIDCallCount).Should(Equal(2))
+					Eventually(bbs.ActualLRPsByCellIDCallCount).Should(Equal(2))
 				})
 			})
 		})

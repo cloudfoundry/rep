@@ -57,7 +57,7 @@ var _ = Describe("Task Reaper", func() {
 		Describe("updating the BBS when there are missing containers", func() {
 			Context("when there are claimed/running tasks for this executor in the BBS", func() {
 				BeforeEach(func() {
-					bbs.GetAllTasksByCellIDReturns([]models.Task{
+					bbs.TasksByCellIDReturns([]models.Task{
 						models.Task{
 							TaskGuid: "task-guid-1",
 							State:    models.TaskStateClaimed,
@@ -112,7 +112,7 @@ var _ = Describe("Task Reaper", func() {
 
 			Context("when getting tasks from the BBS fails", func() {
 				BeforeEach(func() {
-					bbs.GetAllTasksByCellIDReturns(nil, errors.New("bbs error"))
+					bbs.TasksByCellIDReturns(nil, errors.New("bbs error"))
 				})
 				It("does not die", func() {
 					Consistently(process.Wait()).ShouldNot(Receive())
@@ -124,14 +124,14 @@ var _ = Describe("Task Reaper", func() {
 					})
 
 					It("happily continues on to next time", func() {
-						Eventually(bbs.GetAllTasksByCellIDCallCount).Should(Equal(2))
+						Eventually(bbs.TasksByCellIDCallCount).Should(Equal(2))
 					})
 				})
 			})
 
 			Context("when there are completed tasks associated with this executor in the BBS", func() {
 				BeforeEach(func() {
-					bbs.GetAllTasksByCellIDReturns([]models.Task{
+					bbs.TasksByCellIDReturns([]models.Task{
 						models.Task{
 							TaskGuid: "task-guid-1",
 							State:    models.TaskStateCompleted,
@@ -167,7 +167,7 @@ var _ = Describe("Task Reaper", func() {
 
 				Context("which belongs to a pending task", func() {
 					BeforeEach(func() {
-						bbs.GetTaskByGuidStub = func(taskGuid string) (models.Task, error) {
+						bbs.TaskByGuidStub = func(taskGuid string) (models.Task, error) {
 							defer GinkgoRecover()
 							Ω(taskGuid).Should(Equal("some-task-guid"))
 							return models.Task{State: models.TaskStatePending}, nil
@@ -181,7 +181,7 @@ var _ = Describe("Task Reaper", func() {
 
 				Context("which belongs to a completed task", func() {
 					BeforeEach(func() {
-						bbs.GetTaskByGuidStub = func(taskGuid string) (models.Task, error) {
+						bbs.TaskByGuidStub = func(taskGuid string) (models.Task, error) {
 							defer GinkgoRecover()
 							Ω(taskGuid).Should(Equal("some-task-guid"))
 							return models.Task{State: models.TaskStateCompleted}, nil
@@ -216,7 +216,7 @@ var _ = Describe("Task Reaper", func() {
 
 				Context("which belongs to a resolving task", func() {
 					BeforeEach(func() {
-						bbs.GetTaskByGuidStub = func(taskGuid string) (models.Task, error) {
+						bbs.TaskByGuidStub = func(taskGuid string) (models.Task, error) {
 							defer GinkgoRecover()
 							Ω(taskGuid).Should(Equal("some-task-guid"))
 							return models.Task{State: models.TaskStateResolving}, nil
@@ -231,7 +231,7 @@ var _ = Describe("Task Reaper", func() {
 
 				Context("for which there is no associated task", func() {
 					BeforeEach(func() {
-						bbs.GetTaskByGuidStub = func(taskGuid string) (models.Task, error) {
+						bbs.TaskByGuidStub = func(taskGuid string) (models.Task, error) {
 							defer GinkgoRecover()
 							Ω(taskGuid).Should(Equal("some-task-guid"))
 							return models.Task{}, storeadapter.ErrorKeyNotFound
@@ -246,7 +246,7 @@ var _ = Describe("Task Reaper", func() {
 
 				Context("for which the BBS lookup fails for some other reason", func() {
 					BeforeEach(func() {
-						bbs.GetTaskByGuidReturns(models.Task{}, errors.New("bbs error"))
+						bbs.TaskByGuidReturns(models.Task{}, errors.New("bbs error"))
 					})
 
 					It("does not delete the container", func() {

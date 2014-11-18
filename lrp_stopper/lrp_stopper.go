@@ -86,7 +86,7 @@ func (stopper *lrpStopper) StopInstance(stopInstance models.StopLRPInstance) err
 }
 
 func (stopper *lrpStopper) isResponsible(processGuid, instanceGuid string) (bool, error) {
-	actuals, err := stopper.bbs.GetActualLRPsByProcessGuid(processGuid)
+	actuals, err := stopper.bbs.ActualLRPsByProcessGuid(processGuid)
 	if err != nil {
 		return false, err
 	}

@@ -47,7 +47,7 @@ func (r *actualLRPReaper) Run(signals <-chan os.Signal, ready chan<- struct{}) e
 	for {
 		select {
 		case <-ticks:
-			actualLRPs, err := r.bbs.GetAllActualLRPsByCellID(r.cellID)
+			actualLRPs, err := r.bbs.ActualLRPsByCellID(r.cellID)
 			if err != nil {
 				r.logger.Error("failed-to-get-actual-lrps-by-cell-id", err, lager.Data{"cell-id": r.cellID})
 				continue
