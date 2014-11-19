@@ -57,7 +57,7 @@ func (consumer *eventConsumer) Run(signals <-chan os.Signal, ready chan<- struct
 
 				lifecycle := event.Container.Tags[rep.LifecycleTag]
 				if lifecycle == rep.TaskLifecycle || lifecycle == rep.LRPLifecycle {
-					go consumer.processor.Process(event.Container)
+					consumer.processor.Process(event.Container)
 				}
 
 			case executor.ContainerHealthEvent:
@@ -66,7 +66,7 @@ func (consumer *eventConsumer) Run(signals <-chan os.Signal, ready chan<- struct
 				}
 
 				if event.Container.Tags[rep.LifecycleTag] == rep.LRPLifecycle {
-					go consumer.processor.Process(event.Container)
+					consumer.processor.Process(event.Container)
 				}
 			}
 
