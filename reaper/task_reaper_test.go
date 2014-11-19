@@ -61,10 +61,16 @@ var _ = Describe("Task Reaper", func() {
 						models.Task{
 							TaskGuid: "task-guid-1",
 							State:    models.TaskStateClaimed,
+							Action: &models.RunAction{
+								Path: "ls",
+							},
 						},
 						models.Task{
 							TaskGuid: "task-guid-2",
 							State:    models.TaskStateRunning,
+							Action: &models.RunAction{
+								Path: "ls",
+							},
 						},
 					}, nil)
 				})
@@ -184,7 +190,12 @@ var _ = Describe("Task Reaper", func() {
 						bbs.TaskByGuidStub = func(taskGuid string) (models.Task, error) {
 							defer GinkgoRecover()
 							Ω(taskGuid).Should(Equal("some-task-guid"))
-							return models.Task{State: models.TaskStateCompleted}, nil
+							return models.Task{
+								State: models.TaskStateCompleted,
+								Action: &models.RunAction{
+									Path: "ls",
+								},
+							}, nil
 						}
 					})
 
@@ -219,7 +230,12 @@ var _ = Describe("Task Reaper", func() {
 						bbs.TaskByGuidStub = func(taskGuid string) (models.Task, error) {
 							defer GinkgoRecover()
 							Ω(taskGuid).Should(Equal("some-task-guid"))
-							return models.Task{State: models.TaskStateResolving}, nil
+							return models.Task{
+								State: models.TaskStateResolving,
+								Action: &models.RunAction{
+									Path: "ls",
+								},
+							}, nil
 						}
 					})
 

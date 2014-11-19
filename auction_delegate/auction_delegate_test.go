@@ -106,11 +106,9 @@ var _ = Describe("AuctionDelegate", func() {
 				containers := []executor.Container{
 					executor.Container{
 						Guid: "first",
-						Action: models.ExecutorAction{
-							Action: models.DownloadAction{
-								From: "http://example.com/something",
-								To:   "/something",
-							},
+						Action: &models.DownloadAction{
+							From: "http://example.com/something",
+							To:   "/something",
 						},
 						Tags: executor.Tags{
 							rep.ProcessGuidTag:  "the-first-app-guid",
@@ -119,11 +117,9 @@ var _ = Describe("AuctionDelegate", func() {
 					},
 					executor.Container{
 						Guid: "third",
-						Action: models.ExecutorAction{
-							Action: models.DownloadAction{
-								From: "http://example.com/something",
-								To:   "/something",
-							},
+						Action: &models.DownloadAction{
+							From: "http://example.com/something",
+							To:   "/something",
 						},
 						Tags: executor.Tags{
 							rep.ProcessGuidTag:  "the-first-app-guid",
@@ -168,20 +164,16 @@ var _ = Describe("AuctionDelegate", func() {
 				containers := []executor.Container{
 					executor.Container{
 						Guid: "first",
-						Action: models.ExecutorAction{
-							Action: models.DownloadAction{
-								From: "http://example.com/something",
-								To:   "/something",
-							},
+						Action: &models.DownloadAction{
+							From: "http://example.com/something",
+							To:   "/something",
 						},
 					},
 					executor.Container{
 						Guid: "second",
-						Action: models.ExecutorAction{
-							Action: models.DownloadAction{
-								From: "http://example.com/something",
-								To:   "/something",
-							},
+						Action: &models.DownloadAction{
+							From: "http://example.com/something",
+							To:   "/something",
 						},
 					},
 				}
@@ -224,40 +216,40 @@ var _ = Describe("AuctionDelegate", func() {
 		var startAuction models.LRPStartAuction
 		var expectedRootFS = "docker://docker.com/docker"
 
+		BeforeEach(func() {
+			startAuction = models.LRPStartAuction{
+				DesiredLRP: models.DesiredLRP{
+					Domain:      "tests",
+					RootFSPath:  expectedRootFS,
+					ProcessGuid: "process-guid",
+					DiskMB:      1024,
+					MemoryMB:    2048,
+					CPUWeight:   42,
+					EnvironmentVariables: []models.EnvironmentVariable{
+						{Name: "var1", Value: "val1"},
+						{Name: "var2", Value: "val2"},
+					},
+					Action: &models.DownloadAction{
+						From: "http://example.com/something",
+						To:   "/something",
+					},
+					LogGuid: "log-guid",
+					Ports: []uint32{
+						8080,
+					},
+				},
+
+				InstanceGuid: "instance-guid",
+				Index:        2,
+			}
+		})
+
 		JustBeforeEach(func() {
 			reserveErr = delegate.Reserve(startAuction)
 		})
 
 		Context("when the client returns a succesful response", func() {
 			BeforeEach(func() {
-				startAuction = models.LRPStartAuction{
-					DesiredLRP: models.DesiredLRP{
-						Domain:      "tests",
-						RootFSPath:  expectedRootFS,
-						ProcessGuid: "process-guid",
-						DiskMB:      1024,
-						MemoryMB:    2048,
-						CPUWeight:   42,
-						EnvironmentVariables: []models.EnvironmentVariable{
-							{Name: "var1", Value: "val1"},
-							{Name: "var2", Value: "val2"},
-						},
-						Action: models.ExecutorAction{
-							Action: models.DownloadAction{
-								From: "http://example.com/something",
-								To:   "/something",
-							},
-						},
-						LogGuid: "log-guid",
-						Ports: []uint32{
-							8080,
-						},
-					},
-
-					InstanceGuid: "instance-guid",
-					Index:        2,
-				}
-
 				client.AllocateContainerReturns(executor.Container{}, nil)
 			})
 
@@ -318,10 +310,8 @@ var _ = Describe("AuctionDelegate", func() {
 		JustBeforeEach(func() {
 			startAuction = models.LRPStartAuction{
 				DesiredLRP: models.DesiredLRP{
-					Action: models.ExecutorAction{
-						models.RunAction{
-							Path: "ls",
-						},
+					Action: &models.RunAction{
+						Path: "ls",
 					},
 					Domain:      "tests",
 					ProcessGuid: "process-guid",
@@ -376,11 +366,9 @@ var _ = Describe("AuctionDelegate", func() {
 					ProcessGuid: "process-guid",
 					DiskMB:      1024,
 					MemoryMB:    2048,
-					Action: models.ExecutorAction{
-						Action: models.DownloadAction{
-							From: "http://example.com/something",
-							To:   "/something",
-						},
+					Action: &models.DownloadAction{
+						From: "http://example.com/something",
+						To:   "/something",
 					},
 					LogGuid: "log-guid",
 					Ports: []uint32{

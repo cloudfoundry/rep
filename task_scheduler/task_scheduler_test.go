@@ -61,11 +61,9 @@ var _ = Describe("TaskScheduler", func() {
 				MemoryMB:   64,
 				DiskMB:     1024,
 				CPUWeight:  5,
-				Action: models.ExecutorAction{
-					Action: models.RunAction{
-						Path: "the-script",
-						Env:  []models.EnvironmentVariable{{Name: "PATH", Value: "the-path"}},
-					},
+				Action: &models.RunAction{
+					Path: "the-script",
+					Env:  []models.EnvironmentVariable{{Name: "PATH", Value: "the-path"}},
 				},
 				LogGuid:   "some-guid",
 				LogSource: "XYZ",
@@ -263,10 +261,8 @@ var _ = Describe("TaskScheduler", func() {
 					MemoryMB:  64,
 					DiskMB:    1024,
 					CPUWeight: 5,
-					Action: models.ExecutorAction{
-						models.RunAction{
-							Path: "ls",
-						},
+					Action: &models.RunAction{
+						Path: "ls",
 					},
 				}
 

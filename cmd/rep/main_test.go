@@ -160,11 +160,9 @@ var _ = Describe("The Rep", func() {
 			bbs.DesireTask(models.Task{
 				TaskGuid: "the-task-guid",
 				Stack:    "the-stack",
-				Action: models.ExecutorAction{
-					Action: models.RunAction{
-						Path: "cat",
-						Args: []string{"/tmp/file"},
-					},
+				Action: &models.RunAction{
+					Path: "cat",
+					Args: []string{"/tmp/file"},
 				},
 			})
 		})
@@ -216,11 +214,9 @@ var _ = Describe("The Rep", func() {
 			task = models.Task{
 				TaskGuid: "a-new-task-guid",
 				Domain:   "the-domain",
-				Action: models.ExecutorAction{
-					Action: models.RunAction{
-						Path: "the-path",
-						Args: []string{},
-					},
+				Action: &models.RunAction{
+					Path: "the-path",
+					Args: []string{},
 				},
 				Stack: "the-stack",
 			}
