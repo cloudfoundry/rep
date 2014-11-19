@@ -215,6 +215,7 @@ func initializeHarvesters(
 	)
 
 	eventConsumer := harvester.NewEventConsumer(
+		logger,
 		executorClient,
 		containerProcessor,
 	)

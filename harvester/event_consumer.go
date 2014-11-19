@@ -5,25 +5,31 @@ import (
 
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
+	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 )
 
 type eventConsumer struct {
+	logger         lager.Logger
 	executorClient executor.Client
 	processor      Processor
 }
 
 func NewEventConsumer(
+	logger lager.Logger,
 	executorClient executor.Client,
 	processor Processor,
 ) ifrit.Runner {
 	return &eventConsumer{
+		logger:         logger,
 		executorClient: executorClient,
 		processor:      processor,
 	}
 }
 
 func (consumer *eventConsumer) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
+	logger := consumer.logger.Session("event-consumer")
+
 	events, err := consumer.executorClient.SubscribeToEvents()
 	if err != nil {
 		return err
@@ -35,8 +41,13 @@ func (consumer *eventConsumer) Run(signals <-chan os.Signal, ready chan<- struct
 		select {
 		case e, ok := <-events:
 			if !ok {
+				logger.Info("event-stream-closed")
 				return nil
 			}
+
+			logger.Info("event-received", lager.Data{
+				"event-type": e.EventType(),
+			})
 
 			switch event := e.(type) {
 			case executor.ContainerCompleteEvent:
@@ -60,6 +71,7 @@ func (consumer *eventConsumer) Run(signals <-chan os.Signal, ready chan<- struct
 			}
 
 		case <-signals:
+			logger.Info("event-consumer-stopped")
 			return nil
 		}
 	}

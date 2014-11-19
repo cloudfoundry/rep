@@ -10,6 +10,7 @@ import (
 	"github.com/cloudfoundry-incubator/rep"
 	. "github.com/cloudfoundry-incubator/rep/harvester"
 	"github.com/cloudfoundry-incubator/rep/harvester/fakes"
+	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 
 	. "github.com/onsi/ginkgo"
@@ -28,8 +29,13 @@ var _ = Describe("EventConsumer", func() {
 	BeforeEach(func() {
 		executorClient = new(efakes.FakeClient)
 		processor = new(fakes.FakeProcessor)
+		logger := lagertest.NewTestLogger("test")
 
-		consumer = NewEventConsumer(executorClient, processor)
+		consumer = NewEventConsumer(
+			logger,
+			executorClient,
+			processor,
+		)
 	})
 
 	JustBeforeEach(func() {
