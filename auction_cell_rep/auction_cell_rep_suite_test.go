@@ -1,4 +1,4 @@
-package auction_delegate_test
+package auction_cell_rep_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -9,5 +9,5 @@ import (
 
 func TestAuctionDelegate(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "AuctionDelegate Suite")
+	RunSpecs(t, "Auction CellRep Suite")
 }
