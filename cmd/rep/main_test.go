@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
-	"github.com/cloudfoundry-incubator/auction/communication/nats/auction_nats_client"
+	"github.com/cloudfoundry-incubator/auction/communication/http/auction_http_client"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep/cmd/rep/testrunner"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -48,8 +48,8 @@ var _ = Describe("The Rep", func() {
 			"the-lrp-host",
 			fakeExecutor.URL(),
 			fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
-			fmt.Sprintf("127.0.0.1:%d", natsPort),
 			"info",
+			auctionServerPort,
 			time.Second,
 			actualLRPReapingInterval,
 			taskReapingInterval,
@@ -174,30 +174,41 @@ var _ = Describe("The Rep", func() {
 
 	Describe("acting as an auction representative", func() {
 		BeforeEach(func() {
-			fakeExecutor.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("GET", "/resources/total"),
-				ghttp.RespondWithJSONEncoded(http.StatusOK, executor.ExecutorResources{
-					MemoryMB:   1024,
-					DiskMB:     2048,
-					Containers: 4,
-				})),
-			)
+			fakeExecutor.AllowUnhandledRequests = true
+			fakeExecutor.UnhandledRequestStatusCode = http.StatusOK
+			fakeExecutor.RouteToHandler("GET", "/resources/total", ghttp.RespondWithJSONEncoded(http.StatusOK, executor.ExecutorResources{
+				MemoryMB:   1024,
+				DiskMB:     2048,
+				Containers: 4,
+			}))
+			fakeExecutor.RouteToHandler("GET", "/resources/remaining", ghttp.RespondWithJSONEncoded(http.StatusOK, executor.ExecutorResources{
+				MemoryMB:   512,
+				DiskMB:     1024,
+				Containers: 2,
+			}))
+			fakeExecutor.RouteToHandler("GET", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, []executor.Container{}))
 		})
 
 		It("makes a request to the executor", func() {
 			Eventually(bbs.Cells).Should(HaveLen(1))
 			cells, err := bbs.Cells()
 			Ω(err).ShouldNot(HaveOccurred())
-			cellID := cells[0].CellID
 
-			client, err := auction_nats_client.New(natsClient, time.Second, lagertest.NewTestLogger("test"))
+			client := auction_http_client.New(http.DefaultClient, cells[0].CellID, cells[0].RepAddress, lagertest.NewTestLogger("auction-client"))
+
+			state, err := client.State()
 			Ω(err).ShouldNot(HaveOccurred())
-			resources := client.TotalResources(cellID)
-			Ω(resources).Should(Equal(auctiontypes.Resources{
+			Ω(state.TotalResources).Should(Equal(auctiontypes.Resources{
 				MemoryMB:   1024,
 				DiskMB:     2048,
 				Containers: 4,
 			}))
+			Ω(state.AvailableResources).Should(Equal(auctiontypes.Resources{
+				MemoryMB:   512,
+				DiskMB:     1024,
+				Containers: 2,
+			}))
+			Ω(state.Stack).Should(Equal("the-stack"))
 		})
 	})
 

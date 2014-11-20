@@ -1,6 +1,7 @@
 package testrunner
 
 import (
+	"fmt"
 	"os/exec"
 	"time"
 
@@ -22,7 +23,7 @@ type Config struct {
 	lrpHost                  string
 	executorURL              string
 	etcdCluster              string
-	natsAddr                 string
+	auctionServerPort        int
 	logLevel                 string
 	heartbeatInterval        time.Duration
 	actualLRPReapingInterval time.Duration
@@ -30,7 +31,8 @@ type Config struct {
 }
 
 func New(
-	binPath, cellID, stack, lrpHost, executorURL, etcdCluster, natsAddr, logLevel string,
+	binPath, cellID, stack, lrpHost, executorURL, etcdCluster, logLevel string,
+	auctionServerPort int,
 	heartbeatInterval, actualLRPReapingInterval, taskReapingInterval time.Duration) *Runner {
 	return &Runner{
 		binPath: binPath,
@@ -39,8 +41,8 @@ func New(
 			stack:                    stack,
 			lrpHost:                  lrpHost,
 			executorURL:              executorURL,
+			auctionServerPort:        auctionServerPort,
 			etcdCluster:              etcdCluster,
-			natsAddr:                 natsAddr,
 			logLevel:                 logLevel,
 			heartbeatInterval:        heartbeatInterval,
 			actualLRPReapingInterval: actualLRPReapingInterval,
@@ -61,8 +63,8 @@ func (r *Runner) Start() {
 			"-stack", r.config.stack,
 			"-lrpHost", r.config.lrpHost,
 			"-executorURL", r.config.executorURL,
+			"-auctionListenAddr", fmt.Sprintf("0.0.0.0:%d", r.config.auctionServerPort),
 			"-etcdCluster", r.config.etcdCluster,
-			"-natsAddresses", r.config.natsAddr,
 			"-logLevel", r.config.logLevel,
 			"-heartbeatInterval", r.config.heartbeatInterval.String(),
 			"-actualLRPReapingInterval", r.config.actualLRPReapingInterval.String(),

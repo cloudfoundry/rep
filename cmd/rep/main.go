@@ -2,19 +2,20 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/cloudfoundry-incubator/auction/auctionrep"
-	"github.com/cloudfoundry-incubator/auction/communication/nats/auction_nats_server"
+	"github.com/cloudfoundry-incubator/auction/communication/http/auction_http_handlers"
+	"github.com/cloudfoundry-incubator/auction/communication/http/routes"
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/executor"
 	executorclient "github.com/cloudfoundry-incubator/executor/http/client"
-	"github.com/cloudfoundry-incubator/rep/auction_delegate"
+	"github.com/cloudfoundry-incubator/rep/auction_cell_rep"
 	"github.com/cloudfoundry-incubator/rep/harvester"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
@@ -24,39 +25,23 @@ import (
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/dropsonde"
-	"github.com/cloudfoundry/gunk/diegonats"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/gunk/workpool"
+	"github.com/cloudfoundry/loggregatorlib/cfcomponent/localip"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/timer"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
+	"github.com/tedsuo/ifrit/http_server"
 	"github.com/tedsuo/ifrit/sigmon"
+	"github.com/tedsuo/rata"
 )
 
 var etcdCluster = flag.String(
 	"etcdCluster",
 	"http://127.0.0.1:4001",
 	"comma-separated list of etcd addresses (http://ip:port)",
-)
-
-var natsAddresses = flag.String(
-	"natsAddresses",
-	"127.0.0.1:4222",
-	"comma-separated list of NATS addresses (ip:port)",
-)
-
-var natsUsername = flag.String(
-	"natsUsername",
-	"nats",
-	"Username to connect to nats",
-)
-
-var natsPassword = flag.String(
-	"natsPassword",
-	"nats",
-	"Password for nats user",
 )
 
 var heartbeatInterval = flag.Duration(
@@ -69,6 +54,12 @@ var executorURL = flag.String(
 	"executorURL",
 	"http://127.0.0.1:1700",
 	"location of executor to represent",
+)
+
+var auctionListenAddr = flag.String(
+	"auctionListenAddr",
+	"0.0.0.0:1800",
+	"host:port to serve auction requests on",
 )
 
 var lrpHost = flag.String(
@@ -141,9 +132,6 @@ func main() {
 	bbs := initializeRepBBS(logger)
 	removeActualLrpFromBBS(bbs, *cellID, logger)
 
-	natsClient := diegonats.NewClient()
-	natsClientRunner := diegonats.NewClientRunner(*natsAddresses, *natsUsername, *natsPassword, logger, natsClient)
-
 	executorClient := executorclient.New(http.DefaultClient, *executorURL)
 	lrpStopper := initializeLRPStopper(*cellID, bbs, executorClient, logger)
 
@@ -152,14 +140,13 @@ func main() {
 
 	poller, eventConsumer := initializeHarvesters(logger, *pollingInterval, executorClient, bbs)
 
+	auctionServer, address := initializeAuctionServer(lrpStopper, bbs, executorClient, logger)
+
 	group := grouper.NewOrdered(os.Interrupt, grouper.Members{
-		{"nats-client", natsClientRunner},
-		{"heartbeater", initializeCellHeartbeat(bbs, executorClient, logger)},
+		{"auction-server", auctionServer},
+		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
 		{"task-rep", initializeTaskRep(*cellID, bbs, logger, executorClient)},
 		{"stop-lrp-listener", initializeStopLRPListener(lrpStopper, bbs, logger)},
-		{"auction-server", ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
-			return initializeAuctionNatsServer(*cellID, lrpStopper, bbs, executorClient, natsClient, logger).Run(signals, ready)
-		})},
 		{"executor-poller", poller},
 		{"actual-lrp-reaper", actualLRPReaper},
 		{"task-reaper", taskReaper},
@@ -245,10 +232,11 @@ func removeActualLrpFromBBS(bbs Bbs.RepBBS, cellID string, logger lager.Logger) 
 	}
 }
 
-func initializeCellHeartbeat(bbs Bbs.RepBBS, executorClient executor.Client, logger lager.Logger) ifrit.Runner {
+func initializeCellHeartbeat(address string, bbs Bbs.RepBBS, executorClient executor.Client, logger lager.Logger) ifrit.Runner {
 	cellPresence := models.CellPresence{
-		CellID: *cellID,
-		Stack:  *stack,
+		CellID:     *cellID,
+		RepAddress: address,
+		Stack:      *stack,
 	}
 
 	heartbeat := bbs.NewCellHeartbeat(cellPresence, *heartbeatInterval)
@@ -281,15 +269,26 @@ func initializeStopLRPListener(stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, l
 	return stop_lrp_listener.New(stopper, bbs, logger)
 }
 
-func initializeAuctionNatsServer(
-	cellID string,
+func initializeAuctionServer(
 	stopper lrp_stopper.LRPStopper,
 	bbs Bbs.RepBBS,
 	executorClient executor.Client,
-	natsClient diegonats.NATSClient,
 	logger lager.Logger,
-) *auction_nats_server.AuctionNATSServer {
-	auctionDelegate := auction_delegate.New(cellID, stopper, bbs, executorClient, logger)
-	auctionRep := auctionrep.New(cellID, auctionDelegate)
-	return auction_nats_server.New(natsClient, auctionRep, logger)
+) (ifrit.Runner, string) {
+	auctionCellRep := auction_cell_rep.New(*cellID, *stack, stopper, bbs, executorClient, logger)
+	handlers := auction_http_handlers.New(auctionCellRep, logger)
+	router, err := rata.NewRouter(routes.Routes, handlers)
+	if err != nil {
+		logger.Fatal("failed-to-construct-auction-router", err)
+	}
+
+	ip, err := localip.LocalIP()
+	if err != nil {
+		logger.Fatal("failed-to-fetch-ip", err)
+	}
+
+	port := strings.Split(*auctionListenAddr, ":")[1]
+	address := fmt.Sprintf("http://%s:%s", ip, port)
+
+	return http_server.New(*auctionListenAddr, router), address
 }
