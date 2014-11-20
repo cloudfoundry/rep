@@ -105,6 +105,8 @@ func (a *AuctionDelegate) Reserve(startAuction models.LRPStartAuction) error {
 			Index:      &startAuction.Index,
 		},
 
+		StartTimeout: startAuction.DesiredLRP.StartTimeout,
+
 		Setup:   startAuction.DesiredLRP.Setup,
 		Action:  startAuction.DesiredLRP.Action,
 		Monitor: startAuction.DesiredLRP.Monitor,
