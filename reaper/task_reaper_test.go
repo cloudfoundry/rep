@@ -173,10 +173,10 @@ var _ = Describe("Task Reaper", func() {
 
 				Context("which belongs to a pending task", func() {
 					BeforeEach(func() {
-						bbs.TaskByGuidStub = func(taskGuid string) (models.Task, error) {
+						bbs.TaskByGuidStub = func(taskGuid string) (*models.Task, error) {
 							defer GinkgoRecover()
 							Ω(taskGuid).Should(Equal("some-task-guid"))
-							return models.Task{State: models.TaskStatePending}, nil
+							return &models.Task{State: models.TaskStatePending}, nil
 						}
 					})
 
@@ -187,10 +187,10 @@ var _ = Describe("Task Reaper", func() {
 
 				Context("which belongs to a completed task", func() {
 					BeforeEach(func() {
-						bbs.TaskByGuidStub = func(taskGuid string) (models.Task, error) {
+						bbs.TaskByGuidStub = func(taskGuid string) (*models.Task, error) {
 							defer GinkgoRecover()
 							Ω(taskGuid).Should(Equal("some-task-guid"))
-							return models.Task{
+							return &models.Task{
 								State: models.TaskStateCompleted,
 								Action: &models.RunAction{
 									Path: "ls",
@@ -227,10 +227,10 @@ var _ = Describe("Task Reaper", func() {
 
 				Context("which belongs to a resolving task", func() {
 					BeforeEach(func() {
-						bbs.TaskByGuidStub = func(taskGuid string) (models.Task, error) {
+						bbs.TaskByGuidStub = func(taskGuid string) (*models.Task, error) {
 							defer GinkgoRecover()
 							Ω(taskGuid).Should(Equal("some-task-guid"))
-							return models.Task{
+							return &models.Task{
 								State: models.TaskStateResolving,
 								Action: &models.RunAction{
 									Path: "ls",
@@ -247,10 +247,10 @@ var _ = Describe("Task Reaper", func() {
 
 				Context("for which there is no associated task", func() {
 					BeforeEach(func() {
-						bbs.TaskByGuidStub = func(taskGuid string) (models.Task, error) {
+						bbs.TaskByGuidStub = func(taskGuid string) (*models.Task, error) {
 							defer GinkgoRecover()
 							Ω(taskGuid).Should(Equal("some-task-guid"))
-							return models.Task{}, storeadapter.ErrorKeyNotFound
+							return nil, storeadapter.ErrorKeyNotFound
 						}
 					})
 
@@ -262,7 +262,7 @@ var _ = Describe("Task Reaper", func() {
 
 				Context("for which the BBS lookup fails for some other reason", func() {
 					BeforeEach(func() {
-						bbs.TaskByGuidReturns(models.Task{}, errors.New("bbs error"))
+						bbs.TaskByGuidReturns(nil, errors.New("bbs error"))
 					})
 
 					It("does not delete the container", func() {

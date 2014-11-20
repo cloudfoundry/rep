@@ -109,6 +109,8 @@ func (r *taskReaper) deleteCompletedContainers() {
 		} else if err != nil {
 			r.logger.Error("reaper-failed-to-get-task", err)
 			continue
+		} else if task == nil {
+			taskExists = false
 		}
 
 		if !taskExists || task.State == models.TaskStateCompleted || task.State == models.TaskStateResolving {
