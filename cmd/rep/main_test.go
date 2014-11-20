@@ -229,9 +229,9 @@ var _ = Describe("The Rep", func() {
 		})
 
 		It("eventually marks tasks with no corresponding container as failed", func() {
-			Eventually(bbs.GetAllCompletedTasks, 5*taskReapingInterval).Should(HaveLen(1))
+			Eventually(bbs.CompletedTasks, 5*taskReapingInterval).Should(HaveLen(1))
 
-			completedTasks, err := bbs.GetAllCompletedTasks()
+			completedTasks, err := bbs.CompletedTasks()
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(completedTasks[0].TaskGuid).Should(Equal(task.TaskGuid))
