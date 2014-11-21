@@ -24,10 +24,9 @@ var runner *testrunner.Runner
 
 var _ = Describe("The Rep", func() {
 	var (
-		fakeExecutor             *ghttp.Server
-		bbs                      *Bbs.BBS
-		actualLRPReapingInterval time.Duration
-		taskReapingInterval      time.Duration
+		fakeExecutor    *ghttp.Server
+		bbs             *Bbs.BBS
+		pollingInterval time.Duration
 	)
 
 	BeforeEach(func() {
@@ -38,8 +37,7 @@ var _ = Describe("The Rep", func() {
 
 		bbs = Bbs.NewBBS(etcdRunner.Adapter(), timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
 
-		actualLRPReapingInterval = 50 * time.Millisecond
-		taskReapingInterval = 50 * time.Millisecond
+		pollingInterval = 50 * time.Millisecond
 
 		runner = testrunner.New(
 			representativePath,
@@ -51,8 +49,7 @@ var _ = Describe("The Rep", func() {
 			"info",
 			auctionServerPort,
 			time.Second,
-			actualLRPReapingInterval,
-			taskReapingInterval,
+			pollingInterval,
 		)
 
 		runner.Start()
@@ -218,8 +215,8 @@ var _ = Describe("The Rep", func() {
 		BeforeEach(func() {
 			fakeExecutor.RouteToHandler(
 				"GET",
-				"/containers/a-new-task-guid",
-				ghttp.RespondWith(http.StatusNotFound, "", http.Header{"X-Executor-Error": []string{"ContainerNotFound"}}),
+				"/containers",
+				ghttp.RespondWith(http.StatusOK, "[]"),
 			)
 
 			task = models.Task{
@@ -240,7 +237,7 @@ var _ = Describe("The Rep", func() {
 		})
 
 		It("eventually marks tasks with no corresponding container as failed", func() {
-			Eventually(bbs.CompletedTasks, 5*taskReapingInterval).Should(HaveLen(1))
+			Eventually(bbs.CompletedTasks, 5*pollingInterval).Should(HaveLen(1))
 
 			completedTasks, err := bbs.CompletedTasks()
 			Ω(err).ShouldNot(HaveOccurred())
@@ -256,8 +253,8 @@ var _ = Describe("The Rep", func() {
 		BeforeEach(func() {
 			fakeExecutor.RouteToHandler(
 				"GET",
-				"/containers/a-new-instance-guid",
-				ghttp.RespondWith(http.StatusNotFound, "", http.Header{"X-Executor-Error": []string{"ContainerNotFound"}}),
+				"/containers",
+				ghttp.RespondWith(http.StatusOK, "[]"),
 			)
 
 			var err error
@@ -266,7 +263,7 @@ var _ = Describe("The Rep", func() {
 		})
 
 		It("eventually reaps actual LRPs with no corresponding container", func() {
-			Eventually(bbs.ActualLRPs, 5*actualLRPReapingInterval).Should(BeEmpty())
+			Eventually(bbs.ActualLRPs, 5*pollingInterval).Should(BeEmpty())
 		})
 	})
 

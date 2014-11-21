@@ -16,6 +16,7 @@ import (
 	"github.com/cloudfoundry-incubator/executor"
 	executorclient "github.com/cloudfoundry-incubator/executor/http/client"
 	"github.com/cloudfoundry-incubator/rep/auction_cell_rep"
+	"github.com/cloudfoundry-incubator/rep/gatherer"
 	"github.com/cloudfoundry-incubator/rep/harvester"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
@@ -86,18 +87,6 @@ var pollingInterval = flag.Duration(
 	"the interval on which to scan the executor",
 )
 
-var actualLRPReapingInterval = flag.Duration(
-	"actualLRPReapingInterval",
-	30*time.Second,
-	"the interval on which to reap actual LRPs in BBS that have no corresponding container",
-)
-
-var taskReapingInterval = flag.Duration(
-	"taskReapingInterval",
-	30*time.Second,
-	"the interval on which to mark tasks as failed in BBS that have no corresponding container",
-)
-
 var dropsondeOrigin = flag.String(
 	"dropsondeOrigin",
 	"rep",
@@ -135,10 +124,18 @@ func main() {
 	executorClient := executorclient.New(http.DefaultClient, *executorURL)
 	lrpStopper := initializeLRPStopper(*cellID, bbs, executorClient, logger)
 
-	actualLRPReaper := reaper.NewActualLRPReaper(*actualLRPReapingInterval, timer.NewTimer(), *cellID, bbs, executorClient, logger)
-	taskReaper := reaper.NewTaskReaper(*taskReapingInterval, timer.NewTimer(), *cellID, bbs, executorClient, logger)
+	taskCompleter := reaper.NewTaskCompleter(bbs, logger)
+	taskContainerReaper := reaper.NewTaskContainerReaper(executorClient, logger)
+	actualLRPReaper := reaper.NewActualLRPReaper(bbs, logger)
 
-	poller, eventConsumer := initializeHarvesters(logger, *pollingInterval, executorClient, bbs)
+	bulkProcessor, eventConsumer := initializeHarvesters(logger, *pollingInterval, executorClient, bbs)
+
+	gatherer := gatherer.NewGatherer(*pollingInterval, timer.NewTimer(), []gatherer.Processor{
+		bulkProcessor,
+		taskCompleter,
+		taskContainerReaper,
+		actualLRPReaper,
+	}, *cellID, bbs, executorClient, logger)
 
 	auctionServer, address := initializeAuctionServer(lrpStopper, bbs, executorClient, logger)
 
@@ -147,13 +144,11 @@ func main() {
 		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
 		{"task-rep", initializeTaskRep(*cellID, bbs, logger, executorClient)},
 		{"stop-lrp-listener", initializeStopLRPListener(lrpStopper, bbs, logger)},
-		{"executor-poller", poller},
-		{"actual-lrp-reaper", actualLRPReaper},
-		{"task-reaper", taskReaper},
+		{"gatherer", gatherer},
 		{"event-consumer", eventConsumer},
 	})
 
-	monitor := ifrit.Envoke(sigmon.New(group))
+	monitor := ifrit.Invoke(sigmon.New(group))
 	logger.Info("started")
 
 	<-monitor.Wait()
@@ -172,7 +167,7 @@ func initializeHarvesters(
 	pollInterval time.Duration,
 	executorClient executor.Client,
 	bbs Bbs.RepBBS,
-) (ifrit.Runner, ifrit.Runner) {
+) (gatherer.Processor, ifrit.Runner) {
 	taskProcessor := harvester.NewTaskProcessor(
 		logger,
 		bbs,
@@ -193,10 +188,7 @@ func initializeHarvesters(
 		lrpProcessor,
 	)
 
-	poller := harvester.NewPoller(
-		pollInterval,
-		timer.NewTimer(),
-		executorClient,
+	bulkProcessor := harvester.NewBulkContainerProcessor(
 		containerProcessor,
 		logger,
 	)
@@ -207,7 +199,7 @@ func initializeHarvesters(
 		containerProcessor,
 	)
 
-	return poller, eventConsumer
+	return bulkProcessor, eventConsumer
 }
 
 func removeActualLrpFromBBS(bbs Bbs.RepBBS, cellID string, logger lager.Logger) {

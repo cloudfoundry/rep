@@ -1,75 +1,43 @@
 package reaper
 
 import (
-	"os"
-	"time"
-
-	"github.com/cloudfoundry-incubator/executor"
+	"github.com/cloudfoundry-incubator/rep/gatherer"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/pivotal-golang/lager"
-	"github.com/pivotal-golang/timer"
-	"github.com/tedsuo/ifrit"
 )
 
-type actualLRPReaper struct {
-	pollInterval time.Duration
-	timer        timer.Timer
-
-	cellID         string
-	bbs            bbs.RepBBS
-	executorClient executor.Client
-	logger         lager.Logger
+type ActualLRPReaper struct {
+	bbs    bbs.RepBBS
+	logger lager.Logger
 }
 
 func NewActualLRPReaper(
-	pollInterval time.Duration,
-	timer timer.Timer,
-	cellID string,
 	bbs bbs.RepBBS,
-	executorClient executor.Client,
 	logger lager.Logger,
-) ifrit.Runner {
-	return &actualLRPReaper{
-		pollInterval:   pollInterval,
-		timer:          timer,
-		cellID:         cellID,
-		bbs:            bbs,
-		executorClient: executorClient,
-		logger:         logger,
+) *ActualLRPReaper {
+	return &ActualLRPReaper{
+		bbs:    bbs,
+		logger: logger.Session("actual-lrp-reaper"),
 	}
 }
 
-func (r *actualLRPReaper) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
-	close(ready)
+func (r *ActualLRPReaper) Process(snapshot gatherer.Snapshot) {
+	r.logger.Info("started")
 
-	ticks := r.timer.Every(r.pollInterval)
+	actualLRPs := snapshot.ActualLRPs()
 
-	for {
-		select {
-		case <-ticks:
-			actualLRPs, err := r.bbs.ActualLRPsByCellID(r.cellID)
+	for _, actualLRP := range actualLRPs {
+		_, ok := snapshot.GetContainer(actualLRP.InstanceGuid)
+
+		if !ok {
+			r.logger.Info("actual-lrp-with-no-corresponding-container", lager.Data{"actual-lrp": actualLRP})
+
+			err := r.bbs.RemoveActualLRP(actualLRP)
 			if err != nil {
-				r.logger.Error("failed-to-get-actual-lrps-by-cell-id", err, lager.Data{"cell-id": r.cellID})
-				continue
+				r.logger.Error("failed-to-reap-actual-lrp-with-no-corresponding-container", err, lager.Data{"actual-lrp": actualLRP})
 			}
-
-			for _, actualLRP := range actualLRPs {
-				_, err = r.executorClient.GetContainer(actualLRP.InstanceGuid)
-
-				if err == executor.ErrContainerNotFound {
-					r.logger.Info("found-actual-lrp-with-no-corresponding-container", lager.Data{"actual-lrp": actualLRP})
-
-					err = r.bbs.RemoveActualLRP(actualLRP)
-					if err != nil {
-						r.logger.Error("failed-to-reap-actual-lrp-with-no-corresponding-container", err, lager.Data{"actual-lrp": actualLRP})
-					}
-				} else if err != nil {
-					r.logger.Error("get-container", err, lager.Data{"actual-lrp": actualLRP})
-				}
-			}
-
-		case <-signals:
-			return nil
 		}
 	}
+
+	r.logger.Info("stopped")
 }
