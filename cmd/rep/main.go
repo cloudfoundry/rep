@@ -95,18 +95,6 @@ var pollingInterval = flag.Duration(
 	"the interval on which to scan the executor",
 )
 
-var actualLRPReapingInterval = flag.Duration(
-	"actualLRPReapingInterval",
-	30*time.Second,
-	"the interval on which to reap actual LRPs in BBS that have no corresponding container",
-)
-
-var taskReapingInterval = flag.Duration(
-	"taskReapingInterval",
-	30*time.Second,
-	"the interval on which to mark tasks as failed in BBS that have no corresponding container",
-)
-
 var dropsondeOrigin = flag.String(
 	"dropsondeOrigin",
 	"rep",
