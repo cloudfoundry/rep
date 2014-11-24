@@ -2,7 +2,6 @@ package stop_lrp_listener
 
 import (
 	"os"
-	"time"
 
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
@@ -30,8 +29,6 @@ func (listener *StopLRPListener) Run(signals <-chan os.Signal, ready chan<- stru
 
 	close(ready)
 
-	var reWatchChan <-chan time.Time
-
 	for {
 		select {
 		case stopInstance, ok := <-stopInstancesChan:
@@ -47,18 +44,13 @@ func (listener *StopLRPListener) Run(signals <-chan os.Signal, ready chan<- stru
 
 			go listener.lrpStopper.StopInstance(stopInstance)
 
-		case <-reWatchChan:
-			reWatchChan = nil
-
-			stopInstancesChan, stopChan, errChan = listener.bbs.WatchForStopLRPInstance()
-
-		case err := <-errChan:
+		case err, ok := <-errChan:
+			if !ok {
+				errChan = nil
+				break
+			}
 			listener.logger.Error("watch-error", err)
-
-			stopInstancesChan = nil
-			errChan = nil
-
-			reWatchChan = time.After(3 * time.Second)
+			stopInstancesChan, stopChan, errChan = listener.bbs.WatchForStopLRPInstance()
 
 		case <-signals:
 			listener.logger.Info("shutting-down")
