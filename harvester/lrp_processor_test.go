@@ -75,6 +75,13 @@ var _ = Describe("LRP Processor", func() {
 		})
 	}
 
+	itRemovesTheContainer := func() {
+		It("removes the container", func() {
+			Ω(executorClient.DeleteContainerCallCount()).Should(Equal(1))
+			Ω(executorClient.DeleteContainerArgsForCall(0)).Should(Equal("completed-lrp-guid"))
+		})
+	}
+
 	var container executor.Container
 
 	BeforeEach(func() {
@@ -189,6 +196,7 @@ var _ = Describe("LRP Processor", func() {
 			})
 
 			itRemovesTheLRP()
+			itRemovesTheContainer()
 		})
 
 		Context("when the container health is down", func() {
@@ -197,6 +205,7 @@ var _ = Describe("LRP Processor", func() {
 			})
 
 			itRemovesTheLRP()
+			itRemovesTheContainer()
 		})
 
 		Context("when the container health is unmonitored", func() {
@@ -205,6 +214,7 @@ var _ = Describe("LRP Processor", func() {
 			})
 
 			itRemovesTheLRP()
+			itRemovesTheContainer()
 		})
 	})
 

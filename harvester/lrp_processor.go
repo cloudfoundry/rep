@@ -86,9 +86,16 @@ func (p *lrpProcessor) Process(container executor.Container) {
 		err := p.bbs.RemoveActualLRP(actualLrp)
 		if err != nil {
 			logger.Error("remove-actual-lrp-failed", err)
-			return
+		} else {
+			logger.Info("removed-actual-lrp")
 		}
-		logger.Info("removed-actual-lrp")
+
+		err = p.executorClient.DeleteContainer(actualLrp.InstanceGuid)
+		if err != nil {
+			logger.Error("delete-actual-lrp-container-failed", err)
+		} else {
+			logger.Info("delete-actual-lrp-container")
+		}
 
 	default:
 		logger.Debug("unknown-container-state")
