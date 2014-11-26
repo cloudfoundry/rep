@@ -79,14 +79,7 @@ func NewSnapshot(cellID string, bbs bbs.RepBBS, executorClient executor.Client) 
 			err = fmt.Errorf("snapshot-ListContainers failed: %s", err.Error())
 		}
 
-		activeContainers := make([]executor.Container, 0, len(containers))
-		for _, c := range containers {
-			if c.State != executor.StateReserved {
-				activeContainers = append(activeContainers, c)
-			}
-		}
-
-		snap.containers = activeContainers
+		snap.containers = containers
 		errChan <- err
 	}()
 

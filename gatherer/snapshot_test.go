@@ -39,6 +39,7 @@ var _ = Describe("Snapshot", func() {
 			{Guid: "created-task-guid", State: executor.StateCreated, Tags: taskTags},
 			{Guid: "initializing-task-guid", State: executor.StateInitializing, Tags: taskTags},
 		}
+
 		reservedContainers = []executor.Container{
 			{Guid: "reserved-task-guid", State: executor.StateReserved, Tags: taskTags},
 		}
@@ -83,7 +84,7 @@ var _ = Describe("Snapshot", func() {
 		Context("no tags", func() {
 			It("returns all the active containers", func() {
 				c := snapshot.ListContainers(nil)
-				Ω(c).Should(ConsistOf(activeContainers))
+				Ω(c).Should(ConsistOf(append(activeContainers, reservedContainers...)))
 			})
 		})
 
