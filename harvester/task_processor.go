@@ -2,7 +2,6 @@ package harvester
 
 import (
 	"archive/tar"
-	"fmt"
 
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
@@ -53,8 +52,10 @@ func (p *taskProcessor) Process(container executor.Container) {
 		if resultFile != "" {
 			taskResult, err = p.getResultFile(taskGuid, resultFile)
 			if err != nil {
+				pLog.Error("failed-to-fetch-result", err)
+
 				taskFailed = true
-				failureReason = fmt.Sprintf("failed to fetch result: %s", err.Error())
+				failureReason = "failed to fetch result"
 			}
 		}
 	}
