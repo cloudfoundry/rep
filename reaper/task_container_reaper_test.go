@@ -39,10 +39,24 @@ var _ = Describe("TaskContainerReaper", func() {
 			}))
 		})
 
-		Context("when there is a container", func() {
+		Context("when there is a reserved container", func() {
 			BeforeEach(func() {
 				snapshot.ListContainersReturns([]executor.Container{
-					executor.Container{Guid: "some-task-guid"},
+					executor.Container{Guid: "some-task-guid", State: executor.StateReserved},
+				})
+
+				snapshot.GetTaskReturns(nil, false)
+			})
+
+			It("does not delete the container", func() {
+				Ω(executorClient.DeleteContainerCallCount()).Should(Equal(0))
+			})
+		})
+
+		Context("when there is a created container", func() {
+			BeforeEach(func() {
+				snapshot.ListContainersReturns([]executor.Container{
+					executor.Container{Guid: "some-task-guid", State: executor.StateCreated},
 				})
 			})
 

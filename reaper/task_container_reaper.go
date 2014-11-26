@@ -33,20 +33,28 @@ func (r *TaskContainerReaper) Process(snapshot gatherer.Snapshot) {
 	for _, container := range containers {
 		task, taskExists := snapshot.GetTask(container.Guid)
 
-		if !taskExists || task.State == models.TaskStateCompleted || task.State == models.TaskStateResolving {
-			lagerData := lager.Data{
-				"task-guid":   container.Guid,
-				"task-exists": taskExists,
-			}
-			if taskExists {
-				lagerData["task-state"] = task.State
-			}
+		// task does not exist for reserved container
+		if !taskExists && container.State == executor.StateReserved {
+			continue
+		}
 
-			r.logger.Info("deleting-container", lagerData)
-			err := r.executorClient.DeleteContainer(container.Guid)
-			if err != nil {
-				r.logger.Error("failed-to-delete-container", err, lagerData)
-			}
+		// container exists for completed task
+		if taskExists && !(task.State == models.TaskStateCompleted || task.State == models.TaskStateResolving) {
+			continue
+		}
+
+		lagerData := lager.Data{
+			"task-guid":   container.Guid,
+			"task-exists": taskExists,
+		}
+		if taskExists {
+			lagerData["task-state"] = task.State
+		}
+
+		r.logger.Info("deleting-container", lagerData)
+		err := r.executorClient.DeleteContainer(container.Guid)
+		if err != nil {
+			r.logger.Error("failed-to-delete-container", err, lagerData)
 		}
 	}
 
