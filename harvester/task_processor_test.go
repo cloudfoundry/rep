@@ -115,7 +115,7 @@ var _ = Describe("Task Processor", func() {
 						taskGuid, failed, failureReason, result := bbs.CompleteTaskArgsForCall(0)
 						Ω(taskGuid).Should(Equal("completed-guid"))
 						Ω(failed).Should(BeTrue())
-						Ω(failureReason).Should(Equal("failed to fetch result: oh no!"))
+						Ω(failureReason).Should(Equal("failed to fetch result"))
 						Ω(result).Should(BeEmpty())
 					})
 				})
