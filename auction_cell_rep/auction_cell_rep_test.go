@@ -227,8 +227,8 @@ var _ = Describe("AuctionCellRep", func() {
 						Monitor: startAuction.DesiredLRP.Monitor,
 
 						Env: []executor.EnvironmentVariable{
-							{Name: "CF_INSTANCE_GUID", Value: "instance-guid"},
-							{Name: "CF_INSTANCE_INDEX", Value: "2"},
+							{Name: "INSTANCE_GUID", Value: "instance-guid"},
+							{Name: "INSTANCE_INDEX", Value: "2"},
 							{Name: "var1", Value: "val1"},
 							{Name: "var2", Value: "val2"},
 						},

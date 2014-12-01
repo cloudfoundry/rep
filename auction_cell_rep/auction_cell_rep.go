@@ -157,8 +157,8 @@ func (a *AuctionCellRep) start(startAuction models.LRPStartAuction, logger lager
 		Monitor: startAuction.DesiredLRP.Monitor,
 
 		Env: append([]executor.EnvironmentVariable{
-			{Name: "CF_INSTANCE_GUID", Value: startAuction.InstanceGuid},
-			{Name: "CF_INSTANCE_INDEX", Value: strconv.Itoa(startAuction.Index)},
+			{Name: "INSTANCE_GUID", Value: startAuction.InstanceGuid},
+			{Name: "INSTANCE_INDEX", Value: strconv.Itoa(startAuction.Index)},
 		}, executor.EnvironmentVariablesFromModel(startAuction.DesiredLRP.EnvironmentVariables)...),
 	})
 
