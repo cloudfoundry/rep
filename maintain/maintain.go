@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/executor"
+	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/pivotal-golang/lager"
-	"github.com/pivotal-golang/timer"
 	"github.com/tedsuo/ifrit"
 )
 
@@ -15,16 +15,22 @@ type Maintainer struct {
 	executorClient    executor.Client
 	logger            lager.Logger
 	heartbeatInterval time.Duration
-	timer             timer.Timer
+	timeProvider      timeprovider.TimeProvider
 }
 
-func New(executorClient executor.Client, heartbeater ifrit.Runner, logger lager.Logger, heartbeatInterval time.Duration, timer timer.Timer) *Maintainer {
+func New(
+	executorClient executor.Client,
+	heartbeater ifrit.Runner,
+	logger lager.Logger,
+	heartbeatInterval time.Duration,
+	timeProvider timeprovider.TimeProvider,
+) *Maintainer {
 	return &Maintainer{
 		heartbeater:       heartbeater,
 		executorClient:    executorClient,
 		logger:            logger.Session("maintainer"),
 		heartbeatInterval: heartbeatInterval,
-		timer:             timer,
+		timeProvider:      timeProvider,
 	}
 }
 
@@ -36,7 +42,7 @@ func (m *Maintainer) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error 
 		}
 
 		m.logger.Error("failed-to-ping-executor-on-start", err)
-		m.timer.Sleep(time.Second)
+		m.timeProvider.Sleep(time.Second)
 	}
 
 	heartbeatProcess := ifrit.Envoke(m.heartbeater)
@@ -44,7 +50,8 @@ func (m *Maintainer) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error 
 
 	close(ready)
 
-	ticker := m.timer.Every(500 * time.Millisecond)
+	ticker := m.timeProvider.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
 
 	for {
 		select {
@@ -57,7 +64,7 @@ func (m *Maintainer) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error 
 			<-heartbeatProcess.Wait()
 			return nil
 
-		case <-ticker:
+		case <-ticker.C():
 			err := m.executorClient.Ping()
 			if err != nil {
 				heartbeatProcess.Signal(os.Kill)

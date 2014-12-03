@@ -9,10 +9,10 @@ import (
 	"github.com/cloudfoundry-incubator/rep/gatherer"
 	"github.com/cloudfoundry-incubator/rep/gatherer/fake_gatherer"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
+	"github.com/cloudfoundry/gunk/timeprovider/faketimeprovider"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-golang/lager/lagertest"
-	"github.com/pivotal-golang/timer/fake_timer"
 	"github.com/tedsuo/ifrit"
 )
 
@@ -23,21 +23,29 @@ var _ = Describe("Gatherer", func() {
 		processors     []*fake_gatherer.FakeProcessor
 
 		pollInterval time.Duration
-		timer        *fake_timer.FakeTimer
+		timeProvider *faketimeprovider.FakeTimeProvider
 		runner       ifrit.Runner
 		process      ifrit.Process
 	)
 
 	BeforeEach(func() {
 		pollInterval = 100 * time.Millisecond
-		timer = fake_timer.NewFakeTimer(time.Now())
+		timeProvider = faketimeprovider.New(time.Now())
 		executorClient = new(efakes.FakeClient)
 
 		bbs = new(fake_bbs.FakeRepBBS)
 		fp1 := &fake_gatherer.FakeProcessor{}
 		fp2 := &fake_gatherer.FakeProcessor{}
 		processors = []*fake_gatherer.FakeProcessor{fp1, fp2}
-		runner = gatherer.NewGatherer(pollInterval, timer, []gatherer.Processor{fp1, fp2}, "cell-id", bbs, executorClient, lagertest.NewTestLogger("test"))
+		runner = gatherer.NewGatherer(
+			pollInterval,
+			timeProvider,
+			[]gatherer.Processor{fp1, fp2},
+			"cell-id",
+			bbs,
+			executorClient,
+			lagertest.NewTestLogger("test"),
+		)
 	})
 
 	JustBeforeEach(func() {
@@ -51,7 +59,7 @@ var _ = Describe("Gatherer", func() {
 
 	Context("when the timer elapses", func() {
 		JustBeforeEach(func() {
-			timer.Elapse(pollInterval)
+			timeProvider.Increment(pollInterval)
 		})
 
 		It("invokes all the processors", func() {

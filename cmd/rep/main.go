@@ -31,7 +31,6 @@ import (
 	"github.com/cloudfoundry/loggregatorlib/cfcomponent/localip"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/pivotal-golang/lager"
-	"github.com/pivotal-golang/timer"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
@@ -130,7 +129,7 @@ func main() {
 
 	bulkProcessor, eventConsumer := initializeHarvesters(logger, *pollingInterval, executorClient, bbs)
 
-	gatherer := gatherer.NewGatherer(*pollingInterval, timer.NewTimer(), []gatherer.Processor{
+	gatherer := gatherer.NewGatherer(*pollingInterval, timeprovider.NewTimeProvider(), []gatherer.Processor{
 		bulkProcessor,
 		taskCompleter,
 		taskContainerReaper,
@@ -232,7 +231,7 @@ func initializeCellHeartbeat(address string, bbs Bbs.RepBBS, executorClient exec
 	}
 
 	heartbeat := bbs.NewCellHeartbeat(cellPresence, *heartbeatInterval)
-	return maintain.New(executorClient, heartbeat, logger, *heartbeatInterval, timer.NewTimer())
+	return maintain.New(executorClient, heartbeat, logger, *heartbeatInterval, timeprovider.NewTimeProvider())
 }
 
 func initializeRepBBS(logger lager.Logger) Bbs.RepBBS {

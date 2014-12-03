@@ -7,8 +7,8 @@ import (
 
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/pivotal-golang/lager"
-	"github.com/pivotal-golang/timer"
 	"github.com/tedsuo/ifrit"
 )
 
@@ -18,7 +18,7 @@ type Processor interface {
 
 func NewGatherer(
 	pollInterval time.Duration,
-	timer timer.Timer,
+	timeProvider timeprovider.TimeProvider,
 	processors []Processor,
 	cellID string,
 	bbs bbs.RepBBS,
@@ -27,7 +27,7 @@ func NewGatherer(
 ) ifrit.Runner {
 	return &gatherer{
 		pollInterval:   pollInterval,
-		timer:          timer,
+		timeProvider:   timeProvider,
 		processors:     processors,
 		cellID:         cellID,
 		bbs:            bbs,
@@ -38,7 +38,7 @@ func NewGatherer(
 
 type gatherer struct {
 	pollInterval time.Duration
-	timer        timer.Timer
+	timeProvider timeprovider.TimeProvider
 	processors   []Processor
 
 	cellID         string
@@ -51,11 +51,12 @@ type gatherer struct {
 func (g *gatherer) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	close(ready)
 
-	ticks := g.timer.Every(g.pollInterval)
+	ticker := g.timeProvider.NewTicker(g.pollInterval)
+	defer ticker.Stop()
 
 	for {
 		select {
-		case <-ticks:
+		case <-ticker.C():
 			g.logger.Info("gatherer-entering-loop")
 
 			snapshot, err := NewSnapshot(g.cellID, g.bbs, g.executorClient)

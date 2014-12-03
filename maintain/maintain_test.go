@@ -9,8 +9,8 @@ import (
 	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep/maintain"
 	maintain_fakes "github.com/cloudfoundry-incubator/rep/maintain/fakes"
+	"github.com/cloudfoundry/gunk/timeprovider/faketimeprovider"
 	"github.com/pivotal-golang/lager/lagertest"
-	"github.com/pivotal-golang/timer/fake_timer"
 	"github.com/tedsuo/ifrit"
 
 	. "github.com/onsi/ginkgo"
@@ -29,7 +29,7 @@ var _ = Describe("Maintain Presence", func() {
 		maintainer        ifrit.Runner
 		maintainProcess   ifrit.Process
 		heartbeaterErrors chan error
-		fakeTimer         *fake_timer.FakeTimer
+		timeProvider      *faketimeprovider.FakeTimeProvider
 		pingErrors        chan error
 	)
 
@@ -50,9 +50,9 @@ var _ = Describe("Maintain Presence", func() {
 		}
 
 		logger = lagertest.NewTestLogger("test")
-		fakeTimer = fake_timer.NewFakeTimer(time.Now())
+		timeProvider = faketimeprovider.New(time.Now())
 
-		maintainer = maintain.New(fakeClient, fakeHeartbeater, logger, heartbeatInterval, fakeTimer)
+		maintainer = maintain.New(fakeClient, fakeHeartbeater, logger, heartbeatInterval, timeProvider)
 	})
 
 	AfterEach(func() {
@@ -76,14 +76,14 @@ var _ = Describe("Maintain Presence", func() {
 			}()
 
 			for i := 1; i <= 4; i++ {
-				fakeTimer.Elapse(1 * time.Second)
+				timeProvider.Increment(1 * time.Second)
 				pingErrors <- errors.New("ping failed")
 				Eventually(fakeClient.PingCallCount).Should(Equal(i))
 				Ω(ready).ShouldNot(BeClosed())
 			}
 
 			pingErrors <- nil
-			fakeTimer.Elapse(1 * time.Second)
+			timeProvider.Increment(1 * time.Second)
 			Eventually(fakeClient.PingCallCount).Should(Equal(5))
 
 			Eventually(ready).Should(BeClosed())
@@ -105,7 +105,7 @@ var _ = Describe("Maintain Presence", func() {
 		It("continues pings the executor on an interval", func() {
 			for i := 1; i < 5; i++ {
 				pingErrors <- nil
-				fakeTimer.Elapse(1 * time.Second)
+				timeProvider.Increment(1 * time.Second)
 				Eventually(fakeClient.PingCallCount).Should(Equal(i))
 			}
 		})
@@ -113,7 +113,7 @@ var _ = Describe("Maintain Presence", func() {
 		Context("when the executor ping fails", func() {
 			BeforeEach(func() {
 				pingErrors <- errors.New("failed to ping")
-				fakeTimer.Elapse(1 * time.Second)
+				timeProvider.Increment(1 * time.Second)
 			})
 
 			It("stops heartbeating the executor's presence", func() {
@@ -124,7 +124,7 @@ var _ = Describe("Maintain Presence", func() {
 			It("continues pinging the executor", func() {
 				for i := 2; i < 6; i++ {
 					pingErrors <- errors.New("failed again")
-					fakeTimer.Elapse(1 * time.Second)
+					timeProvider.Increment(1 * time.Second)
 					Eventually(fakeClient.PingCallCount).Should(Equal(i))
 				}
 			})
@@ -136,7 +136,7 @@ var _ = Describe("Maintain Presence", func() {
 					Eventually(fakeClient.PingCallCount).Should(Equal(2))
 
 					pingErrors <- nil
-					fakeTimer.Elapse(1 * time.Second)
+					timeProvider.Increment(1 * time.Second)
 					Eventually(fakeClient.PingCallCount).Should(Equal(3))
 				})
 
@@ -147,7 +147,7 @@ var _ = Describe("Maintain Presence", func() {
 				It("continues to ping the executor", func() {
 					for i := 4; i < 6; i++ {
 						pingErrors <- nil
-						fakeTimer.Elapse(1 * time.Second)
+						timeProvider.Increment(1 * time.Second)
 						Eventually(fakeClient.PingCallCount).Should(Equal(i))
 					}
 				})
@@ -166,7 +166,7 @@ var _ = Describe("Maintain Presence", func() {
 			It("continues pinging the executor", func() {
 				for i := 2; i < 6; i++ {
 					pingErrors <- nil
-					fakeTimer.Elapse(1 * time.Second)
+					timeProvider.Increment(1 * time.Second)
 					Eventually(fakeClient.PingCallCount).Should(Equal(i))
 				}
 			})
@@ -175,7 +175,7 @@ var _ = Describe("Maintain Presence", func() {
 				Ω(fakeHeartbeater.RunCallCount()).Should(Equal(1))
 
 				pingErrors <- nil
-				fakeTimer.Elapse(1 * time.Second)
+				timeProvider.Increment(1 * time.Second)
 
 				Eventually(fakeHeartbeater.RunCallCount).Should(Equal(2))
 			})
