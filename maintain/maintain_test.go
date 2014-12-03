@@ -171,8 +171,14 @@ var _ = Describe("Maintain Presence", func() {
 				}
 			})
 
+			It("logs an error message", func() {
+				Eventually(logger.TestSink.Buffer).Should(gbytes.Say("lost-lock"))
+			})
+
 			It("tries to restart heartbeating each time the ping succeeds", func() {
 				Ω(fakeHeartbeater.RunCallCount()).Should(Equal(1))
+
+				Eventually(logger.TestSink.Buffer).Should(gbytes.Say("lost-lock"))
 
 				pingErrors <- nil
 				timeProvider.Increment(1 * time.Second)
@@ -180,9 +186,6 @@ var _ = Describe("Maintain Presence", func() {
 				Eventually(fakeHeartbeater.RunCallCount).Should(Equal(2))
 			})
 
-			It("logs an error message", func() {
-				Eventually(logger.TestSink.Buffer).Should(gbytes.Say("lost-lock"))
-			})
 		})
 	})
 })

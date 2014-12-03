@@ -45,12 +45,12 @@ func (m *Maintainer) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error 
 		m.timeProvider.Sleep(time.Second)
 	}
 
-	heartbeatProcess := ifrit.Envoke(m.heartbeater)
+	heartbeatProcess := ifrit.Invoke(m.heartbeater)
 	heartbeatExitChan := heartbeatProcess.Wait()
 
 	close(ready)
 
-	ticker := m.timeProvider.NewTicker(500 * time.Millisecond)
+	ticker := m.timeProvider.NewTicker(m.heartbeatInterval)
 	defer ticker.Stop()
 
 	for {
@@ -70,7 +70,7 @@ func (m *Maintainer) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error 
 				heartbeatProcess.Signal(os.Kill)
 				heartbeatExitChan = nil
 			} else if heartbeatExitChan == nil {
-				heartbeatProcess = ifrit.Envoke(m.heartbeater)
+				heartbeatProcess = ifrit.Invoke(m.heartbeater)
 				heartbeatExitChan = heartbeatProcess.Wait()
 			}
 
