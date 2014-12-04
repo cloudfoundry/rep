@@ -7,6 +7,7 @@ import (
 	"github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
 	. "github.com/cloudfoundry-incubator/rep/gatherer"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	. "github.com/onsi/ginkgo"
@@ -73,7 +74,11 @@ var _ = Describe("Snapshot", func() {
 				},
 			},
 		}
+
 		bbs.TasksByCellIDReturns(tasks, nil)
+
+		// set base case for LookupTask fallthrough
+		bbs.TaskByGuidReturns(nil, bbserrors.ErrTaskNotFound)
 	})
 
 	JustBeforeEach(func() {
@@ -135,24 +140,96 @@ var _ = Describe("Snapshot", func() {
 		})
 	})
 
-	Describe("GetTask", func() {
-		It("returns the matched task", func() {
-			t, ok := snapshot.GetTask("task-guid-2")
-			Ω(ok).Should(BeTrue())
-			Ω(t).Should(Equal(&models.Task{
-				TaskGuid: "task-guid-2",
-				State:    models.TaskStateRunning,
-				Action: &models.RunAction{
-					Path: "ls",
+	Describe("LookupTask", func() {
+		Context("when the task exists in the loaded set", func() {
+			It("returns the matched task", func() {
+				t, ok, err := snapshot.LookupTask("task-guid-2")
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(ok).Should(BeTrue())
+				Ω(t).Should(Equal(&models.Task{
+					TaskGuid: "task-guid-2",
+					State:    models.TaskStateRunning,
+					Action: &models.RunAction{
+						Path: "ls",
+					},
 				},
-			},
-			))
+				))
+			})
 		})
 
-		It("returns nothing when its not there", func() {
-			t, ok := snapshot.GetTask("bogus")
-			Ω(ok).Should(BeFalse())
-			Ω(t).Should(BeNil())
+		Context("when the task does not exist in the loaded set", func() {
+			It("checks for it by process guid", func() {
+				t, ok, err := snapshot.LookupTask("bogus")
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(ok).Should(BeFalse())
+				Ω(t).Should(BeNil())
+
+				Ω(bbs.TaskByGuidCallCount()).Should(Equal(1))
+				Ω(bbs.TaskByGuidArgsForCall(0)).Should(Equal("bogus"))
+			})
+
+			Context("and it actually does exist in the BBS, the cache was just old", func() {
+				var foundTask *models.Task
+
+				BeforeEach(func() {
+					foundTask = &models.Task{}
+					bbs.TaskByGuidReturns(foundTask, nil)
+				})
+
+				Context("and it's for the current cell", func() {
+					BeforeEach(func() {
+						foundTask.CellID = "cell-1"
+					})
+
+					It("returns the task", func() {
+						t, ok, err := snapshot.LookupTask("some-guid")
+						Ω(err).ShouldNot(HaveOccurred())
+						Ω(ok).Should(BeTrue())
+						Ω(t).Should(Equal(foundTask))
+					})
+				})
+
+				Context("but it's for a different cell", func() {
+					BeforeEach(func() {
+						foundTask.CellID = "other-cell"
+					})
+
+					It("returns nothing", func() {
+						t, ok, err := snapshot.LookupTask("some-guid")
+						Ω(err).ShouldNot(HaveOccurred())
+						Ω(ok).Should(BeFalse())
+						Ω(t).Should(BeNil())
+					})
+				})
+			})
+
+			Context("and it also does not exist in the BBS", func() {
+				BeforeEach(func() {
+					bbs.TaskByGuidReturns(nil, bbserrors.ErrTaskNotFound)
+				})
+
+				It("returns nothing", func() {
+					t, ok, err := snapshot.LookupTask("bogus")
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(ok).Should(BeFalse())
+					Ω(t).Should(BeNil())
+				})
+			})
+
+			Context("and getting it from the BBS fails for some reason", func() {
+				disaster := errors.New("some reason")
+
+				BeforeEach(func() {
+					bbs.TaskByGuidReturns(nil, disaster)
+				})
+
+				It("returns the error", func() {
+					t, ok, err := snapshot.LookupTask("bogus")
+					Ω(err).Should(Equal(disaster))
+					Ω(ok).Should(BeFalse())
+					Ω(t).Should(BeNil())
+				})
+			})
 		})
 	})
 

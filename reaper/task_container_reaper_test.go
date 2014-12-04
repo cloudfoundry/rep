@@ -1,6 +1,8 @@
 package reaper_test
 
 import (
+	"errors"
+
 	"github.com/cloudfoundry-incubator/executor"
 	efakes "github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
@@ -45,7 +47,7 @@ var _ = Describe("TaskContainerReaper", func() {
 					executor.Container{Guid: "some-task-guid", State: executor.StateReserved},
 				})
 
-				snapshot.GetTaskReturns(nil, false)
+				snapshot.LookupTaskReturns(nil, false, nil)
 			})
 
 			It("does not delete the container", func() {
@@ -62,9 +64,9 @@ var _ = Describe("TaskContainerReaper", func() {
 
 			Context("which belongs to a pending task", func() {
 				BeforeEach(func() {
-					snapshot.GetTaskStub = func(taskGuid string) (*models.Task, bool) {
+					snapshot.LookupTaskStub = func(taskGuid string) (*models.Task, bool, error) {
 						Ω(taskGuid).Should(Equal("some-task-guid"))
-						return &models.Task{State: models.TaskStatePending}, true
+						return &models.Task{State: models.TaskStatePending}, true, nil
 					}
 				})
 
@@ -75,14 +77,14 @@ var _ = Describe("TaskContainerReaper", func() {
 
 			Context("which belongs to a completed task", func() {
 				BeforeEach(func() {
-					snapshot.GetTaskStub = func(taskGuid string) (*models.Task, bool) {
+					snapshot.LookupTaskStub = func(taskGuid string) (*models.Task, bool, error) {
 						Ω(taskGuid).Should(Equal("some-task-guid"))
 						return &models.Task{
 							State: models.TaskStateCompleted,
 							Action: &models.RunAction{
 								Path: "ls",
 							},
-						}, true
+						}, true, nil
 					}
 				})
 
@@ -94,14 +96,14 @@ var _ = Describe("TaskContainerReaper", func() {
 
 			Context("which belongs to a resolving task", func() {
 				BeforeEach(func() {
-					snapshot.GetTaskStub = func(taskGuid string) (*models.Task, bool) {
+					snapshot.LookupTaskStub = func(taskGuid string) (*models.Task, bool, error) {
 						Ω(taskGuid).Should(Equal("some-task-guid"))
 						return &models.Task{
 							State: models.TaskStateResolving,
 							Action: &models.RunAction{
 								Path: "ls",
 							},
-						}, true
+						}, true, nil
 					}
 				})
 
@@ -113,15 +115,28 @@ var _ = Describe("TaskContainerReaper", func() {
 
 			Context("for which there is no associated task", func() {
 				BeforeEach(func() {
-					snapshot.GetTaskStub = func(taskGuid string) (*models.Task, bool) {
+					snapshot.LookupTaskStub = func(taskGuid string) (*models.Task, bool, error) {
 						Ω(taskGuid).Should(Equal("some-task-guid"))
-						return nil, false
+						return nil, false, nil
 					}
 				})
 
 				It("deletes the container", func() {
 					Ω(executorClient.DeleteContainerCallCount()).Should(Equal(1))
 					Ω(executorClient.DeleteContainerArgsForCall(0)).Should(Equal("some-task-guid"))
+				})
+			})
+
+			Context("when checking for the task fails", func() {
+				BeforeEach(func() {
+					snapshot.LookupTaskStub = func(taskGuid string) (*models.Task, bool, error) {
+						Ω(taskGuid).Should(Equal("some-task-guid"))
+						return nil, false, errors.New("welp")
+					}
+				})
+
+				It("does not delete the container", func() {
+					Ω(executorClient.DeleteContainerCallCount()).Should(Equal(0))
 				})
 			})
 		})

@@ -39,14 +39,15 @@ type FakeSnapshot struct {
 	tasksReturns struct {
 		result1 []models.Task
 	}
-	GetTaskStub        func(guid string) (*models.Task, bool)
-	getTaskMutex       sync.RWMutex
-	getTaskArgsForCall []struct {
+	LookupTaskStub        func(guid string) (*models.Task, bool, error)
+	lookupTaskMutex       sync.RWMutex
+	lookupTaskArgsForCall []struct {
 		guid string
 	}
-	getTaskReturns struct {
+	lookupTaskReturns struct {
 		result1 *models.Task
 		result2 bool
+		result3 error
 	}
 }
 
@@ -163,37 +164,38 @@ func (fake *FakeSnapshot) TasksReturns(result1 []models.Task) {
 	}{result1}
 }
 
-func (fake *FakeSnapshot) GetTask(guid string) (*models.Task, bool) {
-	fake.getTaskMutex.Lock()
-	fake.getTaskArgsForCall = append(fake.getTaskArgsForCall, struct {
+func (fake *FakeSnapshot) LookupTask(guid string) (*models.Task, bool, error) {
+	fake.lookupTaskMutex.Lock()
+	fake.lookupTaskArgsForCall = append(fake.lookupTaskArgsForCall, struct {
 		guid string
 	}{guid})
-	fake.getTaskMutex.Unlock()
-	if fake.GetTaskStub != nil {
-		return fake.GetTaskStub(guid)
+	fake.lookupTaskMutex.Unlock()
+	if fake.LookupTaskStub != nil {
+		return fake.LookupTaskStub(guid)
 	} else {
-		return fake.getTaskReturns.result1, fake.getTaskReturns.result2
+		return fake.lookupTaskReturns.result1, fake.lookupTaskReturns.result2, fake.lookupTaskReturns.result3
 	}
 }
 
-func (fake *FakeSnapshot) GetTaskCallCount() int {
-	fake.getTaskMutex.RLock()
-	defer fake.getTaskMutex.RUnlock()
-	return len(fake.getTaskArgsForCall)
+func (fake *FakeSnapshot) LookupTaskCallCount() int {
+	fake.lookupTaskMutex.RLock()
+	defer fake.lookupTaskMutex.RUnlock()
+	return len(fake.lookupTaskArgsForCall)
 }
 
-func (fake *FakeSnapshot) GetTaskArgsForCall(i int) string {
-	fake.getTaskMutex.RLock()
-	defer fake.getTaskMutex.RUnlock()
-	return fake.getTaskArgsForCall[i].guid
+func (fake *FakeSnapshot) LookupTaskArgsForCall(i int) string {
+	fake.lookupTaskMutex.RLock()
+	defer fake.lookupTaskMutex.RUnlock()
+	return fake.lookupTaskArgsForCall[i].guid
 }
 
-func (fake *FakeSnapshot) GetTaskReturns(result1 *models.Task, result2 bool) {
-	fake.GetTaskStub = nil
-	fake.getTaskReturns = struct {
+func (fake *FakeSnapshot) LookupTaskReturns(result1 *models.Task, result2 bool, result3 error) {
+	fake.LookupTaskStub = nil
+	fake.lookupTaskReturns = struct {
 		result1 *models.Task
 		result2 bool
-	}{result1, result2}
+		result3 error
+	}{result1, result2, result3}
 }
 
 var _ gatherer.Snapshot = new(FakeSnapshot)

@@ -5,6 +5,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
@@ -18,10 +19,13 @@ type Snapshot interface {
 
 	// Tasks
 	Tasks() []models.Task
-	GetTask(guid string) (*models.Task, bool)
+	LookupTask(guid string) (*models.Task, bool, error)
 }
 
 type snapshot struct {
+	bbs    bbs.RepBBS
+	cellID string
+
 	containers []executor.Container
 	actualLRPs []models.ActualLRP
 	tasks      []models.Task
@@ -60,17 +64,34 @@ func (s *snapshot) Tasks() []models.Task {
 	return s.tasks
 }
 
-func (s *snapshot) GetTask(guid string) (*models.Task, bool) {
+func (s *snapshot) LookupTask(guid string) (*models.Task, bool, error) {
 	for _, t := range s.tasks {
 		if t.TaskGuid == guid {
-			return &t, true
+			return &t, true, nil
 		}
 	}
-	return nil, false
+
+	task, err := s.bbs.TaskByGuid(guid)
+	if err != nil {
+		if err == bbserrors.ErrTaskNotFound {
+			return nil, false, nil
+		} else {
+			return nil, false, err
+		}
+	}
+
+	if task.CellID != s.cellID {
+		return nil, false, nil
+	}
+
+	return task, true, nil
 }
 
 func NewSnapshot(cellID string, bbs bbs.RepBBS, executorClient executor.Client) (Snapshot, error) {
-	snap := &snapshot{}
+	snap := &snapshot{
+		bbs:    bbs,
+		cellID: cellID,
+	}
 	errChan := make(chan error, 3)
 
 	go func() {
