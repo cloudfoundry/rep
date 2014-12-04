@@ -1,4 +1,4 @@
-package stop_lrp_listener_test
+package http_server_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestStopLRPListener(t *testing.T) {
+func TestHttpServer(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "StopLRPListener Suite")
+	RunSpecs(t, "HttpServer Suite")
 }

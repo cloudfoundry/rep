@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/auction/communication/http/auction_http_handlers"
-	"github.com/cloudfoundry-incubator/auction/communication/http/routes"
+	auctionroutes "github.com/cloudfoundry-incubator/auction/communication/http/routes"
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/executor"
@@ -18,13 +18,14 @@ import (
 	"github.com/cloudfoundry-incubator/rep/auction_cell_rep"
 	"github.com/cloudfoundry-incubator/rep/gatherer"
 	"github.com/cloudfoundry-incubator/rep/harvester"
+	repserver "github.com/cloudfoundry-incubator/rep/http_server"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
 	"github.com/cloudfoundry-incubator/rep/reaper"
-	"github.com/cloudfoundry-incubator/rep/stop_lrp_listener"
 	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	bbsroutes "github.com/cloudfoundry-incubator/runtime-schema/routes"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/gunk/workpool"
@@ -142,7 +143,6 @@ func main() {
 		{"auction-server", auctionServer},
 		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
 		{"task-rep", initializeTaskRep(*cellID, bbs, logger, executorClient)},
-		{"stop-lrp-listener", initializeStopLRPListener(lrpStopper, bbs, logger)},
 		{"gatherer", gatherer},
 		{"event-consumer", eventConsumer},
 	})
@@ -256,10 +256,6 @@ func initializeLRPStopper(guid string, bbs Bbs.RepBBS, executorClient executor.C
 	return lrp_stopper.New(guid, bbs, executorClient, logger)
 }
 
-func initializeStopLRPListener(stopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, logger lager.Logger) ifrit.Runner {
-	return stop_lrp_listener.New(stopper, bbs, logger)
-}
-
 func initializeAuctionServer(
 	stopper lrp_stopper.LRPStopper,
 	bbs Bbs.RepBBS,
@@ -267,8 +263,13 @@ func initializeAuctionServer(
 	logger lager.Logger,
 ) (ifrit.Runner, string) {
 	auctionCellRep := auction_cell_rep.New(*cellID, *stack, stopper, bbs, executorClient, logger)
+
 	handlers := auction_http_handlers.New(auctionCellRep, logger)
-	router, err := rata.NewRouter(routes.Routes, handlers)
+	handlers[bbsroutes.StopLRPInstance] = repserver.NewStopLRPInstanceHandler(stopper)
+
+	routes := append(auctionroutes.Routes, bbsroutes.StopLRPRoutes...)
+
+	router, err := rata.NewRouter(routes, handlers)
 	if err != nil {
 		logger.Fatal("failed-to-construct-auction-router", err)
 	}

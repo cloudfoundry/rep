@@ -50,14 +50,6 @@ func (stopper *lrpStopper) StopInstance(stopInstance models.StopLRPInstance) err
 		"container": containerId,
 	})
 
-	err = stopper.bbs.ResolveStopLRPInstance(stopInstance)
-	if err != nil {
-		stopLog.Error("failed-to-resolve-stop", err, lager.Data{
-			"stopInstance-guid": stopInstance.InstanceGuid,
-		})
-		return err
-	}
-
 	err = stopper.client.DeleteContainer(containerId)
 	switch err {
 	case nil:

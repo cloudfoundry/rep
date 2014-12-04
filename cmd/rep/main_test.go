@@ -302,7 +302,6 @@ var _ = Describe("The Rep", func() {
 
 			Eventually(findDeleteRequest).Should(Equal("/containers/some-instance-guid"))
 			Eventually(bbs.ActualLRPs).Should(BeEmpty())
-			Eventually(bbs.StopLRPInstances).Should(BeEmpty())
 		})
 	})
 })
