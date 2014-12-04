@@ -171,8 +171,6 @@ var _ = Describe("The Rep", func() {
 
 	Describe("acting as an auction representative", func() {
 		BeforeEach(func() {
-			fakeExecutor.AllowUnhandledRequests = true
-			fakeExecutor.UnhandledRequestStatusCode = http.StatusOK
 			fakeExecutor.RouteToHandler("GET", "/resources/total", ghttp.RespondWithJSONEncoded(http.StatusOK, executor.ExecutorResources{
 				MemoryMB:   1024,
 				DiskMB:     2048,
