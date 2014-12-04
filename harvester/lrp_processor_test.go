@@ -145,14 +145,6 @@ var _ = Describe("LRP Processor", func() {
 
 			itReportsAsStarting()
 		})
-
-		Context("when the container health is unmonitored", func() {
-			BeforeEach(func() {
-				container.Health = executor.HealthUnmonitored
-			})
-
-			itReportsAsStarting()
-		})
 	})
 
 	Context("when the container state is created", func() {
@@ -175,14 +167,6 @@ var _ = Describe("LRP Processor", func() {
 
 			itReportsAsStarting()
 		})
-
-		Context("when the container health is unmonitored", func() {
-			BeforeEach(func() {
-				container.Health = executor.HealthUnmonitored
-			})
-
-			itReportsAsRunning()
-		})
 	})
 
 	Context("when the container state is completed", func() {
@@ -202,15 +186,6 @@ var _ = Describe("LRP Processor", func() {
 		Context("when the container health is down", func() {
 			BeforeEach(func() {
 				container.Health = executor.HealthDown
-			})
-
-			itRemovesTheLRP()
-			itRemovesTheContainer()
-		})
-
-		Context("when the container health is unmonitored", func() {
-			BeforeEach(func() {
-				container.Health = executor.HealthUnmonitored
 			})
 
 			itRemovesTheLRP()

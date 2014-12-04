@@ -70,7 +70,7 @@ func (p *lrpProcessor) Process(container executor.Container) {
 			}
 			logger.Debug("reported-starting")
 
-		case executor.HealthUp, executor.HealthUnmonitored:
+		case executor.HealthUp:
 			err := p.bbs.ReportActualLRPAsRunning(actualLrp, p.cellId)
 			if err != nil {
 				logger.Error("report-running-failed", err)
