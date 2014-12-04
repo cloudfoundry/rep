@@ -123,16 +123,15 @@ var _ = Describe("EventConsumer", func() {
 			})
 		})
 
-		Context("when a container health event arrives", func() {
+		Context("when a container running event arrives", func() {
 			container := executor.Container{
 				Guid:  "container-guid",
 				State: executor.StateCreated,
 			}
 
 			JustBeforeEach(func() {
-				receivedEvents <- executor.ContainerHealthEvent{
+				receivedEvents <- executor.ContainerRunningEvent{
 					Container: container,
-					Health:    executor.HealthUp,
 				}
 			})
 

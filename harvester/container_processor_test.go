@@ -149,24 +149,21 @@ var _ = Describe("Container Processor", func() {
 
 			BeforeEach(func() {
 				container1 = executor.Container{
-					Guid:   "lrp-container-guid",
-					State:  executor.StateCreated,
-					Health: executor.HealthDown,
-					Tags:   lrpTags,
+					Guid:  "lrp-container-guid",
+					State: executor.StateCreated,
+					Tags:  lrpTags,
 				}
 
 				container2 = executor.Container{
-					Guid:   "lrp-container-guid",
-					State:  executor.StateCreated,
-					Health: executor.HealthUp,
-					Tags:   lrpTags,
+					Guid:  "lrp-container-guid",
+					State: executor.StateRunning,
+					Tags:  lrpTags,
 				}
 
 				container3 = executor.Container{
-					Guid:   "lrp-container-guid",
-					State:  executor.StateCompleted,
-					Health: executor.HealthDown,
-					Tags:   lrpTags,
+					Guid:  "lrp-container-guid",
+					State: executor.StateCompleted,
+					Tags:  lrpTags,
 					RunResult: executor.ContainerRunResult{
 						Failed: false,
 					},

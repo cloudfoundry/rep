@@ -60,7 +60,7 @@ func (consumer *eventConsumer) Run(signals <-chan os.Signal, ready chan<- struct
 					consumer.processor.Process(event.Container)
 				}
 
-			case executor.ContainerHealthEvent:
+			case executor.ContainerRunningEvent:
 				if event.Container.Tags == nil {
 					continue
 				}

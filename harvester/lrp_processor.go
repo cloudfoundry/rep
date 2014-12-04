@@ -1,8 +1,6 @@
 package harvester
 
 import (
-	"errors"
-
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
@@ -35,9 +33,8 @@ func NewLRPProcessor(
 
 func (p *lrpProcessor) Process(container executor.Container) {
 	logger := p.logger.Session("process-lrp", lager.Data{
-		"container-guid":   container.Guid,
-		"container-state":  container.State,
-		"container-health": container.Health,
+		"container-guid":  container.Guid,
+		"container-state": container.State,
 	})
 
 	if container.State == executor.StateReserved {
@@ -52,7 +49,7 @@ func (p *lrpProcessor) Process(container executor.Container) {
 	}
 
 	switch container.State {
-	case executor.StateInitializing:
+	case executor.StateInitializing, executor.StateCreated:
 		_, err = p.bbs.ReportActualLRPAsStarting(actualLrp.ProcessGuid, actualLrp.InstanceGuid, p.cellId, actualLrp.Domain, actualLrp.Index)
 		if err != nil {
 			logger.Error("report-starting-failed", err)
@@ -60,27 +57,13 @@ func (p *lrpProcessor) Process(container executor.Container) {
 		}
 		logger.Debug("reported-starting")
 
-	case executor.StateCreated:
-		switch container.Health {
-		case executor.HealthDown:
-			_, err = p.bbs.ReportActualLRPAsStarting(actualLrp.ProcessGuid, actualLrp.InstanceGuid, p.cellId, actualLrp.Domain, actualLrp.Index)
-			if err != nil {
-				logger.Error("report-starting-failed", err)
-				return
-			}
-			logger.Debug("reported-starting")
-
-		case executor.HealthUp, executor.HealthUnmonitored:
-			err := p.bbs.ReportActualLRPAsRunning(actualLrp, p.cellId)
-			if err != nil {
-				logger.Error("report-running-failed", err)
-				return
-			}
-			logger.Debug("reported-running")
-
-		default:
-			logger.Error("unknown-container-health", errors.New("inconceivable!"))
+	case executor.StateRunning:
+		err := p.bbs.ReportActualLRPAsRunning(actualLrp, p.cellId)
+		if err != nil {
+			logger.Error("report-running-failed", err)
+			return
 		}
+		logger.Debug("reported-running")
 
 	case executor.StateCompleted:
 		err := p.bbs.RemoveActualLRP(actualLrp)
