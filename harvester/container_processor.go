@@ -59,9 +59,8 @@ func NewContainerProcessor(
 
 func (p *containerProcessor) Process(container executor.Container) {
 	logger := p.logger.WithData(lager.Data{
-		"container-guid":   container.Guid,
-		"container-state":  container.State,
-		"container-health": container.Health,
+		"container-guid":  container.Guid,
+		"container-state": container.State,
 	})
 
 	if container.Tags == nil {
@@ -104,7 +103,6 @@ func (p *containerProcessor) processWorkQueue() {
 		logger.Info("processing-container", lager.Data{
 			"container-guid":      container.Guid,
 			"container-state":     container.State,
-			"container-health":    container.Health,
 			"container-lifecycle": lifecycle,
 		})
 

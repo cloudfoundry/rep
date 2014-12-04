@@ -130,21 +130,7 @@ var _ = Describe("LRP Processor", func() {
 			container.State = executor.StateInitializing
 		})
 
-		Context("when the container health is up", func() {
-			BeforeEach(func() {
-				container.Health = executor.HealthUp
-			})
-
-			itReportsAsStarting()
-		})
-
-		Context("when the container health is down", func() {
-			BeforeEach(func() {
-				container.Health = executor.HealthDown
-			})
-
-			itReportsAsStarting()
-		})
+		itReportsAsStarting()
 	})
 
 	Context("when the container state is created", func() {
@@ -152,21 +138,15 @@ var _ = Describe("LRP Processor", func() {
 			container.State = executor.StateCreated
 		})
 
-		Context("when the container health is up", func() {
-			BeforeEach(func() {
-				container.Health = executor.HealthUp
-			})
+		itReportsAsStarting()
+	})
 
-			itReportsAsRunning()
+	Context("when the container state is running", func() {
+		BeforeEach(func() {
+			container.State = executor.StateRunning
 		})
 
-		Context("when the container health is down", func() {
-			BeforeEach(func() {
-				container.Health = executor.HealthDown
-			})
-
-			itReportsAsStarting()
-		})
+		itReportsAsRunning()
 	})
 
 	Context("when the container state is completed", func() {
@@ -174,23 +154,8 @@ var _ = Describe("LRP Processor", func() {
 			container.State = executor.StateCompleted
 		})
 
-		Context("when the container health is up", func() {
-			BeforeEach(func() {
-				container.Health = executor.HealthUp
-			})
-
-			itRemovesTheLRP()
-			itRemovesTheContainer()
-		})
-
-		Context("when the container health is down", func() {
-			BeforeEach(func() {
-				container.Health = executor.HealthDown
-			})
-
-			itRemovesTheLRP()
-			itRemovesTheContainer()
-		})
+		itRemovesTheLRP()
+		itRemovesTheContainer()
 	})
 
 	Context("when the container is invalid", func() {
