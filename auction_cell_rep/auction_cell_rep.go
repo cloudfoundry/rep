@@ -1,6 +1,8 @@
 package auction_cell_rep
 
 import (
+	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
@@ -121,6 +123,22 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 		}
 	}
 
+	for _, task := range work.Tasks {
+		taskLogger := logger.Session("task-start", lager.Data{
+			"task-guid": task.TaskGuid,
+			"memory-mb": task.MemoryMB,
+			"disk-mb":   task.DiskMB,
+		})
+		taskLogger.Info("starting")
+		err := a.startTask(task, taskLogger)
+		if err != nil {
+			taskLogger.Error("failed-to-start", err)
+			failedWork.Tasks = append(failedWork.Tasks, task)
+		} else {
+			taskLogger.Info("started")
+		}
+	}
+
 	return failedWork, nil
 }
 
@@ -192,6 +210,62 @@ func (a *AuctionCellRep) stopLRP(lrp models.ActualLRP) error {
 	return a.lrpStopper.StopInstance(lrp)
 }
 
+func (a *AuctionCellRep) startTask(task models.Task, logger lager.Logger) error {
+	if task.Stack != a.stack {
+		return errors.New(fmt.Sprintf("stack mismatch: task requested stack '%s', rep provides stack '%s'", task.Stack, a.stack))
+	}
+
+	logger.Info("allocating-container")
+	_, err := a.client.AllocateContainer(executor.Container{
+		Guid: task.TaskGuid,
+
+		Tags: executor.Tags{
+			rep.LifecycleTag:  rep.TaskLifecycle,
+			rep.DomainTag:     task.Domain,
+			rep.ResultFileTag: task.ResultFile,
+		},
+
+		DiskMB:     task.DiskMB,
+		MemoryMB:   task.MemoryMB,
+		CPUWeight:  task.CPUWeight,
+		RootFSPath: task.RootFSPath,
+		Log: executor.LogConfig{
+			Guid:       task.LogGuid,
+			SourceName: task.LogSource,
+		},
+
+		Action: task.Action,
+
+		Env: executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
+	})
+	if err != nil {
+		logger.Error("failed-to-allocate-container", err)
+		return err
+	}
+	logger.Info("successfully-allocated-container")
+
+	logger.Info("running-task")
+	err = a.client.RunContainer(task.TaskGuid)
+	if err != nil {
+		logger.Error("failed-to-run-task", err)
+		a.client.DeleteContainer(task.TaskGuid)
+		a.markTaskAsFailed(logger, task.TaskGuid, err)
+		return err
+	}
+	logger.Info("successfully-ran-task")
+
+	logger.Info("starting-task")
+	err = a.bbs.StartTask(task.TaskGuid, a.cellID)
+	if err != nil {
+		logger.Error("failed-to-mark-task-started", err)
+		a.client.DeleteContainer(task.TaskGuid)
+		return err
+	}
+	logger.Info("successfully-started-task")
+
+	return nil
+}
+
 func (a *AuctionCellRep) convertPortMappings(containerPorts []uint32) []executor.PortMapping {
 	out := []executor.PortMapping{}
 	for _, port := range containerPorts {
@@ -213,4 +287,13 @@ func (a *AuctionCellRep) fetchResourcesVia(fetcher func() (executor.ExecutorReso
 		DiskMB:     resources.DiskMB,
 		Containers: resources.Containers,
 	}, nil
+}
+
+func (a *AuctionCellRep) markTaskAsFailed(logger lager.Logger, taskGuid string, err error) {
+	logger.Info("complete-task")
+	err = a.bbs.CompleteTask(taskGuid, true, "failed to run container - "+err.Error(), "")
+	if err != nil {
+		logger.Error("failed-to-complete-task", err)
+	}
+	logger.Info("successfully-completed-task")
 }

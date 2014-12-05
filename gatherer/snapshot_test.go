@@ -60,13 +60,6 @@ var _ = Describe("Snapshot", func() {
 
 		tasks = []models.Task{
 			models.Task{
-				TaskGuid: "task-guid-1",
-				State:    models.TaskStateClaimed,
-				Action: &models.RunAction{
-					Path: "ls",
-				},
-			},
-			models.Task{
 				TaskGuid: "task-guid-2",
 				State:    models.TaskStateRunning,
 				Action: &models.RunAction{

@@ -173,40 +173,137 @@ var _ = Describe("The Rep", func() {
 	})
 
 	Describe("acting as an auction representative", func() {
-		BeforeEach(func() {
-			fakeExecutor.RouteToHandler("GET", "/resources/total", ghttp.RespondWithJSONEncoded(http.StatusOK, executor.ExecutorResources{
-				MemoryMB:   1024,
-				DiskMB:     2048,
-				Containers: 4,
-			}))
-			fakeExecutor.RouteToHandler("GET", "/resources/remaining", ghttp.RespondWithJSONEncoded(http.StatusOK, executor.ExecutorResources{
-				MemoryMB:   512,
-				DiskMB:     1024,
-				Containers: 2,
-			}))
-			fakeExecutor.RouteToHandler("GET", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, []executor.Container{}))
+		Describe("reporting the state of its resources", func() {
+			BeforeEach(func() {
+				fakeExecutor.RouteToHandler("GET", "/resources/total", ghttp.RespondWithJSONEncoded(http.StatusOK, executor.ExecutorResources{
+					MemoryMB:   1024,
+					DiskMB:     2048,
+					Containers: 4,
+				}))
+				fakeExecutor.RouteToHandler("GET", "/resources/remaining", ghttp.RespondWithJSONEncoded(http.StatusOK, executor.ExecutorResources{
+					MemoryMB:   512,
+					DiskMB:     1024,
+					Containers: 2,
+				}))
+				fakeExecutor.RouteToHandler("GET", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, []executor.Container{}))
+			})
+
+			It("makes a request to the executor", func() {
+				Eventually(bbs.Cells).Should(HaveLen(1))
+				cells, err := bbs.Cells()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				client := auction_http_client.New(http.DefaultClient, cells[0].CellID, cells[0].RepAddress, lagertest.NewTestLogger("auction-client"))
+
+				state, err := client.State()
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(state.TotalResources).Should(Equal(auctiontypes.Resources{
+					MemoryMB:   1024,
+					DiskMB:     2048,
+					Containers: 4,
+				}))
+				Ω(state.AvailableResources).Should(Equal(auctiontypes.Resources{
+					MemoryMB:   512,
+					DiskMB:     1024,
+					Containers: 2,
+				}))
+				Ω(state.Stack).Should(Equal("the-stack"))
+			})
 		})
 
-		It("makes a request to the executor", func() {
-			Eventually(bbs.Cells).Should(HaveLen(1))
-			cells, err := bbs.Cells()
-			Ω(err).ShouldNot(HaveOccurred())
+		Describe("performing work", func() {
+			Describe("starting LRPs", func() {
+				var lrpStartAuction models.LRPStartAuction
 
-			client := auction_http_client.New(http.DefaultClient, cells[0].CellID, cells[0].RepAddress, lagertest.NewTestLogger("auction-client"))
+				BeforeEach(func() {
+					lrpStartAuction = models.LRPStartAuction{
+						DesiredLRP: models.DesiredLRP{
+							ProcessGuid: "the-process-guid",
+							MemoryMB:    2,
+							DiskMB:      2,
+							Stack:       "the-stack",
+							Domain:      "the-domain",
+						},
+						InstanceGuid: "the-instance-guid",
+						Index:        1,
+					}
 
-			state, err := client.State()
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(state.TotalResources).Should(Equal(auctiontypes.Resources{
-				MemoryMB:   1024,
-				DiskMB:     2048,
-				Containers: 4,
-			}))
-			Ω(state.AvailableResources).Should(Equal(auctiontypes.Resources{
-				MemoryMB:   512,
-				DiskMB:     1024,
-				Containers: 2,
-			}))
-			Ω(state.Stack).Should(Equal("the-stack"))
+					fakeExecutor.RouteToHandler("POST", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, executor.Container{}))
+					fakeExecutor.RouteToHandler("POST", "/containers/the-instance-guid/run", ghttp.RespondWith(http.StatusOK, ""))
+				})
+
+				It("makes a request to executor to allocate and run the container, and marks the state as starting in the BBS", func() {
+					Eventually(bbs.Cells).Should(HaveLen(1))
+					cells, err := bbs.Cells()
+					Ω(err).ShouldNot(HaveOccurred())
+
+					client := auction_http_client.New(http.DefaultClient, cells[0].CellID, cells[0].RepAddress, lagertest.NewTestLogger("auction-client"))
+
+					Ω(bbs.RunningActualLRPs()).Should(BeEmpty())
+
+					works := auctiontypes.Work{
+						LRPStarts: []models.LRPStartAuction{lrpStartAuction},
+						LRPStops:  []models.StopLRPInstance{},
+					}
+					failedWorks, err := client.Perform(works)
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(failedWorks.LRPStarts).Should(BeEmpty())
+					Ω(failedWorks.LRPStops).Should(BeEmpty())
+
+					Eventually(bbs.ActualLRPs).Should(HaveLen(1))
+					actualLRPs, err := bbs.ActualLRPs()
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(actualLRPs[0].ProcessGuid).Should(Equal("the-process-guid"))
+					Ω(actualLRPs[0].State).Should(Equal(models.ActualLRPStateStarting))
+				})
+			})
+
+			Describe("running tasks", func() {
+				var task models.Task
+
+				BeforeEach(func() {
+					task = models.Task{
+						TaskGuid: "the-task-guid",
+						MemoryMB: 2,
+						DiskMB:   2,
+						Stack:    "the-stack",
+						Domain:   "the-domain",
+						Action: &models.RunAction{
+							Path: "date",
+						},
+					}
+					err := bbs.DesireTask(task)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					fakeExecutor.RouteToHandler("POST", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, executor.Container{}))
+					fakeExecutor.RouteToHandler("POST", "/containers/the-task-guid/run", ghttp.RespondWith(http.StatusOK, ""))
+				})
+
+				It("makes a request to executor to allocate and run the container, and marks the task as running in the BBS", func() {
+					Eventually(bbs.Cells).Should(HaveLen(1))
+					cells, err := bbs.Cells()
+					Ω(err).ShouldNot(HaveOccurred())
+
+					client := auction_http_client.New(http.DefaultClient, cells[0].CellID, cells[0].RepAddress, lagertest.NewTestLogger("auction-client"))
+
+					Ω(bbs.PendingTasks()).Should(HaveLen(1))
+					Ω(bbs.RunningTasks()).Should(BeEmpty())
+
+					works := auctiontypes.Work{
+						Tasks: []models.Task{task},
+					}
+					failedWorks, err := client.Perform(works)
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(failedWorks.Tasks).Should(BeEmpty())
+
+					Eventually(bbs.PendingTasks).Should(BeEmpty())
+					Eventually(bbs.RunningTasks).Should(HaveLen(1))
+					runningTasks, err := bbs.RunningTasks()
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(runningTasks[0].TaskGuid).Should(Equal("the-task-guid"))
+					Ω(runningTasks[0].State).Should(Equal(models.TaskStateRunning))
+				})
+			})
 		})
 	})
 
@@ -233,7 +330,7 @@ var _ = Describe("The Rep", func() {
 			err := bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.ClaimTask(task.TaskGuid, cellID)
+			err = bbs.StartTask(task.TaskGuid, cellID)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
