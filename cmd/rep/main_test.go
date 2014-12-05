@@ -274,19 +274,19 @@ var _ = Describe("The Rep", func() {
 				),
 			)
 
-			err := bbs.ReportActualLRPAsRunning(models.ActualLRP{
+			lrp := models.ActualLRP{
 				ProcessGuid:  "some-process-guid",
 				InstanceGuid: "some-instance-guid",
 				Domain:       "the-domain",
 				Index:        3,
-			}, cellID)
+
+				CellID: cellID,
+			}
+
+			err := bbs.ReportActualLRPAsRunning(lrp, cellID)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.RequestStopLRPInstance(models.StopLRPInstance{
-				ProcessGuid:  "some-process-guid",
-				InstanceGuid: "some-instance-guid",
-				Index:        3,
-			})
+			err = bbs.RequestStopLRPInstance(lrp)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 

@@ -184,8 +184,8 @@ func (a *AuctionCellRep) start(startAuction models.LRPStartAuction, logger lager
 	return nil
 }
 
-func (a *AuctionCellRep) stop(stopInstance models.StopLRPInstance) error {
-	return a.lrpStopper.StopInstance(stopInstance)
+func (a *AuctionCellRep) stop(lrp models.ActualLRP) error {
+	return a.lrpStopper.StopInstance(lrp)
 }
 
 func (a *AuctionCellRep) convertPortMappings(containerPorts []uint32) []executor.PortMapping {

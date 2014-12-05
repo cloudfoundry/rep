@@ -1,8 +1,8 @@
 package http_server
 
 import (
+	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -19,23 +19,20 @@ func NewStopLRPInstanceHandler(stopper lrp_stopper.LRPStopper) *StopLRPInstanceH
 }
 
 func (h StopLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	index, err := strconv.Atoi(r.FormValue(":index"))
+	var actualLRP models.ActualLRP
+	err := json.NewDecoder(r.Body).Decode(&actualLRP)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	stopInstance := models.StopLRPInstance{
-		ProcessGuid:  r.FormValue(":process_guid"),
-		InstanceGuid: r.FormValue(":instance_guid"),
-		Index:        index,
-	}
-	err = stopInstance.Validate()
+	err = actualLRP.Validate()
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	h.stopper.StopInstance(stopInstance)
+	h.stopper.StopInstance(actualLRP)
+
 	w.WriteHeader(http.StatusAccepted)
 }

@@ -2,28 +2,29 @@
 package fake_lrp_stopper
 
 import (
-	. "github.com/cloudfoundry-incubator/rep/lrp_stopper"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"sync"
+
+	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
+	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
 type FakeLRPStopper struct {
-	StopInstanceStub        func(stopInstance models.StopLRPInstance) error
+	StopInstanceStub        func(models.ActualLRP) error
 	stopInstanceMutex       sync.RWMutex
 	stopInstanceArgsForCall []struct {
-		arg1 models.StopLRPInstance
+		arg1 models.ActualLRP
 	}
 	stopInstanceReturns struct {
 		result1 error
 	}
 }
 
-func (fake *FakeLRPStopper) StopInstance(arg1 models.StopLRPInstance) error {
+func (fake *FakeLRPStopper) StopInstance(arg1 models.ActualLRP) error {
 	fake.stopInstanceMutex.Lock()
-	defer fake.stopInstanceMutex.Unlock()
 	fake.stopInstanceArgsForCall = append(fake.stopInstanceArgsForCall, struct {
-		arg1 models.StopLRPInstance
+		arg1 models.ActualLRP
 	}{arg1})
+	fake.stopInstanceMutex.Unlock()
 	if fake.StopInstanceStub != nil {
 		return fake.StopInstanceStub(arg1)
 	} else {
@@ -37,16 +38,17 @@ func (fake *FakeLRPStopper) StopInstanceCallCount() int {
 	return len(fake.stopInstanceArgsForCall)
 }
 
-func (fake *FakeLRPStopper) StopInstanceArgsForCall(i int) models.StopLRPInstance {
+func (fake *FakeLRPStopper) StopInstanceArgsForCall(i int) models.ActualLRP {
 	fake.stopInstanceMutex.RLock()
 	defer fake.stopInstanceMutex.RUnlock()
 	return fake.stopInstanceArgsForCall[i].arg1
 }
 
 func (fake *FakeLRPStopper) StopInstanceReturns(result1 error) {
+	fake.StopInstanceStub = nil
 	fake.stopInstanceReturns = struct {
 		result1 error
 	}{result1}
 }
 
-var _ LRPStopper = new(FakeLRPStopper)
+var _ lrp_stopper.LRPStopper = new(FakeLRPStopper)

@@ -153,7 +153,7 @@ var _ = Describe("AuctionCellRep", func() {
 	Describe("performing work", func() {
 		var work auctiontypes.Work
 		var startAuction models.LRPStartAuction
-		var stopInstance models.StopLRPInstance
+		var actualLRP models.ActualLRP
 		BeforeEach(func() {
 			work = auctiontypes.Work{}
 
@@ -183,15 +183,17 @@ var _ = Describe("AuctionCellRep", func() {
 				Index:        2,
 			}
 
-			stopInstance = models.StopLRPInstance{
+			actualLRP = models.ActualLRP{
 				ProcessGuid:  "some-process-guid",
 				InstanceGuid: "some-instance-guid",
 				Index:        2,
+
+				CellID: "some-cell-id",
 			}
 
 			work.Starts = []models.LRPStartAuction{startAuction}
 
-			work.Stops = []models.StopLRPInstance{stopInstance}
+			work.Stops = []models.ActualLRP{actualLRP}
 		})
 
 		Describe("performing starts", func() {
@@ -313,7 +315,7 @@ var _ = Describe("AuctionCellRep", func() {
 					failedWork, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(failedWork).Should(BeZero())
-					Ω(stopper.StopInstanceArgsForCall(0)).Should(Equal(stopInstance))
+					Ω(stopper.StopInstanceArgsForCall(0)).Should(Equal(actualLRP))
 				})
 			})
 
@@ -325,7 +327,7 @@ var _ = Describe("AuctionCellRep", func() {
 				It("should mark the stop as failed", func() {
 					failedWork, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
-					Ω(failedWork.Stops).Should(ConsistOf(stopInstance))
+					Ω(failedWork.Stops).Should(ConsistOf(actualLRP))
 				})
 			})
 		})
