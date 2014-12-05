@@ -87,24 +87,24 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 	var failedWork = auctiontypes.Work{}
 
 	logger := a.logger.Session("auction-work", lager.Data{
-		"starts": len(work.Starts),
-		"stops":  len(work.Stops),
+		"lrp-starts": len(work.LRPStarts),
+		"lrp-stops":  len(work.LRPStops),
 	})
 
-	for _, stop := range work.Stops {
-		stopLogger := logger.Session("stop-instance", lager.Data{"process-guid": stop.ProcessGuid, "instance-guid": stop.InstanceGuid, "index": stop.Index})
+	for _, stop := range work.LRPStops {
+		stopLogger := logger.Session("lrp-stop-instance", lager.Data{"process-guid": stop.ProcessGuid, "instance-guid": stop.InstanceGuid, "index": stop.Index})
 		stopLogger.Info("stopping")
-		err := a.stop(stop)
+		err := a.stopLRP(stop)
 		if err != nil {
 			stopLogger.Error("failed-to-stop", err)
-			failedWork.Stops = append(failedWork.Stops, stop)
+			failedWork.LRPStops = append(failedWork.LRPStops, stop)
 		} else {
 			stopLogger.Info("stopped")
 		}
 	}
 
-	for _, start := range work.Starts {
-		startLogger := logger.Session("start-instance", lager.Data{
+	for _, start := range work.LRPStarts {
+		startLogger := logger.Session("lrp-start-instance", lager.Data{
 			"process-guid":  start.DesiredLRP.ProcessGuid,
 			"instance-guid": start.InstanceGuid,
 			"index":         start.Index,
@@ -112,10 +112,10 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 			"disk-mb":       start.DesiredLRP.DiskMB,
 		})
 		startLogger.Info("starting")
-		err := a.start(start, startLogger)
+		err := a.startLRP(start, startLogger)
 		if err != nil {
 			startLogger.Error("failed-to-start", err)
-			failedWork.Starts = append(failedWork.Starts, start)
+			failedWork.LRPStarts = append(failedWork.LRPStarts, start)
 		} else {
 			startLogger.Info("started")
 		}
@@ -124,7 +124,7 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 	return failedWork, nil
 }
 
-func (a *AuctionCellRep) start(startAuction models.LRPStartAuction, logger lager.Logger) error {
+func (a *AuctionCellRep) startLRP(startAuction models.LRPStartAuction, logger lager.Logger) error {
 	logger.Info("reserving")
 
 	containerGuid := startAuction.InstanceGuid
@@ -184,7 +184,7 @@ func (a *AuctionCellRep) start(startAuction models.LRPStartAuction, logger lager
 	return nil
 }
 
-func (a *AuctionCellRep) stop(stopInstance models.StopLRPInstance) error {
+func (a *AuctionCellRep) stopLRP(stopInstance models.StopLRPInstance) error {
 	return a.lrpStopper.StopInstance(stopInstance)
 }
 
