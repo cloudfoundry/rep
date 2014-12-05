@@ -196,10 +196,9 @@ var _ = Describe("AuctionCellRep", func() {
 				CellID: "some-cell-id",
 			}
 
-			work.Starts = []models.LRPStartAuction{startAuction}
+			work.LRPStarts = []models.LRPStartAuction{startAuction}
 
-			work.Stops = []models.ActualLRP{stoppingLRP}
-			work.Stops = []models.ActualLRP{stoppingLRP}
+			work.LRPStops = []models.ActualLRP{stoppingLRP}
 		})
 
 		Describe("performing starts", func() {
@@ -262,7 +261,7 @@ var _ = Describe("AuctionCellRep", func() {
 				It("should mark the start as failed", func() {
 					failedWork, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
-					Ω(failedWork.Starts).Should(ConsistOf(startAuction))
+					Ω(failedWork.LRPStarts).Should(ConsistOf(startAuction))
 				})
 
 				It("should not report to the BBS, or try to run the container", func() {
@@ -280,7 +279,7 @@ var _ = Describe("AuctionCellRep", func() {
 				It("should mark the start as failed", func() {
 					failedWork, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
-					Ω(failedWork.Starts).Should(ConsistOf(startAuction))
+					Ω(failedWork.LRPStarts).Should(ConsistOf(startAuction))
 				})
 
 				It("should delete the container and not try to run the container", func() {
@@ -299,7 +298,7 @@ var _ = Describe("AuctionCellRep", func() {
 				It("should mark the start as failed", func() {
 					failedWork, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
-					Ω(failedWork.Starts).Should(ConsistOf(startAuction))
+					Ω(failedWork.LRPStarts).Should(ConsistOf(startAuction))
 				})
 
 				It("should delete the container and remove the Actual from the BBS", func() {
@@ -330,8 +329,7 @@ var _ = Describe("AuctionCellRep", func() {
 				It("should mark the stop as failed", func() {
 					failedWork, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
-					Ω(failedWork.Stops).Should(ConsistOf(stoppingLRP))
-					Ω(failedWork.Stops).Should(ConsistOf(stoppingLRP))
+					Ω(failedWork.LRPStops).Should(ConsistOf(stoppingLRP))
 				})
 			})
 		})
