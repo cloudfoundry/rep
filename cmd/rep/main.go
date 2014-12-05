@@ -22,7 +22,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
 	"github.com/cloudfoundry-incubator/rep/reaper"
-	"github.com/cloudfoundry-incubator/rep/task_scheduler"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	bbsroutes "github.com/cloudfoundry-incubator/runtime-schema/routes"
@@ -142,7 +141,6 @@ func main() {
 	group := grouper.NewOrdered(os.Interrupt, grouper.Members{
 		{"auction-server", auctionServer},
 		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
-		{"task-rep", initializeTaskRep(*cellID, bbs, logger, executorClient)},
 		{"gatherer", gatherer},
 		{"event-consumer", eventConsumer},
 	})
@@ -246,10 +244,6 @@ func initializeRepBBS(logger lager.Logger) Bbs.RepBBS {
 	}
 
 	return Bbs.NewRepBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
-}
-
-func initializeTaskRep(cellID string, bbs Bbs.RepBBS, logger lager.Logger, executorClient executor.Client) *task_scheduler.TaskScheduler {
-	return task_scheduler.New(cellID, bbs, logger, *stack, executorClient)
 }
 
 func initializeLRPStopper(guid string, bbs Bbs.RepBBS, executorClient executor.Client, logger lager.Logger) lrp_stopper.LRPStopper {

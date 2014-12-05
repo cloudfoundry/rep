@@ -152,49 +152,40 @@ var _ = Describe("AuctionCellRep", func() {
 
 	Describe("performing work", func() {
 		var work auctiontypes.Work
-		var startAuction models.LRPStartAuction
-		var stopInstance models.StopLRPInstance
-		BeforeEach(func() {
-			work = auctiontypes.Work{}
-
-			startAuction = models.LRPStartAuction{
-				DesiredLRP: models.DesiredLRP{
-					Domain:      "tests",
-					RootFSPath:  "some-root-fs",
-					ProcessGuid: "process-guid",
-					DiskMB:      1024,
-					MemoryMB:    2048,
-					CPUWeight:   42,
-					EnvironmentVariables: []models.EnvironmentVariable{
-						{Name: "var1", Value: "val1"},
-						{Name: "var2", Value: "val2"},
-					},
-					Action: &models.DownloadAction{
-						From: "http://example.com/something",
-						To:   "/something",
-					},
-					LogGuid: "log-guid",
-					Ports: []uint32{
-						8080,
-					},
-				},
-
-				InstanceGuid: "instance-guid",
-				Index:        2,
-			}
-
-			stopInstance = models.StopLRPInstance{
-				ProcessGuid:  "some-process-guid",
-				InstanceGuid: "some-instance-guid",
-				Index:        2,
-			}
-
-			work.LRPStarts = []models.LRPStartAuction{startAuction}
-
-			work.LRPStops = []models.StopLRPInstance{stopInstance}
-		})
 
 		Describe("performing starts", func() {
+			var startAuction models.LRPStartAuction
+
+			BeforeEach(func() {
+				startAuction = models.LRPStartAuction{
+					DesiredLRP: models.DesiredLRP{
+						Domain:      "tests",
+						RootFSPath:  "some-root-fs",
+						ProcessGuid: "process-guid",
+						DiskMB:      1024,
+						MemoryMB:    2048,
+						CPUWeight:   42,
+						EnvironmentVariables: []models.EnvironmentVariable{
+							{Name: "var1", Value: "val1"},
+							{Name: "var2", Value: "val2"},
+						},
+						Action: &models.DownloadAction{
+							From: "http://example.com/something",
+							To:   "/something",
+						},
+						LogGuid: "log-guid",
+						Ports: []uint32{
+							8080,
+						},
+					},
+
+					InstanceGuid: "instance-guid",
+					Index:        2,
+				}
+
+				work = auctiontypes.Work{LRPStarts: []models.LRPStartAuction{startAuction}}
+			})
+
 			Context("when all is well", func() {
 				It("should allocate a container, mark the lrp as started, and run it", func() {
 					failedWork, err := cellRep.Perform(work)
@@ -307,7 +298,144 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 		})
 
+		Describe("starting tasks", func() {
+			var task models.Task
+
+			BeforeEach(func() {
+				task = models.Task{
+					Domain:   "tests",
+					TaskGuid: "the-task-guid",
+					Stack:    "lucid64",
+					DiskMB:   1024,
+					MemoryMB: 2048,
+					Action: &models.RunAction{
+						Path: "date",
+					},
+					EnvironmentVariables: []models.EnvironmentVariable{
+						{Name: "FOO", Value: "BAR"},
+					},
+				}
+
+				work = auctiontypes.Work{Tasks: []models.Task{task}}
+			})
+
+			Context("when all is well", func() {
+				It("should allocate a container, mark the task as started, and run it", func() {
+					failedWork, err := cellRep.Perform(work)
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(failedWork).Should(BeZero())
+
+					By("allocating the container")
+					Ω(client.AllocateContainerCallCount()).Should(Equal(1))
+
+					Ω(client.AllocateContainerArgsForCall(0)).Should(Equal(executor.Container{
+						Guid: task.TaskGuid,
+
+						Tags: executor.Tags{
+							rep.LifecycleTag:  rep.TaskLifecycle,
+							rep.DomainTag:     task.Domain,
+							rep.ResultFileTag: task.ResultFile,
+						},
+
+						Action: &models.RunAction{
+							Path: "date",
+						},
+						Env: []executor.EnvironmentVariable{
+							{Name: "FOO", Value: "BAR"},
+						},
+
+						MemoryMB: task.MemoryMB,
+						DiskMB:   task.DiskMB,
+					}))
+
+					By("reporting the task as started")
+					Ω(bbs.StartTaskCallCount()).Should(Equal(1))
+
+					actualTaskGuid, actualCellID := bbs.StartTaskArgsForCall(0)
+					Ω(actualTaskGuid).Should(Equal(task.TaskGuid))
+					Ω(actualCellID).Should(Equal("some-cell-id"))
+
+					By("running the task")
+					Ω(client.RunContainerCallCount()).Should(Equal(1))
+					Ω(client.RunContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
+				})
+			})
+
+			Context("when the container fails to allocate", func() {
+				BeforeEach(func() {
+					client.AllocateContainerReturns(executor.Container{}, commonErr)
+				})
+
+				It("should return the task as failed", func() {
+					failedWork, err := cellRep.Perform(work)
+					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
+					Ω(failedWork.Tasks).Should(ConsistOf(task))
+				})
+
+				It("should not start the task in the BBS, or try to run the container", func() {
+					cellRep.Perform(work)
+					Ω(bbs.StartTaskCallCount()).Should(Equal(0))
+					Ω(client.RunContainerCallCount()).Should(Equal(0))
+				})
+			})
+
+			Context("when it fails to run the container", func() {
+				BeforeEach(func() {
+					client.RunContainerReturns(commonErr)
+				})
+
+				It("should return the task as failed", func() {
+					failedWork, err := cellRep.Perform(work)
+					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
+					Ω(failedWork.Tasks).Should(ConsistOf(task))
+				})
+
+				It("should delete the container and mark the state as failed in the BBS", func() {
+					cellRep.Perform(work)
+
+					Ω(client.DeleteContainerCallCount()).Should(Equal(1))
+					Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
+
+					Ω(bbs.CompleteTaskCallCount()).Should(Equal(1))
+					actualTaskGuid, actualFailed, actualFailureReason, _ := bbs.CompleteTaskArgsForCall(0)
+					Ω(actualTaskGuid).Should(Equal(task.TaskGuid))
+					Ω(actualFailed).Should(BeTrue())
+					Ω(actualFailureReason).Should(ContainSubstring("failed to run container"))
+				})
+			})
+
+			Context("when it runs the container but fails to mark it starting in the BBS", func() {
+				BeforeEach(func() {
+					bbs.StartTaskReturns(commonErr)
+				})
+
+				It("should return the task as failed", func() {
+					failedWork, err := cellRep.Perform(work)
+					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
+					Ω(failedWork.Tasks).Should(ConsistOf(task))
+				})
+
+				It("should delete the container", func() {
+					cellRep.Perform(work)
+					Ω(client.DeleteContainerCallCount()).Should(Equal(1))
+					Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
+				})
+			})
+		})
+
 		Describe("performing stops", func() {
+			var stopInstance models.StopLRPInstance
+
+			BeforeEach(func() {
+				stopInstance = models.StopLRPInstance{
+					ProcessGuid:  "some-process-guid",
+					InstanceGuid: "some-instance-guid",
+					Index:        2,
+				}
+
+				work = auctiontypes.Work{LRPStops: []models.StopLRPInstance{stopInstance}}
+			})
+
 			Context("when all is well", func() {
 				It("should instruct the LRPStopper to stop", func() {
 					failedWork, err := cellRep.Perform(work)

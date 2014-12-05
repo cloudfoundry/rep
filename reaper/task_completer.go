@@ -28,7 +28,7 @@ func (r *TaskCompleter) Process(snapshot gatherer.Snapshot) {
 	tasks := snapshot.Tasks()
 
 	for _, task := range tasks {
-		if task.State != models.TaskStateClaimed && task.State != models.TaskStateRunning {
+		if task.State != models.TaskStateRunning {
 			continue
 		}
 

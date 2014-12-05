@@ -30,13 +30,13 @@ type FakeSnapshot struct {
 	ActualLRPsStub        func() []models.ActualLRP
 	actualLRPsMutex       sync.RWMutex
 	actualLRPsArgsForCall []struct{}
-	actualLRPsReturns struct {
+	actualLRPsReturns     struct {
 		result1 []models.ActualLRP
 	}
 	TasksStub        func() []models.Task
 	tasksMutex       sync.RWMutex
 	tasksArgsForCall []struct{}
-	tasksReturns struct {
+	tasksReturns     struct {
 		result1 []models.Task
 	}
 	LookupTaskStub        func(guid string) (*models.Task, bool, error)

@@ -30,22 +30,12 @@ var _ = Describe("TaskCompleter", func() {
 	})
 
 	Describe("updating the BBS when there are missing containers", func() {
-		Context("when there are claimed/running tasks for this executor in the BBS", func() {
+		Context("when there are running tasks for this executor in the BBS", func() {
 			BeforeEach(func() {
 				snapshot.TasksReturns([]models.Task{
 					models.Task{
 						TaskGuid: "task-guid-1",
-						State:    models.TaskStateClaimed,
-						Action: &models.RunAction{
-							Path: "ls",
-						},
-					},
-					models.Task{
-						TaskGuid: "task-guid-2",
 						State:    models.TaskStateRunning,
-						Action: &models.RunAction{
-							Path: "ls",
-						},
 					},
 				})
 			})
@@ -56,15 +46,10 @@ var _ = Describe("TaskCompleter", func() {
 				})
 
 				It("marks those tasks as complete & failed", func() {
-					Eventually(bbs.CompleteTaskCallCount()).Should(Equal(2))
+					Eventually(bbs.CompleteTaskCallCount()).Should(Equal(1))
 
 					taskGuid, failed, failureReason, _ := bbs.CompleteTaskArgsForCall(0)
 					Ω(taskGuid).Should(Equal("task-guid-1"))
-					Ω(failed).Should(BeTrue())
-					Ω(failureReason).Should(Equal("task container no longer exists"))
-
-					taskGuid, failed, failureReason, _ = bbs.CompleteTaskArgsForCall(1)
-					Ω(taskGuid).Should(Equal("task-guid-2"))
 					Ω(failed).Should(BeTrue())
 					Ω(failureReason).Should(Equal("task container no longer exists"))
 				})
@@ -86,10 +71,6 @@ var _ = Describe("TaskCompleter", func() {
 				snapshot.TasksReturns([]models.Task{
 					models.Task{
 						TaskGuid: "task-guid-1",
-						State:    models.TaskStateCompleted,
-					},
-					models.Task{
-						TaskGuid: "task-guid-2",
 						State:    models.TaskStateCompleted,
 					},
 				})
