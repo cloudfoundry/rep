@@ -243,12 +243,10 @@ var _ = Describe("The Rep", func() {
 
 					works := auctiontypes.Work{
 						LRPStarts: []models.LRPStartAuction{lrpStartAuction},
-						LRPStops:  []models.StopLRPInstance{},
 					}
 					failedWorks, err := client.Perform(works)
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(failedWorks.LRPStarts).Should(BeEmpty())
-					Ω(failedWorks.LRPStops).Should(BeEmpty())
 
 					Eventually(bbs.ActualLRPs).Should(HaveLen(1))
 					actualLRPs, err := bbs.ActualLRPs()

@@ -420,7 +420,7 @@ var _ = Describe("AuctionCellRep", func() {
 		})
 
 		Describe("performing stops", func() {
-			var acutalLRP models.ActualLRP
+			var actualLRP models.ActualLRP
 
 			BeforeEach(func() {
 				actualLRP = models.ActualLRP{
