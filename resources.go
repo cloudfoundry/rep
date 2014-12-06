@@ -15,32 +15,38 @@ const (
 
 	TaskLifecycle = "task"
 	LRPLifecycle  = "lrp"
-)
 
-const (
 	ProcessGuidTag  = "process-guid"
 	ProcessIndexTag = "process-index"
 )
 
-func ActualLRPFromContainer(container executor.Container, cellId, executorHost string) (models.ActualLRP, error) {
+var (
+	ErrContainerMissingTags = errors.New("container is missing tags")
+	ErrInvalidProcessIndex  = errors.New("container does not have a valid process index")
+)
+
+func ActualLRPFromContainer(container executor.Container, cellId, executorHost string) (*models.ActualLRP, error) {
 	if container.Tags == nil {
-		return models.ActualLRP{}, errors.New("container is missing tags")
+		return nil, ErrContainerMissingTags
 	}
 
 	processIndex, err := strconv.Atoi(container.Tags[ProcessIndexTag])
 	if err != nil {
-		return models.ActualLRP{}, errors.New("container does not have a valid process index")
+		return nil, ErrInvalidProcessIndex
 	}
 
-	actualLrp, err := models.NewActualLRP(
+	actualLrp := models.NewActualLRP(
 		container.Tags[ProcessGuidTag],
 		container.Guid,
 		cellId,
 		container.Tags[DomainTag],
 		processIndex,
+		models.ActualLRPStateInvalid,
 	)
+
+	err = actualLrp.Validate()
 	if err != nil {
-		return models.ActualLRP{}, err
+		return nil, err
 	}
 
 	ports := []models.PortMapping{}
@@ -54,5 +60,5 @@ func ActualLRPFromContainer(container executor.Container, cellId, executorHost s
 	actualLrp.Ports = ports
 	actualLrp.Host = executorHost
 
-	return actualLrp, nil
+	return &actualLrp, nil
 }

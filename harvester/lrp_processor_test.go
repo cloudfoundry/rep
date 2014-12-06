@@ -25,38 +25,38 @@ var _ = Describe("LRP Processor", func() {
 		processor      harvester.Processor
 	)
 
-	itDoesNotProcessTheLRP := func() {
+	itDoesNotClaimTheLRP := func() {
 		It("does not process the lrp", func() {
-			Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(0))
+			Ω(bbs.ClaimActualLRPCallCount()).Should(Equal(0))
 		})
 	}
 
-	itReportsAsRunning := func() {
+	itStartsTheLRP := func() {
 		It("reports the lrp as running", func() {
-			Ω(bbs.ReportActualLRPAsRunningCallCount()).Should(Equal(1))
+			Ω(bbs.StartActualLRPCallCount()).Should(Equal(1))
 
-			actualLrp, cellId := bbs.ReportActualLRPAsRunningArgsForCall(0)
+			actualLrp := bbs.StartActualLRPArgsForCall(0)
 
 			Ω(actualLrp.ProcessGuid).Should(Equal("process-guid"))
 			Ω(actualLrp.InstanceGuid).Should(Equal("completed-lrp-guid"))
 			Ω(actualLrp.Domain).Should(Equal("my-domain"))
 			Ω(actualLrp.Index).Should(Equal(999))
 			Ω(actualLrp.Host).Should(Equal(expectedExecutorHost))
-			Ω(cellId).Should(Equal(expectedCellId))
+			Ω(actualLrp.CellID).Should(Equal(expectedCellId))
 		})
 	}
 
-	itReportsAsStarting := func() {
+	itClaimsTheLRP := func() {
 		It("reports the lrp as starting", func() {
-			Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
+			Ω(bbs.ClaimActualLRPCallCount()).Should(Equal(1))
 
-			processGuid, instanceGuid, cellId, domain, index := bbs.ReportActualLRPAsStartingArgsForCall(0)
+			claimingLRP := bbs.ClaimActualLRPArgsForCall(0)
 
-			Ω(processGuid).Should(Equal("process-guid"))
-			Ω(instanceGuid).Should(Equal("completed-lrp-guid"))
-			Ω(cellId).Should(Equal(expectedCellId))
-			Ω(domain).Should(Equal("my-domain"))
-			Ω(index).Should(Equal(999))
+			Ω(claimingLRP.ProcessGuid).Should(Equal("process-guid"))
+			Ω(claimingLRP.InstanceGuid).Should(Equal("completed-lrp-guid"))
+			Ω(claimingLRP.CellID).Should(Equal(expectedCellId))
+			Ω(claimingLRP.Domain).Should(Equal("my-domain"))
+			Ω(claimingLRP.Index).Should(Equal(999))
 		})
 	}
 
@@ -122,7 +122,7 @@ var _ = Describe("LRP Processor", func() {
 			container.State = executor.StateReserved
 		})
 
-		itDoesNotProcessTheLRP()
+		itDoesNotClaimTheLRP()
 	})
 
 	Context("when the container state is initializing", func() {
@@ -130,7 +130,7 @@ var _ = Describe("LRP Processor", func() {
 			container.State = executor.StateInitializing
 		})
 
-		itReportsAsStarting()
+		itClaimsTheLRP()
 	})
 
 	Context("when the container state is created", func() {
@@ -138,7 +138,7 @@ var _ = Describe("LRP Processor", func() {
 			container.State = executor.StateCreated
 		})
 
-		itReportsAsStarting()
+		itClaimsTheLRP()
 	})
 
 	Context("when the container state is running", func() {
@@ -146,7 +146,7 @@ var _ = Describe("LRP Processor", func() {
 			container.State = executor.StateRunning
 		})
 
-		itReportsAsRunning()
+		itStartsTheLRP()
 	})
 
 	Context("when the container state is completed", func() {
@@ -164,7 +164,7 @@ var _ = Describe("LRP Processor", func() {
 				container.Guid = ""
 			})
 
-			itDoesNotProcessTheLRP()
+			itDoesNotClaimTheLRP()
 		})
 
 		Context("when the container has no tags", func() {
@@ -172,7 +172,7 @@ var _ = Describe("LRP Processor", func() {
 				container.Tags = nil
 			})
 
-			itDoesNotProcessTheLRP()
+			itDoesNotClaimTheLRP()
 		})
 
 		Context("when the container is missing the process guid tag", func() {
@@ -180,7 +180,7 @@ var _ = Describe("LRP Processor", func() {
 				delete(container.Tags, rep.ProcessGuidTag)
 			})
 
-			itDoesNotProcessTheLRP()
+			itDoesNotClaimTheLRP()
 		})
 
 		Context("when the container is missing the domain tag", func() {
@@ -188,7 +188,7 @@ var _ = Describe("LRP Processor", func() {
 				delete(container.Tags, rep.DomainTag)
 			})
 
-			itDoesNotProcessTheLRP()
+			itDoesNotClaimTheLRP()
 		})
 
 		Context("when the container is missing the process index tag", func() {
@@ -196,7 +196,7 @@ var _ = Describe("LRP Processor", func() {
 				delete(container.Tags, rep.ProcessIndexTag)
 			})
 
-			itDoesNotProcessTheLRP()
+			itDoesNotClaimTheLRP()
 		})
 
 		Context("when the container process index tag is not a number", func() {
@@ -204,7 +204,7 @@ var _ = Describe("LRP Processor", func() {
 				container.Tags[rep.ProcessIndexTag] = "hi there"
 			})
 
-			itDoesNotProcessTheLRP()
+			itDoesNotClaimTheLRP()
 		})
 	})
 })

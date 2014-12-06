@@ -61,22 +61,25 @@ var _ = Describe("The Rep", func() {
 		close(done)
 	})
 
+	claimActual := func(a models.ActualLRP) *models.ActualLRP {
+		_, err := bbs.CreateActualLRP(a)
+		Ω(err).ShouldNot(HaveOccurred())
+		claimed, err := bbs.ClaimActualLRP(a)
+		return claimed
+	}
+
 	Describe("when a rep starts up", func() {
 		BeforeEach(func() {
-			_, err := bbs.ReportActualLRPAsStarting("some-process-guid1", "some-instance-guid1", cellID, "domain", 0)
+			claimActual(models.NewActualLRP("some-process-guid1", "some-instance-guid1", cellID, "domain", 0, ""))
+
+			lrp2rep1 := claimActual(models.NewActualLRP("some-process-guid2", "some-instance-guid2", cellID, "domain", 0, ""))
+			_, err := bbs.StartActualLRP(*lrp2rep1)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			lrp2rep1, err := bbs.ReportActualLRPAsStarting("some-process-guid2", "some-instance-guid2", cellID, "domain", 0)
-			Ω(err).ShouldNot(HaveOccurred())
-			err = bbs.ReportActualLRPAsRunning(lrp2rep1, cellID)
-			Ω(err).ShouldNot(HaveOccurred())
+			claimActual(models.NewActualLRP("some-process-guid3", "some-instance-guid3", "different-cell-id", "domain", 0, ""))
 
-			_, err = bbs.ReportActualLRPAsStarting("some-process-guid3", "some-instance-guid3", "different-cell-id", "domain", 0)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			lrp2rep2, err := bbs.ReportActualLRPAsStarting("some-process-guid4", "some-instance-guid4", "different-cell-id", "domain", 0)
-			Ω(err).ShouldNot(HaveOccurred())
-			err = bbs.ReportActualLRPAsRunning(lrp2rep2, "different-cell-id")
+			lrp2rep2 := claimActual(models.NewActualLRP("some-process-guid4", "some-instance-guid4", "different-cell-id", "domain", 0, ""))
+			_, err = bbs.StartActualLRP(*lrp2rep2)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			runner.Stop()
@@ -246,8 +249,6 @@ var _ = Describe("The Rep", func() {
 	})
 
 	Describe("polling the BBS for actual LRPs to reap", func() {
-		var actualLRP models.ActualLRP
-
 		BeforeEach(func() {
 			fakeExecutor.RouteToHandler(
 				"GET",
@@ -255,9 +256,7 @@ var _ = Describe("The Rep", func() {
 				ghttp.RespondWith(http.StatusOK, "[]"),
 			)
 
-			var err error
-			actualLRP, err = bbs.ReportActualLRPAsStarting("process-guid", "a-new-instance-guid", cellID, "the-domain", 0)
-			Ω(err).ShouldNot(HaveOccurred())
+			claimActual(models.NewActualLRP("process-guid", "a-new-instance-guid", cellID, "the-domain", 0, ""))
 		})
 
 		It("eventually reaps actual LRPs with no corresponding container", func() {
@@ -283,7 +282,7 @@ var _ = Describe("The Rep", func() {
 				CellID: cellID,
 			}
 
-			err := bbs.ReportActualLRPAsRunning(lrp, cellID)
+			_, err := bbs.StartActualLRP(lrp)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			err = bbs.RequestStopLRPInstance(lrp)

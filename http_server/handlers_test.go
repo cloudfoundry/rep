@@ -41,15 +41,15 @@ var _ = Describe("Handlers", func() {
 			var actualLRP models.ActualLRP
 
 			BeforeEach(func() {
-				var err error
-				actualLRP, err = models.NewActualLRP(
+				actualLRP = models.NewActualLRP(
 					"p-guid",
 					"i-guid",
 					"cell-id",
 					"webbernet",
 					1,
+					"",
 				)
-				Ω(err).ShouldNot(HaveOccurred())
+				Ω(actualLRP.Validate()).ShouldNot(HaveOccurred())
 
 				payload, err := json.Marshal(actualLRP)
 				Ω(err).ShouldNot(HaveOccurred())

@@ -167,7 +167,11 @@ func (a *AuctionCellRep) start(startAuction models.LRPStartAuction, logger lager
 	}
 
 	logger.Info("announcing-to-bbs")
-	lrp, err := a.bbs.ReportActualLRPAsStarting(startAuction.DesiredLRP.ProcessGuid, startAuction.InstanceGuid, a.cellID, startAuction.DesiredLRP.Domain, startAuction.Index)
+	claiming := models.NewActualLRP(startAuction.DesiredLRP.ProcessGuid,
+		startAuction.InstanceGuid, a.cellID, startAuction.DesiredLRP.Domain,
+		startAuction.Index, "")
+	_, err = a.bbs.ClaimActualLRP(claiming)
+
 	if err != nil {
 		a.client.DeleteContainer(containerGuid)
 		return err
@@ -177,7 +181,7 @@ func (a *AuctionCellRep) start(startAuction models.LRPStartAuction, logger lager
 	err = a.client.RunContainer(containerGuid)
 	if err != nil {
 		a.client.DeleteContainer(containerGuid)
-		a.bbs.RemoveActualLRP(lrp)
+		a.bbs.RemoveActualLRP(claiming)
 		return err
 	}
 

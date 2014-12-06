@@ -153,7 +153,8 @@ var _ = Describe("AuctionCellRep", func() {
 	Describe("performing work", func() {
 		var work auctiontypes.Work
 		var startAuction models.LRPStartAuction
-		var actualLRP models.ActualLRP
+		var startingLRP models.ActualLRP
+		var stoppingLRP models.ActualLRP
 		BeforeEach(func() {
 			work = auctiontypes.Work{}
 
@@ -183,7 +184,11 @@ var _ = Describe("AuctionCellRep", func() {
 				Index:        2,
 			}
 
-			actualLRP = models.ActualLRP{
+			startingLRP = models.NewActualLRP(startAuction.DesiredLRP.ProcessGuid,
+				startAuction.InstanceGuid, "some-cell-id",
+				startAuction.DesiredLRP.Domain, startAuction.Index, "")
+
+			stoppingLRP = models.ActualLRP{
 				ProcessGuid:  "some-process-guid",
 				InstanceGuid: "some-instance-guid",
 				Index:        2,
@@ -193,7 +198,8 @@ var _ = Describe("AuctionCellRep", func() {
 
 			work.Starts = []models.LRPStartAuction{startAuction}
 
-			work.Stops = []models.ActualLRP{actualLRP}
+			work.Stops = []models.ActualLRP{stoppingLRP}
+			work.Stops = []models.ActualLRP{stoppingLRP}
 		})
 
 		Describe("performing starts", func() {
@@ -237,14 +243,10 @@ var _ = Describe("AuctionCellRep", func() {
 					}))
 
 					By("reporting the LRP as started")
-					Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(1))
+					Ω(bbs.ClaimActualLRPCallCount()).Should(Equal(1))
 
-					actualProcessGuid, actualInstanceGuid, actualCellID, actualDomain, actualIndex := bbs.ReportActualLRPAsStartingArgsForCall(0)
-					Ω(actualProcessGuid).Should(Equal(startAuction.DesiredLRP.ProcessGuid))
-					Ω(actualInstanceGuid).Should(Equal(startAuction.InstanceGuid))
-					Ω(actualCellID).Should(Equal("some-cell-id"))
-					Ω(actualDomain).Should(Equal(startAuction.DesiredLRP.Domain))
-					Ω(actualIndex).Should(Equal(startAuction.Index))
+					claimingLRP := bbs.ClaimActualLRPArgsForCall(0)
+					Ω(claimingLRP).Should(Equal(startingLRP))
 
 					By("running the LRP")
 					Ω(client.RunContainerCallCount()).Should(Equal(1))
@@ -265,14 +267,14 @@ var _ = Describe("AuctionCellRep", func() {
 
 				It("should not report to the BBS, or try to run the container", func() {
 					cellRep.Perform(work)
-					Ω(bbs.ReportActualLRPAsStartingCallCount()).Should(Equal(0))
+					Ω(bbs.ClaimActualLRPCallCount()).Should(Equal(0))
 					Ω(client.RunContainerCallCount()).Should(Equal(0))
 				})
 			})
 
 			Context("when it fails to report to the BBS", func() {
 				BeforeEach(func() {
-					bbs.ReportActualLRPAsStartingReturns(models.ActualLRP{}, commonErr)
+					bbs.ClaimActualLRPReturns(nil, commonErr)
 				})
 
 				It("should mark the start as failed", func() {
@@ -315,7 +317,8 @@ var _ = Describe("AuctionCellRep", func() {
 					failedWork, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(failedWork).Should(BeZero())
-					Ω(stopper.StopInstanceArgsForCall(0)).Should(Equal(actualLRP))
+					Ω(stopper.StopInstanceArgsForCall(0)).Should(Equal(stoppingLRP))
+					Ω(stopper.StopInstanceArgsForCall(0)).Should(Equal(stoppingLRP))
 				})
 			})
 
@@ -327,7 +330,8 @@ var _ = Describe("AuctionCellRep", func() {
 				It("should mark the stop as failed", func() {
 					failedWork, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
-					Ω(failedWork.Stops).Should(ConsistOf(actualLRP))
+					Ω(failedWork.Stops).Should(ConsistOf(stoppingLRP))
+					Ω(failedWork.Stops).Should(ConsistOf(stoppingLRP))
 				})
 			})
 		})

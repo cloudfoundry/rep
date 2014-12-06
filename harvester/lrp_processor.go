@@ -50,7 +50,7 @@ func (p *lrpProcessor) Process(container executor.Container) {
 
 	switch container.State {
 	case executor.StateInitializing, executor.StateCreated:
-		_, err = p.bbs.ReportActualLRPAsStarting(actualLrp.ProcessGuid, actualLrp.InstanceGuid, p.cellId, actualLrp.Domain, actualLrp.Index)
+		_, err = p.bbs.ClaimActualLRP(*actualLrp)
 		if err != nil {
 			logger.Error("report-starting-failed", err)
 			return
@@ -58,7 +58,7 @@ func (p *lrpProcessor) Process(container executor.Container) {
 		logger.Debug("reported-starting")
 
 	case executor.StateRunning:
-		err := p.bbs.ReportActualLRPAsRunning(actualLrp, p.cellId)
+		_, err := p.bbs.StartActualLRP(*actualLrp)
 		if err != nil {
 			logger.Error("report-running-failed", err)
 			return
@@ -66,7 +66,7 @@ func (p *lrpProcessor) Process(container executor.Container) {
 		logger.Debug("reported-running")
 
 	case executor.StateCompleted:
-		err := p.bbs.RemoveActualLRP(actualLrp)
+		err := p.bbs.RemoveActualLRP(*actualLrp)
 		if err != nil {
 			logger.Error("remove-actual-lrp-failed", err)
 		} else {
