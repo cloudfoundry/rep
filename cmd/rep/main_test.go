@@ -227,12 +227,14 @@ var _ = Describe("The Rep", func() {
 						InstanceGuid: "the-instance-guid",
 						Index:        1,
 					}
+					_, err := bbs.CreateActualLRP(models.NewActualLRP("the-process-guid", "the-instance-guid", "", "the-domain", 1, "UNCLAIMED"))
+					Ω(err).ShouldNot(HaveOccurred())
 
 					fakeExecutor.RouteToHandler("POST", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, executor.Container{}))
 					fakeExecutor.RouteToHandler("POST", "/containers/the-instance-guid/run", ghttp.RespondWith(http.StatusOK, ""))
 				})
 
-				It("makes a request to executor to allocate and run the container, and marks the state as starting in the BBS", func() {
+				It("makes a request to executor to allocate and run the container, and marks the state as claimed in the BBS", func() {
 					Eventually(bbs.Cells).Should(HaveLen(1))
 					cells, err := bbs.Cells()
 					Ω(err).ShouldNot(HaveOccurred())
@@ -252,7 +254,7 @@ var _ = Describe("The Rep", func() {
 					actualLRPs, err := bbs.ActualLRPs()
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(actualLRPs[0].ProcessGuid).Should(Equal("the-process-guid"))
-					Ω(actualLRPs[0].State).Should(Equal(models.ActualLRPStateStarting))
+					Ω(actualLRPs[0].State).Should(Equal(models.ActualLRPStateClaimed))
 				})
 			})
 

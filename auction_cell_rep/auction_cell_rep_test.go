@@ -229,7 +229,11 @@ var _ = Describe("AuctionCellRep", func() {
 					Ω(bbs.ClaimActualLRPCallCount()).Should(Equal(1))
 
 					claimingLRP := bbs.ClaimActualLRPArgsForCall(0)
-					Ω(claimingLRP).Should(Equal(startingLRP))
+					Ω(claimingLRP.ProcessGuid).Should(Equal(startAuction.DesiredLRP.ProcessGuid))
+					Ω(claimingLRP.Domain).Should(Equal(startAuction.DesiredLRP.Domain))
+					Ω(claimingLRP.InstanceGuid).Should(Equal(startAuction.InstanceGuid))
+					Ω(claimingLRP.CellID).Should(Equal("some-cell-id"))
+					Ω(claimingLRP.Index).Should(Equal(startAuction.Index))
 
 					By("running the LRP")
 					Ω(client.RunContainerCallCount()).Should(Equal(1))
@@ -439,8 +443,11 @@ var _ = Describe("AuctionCellRep", func() {
 					failedWork, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(failedWork).Should(BeZero())
-					Ω(stopper.StopInstanceArgsForCall(0)).Should(Equal(stoppingLRP))
-					Ω(stopper.StopInstanceArgsForCall(0)).Should(Equal(stoppingLRP))
+
+					stoppingLRP := stopper.StopInstanceArgsForCall(0)
+					Ω(stoppingLRP.ProcessGuid).Should(Equal(actualLRP.ProcessGuid))
+					Ω(stoppingLRP.InstanceGuid).Should(Equal(actualLRP.InstanceGuid))
+					Ω(stoppingLRP.Index).Should(Equal(actualLRP.Index))
 				})
 			})
 
@@ -452,7 +459,12 @@ var _ = Describe("AuctionCellRep", func() {
 				It("should mark the stop as failed", func() {
 					failedWork, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
-					Ω(failedWork.LRPStops).Should(ConsistOf(stoppingLRP))
+
+					Ω(failedWork.LRPStops).Should(HaveLen(1))
+					failedStop := failedWork.LRPStops[0]
+					Ω(failedStop.ProcessGuid).Should(Equal(actualLRP.ProcessGuid))
+					Ω(failedStop.InstanceGuid).Should(Equal(actualLRP.InstanceGuid))
+					Ω(failedStop.Index).Should(Equal(actualLRP.Index))
 				})
 			})
 		})
