@@ -1,16 +1,11 @@
 package fake_gatherer_test
 
 import (
-	. "github.com/cloudfoundry-incubator/rep/gatherer/fake_gatherer"
+	_ "github.com/cloudfoundry-incubator/rep/gatherer/fake_gatherer"
 
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("FakeGatherer", func() {
-	var snapshot FakeSnapshot
-
-	It("supports Snapshot", func() {
-		Ω(snapshot).ShouldNot(BeNil())
-	})
+	// will fail to compile in fake implementation if concrete fake cannot be assigned to faked interface
 })
