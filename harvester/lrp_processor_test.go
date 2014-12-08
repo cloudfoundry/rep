@@ -1,10 +1,13 @@
 package harvester_test
 
 import (
+	"errors"
+
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/harvester"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -82,6 +85,12 @@ var _ = Describe("LRP Processor", func() {
 		})
 	}
 
+	itDoesNotRemoveTheContainer := func() {
+		It("removes the container", func() {
+			Ω(executorClient.DeleteContainerCallCount()).Should(Equal(0))
+		})
+	}
+
 	var container executor.Container
 
 	BeforeEach(func() {
@@ -131,6 +140,22 @@ var _ = Describe("LRP Processor", func() {
 		})
 
 		itClaimsTheLRP()
+
+		Context("but the BBS reports the LRP cannot be claimed", func() {
+			BeforeEach(func() {
+				bbs.ClaimActualLRPReturns(nil, bbserrors.ErrActualLRPCannotBeClaimed)
+			})
+
+			itRemovesTheContainer()
+		})
+
+		Context("but the BBS reports some other error", func() {
+			BeforeEach(func() {
+				bbs.ClaimActualLRPReturns(nil, errors.New("oh no!"))
+			})
+
+			itDoesNotRemoveTheContainer()
+		})
 	})
 
 	Context("when the container state is created", func() {
@@ -139,6 +164,22 @@ var _ = Describe("LRP Processor", func() {
 		})
 
 		itClaimsTheLRP()
+
+		Context("but the BBS reports the LRP cannot be claimed", func() {
+			BeforeEach(func() {
+				bbs.ClaimActualLRPReturns(nil, bbserrors.ErrActualLRPCannotBeClaimed)
+			})
+
+			itRemovesTheContainer()
+		})
+
+		Context("but the BBS reports some other error", func() {
+			BeforeEach(func() {
+				bbs.ClaimActualLRPReturns(nil, errors.New("oh no!"))
+			})
+
+			itDoesNotRemoveTheContainer()
+		})
 	})
 
 	Context("when the container state is running", func() {
@@ -147,6 +188,22 @@ var _ = Describe("LRP Processor", func() {
 		})
 
 		itStartsTheLRP()
+
+		Context("but the BBS reports the LRP cannot be started", func() {
+			BeforeEach(func() {
+				bbs.StartActualLRPReturns(nil, bbserrors.ErrActualLRPCannotBeStarted)
+			})
+
+			itRemovesTheContainer()
+		})
+
+		Context("but the BBS reports some other error", func() {
+			BeforeEach(func() {
+				bbs.ClaimActualLRPReturns(nil, errors.New("oh no!"))
+			})
+
+			itDoesNotRemoveTheContainer()
+		})
 	})
 
 	Context("when the container state is completed", func() {
@@ -159,52 +216,10 @@ var _ = Describe("LRP Processor", func() {
 	})
 
 	Context("when the container is invalid", func() {
-		Context("when the container is missing a guid", func() {
-			BeforeEach(func() {
-				container.Guid = ""
-			})
-
-			itDoesNotClaimTheLRP()
+		BeforeEach(func() {
+			container.Tags = nil
 		})
 
-		Context("when the container has no tags", func() {
-			BeforeEach(func() {
-				container.Tags = nil
-			})
-
-			itDoesNotClaimTheLRP()
-		})
-
-		Context("when the container is missing the process guid tag", func() {
-			BeforeEach(func() {
-				delete(container.Tags, rep.ProcessGuidTag)
-			})
-
-			itDoesNotClaimTheLRP()
-		})
-
-		Context("when the container is missing the domain tag", func() {
-			BeforeEach(func() {
-				delete(container.Tags, rep.DomainTag)
-			})
-
-			itDoesNotClaimTheLRP()
-		})
-
-		Context("when the container is missing the process index tag", func() {
-			BeforeEach(func() {
-				delete(container.Tags, rep.ProcessIndexTag)
-			})
-
-			itDoesNotClaimTheLRP()
-		})
-
-		Context("when the container process index tag is not a number", func() {
-			BeforeEach(func() {
-				container.Tags[rep.ProcessIndexTag] = "hi there"
-			})
-
-			itDoesNotClaimTheLRP()
-		})
+		itDoesNotClaimTheLRP()
 	})
 })

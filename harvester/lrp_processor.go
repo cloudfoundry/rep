@@ -4,6 +4,7 @@ import (
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -44,43 +45,56 @@ func (p *lrpProcessor) Process(container executor.Container) {
 
 	actualLrp, err := rep.ActualLRPFromContainer(container, p.cellId, p.executorHost)
 	if err != nil {
-		logger.Error("container-lrp-metdata-validation-failed", err)
+		logger.Error("failed-to-validate-container-lrp-metdata", err)
 		return
 	}
 
 	switch container.State {
 	case executor.StateInitializing, executor.StateCreated:
 		_, err = p.bbs.ClaimActualLRP(*actualLrp)
-		if err != nil {
-			logger.Error("report-starting-failed", err)
+		if err == bbserrors.ErrActualLRPCannotBeClaimed {
+			logger.Debug("failed-to-claim-actual-lrp")
+			p.deleteContainer(actualLrp.InstanceGuid, logger)
 			return
 		}
-		logger.Debug("reported-starting")
+		if err != nil {
+			logger.Error("failed-to-claim-actual-lrp", err)
+			return
+		}
+		logger.Debug("claimed-actual-lrp")
 
 	case executor.StateRunning:
 		_, err := p.bbs.StartActualLRP(*actualLrp)
-		if err != nil {
-			logger.Error("report-running-failed", err)
+		if err == bbserrors.ErrActualLRPCannotBeStarted {
+			logger.Debug("failed-to-start-actual-lrp")
+			p.deleteContainer(actualLrp.InstanceGuid, logger)
 			return
 		}
-		logger.Debug("reported-running")
+		if err != nil {
+			logger.Error("failed-to-start-actual-lrp", err)
+			return
+		}
+		logger.Debug("started-actual-lrp")
 
 	case executor.StateCompleted:
 		err := p.bbs.RemoveActualLRP(*actualLrp)
 		if err != nil {
-			logger.Error("remove-actual-lrp-failed", err)
+			logger.Error("failed-to-remove-actual-lrp", err)
 		} else {
 			logger.Info("removed-actual-lrp")
 		}
 
-		err = p.executorClient.DeleteContainer(actualLrp.InstanceGuid)
-		if err != nil {
-			logger.Error("delete-actual-lrp-container-failed", err)
-		} else {
-			logger.Info("delete-actual-lrp-container")
-		}
-
+		p.deleteContainer(actualLrp.InstanceGuid, logger)
 	default:
 		logger.Debug("unknown-container-state")
+	}
+}
+
+func (p *lrpProcessor) deleteContainer(guid string, logger lager.Logger) {
+	err := p.executorClient.DeleteContainer(guid)
+	if err != nil {
+		logger.Error("failed-to-delete-container", err)
+	} else {
+		logger.Info("deleted-container")
 	}
 }

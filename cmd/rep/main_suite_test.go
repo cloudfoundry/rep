@@ -18,7 +18,7 @@ var auctionServerPort int
 
 func TestRep(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Rep Suite")
+	RunSpecs(t, "Rep Integration Suite")
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {
