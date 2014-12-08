@@ -338,6 +338,8 @@ var _ = Describe("The Rep", func() {
 	})
 
 	Describe("when a StopLRPInstance request comes in", func() {
+		var runningLRP models.ActualLRP
+
 		BeforeEach(func() {
 			fakeExecutor.AppendHandlers(
 				ghttp.CombineHandlers(
@@ -346,23 +348,25 @@ var _ = Describe("The Rep", func() {
 				),
 			)
 
-			lrp := models.ActualLRP{
+			runningLRP = models.ActualLRP{
 				ProcessGuid:  "some-process-guid",
 				InstanceGuid: "some-instance-guid",
 				Domain:       "the-domain",
 				Index:        3,
 
 				CellID: cellID,
+
+				State: models.ActualLRPStateRunning,
 			}
 
-			_, err := bbs.StartActualLRP(lrp)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			err = bbs.RequestStopLRPInstance(lrp)
+			_, err := bbs.StartActualLRP(runningLRP)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should delete the container and resolve the StopLRPInstance", func() {
+			err := bbs.RequestStopLRPInstance(runningLRP)
+			Ω(err).ShouldNot(HaveOccurred())
+
 			findDeleteRequest := func() string {
 				for _, req := range fakeExecutor.ReceivedRequests() {
 					if req.Method == "DELETE" {
@@ -374,6 +378,13 @@ var _ = Describe("The Rep", func() {
 
 			Eventually(findDeleteRequest).Should(Equal("/containers/some-instance-guid"))
 			Eventually(bbs.ActualLRPs).Should(BeEmpty())
+		})
+
+		It("should fail to delete the container when the LRP is missing data", func() {
+			lrp := runningLRP
+			lrp.State = models.ActualLRPStateClaimed
+			err := bbs.RequestStopLRPInstance(lrp)
+			Ω(err).Should(MatchError("http error: status code 409 (Conflict)"))
 		})
 	})
 })

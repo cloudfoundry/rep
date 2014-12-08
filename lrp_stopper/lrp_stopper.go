@@ -44,7 +44,7 @@ func (stopper *lrpStopper) StopInstance(lrp models.ActualLRP) error {
 	switch err {
 	case nil:
 	case executor.ErrContainerNotFound:
-		stopLog.Info("container-already-gon", lager.Data{
+		stopLog.Info("container-already-deleted", lager.Data{
 			"container-id": containerId,
 		})
 	default:

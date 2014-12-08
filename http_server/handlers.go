@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
@@ -32,7 +33,16 @@ func (h StopLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	h.stopper.StopInstance(actualLRP)
+	err = h.stopper.StopInstance(actualLRP)
+	if err == bbserrors.ErrStoreComparisonFailed {
+		w.WriteHeader(http.StatusConflict)
+		return
+	}
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusAccepted)
 }

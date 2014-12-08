@@ -3,12 +3,14 @@ package http_server_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 
 	"github.com/cloudfoundry-incubator/rep/http_server"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper/fake_lrp_stopper"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 
 	. "github.com/onsi/ginkgo"
@@ -65,6 +67,28 @@ var _ = Describe("Handlers", func() {
 				Ω(fakeStopper.StopInstanceCallCount()).Should(Equal(1))
 
 				Ω(fakeStopper.StopInstanceArgsForCall(0)).Should(Equal(actualLRP))
+			})
+
+			Context("when the stopper fails", func() {
+				Context("because of a comparison failure", func() {
+					BeforeEach(func() {
+						fakeStopper.StopInstanceReturns(bbserrors.ErrStoreComparisonFailed)
+					})
+
+					It("responds with 409 Conflict", func() {
+						Ω(resp.Code).Should(Equal(http.StatusConflict))
+					})
+				})
+
+				Context("because of some other reason", func() {
+					BeforeEach(func() {
+						fakeStopper.StopInstanceReturns(errors.New("whoopsie"))
+					})
+
+					It("responds with 500 Internal Server Error", func() {
+						Ω(resp.Code).Should(Equal(http.StatusInternalServerError))
+					})
+				})
 			})
 		})
 
