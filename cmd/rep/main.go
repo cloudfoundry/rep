@@ -118,7 +118,6 @@ func main() {
 	logger := cf_lager.New("rep")
 	initializeDropsonde(logger)
 	bbs := initializeRepBBS(logger)
-	removeActualLrpFromBBS(bbs, *cellID, logger)
 
 	executorClient := executorclient.New(http.DefaultClient, *executorURL)
 	lrpStopper := initializeLRPStopper(*cellID, bbs, executorClient, logger)
@@ -197,28 +196,6 @@ func initializeHarvesters(
 	)
 
 	return bulkProcessor, eventConsumer
-}
-
-func removeActualLrpFromBBS(bbs Bbs.RepBBS, cellID string, logger lager.Logger) {
-	for {
-		lrps, err := bbs.ActualLRPsByCellID(cellID)
-		if err != nil {
-			logger.Error("failed-to-get-actual-lrps-by-cell-id", err, lager.Data{"cell-id": cellID})
-			time.Sleep(time.Second)
-			continue
-		}
-
-		for _, lrp := range lrps {
-			err = bbs.RemoveActualLRP(lrp)
-			if err != nil {
-				logger.Error("failed-to-remove-actual-lrps", err, lager.Data{"cell-id": cellID, "actual-lrp": lrp, "total-lrps": len(lrps)})
-				time.Sleep(time.Second)
-				continue
-			}
-		}
-
-		break
-	}
 }
 
 func initializeCellHeartbeat(address string, bbs Bbs.RepBBS, executorClient executor.Client, logger lager.Logger) ifrit.Runner {

@@ -68,48 +68,6 @@ var _ = Describe("The Rep", func() {
 		return claimed
 	}
 
-	Describe("when a rep starts up", func() {
-		BeforeEach(func() {
-			claimActual(models.NewActualLRP("some-process-guid1", "some-instance-guid1", cellID, "domain", 0, ""))
-
-			lrp2rep1 := claimActual(models.NewActualLRP("some-process-guid2", "some-instance-guid2", cellID, "domain", 0, ""))
-			_, err := bbs.StartActualLRP(*lrp2rep1)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			claimActual(models.NewActualLRP("some-process-guid3", "some-instance-guid3", "different-cell-id", "domain", 0, ""))
-
-			lrp2rep2 := claimActual(models.NewActualLRP("some-process-guid4", "some-instance-guid4", "different-cell-id", "domain", 0, ""))
-			_, err = bbs.StartActualLRP(*lrp2rep2)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			runner.Stop()
-			actualLrpsForRep1 := func() ([]models.ActualLRP, error) {
-				return bbs.ActualLRPsByCellID(cellID)
-			}
-			Consistently(actualLrpsForRep1).Should(HaveLen(2))
-			actualLrpsForRep2 := func() ([]models.ActualLRP, error) {
-				return bbs.ActualLRPsByCellID("different-cell-id")
-			}
-			Consistently(actualLrpsForRep2).Should(HaveLen(2))
-		})
-
-		JustBeforeEach(func() {
-			runner.Start()
-		})
-
-		It("should delete its corresponding actual LRPs", func() {
-			actualLrpsForRep1 := func() ([]models.ActualLRP, error) {
-				return bbs.ActualLRPsByCellID(cellID)
-			}
-			Eventually(actualLrpsForRep1).Should(BeEmpty())
-
-			actualLrpsForRep2 := func() ([]models.ActualLRP, error) {
-				return bbs.ActualLRPsByCellID("different-cell-id")
-			}
-			Consistently(actualLrpsForRep2).Should(HaveLen(2))
-		})
-	})
-
 	Describe("when an interrupt signal is sent to the representative", func() {
 		BeforeEach(func() {
 			runner.Stop()
