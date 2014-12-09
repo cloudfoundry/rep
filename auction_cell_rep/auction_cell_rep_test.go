@@ -186,47 +186,53 @@ var _ = Describe("AuctionCellRep", func() {
 				work = auctiontypes.Work{LRPStarts: []models.LRPStartAuction{startAuction}}
 			})
 
-			Context("when all is well", func() {
-				It("should allocate a container, mark the lrp as started, and run it", func() {
-					failedWork, err := cellRep.Perform(work)
+			It("should allocate a container", func() {
+				_, err := cellRep.Perform(work)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Ω(client.AllocateContainerCallCount()).Should(Equal(1))
+
+				two := 2
+				Ω(client.AllocateContainerArgsForCall(0)).Should(Equal(executor.Container{
+					Guid: startAuction.InstanceGuid,
+
+					Tags: executor.Tags{
+						rep.LifecycleTag:    rep.LRPLifecycle,
+						rep.DomainTag:       "tests",
+						rep.ProcessGuidTag:  startAuction.DesiredLRP.ProcessGuid,
+						rep.ProcessIndexTag: "2",
+					},
+
+					MemoryMB:   startAuction.DesiredLRP.MemoryMB,
+					DiskMB:     startAuction.DesiredLRP.DiskMB,
+					CPUWeight:  startAuction.DesiredLRP.CPUWeight,
+					RootFSPath: "some-root-fs",
+					Ports:      []executor.PortMapping{{ContainerPort: 8080}},
+					Log:        executor.LogConfig{Guid: "log-guid", Index: &two},
+
+					Setup:   startAuction.DesiredLRP.Setup,
+					Action:  startAuction.DesiredLRP.Action,
+					Monitor: startAuction.DesiredLRP.Monitor,
+
+					Env: []executor.EnvironmentVariable{
+						{Name: "INSTANCE_GUID", Value: "instance-guid"},
+						{Name: "INSTANCE_INDEX", Value: "2"},
+						{Name: "var1", Value: "val1"},
+						{Name: "var2", Value: "val2"},
+					},
+				}))
+			})
+
+			Context("when allocation succeeds", func() {
+				BeforeEach(func() {
+					client.AllocateContainerReturns(executor.Container{}, nil)
+				})
+
+				It("tells the BBS it has claimed the lrp", func() {
+					_, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred())
-					Ω(failedWork).Should(BeZero())
 
-					By("allocating the container")
-					Ω(client.AllocateContainerCallCount()).Should(Equal(1))
-
-					two := 2
-					Ω(client.AllocateContainerArgsForCall(0)).Should(Equal(executor.Container{
-						Guid: startAuction.InstanceGuid,
-
-						Tags: executor.Tags{
-							rep.LifecycleTag:    rep.LRPLifecycle,
-							rep.DomainTag:       "tests",
-							rep.ProcessGuidTag:  startAuction.DesiredLRP.ProcessGuid,
-							rep.ProcessIndexTag: "2",
-						},
-
-						MemoryMB:   startAuction.DesiredLRP.MemoryMB,
-						DiskMB:     startAuction.DesiredLRP.DiskMB,
-						CPUWeight:  startAuction.DesiredLRP.CPUWeight,
-						RootFSPath: "some-root-fs",
-						Ports:      []executor.PortMapping{{ContainerPort: 8080}},
-						Log:        executor.LogConfig{Guid: "log-guid", Index: &two},
-
-						Setup:   startAuction.DesiredLRP.Setup,
-						Action:  startAuction.DesiredLRP.Action,
-						Monitor: startAuction.DesiredLRP.Monitor,
-
-						Env: []executor.EnvironmentVariable{
-							{Name: "INSTANCE_GUID", Value: "instance-guid"},
-							{Name: "INSTANCE_INDEX", Value: "2"},
-							{Name: "var1", Value: "val1"},
-							{Name: "var2", Value: "val2"},
-						},
-					}))
-
-					By("reporting the LRP as started")
-					Ω(bbs.ClaimActualLRPCallCount()).Should(Equal(1))
+					Eventually(bbs.ClaimActualLRPCallCount).Should(Equal(1))
 
 					claimingLRP := bbs.ClaimActualLRPArgsForCall(0)
 					Ω(claimingLRP.ProcessGuid).Should(Equal(startAuction.DesiredLRP.ProcessGuid))
@@ -234,66 +240,125 @@ var _ = Describe("AuctionCellRep", func() {
 					Ω(claimingLRP.InstanceGuid).Should(Equal(startAuction.InstanceGuid))
 					Ω(claimingLRP.CellID).Should(Equal("some-cell-id"))
 					Ω(claimingLRP.Index).Should(Equal(startAuction.Index))
+				})
 
-					By("running the LRP")
-					Ω(client.RunContainerCallCount()).Should(Equal(1))
-					Ω(client.RunContainerArgsForCall(0)).Should(Equal(startAuction.InstanceGuid))
+				It("responds successfully before claiming the lrp in the BBS", func() {
+					triggerClaimChan := make(chan struct{})
+					triggerClaimCalled := make(chan struct{})
+
+					bbs.ClaimActualLRPStub = func(_ models.ActualLRP) (*models.ActualLRP, error) {
+						<-triggerClaimChan
+						close(triggerClaimCalled)
+						return nil, nil
+					}
+
+					_, err := cellRep.Perform(work)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Consistently(triggerClaimCalled).ShouldNot(BeClosed())
+					close(triggerClaimChan)
+					Eventually(triggerClaimCalled).Should(BeClosed())
+				})
+
+				Context("when reporting to BBS succeeds", func() {
+					BeforeEach(func() {
+						bbs.ClaimActualLRPReturns(nil, nil)
+					})
+
+					It("runs the lrp", func() {
+						_, err := cellRep.Perform(work)
+						Ω(err).ShouldNot(HaveOccurred())
+
+						Eventually(client.RunContainerCallCount).Should(Equal(1))
+						Ω(client.RunContainerArgsForCall(0)).Should(Equal(startAuction.InstanceGuid))
+					})
+
+					Context("when running the lrp fails", func() {
+						BeforeEach(func() {
+							client.RunContainerReturns(commonErr)
+						})
+
+						It("responds successfully", func() {
+							failedWork, err := cellRep.Perform(work)
+							Ω(err).ShouldNot(HaveOccurred())
+							Ω(failedWork).Should(BeZero())
+						})
+
+						It("deletes the container", func() {
+							cellRep.Perform(work)
+
+							Eventually(client.DeleteContainerCallCount).Should(Equal(1))
+							Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(startAuction.InstanceGuid))
+						})
+
+						It("removes the Actual from the BBS", func() {
+							cellRep.Perform(work)
+
+							Eventually(bbs.RemoveActualLRPCallCount).Should(Equal(1))
+							Ω(bbs.RemoveActualLRPArgsForCall(0).InstanceGuid).Should(Equal(startAuction.InstanceGuid))
+						})
+					})
+
+					Context("when running the lrp succeeds", func() {
+						BeforeEach(func() {
+							client.RunContainerReturns(nil)
+						})
+
+						It("responds successfully", func() {
+							failedWork, err := cellRep.Perform(work)
+							Ω(err).ShouldNot(HaveOccurred())
+							Ω(failedWork).Should(BeZero())
+						})
+					})
+				})
+
+				Context("when reporting to BBS fails", func() {
+					BeforeEach(func() {
+						bbs.ClaimActualLRPReturns(nil, commonErr)
+					})
+
+					It("responds successfully", func() {
+						failedWork, err := cellRep.Perform(work)
+						Ω(err).ShouldNot(HaveOccurred())
+						Ω(failedWork).Should(BeZero())
+					})
+
+					It("does not try to run the lrp", func() {
+						cellRep.Perform(work)
+						Consistently(client.RunContainerCallCount).Should(Equal(0))
+					})
+
+					It("deletes the container", func() {
+						cellRep.Perform(work)
+						Eventually(client.DeleteContainerCallCount).Should(Equal(1))
+						Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(startAuction.InstanceGuid))
+					})
 				})
 			})
 
-			Context("when the container fails to allocate", func() {
+			Context("when allocation fails", func() {
 				BeforeEach(func() {
 					client.AllocateContainerReturns(executor.Container{}, commonErr)
 				})
 
-				It("should mark the start as failed", func() {
+				It("adds to the failed work", func() {
 					failedWork, err := cellRep.Perform(work)
-					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
-					Ω(failedWork.LRPStarts).Should(ConsistOf(startAuction))
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Ω(failedWork.LRPStarts).Should(HaveLen(1))
+					Ω(failedWork.LRPStarts[0].InstanceGuid).Should(Equal(startAuction.InstanceGuid))
 				})
 
-				It("should not report to the BBS, or try to run the container", func() {
+				It("does not tell the BBS it has claimed the lrp", func() {
 					cellRep.Perform(work)
-					Ω(bbs.ClaimActualLRPCallCount()).Should(Equal(0))
-					Ω(client.RunContainerCallCount()).Should(Equal(0))
-				})
-			})
 
-			Context("when it fails to report to the BBS", func() {
-				BeforeEach(func() {
-					bbs.ClaimActualLRPReturns(nil, commonErr)
+					Consistently(bbs.ClaimActualLRPCallCount).Should(Equal(0))
 				})
 
-				It("should mark the start as failed", func() {
-					failedWork, err := cellRep.Perform(work)
-					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
-					Ω(failedWork.LRPStarts).Should(ConsistOf(startAuction))
-				})
-
-				It("should delete the container and not try to run the container", func() {
+				It("does not try to run the lrp", func() {
 					cellRep.Perform(work)
-					Ω(client.DeleteContainerCallCount()).Should(Equal(1))
-					Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(startAuction.InstanceGuid))
-					Ω(client.RunContainerCallCount()).Should(Equal(0))
-				})
-			})
 
-			Context("when it fails to run the container", func() {
-				BeforeEach(func() {
-					client.RunContainerReturns(commonErr)
-				})
-
-				It("should mark the start as failed", func() {
-					failedWork, err := cellRep.Perform(work)
-					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
-					Ω(failedWork.LRPStarts).Should(ConsistOf(startAuction))
-				})
-
-				It("should delete the container and remove the Actual from the BBS", func() {
-					cellRep.Perform(work)
-					Ω(client.DeleteContainerCallCount()).Should(Equal(1))
-					Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(startAuction.InstanceGuid))
-					Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
+					Consistently(client.RunContainerCallCount).Should(Equal(0))
 				})
 			})
 		})

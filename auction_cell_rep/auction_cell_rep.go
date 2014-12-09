@@ -144,10 +144,10 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 }
 
 func (a *AuctionCellRep) startLRP(startAuction models.LRPStartAuction, logger lager.Logger) error {
-	logger.Info("reserving")
 
 	containerGuid := startAuction.InstanceGuid
 
+	logger.Info("reserving")
 	_, err := a.client.AllocateContainer(executor.Container{
 		Guid: containerGuid,
 
@@ -182,27 +182,39 @@ func (a *AuctionCellRep) startLRP(startAuction models.LRPStartAuction, logger la
 	})
 
 	if err != nil {
+		logger.Error("failed-reserving", err)
 		return err
 	}
+	logger.Info("succeeded-reserving")
 
-	logger.Info("announcing-to-bbs")
-	claiming := models.NewActualLRP(startAuction.DesiredLRP.ProcessGuid,
-		startAuction.InstanceGuid, a.cellID, startAuction.DesiredLRP.Domain,
-		startAuction.Index, "")
-	_, err = a.bbs.ClaimActualLRP(claiming)
+	go func() {
+		claiming := models.NewActualLRP(
+			startAuction.DesiredLRP.ProcessGuid,
+			startAuction.InstanceGuid,
+			a.cellID,
+			startAuction.DesiredLRP.Domain,
+			startAuction.Index,
+			"",
+		)
 
-	if err != nil {
-		a.client.DeleteContainer(containerGuid)
-		return err
-	}
+		logger.Info("announcing-to-bbs")
+		_, claimErr := a.bbs.ClaimActualLRP(claiming)
+		if claimErr != nil {
+			logger.Error("failed-announcing-to-bbs", claimErr)
+			a.client.DeleteContainer(containerGuid)
+			return
+		}
+		logger.Info("succeeded-announcing-to-bbs")
 
-	logger.Info("running")
-	err = a.client.RunContainer(containerGuid)
-	if err != nil {
-		a.client.DeleteContainer(containerGuid)
-		a.bbs.RemoveActualLRP(claiming)
-		return err
-	}
+		logger.Info("running-container")
+		runErr := a.client.RunContainer(containerGuid)
+		if runErr != nil {
+			logger.Error("failed-running-container", runErr)
+			a.client.DeleteContainer(containerGuid)
+			a.bbs.RemoveActualLRP(claiming)
+		}
+		logger.Info("succeeded-running-container")
+	}()
 
 	return nil
 }

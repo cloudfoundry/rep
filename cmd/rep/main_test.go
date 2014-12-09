@@ -192,6 +192,24 @@ var _ = Describe("The Rep", func() {
 					fakeExecutor.RouteToHandler("POST", "/containers/the-instance-guid/run", ghttp.RespondWith(http.StatusOK, ""))
 				})
 
+				var claimedActualLRPs = func(bbs *Bbs.BBS) func() ([]models.ActualLRP, error) {
+					return func() ([]models.ActualLRP, error) {
+						actualLRPs, err := bbs.ActualLRPs()
+						if err != nil {
+							return []models.ActualLRP{}, err
+						}
+
+						result := []models.ActualLRP{}
+						for _, actualLRP := range actualLRPs {
+							if actualLRP.State == models.ActualLRPStateClaimed {
+								result = append(result, actualLRP)
+							}
+						}
+
+						return result, nil
+					}
+				}
+
 				It("makes a request to executor to allocate and run the container, and marks the state as claimed in the BBS", func() {
 					Eventually(bbs.Cells).Should(HaveLen(1))
 					cells, err := bbs.Cells()
@@ -208,8 +226,8 @@ var _ = Describe("The Rep", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(failedWorks.LRPStarts).Should(BeEmpty())
 
-					Eventually(bbs.ActualLRPs).Should(HaveLen(1))
-					actualLRPs, err := bbs.ActualLRPs()
+					Eventually(claimedActualLRPs(bbs)).Should(HaveLen(1))
+					actualLRPs, err := claimedActualLRPs(bbs)()
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(actualLRPs[0].ProcessGuid).Should(Equal("the-process-guid"))
 					Ω(actualLRPs[0].State).Should(Equal(models.ActualLRPStateClaimed))
