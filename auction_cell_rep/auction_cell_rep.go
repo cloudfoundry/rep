@@ -91,6 +91,7 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 	logger := a.logger.Session("auction-work", lager.Data{
 		"lrp-starts": len(work.LRPStarts),
 		"lrp-stops":  len(work.LRPStops),
+		"tasks":      len(work.Tasks),
 	})
 
 	for _, stop := range work.LRPStops {
