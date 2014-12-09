@@ -444,7 +444,30 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 			})
 
-			Context("when it fails to run the container", func() {
+			Context("when it fails to mark it starting in the BBS", func() {
+				BeforeEach(func() {
+					bbs.StartTaskReturns(commonErr)
+				})
+
+				It("should return the task as failed", func() {
+					failedWork, err := cellRep.Perform(work)
+					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
+					Ω(failedWork.Tasks).Should(ConsistOf(task))
+				})
+
+				It("should delete the container", func() {
+					cellRep.Perform(work)
+					Ω(client.DeleteContainerCallCount()).Should(Equal(1))
+					Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
+				})
+
+				It("should not try to run the container", func() {
+					cellRep.Perform(work)
+					Ω(client.RunContainerCallCount()).Should(Equal(0))
+				})
+			})
+
+			Context("when it marks it starting in the BBS but fails to run the container", func() {
 				BeforeEach(func() {
 					client.RunContainerReturns(commonErr)
 				})
@@ -466,24 +489,6 @@ var _ = Describe("AuctionCellRep", func() {
 					Ω(actualTaskGuid).Should(Equal(task.TaskGuid))
 					Ω(actualFailed).Should(BeTrue())
 					Ω(actualFailureReason).Should(ContainSubstring("failed to run container"))
-				})
-			})
-
-			Context("when it runs the container but fails to mark it starting in the BBS", func() {
-				BeforeEach(func() {
-					bbs.StartTaskReturns(commonErr)
-				})
-
-				It("should return the task as failed", func() {
-					failedWork, err := cellRep.Perform(work)
-					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
-					Ω(failedWork.Tasks).Should(ConsistOf(task))
-				})
-
-				It("should delete the container", func() {
-					cellRep.Perform(work)
-					Ω(client.DeleteContainerCallCount()).Should(Equal(1))
-					Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
 				})
 			})
 		})

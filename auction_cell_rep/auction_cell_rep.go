@@ -257,6 +257,15 @@ func (a *AuctionCellRep) startTask(task models.Task, logger lager.Logger) error 
 	}
 	logger.Info("successfully-allocated-container")
 
+	logger.Info("starting-task")
+	err = a.bbs.StartTask(task.TaskGuid, a.cellID)
+	if err != nil {
+		logger.Error("failed-to-mark-task-started", err)
+		a.client.DeleteContainer(task.TaskGuid)
+		return err
+	}
+	logger.Info("successfully-started-task")
+
 	logger.Info("running-task")
 	err = a.client.RunContainer(task.TaskGuid)
 	if err != nil {
@@ -266,15 +275,6 @@ func (a *AuctionCellRep) startTask(task models.Task, logger lager.Logger) error 
 		return err
 	}
 	logger.Info("successfully-ran-task")
-
-	logger.Info("starting-task")
-	err = a.bbs.StartTask(task.TaskGuid, a.cellID)
-	if err != nil {
-		logger.Error("failed-to-mark-task-started", err)
-		a.client.DeleteContainer(task.TaskGuid)
-		return err
-	}
-	logger.Info("successfully-started-task")
 
 	return nil
 }
