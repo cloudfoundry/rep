@@ -257,24 +257,26 @@ func (a *AuctionCellRep) startTask(task models.Task, logger lager.Logger) error 
 	}
 	logger.Info("successfully-allocated-container")
 
-	logger.Info("starting-task")
-	err = a.bbs.StartTask(task.TaskGuid, a.cellID)
-	if err != nil {
-		logger.Error("failed-to-mark-task-started", err)
-		a.client.DeleteContainer(task.TaskGuid)
-		return err
-	}
-	logger.Info("successfully-started-task")
+	go func() {
+		logger.Info("starting-task")
+		err = a.bbs.StartTask(task.TaskGuid, a.cellID)
+		if err != nil {
+			logger.Error("failed-to-mark-task-started", err)
+			a.client.DeleteContainer(task.TaskGuid)
+			return
+		}
+		logger.Info("successfully-started-task")
 
-	logger.Info("running-task")
-	err = a.client.RunContainer(task.TaskGuid)
-	if err != nil {
-		logger.Error("failed-to-run-task", err)
-		a.client.DeleteContainer(task.TaskGuid)
-		a.markTaskAsFailed(logger, task.TaskGuid, err)
-		return err
-	}
-	logger.Info("successfully-ran-task")
+		logger.Info("running-task")
+		err = a.client.RunContainer(task.TaskGuid)
+		if err != nil {
+			logger.Error("failed-to-run-task", err)
+			a.client.DeleteContainer(task.TaskGuid)
+			a.markTaskAsFailed(logger, task.TaskGuid, err)
+			return
+		}
+		logger.Info("successfully-ran-task")
+	}()
 
 	return nil
 }

@@ -383,45 +383,147 @@ var _ = Describe("AuctionCellRep", func() {
 				work = auctiontypes.Work{Tasks: []models.Task{task}}
 			})
 
-			Context("when all is well", func() {
-				It("should allocate a container, mark the task as started, and run it", func() {
-					failedWork, err := cellRep.Perform(work)
+			It("should allocate a container", func() {
+				_, err := cellRep.Perform(work)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Ω(client.AllocateContainerCallCount()).Should(Equal(1))
+
+				Ω(client.AllocateContainerArgsForCall(0)).Should(Equal(executor.Container{
+					Guid: task.TaskGuid,
+
+					Tags: executor.Tags{
+						rep.LifecycleTag:  rep.TaskLifecycle,
+						rep.DomainTag:     task.Domain,
+						rep.ResultFileTag: task.ResultFile,
+					},
+
+					Action: &models.RunAction{
+						Path: "date",
+					},
+					Env: []executor.EnvironmentVariable{
+						{Name: "FOO", Value: "BAR"},
+					},
+
+					MemoryMB: task.MemoryMB,
+					DiskMB:   task.DiskMB,
+				}))
+			})
+
+			Context("when allocation succeeds", func() {
+				BeforeEach(func() {
+					client.AllocateContainerReturns(executor.Container{}, nil)
+				})
+
+				It("tells the BBS it started the task", func() {
+					_, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred())
-					Ω(failedWork).Should(BeZero())
 
-					By("allocating the container")
-					Ω(client.AllocateContainerCallCount()).Should(Equal(1))
-
-					Ω(client.AllocateContainerArgsForCall(0)).Should(Equal(executor.Container{
-						Guid: task.TaskGuid,
-
-						Tags: executor.Tags{
-							rep.LifecycleTag:  rep.TaskLifecycle,
-							rep.DomainTag:     task.Domain,
-							rep.ResultFileTag: task.ResultFile,
-						},
-
-						Action: &models.RunAction{
-							Path: "date",
-						},
-						Env: []executor.EnvironmentVariable{
-							{Name: "FOO", Value: "BAR"},
-						},
-
-						MemoryMB: task.MemoryMB,
-						DiskMB:   task.DiskMB,
-					}))
-
-					By("reporting the task as started")
-					Ω(bbs.StartTaskCallCount()).Should(Equal(1))
+					Eventually(bbs.StartTaskCallCount).Should(Equal(1))
 
 					actualTaskGuid, actualCellID := bbs.StartTaskArgsForCall(0)
 					Ω(actualTaskGuid).Should(Equal(task.TaskGuid))
 					Ω(actualCellID).Should(Equal("some-cell-id"))
+				})
 
-					By("running the task")
-					Ω(client.RunContainerCallCount()).Should(Equal(1))
-					Ω(client.RunContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
+				It("responds successfully before starting the task in the BBS", func() {
+					triggerStartChan := make(chan struct{})
+					triggerStartCalled := make(chan struct{})
+
+					bbs.StartTaskStub = func(_, _ string) error {
+						<-triggerStartChan
+						close(triggerStartCalled)
+						return nil
+					}
+
+					failedWork, err := cellRep.Perform(work)
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(failedWork).Should(BeZero())
+
+					Consistently(triggerStartCalled).ShouldNot(BeClosed())
+					close(triggerStartChan)
+					Eventually(triggerStartCalled).Should(BeClosed())
+				})
+
+				Context("when it succeeds marking the task as starting in the BBS", func() {
+					BeforeEach(func() {
+						bbs.StartTaskReturns(nil)
+					})
+
+					It("runs the task", func() {
+						_, err := cellRep.Perform(work)
+						Ω(err).ShouldNot(HaveOccurred())
+						Eventually(client.RunContainerCallCount).Should(Equal(1))
+						Ω(client.RunContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
+					})
+
+					Context("when running the task succeeds", func() {
+						BeforeEach(func() {
+							client.RunContainerReturns(nil)
+						})
+
+						It("responds successfully", func() {
+							failedWork, err := cellRep.Perform(work)
+							Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
+							Ω(failedWork.Tasks).Should(BeZero())
+						})
+
+						It("does not delete the container", func() {
+							cellRep.Perform(work)
+							Consistently(client.DeleteContainerCallCount).Should(Equal(0))
+						})
+					})
+
+					Context("when running the task fails", func() {
+						BeforeEach(func() {
+							client.RunContainerReturns(commonErr)
+						})
+
+						It("responds successfully", func() {
+							failedWork, err := cellRep.Perform(work)
+							Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
+							Ω(failedWork.Tasks).Should(BeZero())
+						})
+
+						It("deletes the container", func() {
+							cellRep.Perform(work)
+							Eventually(client.DeleteContainerCallCount).Should(Equal(1))
+							Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
+						})
+
+						It("marks the state as failed in the BBS", func() {
+							cellRep.Perform(work)
+
+							Eventually(bbs.CompleteTaskCallCount).Should(Equal(1))
+							actualTaskGuid, actualFailed, actualFailureReason, _ := bbs.CompleteTaskArgsForCall(0)
+							Ω(actualTaskGuid).Should(Equal(task.TaskGuid))
+							Ω(actualFailed).Should(BeTrue())
+							Ω(actualFailureReason).Should(ContainSubstring("failed to run container"))
+						})
+					})
+				})
+
+				Context("when it fails to mark it starting in the BBS", func() {
+					BeforeEach(func() {
+						bbs.StartTaskReturns(commonErr)
+					})
+
+					It("responds successfully", func() {
+						failedWork, err := cellRep.Perform(work)
+						Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
+						Ω(failedWork.Tasks).Should(BeZero())
+					})
+
+					It("doesn't run the container", func() {
+						cellRep.Perform(work)
+						Consistently(client.RunContainerCallCount).Should(Equal(0))
+					})
+
+					It("deletes the container", func() {
+						cellRep.Perform(work)
+						Eventually(client.DeleteContainerCallCount).Should(Equal(1))
+						Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
+					})
 				})
 			})
 
@@ -430,64 +532,20 @@ var _ = Describe("AuctionCellRep", func() {
 					client.AllocateContainerReturns(executor.Container{}, commonErr)
 				})
 
-				It("should return the task as failed", func() {
+				It("adds to the failed work", func() {
 					failedWork, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
 					Ω(failedWork.Tasks).Should(ConsistOf(task))
 				})
 
-				It("should not start the task in the BBS, or try to run the container", func() {
+				It("doesn't start the task in the BBS", func() {
 					cellRep.Perform(work)
-					Ω(bbs.StartTaskCallCount()).Should(Equal(0))
-					Ω(client.RunContainerCallCount()).Should(Equal(0))
-				})
-			})
-
-			Context("when it fails to mark it starting in the BBS", func() {
-				BeforeEach(func() {
-					bbs.StartTaskReturns(commonErr)
+					Consistently(bbs.StartTaskCallCount).Should(Equal(0))
 				})
 
-				It("should return the task as failed", func() {
-					failedWork, err := cellRep.Perform(work)
-					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
-					Ω(failedWork.Tasks).Should(ConsistOf(task))
-				})
-
-				It("should delete the container", func() {
+				It("doesn't run the container", func() {
 					cellRep.Perform(work)
-					Ω(client.DeleteContainerCallCount()).Should(Equal(1))
-					Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
-				})
-
-				It("should not try to run the container", func() {
-					cellRep.Perform(work)
-					Ω(client.RunContainerCallCount()).Should(Equal(0))
-				})
-			})
-
-			Context("when it marks it starting in the BBS but fails to run the container", func() {
-				BeforeEach(func() {
-					client.RunContainerReturns(commonErr)
-				})
-
-				It("should return the task as failed", func() {
-					failedWork, err := cellRep.Perform(work)
-					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
-					Ω(failedWork.Tasks).Should(ConsistOf(task))
-				})
-
-				It("should delete the container and mark the state as failed in the BBS", func() {
-					cellRep.Perform(work)
-
-					Ω(client.DeleteContainerCallCount()).Should(Equal(1))
-					Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
-
-					Ω(bbs.CompleteTaskCallCount()).Should(Equal(1))
-					actualTaskGuid, actualFailed, actualFailureReason, _ := bbs.CompleteTaskArgsForCall(0)
-					Ω(actualTaskGuid).Should(Equal(task.TaskGuid))
-					Ω(actualFailed).Should(BeTrue())
-					Ω(actualFailureReason).Should(ContainSubstring("failed to run container"))
+					Consistently(client.RunContainerCallCount).Should(Equal(0))
 				})
 			})
 		})
