@@ -252,8 +252,9 @@ var _ = Describe("AuctionCellRep", func() {
 						return nil, nil
 					}
 
-					_, err := cellRep.Perform(work)
+					failedWork, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred())
+					Ω(failedWork).Should(BeZero())
 
 					Consistently(triggerClaimCalled).ShouldNot(BeClosed())
 					close(triggerClaimChan)
@@ -344,9 +345,7 @@ var _ = Describe("AuctionCellRep", func() {
 				It("adds to the failed work", func() {
 					failedWork, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred())
-
-					Ω(failedWork.LRPStarts).Should(HaveLen(1))
-					Ω(failedWork.LRPStarts[0].InstanceGuid).Should(Equal(startAuction.InstanceGuid))
+					Ω(failedWork.LRPStarts).Should(ConsistOf(startAuction))
 				})
 
 				It("does not tell the BBS it has claimed the lrp", func() {
