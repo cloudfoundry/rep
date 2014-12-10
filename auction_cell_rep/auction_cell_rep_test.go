@@ -23,12 +23,14 @@ var _ = Describe("AuctionCellRep", func() {
 	var commonErr error
 	var bbs *fake_bbs.FakeRepBBS
 	var stopper *fake_lrp_stopper.FakeLRPStopper
+	var logger *lagertest.TestLogger
 
 	BeforeEach(func() {
 		stopper = &fake_lrp_stopper.FakeLRPStopper{}
 		client = new(fake_client.FakeClient)
 		bbs = &fake_bbs.FakeRepBBS{}
-		cellRep = New("some-cell-id", "lucid64", stopper, bbs, client, lagertest.NewTestLogger("test"))
+		logger = lagertest.NewTestLogger("test")
+		cellRep = New("some-cell-id", "lucid64", stopper, bbs, client, logger)
 		commonErr = errors.New("Failed to fetch")
 	})
 
