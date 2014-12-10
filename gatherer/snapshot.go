@@ -73,9 +73,10 @@ func (s *snapshot) LookupTask(guid string) (*models.Task, bool, error) {
 
 	task, err := s.bbs.TaskByGuid(guid)
 	if err != nil {
-		if err == bbserrors.ErrTaskNotFound {
+		switch err.(type) {
+		case bbserrors.TaskNotFoundError:
 			return nil, false, nil
-		} else {
+		default:
 			return nil, false, err
 		}
 	}
