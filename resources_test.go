@@ -49,7 +49,7 @@ var _ = Describe("Resources", func() {
 				Domain:       "my-domain",
 				InstanceGuid: "some-instance-guid",
 				CellID:       cellID,
-				State:        models.ActualLRPStateInvalid,
+				State:        "",
 
 				Ports: []models.PortMapping{
 					{

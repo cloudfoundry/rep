@@ -41,7 +41,7 @@ func ActualLRPFromContainer(container executor.Container, cellId, executorHost s
 		cellId,
 		container.Tags[DomainTag],
 		processIndex,
-		models.ActualLRPStateInvalid,
+		"",
 	)
 
 	err = actualLrp.Validate()
