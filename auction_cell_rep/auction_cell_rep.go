@@ -8,29 +8,26 @@ import (
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
-	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 )
 
 type AuctionCellRep struct {
-	cellID     string
-	stack      string
-	lrpStopper lrp_stopper.LRPStopper
-	bbs        Bbs.RepBBS
-	client     executor.Client
-	logger     lager.Logger
+	cellID string
+	stack  string
+	bbs    Bbs.RepBBS
+	client executor.Client
+	logger lager.Logger
 }
 
-func New(cellID string, stack string, lrpStopper lrp_stopper.LRPStopper, bbs Bbs.RepBBS, client executor.Client, logger lager.Logger) *AuctionCellRep {
+func New(cellID string, stack string, bbs Bbs.RepBBS, client executor.Client, logger lager.Logger) *AuctionCellRep {
 	return &AuctionCellRep{
-		cellID:     cellID,
-		stack:      stack,
-		lrpStopper: lrpStopper,
-		bbs:        bbs,
-		client:     client,
-		logger:     logger.Session("auction-delegate"),
+		cellID: cellID,
+		stack:  stack,
+		bbs:    bbs,
+		client: client,
+		logger: logger.Session("auction-delegate"),
 	}
 }
 
@@ -90,21 +87,8 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 
 	logger := a.logger.Session("auction-work", lager.Data{
 		"lrp-starts": len(work.LRPStarts),
-		"lrp-stops":  len(work.LRPStops),
 		"tasks":      len(work.Tasks),
 	})
-
-	for _, stop := range work.LRPStops {
-		stopLogger := logger.Session("lrp-stop-instance", lager.Data{"process-guid": stop.ProcessGuid, "instance-guid": stop.InstanceGuid, "index": stop.Index})
-		stopLogger.Info("stopping")
-		err := a.stopLRP(stop)
-		if err != nil {
-			stopLogger.Error("failed-to-stop", err)
-			failedWork.LRPStops = append(failedWork.LRPStops, stop)
-		} else {
-			stopLogger.Info("stopped")
-		}
-	}
 
 	for _, start := range work.LRPStarts {
 		startLogger := logger.Session("lrp-start-instance", lager.Data{
@@ -217,10 +201,6 @@ func (a *AuctionCellRep) startLRP(startAuction models.LRPStartAuction, logger la
 	}()
 
 	return nil
-}
-
-func (a *AuctionCellRep) stopLRP(lrp models.ActualLRP) error {
-	return a.lrpStopper.StopInstance(lrp)
 }
 
 func (a *AuctionCellRep) startTask(task models.Task, logger lager.Logger) error {

@@ -23,7 +23,7 @@ type Config struct {
 	lrpHost           string
 	executorURL       string
 	etcdCluster       string
-	auctionServerPort int
+	serverPort        int
 	logLevel          string
 	heartbeatInterval time.Duration
 	pollingInterval   time.Duration
@@ -31,7 +31,7 @@ type Config struct {
 
 func New(
 	binPath, cellID, stack, lrpHost, executorURL, etcdCluster, logLevel string,
-	auctionServerPort int,
+	serverPort int,
 	heartbeatInterval, pollingInterval time.Duration) *Runner {
 	return &Runner{
 		binPath: binPath,
@@ -40,7 +40,7 @@ func New(
 			stack:             stack,
 			lrpHost:           lrpHost,
 			executorURL:       executorURL,
-			auctionServerPort: auctionServerPort,
+			serverPort:        serverPort,
 			etcdCluster:       etcdCluster,
 			logLevel:          logLevel,
 			heartbeatInterval: heartbeatInterval,
@@ -61,7 +61,7 @@ func (r *Runner) Start() {
 			"-stack", r.config.stack,
 			"-lrpHost", r.config.lrpHost,
 			"-executorURL", r.config.executorURL,
-			"-auctionListenAddr", fmt.Sprintf("0.0.0.0:%d", r.config.auctionServerPort),
+			"-listenAddr", fmt.Sprintf("0.0.0.0:%d", r.config.serverPort),
 			"-etcdCluster", r.config.etcdCluster,
 			"-logLevel", r.config.logLevel,
 			"-heartbeatInterval", r.config.heartbeatInterval.String(),

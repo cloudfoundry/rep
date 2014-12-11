@@ -8,7 +8,6 @@ import (
 	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
 	. "github.com/cloudfoundry-incubator/rep/auction_cell_rep"
-	"github.com/cloudfoundry-incubator/rep/lrp_stopper/fake_lrp_stopper"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -22,15 +21,13 @@ var _ = Describe("AuctionCellRep", func() {
 	var client *fake_client.FakeClient
 	var commonErr error
 	var bbs *fake_bbs.FakeRepBBS
-	var stopper *fake_lrp_stopper.FakeLRPStopper
 	var logger *lagertest.TestLogger
 
 	BeforeEach(func() {
-		stopper = &fake_lrp_stopper.FakeLRPStopper{}
 		client = new(fake_client.FakeClient)
 		bbs = &fake_bbs.FakeRepBBS{}
 		logger = lagertest.NewTestLogger("test")
-		cellRep = New("some-cell-id", "lucid64", stopper, bbs, client, logger)
+		cellRep = New("some-cell-id", "lucid64", bbs, client, logger)
 		commonErr = errors.New("Failed to fetch")
 	})
 
@@ -548,52 +545,6 @@ var _ = Describe("AuctionCellRep", func() {
 				It("doesn't run the container", func() {
 					cellRep.Perform(work)
 					Consistently(client.RunContainerCallCount).Should(Equal(0))
-				})
-			})
-		})
-
-		Describe("performing stops", func() {
-			var actualLRP models.ActualLRP
-
-			BeforeEach(func() {
-				actualLRP = models.ActualLRP{
-					ProcessGuid:  "some-process-guid",
-					InstanceGuid: "some-instance-guid",
-					Index:        2,
-
-					CellID: "some-cell-id",
-				}
-
-				work = auctiontypes.Work{LRPStops: []models.ActualLRP{actualLRP}}
-			})
-
-			Context("when all is well", func() {
-				It("should instruct the LRPStopper to stop", func() {
-					failedWork, err := cellRep.Perform(work)
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(failedWork).Should(BeZero())
-
-					stoppingLRP := stopper.StopInstanceArgsForCall(0)
-					Ω(stoppingLRP.ProcessGuid).Should(Equal(actualLRP.ProcessGuid))
-					Ω(stoppingLRP.InstanceGuid).Should(Equal(actualLRP.InstanceGuid))
-					Ω(stoppingLRP.Index).Should(Equal(actualLRP.Index))
-				})
-			})
-
-			Context("when the stop fails", func() {
-				BeforeEach(func() {
-					stopper.StopInstanceReturns(commonErr)
-				})
-
-				It("should mark the stop as failed", func() {
-					failedWork, err := cellRep.Perform(work)
-					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
-
-					Ω(failedWork.LRPStops).Should(HaveLen(1))
-					failedStop := failedWork.LRPStops[0]
-					Ω(failedStop.ProcessGuid).Should(Equal(actualLRP.ProcessGuid))
-					Ω(failedStop.InstanceGuid).Should(Equal(actualLRP.InstanceGuid))
-					Ω(failedStop.Index).Should(Equal(actualLRP.Index))
 				})
 			})
 		})

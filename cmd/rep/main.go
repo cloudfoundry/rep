@@ -56,10 +56,10 @@ var executorURL = flag.String(
 	"location of executor to represent",
 )
 
-var auctionListenAddr = flag.String(
-	"auctionListenAddr",
+var listenAddr = flag.String(
+	"listenAddr",
 	"0.0.0.0:1800",
-	"host:port to serve auction requests on",
+	"host:port to serve auction and LRP stop requests on",
 )
 
 var lrpHost = flag.String(
@@ -135,10 +135,10 @@ func main() {
 		actualLRPReaper,
 	}, *cellID, bbs, executorClient, logger)
 
-	auctionServer, address := initializeAuctionServer(lrpStopper, bbs, executorClient, logger)
+	server, address := initializeServer(lrpStopper, bbs, executorClient, logger)
 
 	group := grouper.NewOrdered(os.Interrupt, grouper.Members{
-		{"auction-server", auctionServer},
+		{"server", server},
 		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
 		{"gatherer", gatherer},
 		{"event-consumer", eventConsumer},
@@ -227,22 +227,21 @@ func initializeLRPStopper(guid string, bbs Bbs.RepBBS, executorClient executor.C
 	return lrp_stopper.New(guid, bbs, executorClient, logger)
 }
 
-func initializeAuctionServer(
+func initializeServer(
 	stopper lrp_stopper.LRPStopper,
 	bbs Bbs.RepBBS,
 	executorClient executor.Client,
 	logger lager.Logger,
 ) (ifrit.Runner, string) {
-	auctionCellRep := auction_cell_rep.New(*cellID, *stack, stopper, bbs, executorClient, logger)
-
+	auctionCellRep := auction_cell_rep.New(*cellID, *stack, bbs, executorClient, logger)
 	handlers := auction_http_handlers.New(auctionCellRep, logger)
-	handlers[bbsroutes.StopLRPInstance] = repserver.NewStopLRPInstanceHandler(logger, stopper)
 
+	handlers[bbsroutes.StopLRPInstance] = repserver.NewStopLRPInstanceHandler(logger, stopper)
 	routes := append(auctionroutes.Routes, bbsroutes.StopLRPRoutes...)
 
 	router, err := rata.NewRouter(routes, handlers)
 	if err != nil {
-		logger.Fatal("failed-to-construct-auction-router", err)
+		logger.Fatal("failed-to-construct-router", err)
 	}
 
 	ip, err := localip.LocalIP()
@@ -250,8 +249,8 @@ func initializeAuctionServer(
 		logger.Fatal("failed-to-fetch-ip", err)
 	}
 
-	port := strings.Split(*auctionListenAddr, ":")[1]
+	port := strings.Split(*listenAddr, ":")[1]
 	address := fmt.Sprintf("http://%s:%s", ip, port)
 
-	return http_server.New(*auctionListenAddr, router), address
+	return http_server.New(*listenAddr, router), address
 }
