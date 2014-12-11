@@ -379,12 +379,5 @@ var _ = Describe("The Rep", func() {
 			Eventually(findDeleteRequest).Should(Equal("/containers/some-instance-guid"))
 			Eventually(bbs.ActualLRPs).Should(BeEmpty())
 		})
-
-		It("should fail to delete the container when the LRP is missing data", func() {
-			lrp := runningLRP
-			lrp.State = models.ActualLRPStateClaimed
-			err := bbs.RequestStopLRPInstance(lrp)
-			Ω(err).Should(MatchError("http error: status code 409 (Conflict)"))
-		})
 	})
 })

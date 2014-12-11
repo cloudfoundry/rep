@@ -3,15 +3,15 @@ package http_server_test
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 
 	"github.com/cloudfoundry-incubator/rep/http_server"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper/fake_lrp_stopper"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/pivotal-golang/lager"
+	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -27,7 +27,11 @@ var _ = Describe("Handlers", func() {
 		BeforeEach(func() {
 			var err error
 			fakeStopper = &fake_lrp_stopper.FakeLRPStopper{}
-			stopInstanceHandler = http_server.NewStopLRPInstanceHandler(fakeStopper)
+
+			logger := lagertest.NewTestLogger("test")
+			logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
+
+			stopInstanceHandler = http_server.NewStopLRPInstanceHandler(logger, fakeStopper)
 
 			resp = httptest.NewRecorder()
 
@@ -63,32 +67,10 @@ var _ = Describe("Handlers", func() {
 				Ω(resp.Code).Should(Equal(http.StatusAccepted))
 			})
 
-			It("stops the instance", func() {
-				Ω(fakeStopper.StopInstanceCallCount()).Should(Equal(1))
+			It("eventually stops the instance", func() {
+				Eventually(fakeStopper.StopInstanceCallCount).Should(Equal(1))
 
 				Ω(fakeStopper.StopInstanceArgsForCall(0)).Should(Equal(actualLRP))
-			})
-
-			Context("when the stopper fails", func() {
-				Context("because of a comparison failure", func() {
-					BeforeEach(func() {
-						fakeStopper.StopInstanceReturns(bbserrors.ErrStoreComparisonFailed)
-					})
-
-					It("responds with 409 Conflict", func() {
-						Ω(resp.Code).Should(Equal(http.StatusConflict))
-					})
-				})
-
-				Context("because of some other reason", func() {
-					BeforeEach(func() {
-						fakeStopper.StopInstanceReturns(errors.New("whoopsie"))
-					})
-
-					It("responds with 500 Internal Server Error", func() {
-						Ω(resp.Code).Should(Equal(http.StatusInternalServerError))
-					})
-				})
 			})
 		})
 

@@ -236,7 +236,7 @@ func initializeAuctionServer(
 	auctionCellRep := auction_cell_rep.New(*cellID, *stack, stopper, bbs, executorClient, logger)
 
 	handlers := auction_http_handlers.New(auctionCellRep, logger)
-	handlers[bbsroutes.StopLRPInstance] = repserver.NewStopLRPInstanceHandler(stopper)
+	handlers[bbsroutes.StopLRPInstance] = repserver.NewStopLRPInstanceHandler(logger, stopper)
 
 	routes := append(auctionroutes.Routes, bbsroutes.StopLRPRoutes...)
 
