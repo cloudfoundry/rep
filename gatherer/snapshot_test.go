@@ -71,7 +71,7 @@ var _ = Describe("Snapshot", func() {
 		bbs.TasksByCellIDReturns(tasks, nil)
 
 		// set base case for LookupTask fallthrough
-		bbs.TaskByGuidReturns(nil, bbserrors.TaskNotFoundError{})
+		bbs.TaskByGuidReturns(nil, bbserrors.ErrStoreResourceNotFound)
 	})
 
 	JustBeforeEach(func() {
@@ -198,7 +198,7 @@ var _ = Describe("Snapshot", func() {
 
 			Context("and it also does not exist in the BBS", func() {
 				BeforeEach(func() {
-					bbs.TaskByGuidReturns(nil, bbserrors.TaskNotFoundError{})
+					bbs.TaskByGuidReturns(nil, bbserrors.ErrStoreResourceNotFound)
 				})
 
 				It("returns nothing", func() {

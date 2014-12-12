@@ -73,12 +73,10 @@ func (s *snapshot) LookupTask(guid string) (*models.Task, bool, error) {
 
 	task, err := s.bbs.TaskByGuid(guid)
 	if err != nil {
-		switch err.(type) {
-		case bbserrors.TaskNotFoundError:
+		if err == bbserrors.ErrStoreResourceNotFound {
 			return nil, false, nil
-		default:
-			return nil, false, err
 		}
+		return nil, false, err
 	}
 
 	if task.CellID != s.cellID {
