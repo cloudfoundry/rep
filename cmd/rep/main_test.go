@@ -11,6 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/rep/cmd/rep/testrunner"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gunk/timeprovider"
+	"github.com/cloudfoundry/storeadapter"
 	"github.com/pivotal-golang/lager/lagertest"
 
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
@@ -21,6 +22,7 @@ import (
 )
 
 var runner *testrunner.Runner
+var etcdAdapter storeadapter.StoreAdapter
 
 var _ = Describe("The Rep", func() {
 	var (
@@ -35,7 +37,8 @@ var _ = Describe("The Rep", func() {
 		fakeExecutor.AllowUnhandledRequests = true
 		fakeExecutor.RouteToHandler("GET", "/ping", ghttp.RespondWith(http.StatusOK, nil))
 
-		bbs = Bbs.NewBBS(etcdRunner.Adapter(), timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
+		etcdAdapter = etcdRunner.Adapter()
+		bbs = Bbs.NewBBS(etcdAdapter, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
 
 		pollingInterval = 50 * time.Millisecond
 
@@ -56,6 +59,7 @@ var _ = Describe("The Rep", func() {
 	})
 
 	AfterEach(func(done Done) {
+		etcdAdapter.Disconnect()
 		runner.KillWithFire()
 		fakeExecutor.Close()
 		close(done)
