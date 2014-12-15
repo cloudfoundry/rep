@@ -14,9 +14,13 @@ var _ = Describe("Resources", func() {
 		const cellID = "the-cell-id"
 		const executorHost = "executor.example.com:9753"
 
-		var container executor.Container
-		var actualLRP *models.ActualLRP
-		var conversionErr error
+		var (
+			container       executor.Container
+			lrpKey          models.ActualLRPKey
+			lrpContainerKey models.ActualLRPContainerKey
+			lrpNetInfo      models.ActualLRPNetInfo
+			conversionErr   error
+		)
 
 		BeforeEach(func() {
 			container = executor.Container{
@@ -37,20 +41,22 @@ var _ = Describe("Resources", func() {
 		})
 
 		JustBeforeEach(func() {
-			actualLRP, conversionErr = rep.ActualLRPFromContainer(container, cellID, executorHost)
+			lrpKey, lrpContainerKey, lrpNetInfo, conversionErr = rep.ActualLRPFromContainer(container, cellID, executorHost)
 		})
 
 		It("converts a valid container without error", func() {
 			Ω(conversionErr).ShouldNot(HaveOccurred())
 
-			expectedLRP := models.ActualLRP{
-				ProcessGuid:  "process-guid",
-				Index:        999,
-				Domain:       "my-domain",
+			expectedKey := models.ActualLRPKey{
+				ProcessGuid: "process-guid",
+				Index:       999,
+				Domain:      "my-domain",
+			}
+			expectedContainerKey := models.ActualLRPContainerKey{
 				InstanceGuid: "some-instance-guid",
 				CellID:       cellID,
-				State:        "",
-
+			}
+			expectedNetInfo := models.ActualLRPNetInfo{
 				Ports: []models.PortMapping{
 					{
 						ContainerPort: 1234,
@@ -60,7 +66,9 @@ var _ = Describe("Resources", func() {
 				Host: executorHost,
 			}
 
-			Ω(actualLRP).Should(Equal(&expectedLRP))
+			Ω(lrpKey).Should(Equal(expectedKey))
+			Ω(lrpContainerKey).Should(Equal(expectedContainerKey))
+			Ω(lrpNetInfo).Should(Equal(expectedNetInfo))
 		})
 
 		Context("when the container is invalid", func() {

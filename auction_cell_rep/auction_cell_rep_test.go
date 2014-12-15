@@ -23,11 +23,20 @@ var _ = Describe("AuctionCellRep", func() {
 	var bbs *fake_bbs.FakeRepBBS
 	var logger *lagertest.TestLogger
 
+	const expectedCellID = "some-cell-id"
+	var expectedGuid string
+	var expectedGuidError error
+	var fakeGenerateContainerGuid = func() (string, error) {
+		return expectedGuid, expectedGuidError
+	}
+
 	BeforeEach(func() {
+		expectedGuid = "container-guid"
+		expectedGuidError = nil
 		client = new(fake_client.FakeClient)
 		bbs = &fake_bbs.FakeRepBBS{}
 		logger = lagertest.NewTestLogger("test")
-		cellRep = New("some-cell-id", "lucid64", bbs, client, logger)
+		cellRep = New(expectedCellID, "lucid64", fakeGenerateContainerGuid, bbs, client, logger)
 		commonErr = errors.New("Failed to fetch")
 	})
 
@@ -96,18 +105,16 @@ var _ = Describe("AuctionCellRep", func() {
 			}))
 			Ω(state.LRPs).Should(ConsistOf([]auctiontypes.LRP{
 				{
-					ProcessGuid:  "the-first-app-guid",
-					Index:        17,
-					InstanceGuid: "first",
-					DiskMB:       10,
-					MemoryMB:     20,
+					ProcessGuid: "the-first-app-guid",
+					Index:       17,
+					DiskMB:      10,
+					MemoryMB:    20,
 				},
 				{
-					ProcessGuid:  "the-second-app-guid",
-					Index:        92,
-					InstanceGuid: "second",
-					DiskMB:       30,
-					MemoryMB:     40,
+					ProcessGuid: "the-second-app-guid",
+					Index:       92,
+					DiskMB:      30,
+					MemoryMB:    40,
 				},
 			}))
 		})
@@ -151,9 +158,12 @@ var _ = Describe("AuctionCellRep", func() {
 
 	Describe("performing work", func() {
 		var work auctiontypes.Work
-
 		Describe("performing starts", func() {
 			var startAuction models.LRPStartAuction
+			var expectedLRPKey models.ActualLRPKey
+			var expectedLRPContainerKey models.ActualLRPContainerKey
+			var expectedIndex = 2
+			const expectedIndexString = "2"
 
 			BeforeEach(func() {
 				startAuction = models.LRPStartAuction{
@@ -178,10 +188,11 @@ var _ = Describe("AuctionCellRep", func() {
 						},
 					},
 
-					InstanceGuid: "instance-guid",
-					Index:        2,
+					Index: expectedIndex,
 				}
 
+				expectedLRPKey = models.NewActualLRPKey(startAuction.DesiredLRP.ProcessGuid, startAuction.Index, startAuction.DesiredLRP.Domain)
+				expectedLRPContainerKey = models.NewActualLRPContainerKey(expectedGuid, expectedCellID)
 				work = auctiontypes.Work{LRPStarts: []models.LRPStartAuction{startAuction}}
 			})
 
@@ -191,15 +202,14 @@ var _ = Describe("AuctionCellRep", func() {
 
 				Ω(client.AllocateContainerCallCount()).Should(Equal(1))
 
-				two := 2
 				Ω(client.AllocateContainerArgsForCall(0)).Should(Equal(executor.Container{
-					Guid: startAuction.InstanceGuid,
+					Guid: expectedGuid,
 
 					Tags: executor.Tags{
 						rep.LifecycleTag:    rep.LRPLifecycle,
-						rep.DomainTag:       "tests",
+						rep.DomainTag:       startAuction.DesiredLRP.Domain,
 						rep.ProcessGuidTag:  startAuction.DesiredLRP.ProcessGuid,
-						rep.ProcessIndexTag: "2",
+						rep.ProcessIndexTag: expectedIndexString,
 					},
 
 					MemoryMB:   startAuction.DesiredLRP.MemoryMB,
@@ -207,15 +217,15 @@ var _ = Describe("AuctionCellRep", func() {
 					CPUWeight:  startAuction.DesiredLRP.CPUWeight,
 					RootFSPath: "some-root-fs",
 					Ports:      []executor.PortMapping{{ContainerPort: 8080}},
-					Log:        executor.LogConfig{Guid: "log-guid", Index: &two},
+					Log:        executor.LogConfig{Guid: "log-guid", Index: &expectedIndex},
 
 					Setup:   startAuction.DesiredLRP.Setup,
 					Action:  startAuction.DesiredLRP.Action,
 					Monitor: startAuction.DesiredLRP.Monitor,
 
 					Env: []executor.EnvironmentVariable{
-						{Name: "INSTANCE_GUID", Value: "instance-guid"},
-						{Name: "INSTANCE_INDEX", Value: "2"},
+						{Name: "INSTANCE_GUID", Value: expectedGuid},
+						{Name: "INSTANCE_INDEX", Value: expectedIndexString},
 						{Name: "var1", Value: "val1"},
 						{Name: "var2", Value: "val2"},
 					},
@@ -233,19 +243,16 @@ var _ = Describe("AuctionCellRep", func() {
 
 					Eventually(bbs.ClaimActualLRPCallCount).Should(Equal(1))
 
-					claimingLRP := bbs.ClaimActualLRPArgsForCall(0)
-					Ω(claimingLRP.ProcessGuid).Should(Equal(startAuction.DesiredLRP.ProcessGuid))
-					Ω(claimingLRP.Domain).Should(Equal(startAuction.DesiredLRP.Domain))
-					Ω(claimingLRP.InstanceGuid).Should(Equal(startAuction.InstanceGuid))
-					Ω(claimingLRP.CellID).Should(Equal("some-cell-id"))
-					Ω(claimingLRP.Index).Should(Equal(startAuction.Index))
+					claimingLRPKey, claimingLRPContainerKey := bbs.ClaimActualLRPArgsForCall(0)
+					Ω(claimingLRPKey).Should(Equal(expectedLRPKey))
+					Ω(claimingLRPContainerKey).Should(Equal(expectedLRPContainerKey))
 				})
 
 				It("responds successfully before claiming the lrp in the BBS", func() {
 					triggerClaimChan := make(chan struct{})
 					triggerClaimCalled := make(chan struct{})
 
-					bbs.ClaimActualLRPStub = func(_ models.ActualLRP) (*models.ActualLRP, error) {
+					bbs.ClaimActualLRPStub = func(_ models.ActualLRPKey, _ models.ActualLRPContainerKey) (*models.ActualLRP, error) {
 						<-triggerClaimChan
 						close(triggerClaimCalled)
 						return nil, nil
@@ -270,7 +277,7 @@ var _ = Describe("AuctionCellRep", func() {
 						Ω(err).ShouldNot(HaveOccurred())
 
 						Eventually(client.RunContainerCallCount).Should(Equal(1))
-						Ω(client.RunContainerArgsForCall(0)).Should(Equal(startAuction.InstanceGuid))
+						Ω(client.RunContainerArgsForCall(0)).Should(Equal(expectedGuid))
 					})
 
 					Context("when running the lrp fails", func() {
@@ -288,14 +295,16 @@ var _ = Describe("AuctionCellRep", func() {
 							cellRep.Perform(work)
 
 							Eventually(client.DeleteContainerCallCount).Should(Equal(1))
-							Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(startAuction.InstanceGuid))
+							Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(expectedGuid))
 						})
 
 						It("removes the Actual from the BBS", func() {
 							cellRep.Perform(work)
 
 							Eventually(bbs.RemoveActualLRPCallCount).Should(Equal(1))
-							Ω(bbs.RemoveActualLRPArgsForCall(0).InstanceGuid).Should(Equal(startAuction.InstanceGuid))
+							removingLRPKey, removingLRPContainerKey := bbs.RemoveActualLRPArgsForCall(0)
+							Ω(removingLRPKey).Should(Equal(expectedLRPKey))
+							Ω(removingLRPContainerKey).Should(Equal(expectedLRPContainerKey))
 						})
 					})
 
@@ -331,7 +340,7 @@ var _ = Describe("AuctionCellRep", func() {
 					It("deletes the container", func() {
 						cellRep.Perform(work)
 						Eventually(client.DeleteContainerCallCount).Should(Equal(1))
-						Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(startAuction.InstanceGuid))
+						Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(expectedGuid))
 					})
 				})
 			})

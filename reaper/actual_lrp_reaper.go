@@ -24,17 +24,17 @@ func NewActualLRPReaper(
 func (r *ActualLRPReaper) Process(snapshot gatherer.Snapshot) {
 	r.logger.Info("started")
 
-	actualLRPs := snapshot.ActualLRPs()
+	lrps := snapshot.ActualLRPs()
 
-	for _, actualLRP := range actualLRPs {
-		_, ok := snapshot.GetContainer(actualLRP.InstanceGuid)
+	for _, lrp := range lrps {
+		_, ok := snapshot.GetContainer(lrp.InstanceGuid)
 
 		if !ok {
-			r.logger.Info("actual-lrp-with-no-corresponding-container", lager.Data{"actual-lrp": actualLRP})
+			r.logger.Info("actual-lrp-with-no-corresponding-container", lager.Data{"actual-lrp": lrp})
 
-			err := r.bbs.RemoveActualLRP(actualLRP)
+			err := r.bbs.RemoveActualLRP(lrp.ActualLRPKey, lrp.ActualLRPContainerKey)
 			if err != nil {
-				r.logger.Error("failed-to-reap-actual-lrp-with-no-corresponding-container", err, lager.Data{"actual-lrp": actualLRP})
+				r.logger.Error("failed-to-reap-actual-lrp-with-no-corresponding-container", err, lager.Data{"actual-lrp": lrp})
 			}
 		}
 	}

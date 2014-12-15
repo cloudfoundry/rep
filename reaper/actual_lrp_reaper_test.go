@@ -34,13 +34,16 @@ var _ = Describe("Actual LRP Reaper", func() {
 	})
 
 	Context("when there are actual LRPs for this executor in the BBS", func() {
+		var expectedLRPKey models.ActualLRPKey
+		var expectedContainerKey models.ActualLRPContainerKey
+
 		BeforeEach(func() {
+			expectedLRPKey = models.NewActualLRPKey("p-guid", 1, "d")
+			expectedContainerKey = models.NewActualLRPContainerKey("i-guid", "c-guid")
 			snapshot.ActualLRPsReturns([]models.ActualLRP{
 				models.ActualLRP{
-					InstanceGuid: "instance-guid-1",
-				},
-				models.ActualLRP{
-					InstanceGuid: "instance-guid-2",
+					ActualLRPKey:          expectedLRPKey,
+					ActualLRPContainerKey: expectedContainerKey,
 				},
 			})
 		})
@@ -51,13 +54,12 @@ var _ = Describe("Actual LRP Reaper", func() {
 			})
 
 			It("remove those actual LRPs from the BBS", func() {
-				Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(2))
+				Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
 
-				actualLRP1 := bbs.RemoveActualLRPArgsForCall(0)
-				Ω(actualLRP1.InstanceGuid).Should(Equal("instance-guid-1"))
+				lrpKey, containerKey := bbs.RemoveActualLRPArgsForCall(0)
+				Ω(lrpKey).Should(Equal(expectedLRPKey))
+				Ω(containerKey).Should(Equal(expectedContainerKey))
 
-				actualLRP2 := bbs.RemoveActualLRPArgsForCall(1)
-				Ω(actualLRP2.InstanceGuid).Should(Equal("instance-guid-2"))
 			})
 		})
 

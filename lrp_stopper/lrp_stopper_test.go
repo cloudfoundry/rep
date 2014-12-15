@@ -28,10 +28,15 @@ var _ = Describe("LRP Stopper", func() {
 
 	BeforeEach(func() {
 		actualLRP = models.ActualLRP{
-			ProcessGuid:  "some-process-guid",
-			InstanceGuid: "some-instance-guid",
-			Index:        1138,
-			CellID:       "some-cell-id",
+			ActualLRPKey: models.NewActualLRPKey(
+				"some-process-guid",
+				1138,
+				"some-domain",
+			),
+			ActualLRPContainerKey: models.NewActualLRPContainerKey(
+				"some-instance-guid",
+				"some-cell-id",
+			),
 		}
 
 		bbs = &fake_bbs.FakeRepBBS{}
@@ -56,7 +61,9 @@ var _ = Describe("LRP Stopper", func() {
 		})
 
 		It("marks the LRP as stopped", func() {
-			Ω(bbs.RemoveActualLRPArgsForCall(0)).Should(Equal(actualLRP))
+			lrpKey, containerKey := bbs.RemoveActualLRPArgsForCall(0)
+			Ω(lrpKey).Should(Equal(actualLRP.ActualLRPKey))
+			Ω(containerKey).Should(Equal(actualLRP.ActualLRPContainerKey))
 		})
 
 		It("succeeds", func() {
@@ -79,7 +86,9 @@ var _ = Describe("LRP Stopper", func() {
 			})
 
 			It("marks the LRP as stopped", func() {
-				Ω(bbs.RemoveActualLRPArgsForCall(0)).Should(Equal(actualLRP))
+				lrpKey, containerKey := bbs.RemoveActualLRPArgsForCall(0)
+				Ω(lrpKey).Should(Equal(actualLRP.ActualLRPKey))
+				Ω(containerKey).Should(Equal(actualLRP.ActualLRPContainerKey))
 			})
 
 			It("succeeds because the container is apparently already gone", func() {

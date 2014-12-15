@@ -25,28 +25,39 @@ var (
 	ErrInvalidProcessIndex  = errors.New("container does not have a valid process index")
 )
 
-func ActualLRPFromContainer(container executor.Container, cellId, executorHost string) (*models.ActualLRP, error) {
+func ActualLRPFromContainer(
+	container executor.Container,
+	cellID string,
+	executorHost string,
+) (models.ActualLRPKey, models.ActualLRPContainerKey, models.ActualLRPNetInfo, error) {
 	if container.Tags == nil {
-		return nil, ErrContainerMissingTags
+		return models.ActualLRPKey{}, models.ActualLRPContainerKey{}, models.ActualLRPNetInfo{}, ErrContainerMissingTags
 	}
 
 	processIndex, err := strconv.Atoi(container.Tags[ProcessIndexTag])
 	if err != nil {
-		return nil, ErrInvalidProcessIndex
+		return models.ActualLRPKey{}, models.ActualLRPContainerKey{}, models.ActualLRPNetInfo{}, ErrInvalidProcessIndex
 	}
 
-	actualLrp := models.NewActualLRP(
+	actualLRPKey := models.NewActualLRPKey(
 		container.Tags[ProcessGuidTag],
-		container.Guid,
-		cellId,
-		container.Tags[DomainTag],
 		processIndex,
-		"",
+		container.Tags[DomainTag],
 	)
 
-	err = actualLrp.Validate()
+	err = actualLRPKey.Validate()
 	if err != nil {
-		return nil, err
+		return models.ActualLRPKey{}, models.ActualLRPContainerKey{}, models.ActualLRPNetInfo{}, err
+	}
+
+	actualLRPContainerKey := models.NewActualLRPContainerKey(
+		container.Guid,
+		cellID,
+	)
+
+	err = actualLRPContainerKey.Validate()
+	if err != nil {
+		return models.ActualLRPKey{}, models.ActualLRPContainerKey{}, models.ActualLRPNetInfo{}, err
 	}
 
 	ports := []models.PortMapping{}
@@ -57,8 +68,7 @@ func ActualLRPFromContainer(container executor.Container, cellId, executorHost s
 		})
 	}
 
-	actualLrp.Ports = ports
-	actualLrp.Host = executorHost
+	actualLRPNetInfo := models.NewActualLRPNetInfo(executorHost, ports)
 
-	return &actualLrp, nil
+	return actualLRPKey, actualLRPContainerKey, actualLRPNetInfo, nil
 }

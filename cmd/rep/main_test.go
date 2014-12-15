@@ -3,6 +3,7 @@ package main_test
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
@@ -29,6 +30,7 @@ var _ = Describe("The Rep", func() {
 		fakeExecutor    *ghttp.Server
 		bbs             *Bbs.BBS
 		pollingInterval time.Duration
+		lrpHost         string
 	)
 
 	BeforeEach(func() {
@@ -39,6 +41,7 @@ var _ = Describe("The Rep", func() {
 
 		etcdAdapter = etcdRunner.Adapter()
 		bbs = Bbs.NewBBS(etcdAdapter, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
+		lrpHost = "the-lrp-host"
 
 		pollingInterval = 50 * time.Millisecond
 
@@ -46,7 +49,7 @@ var _ = Describe("The Rep", func() {
 			representativePath,
 			cellID,
 			"the-stack",
-			"the-lrp-host",
+			lrpHost,
 			fakeExecutor.URL(),
 			fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
 			"info",
@@ -64,13 +67,6 @@ var _ = Describe("The Rep", func() {
 		fakeExecutor.Close()
 		close(done)
 	})
-
-	claimActual := func(a models.ActualLRP) *models.ActualLRP {
-		_, err := bbs.CreateActualLRP(a)
-		Ω(err).ShouldNot(HaveOccurred())
-		claimed, err := bbs.ClaimActualLRP(a)
-		return claimed
-	}
 
 	Describe("when an interrupt signal is sent to the representative", func() {
 		BeforeEach(func() {
@@ -176,42 +172,43 @@ var _ = Describe("The Rep", func() {
 		Describe("performing work", func() {
 			Describe("starting LRPs", func() {
 				var lrpStartAuction models.LRPStartAuction
+				const expectedProcessGuid = "the-process-guid"
+				const expectedIndex = 1
+				const expectedDomain = "the-domain"
 
 				BeforeEach(func() {
 					lrpStartAuction = models.LRPStartAuction{
 						DesiredLRP: models.DesiredLRP{
-							ProcessGuid: "the-process-guid",
+							ProcessGuid: expectedProcessGuid,
 							MemoryMB:    2,
 							DiskMB:      2,
 							Stack:       "the-stack",
-							Domain:      "the-domain",
+							Domain:      expectedDomain,
 						},
-						InstanceGuid: "the-instance-guid",
-						Index:        1,
+						Index: expectedIndex,
 					}
-					_, err := bbs.CreateActualLRP(models.NewActualLRP("the-process-guid", "the-instance-guid", "", "the-domain", 1, "UNCLAIMED"))
+
+					_, err := bbs.CreateActualLRP(models.NewActualLRPKey(expectedProcessGuid, expectedIndex, expectedDomain))
 					Ω(err).ShouldNot(HaveOccurred())
 
 					fakeExecutor.RouteToHandler("POST", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, executor.Container{}))
-					fakeExecutor.RouteToHandler("POST", "/containers/the-instance-guid/run", ghttp.RespondWith(http.StatusOK, ""))
+					fakeExecutor.RouteToHandler("POST", regexp.MustCompile("/containers/[^/]+/run"), ghttp.RespondWith(http.StatusOK, ""))
 				})
 
-				var claimedActualLRPs = func(bbs *Bbs.BBS) func() ([]models.ActualLRP, error) {
-					return func() ([]models.ActualLRP, error) {
-						actualLRPs, err := bbs.ActualLRPs()
-						if err != nil {
-							return []models.ActualLRP{}, err
-						}
-
-						result := []models.ActualLRP{}
-						for _, actualLRP := range actualLRPs {
-							if actualLRP.State == models.ActualLRPStateClaimed {
-								result = append(result, actualLRP)
-							}
-						}
-
-						return result, nil
+				var claimedActualLRPs = func() ([]models.ActualLRP, error) {
+					actualLRPs, err := bbs.ActualLRPs()
+					if err != nil {
+						return []models.ActualLRP{}, err
 					}
+
+					result := []models.ActualLRP{}
+					for _, actualLRP := range actualLRPs {
+						if actualLRP.State == models.ActualLRPStateClaimed {
+							result = append(result, actualLRP)
+						}
+					}
+
+					return result, nil
 				}
 
 				It("makes a request to executor to allocate and run the container, and marks the state as claimed in the BBS", func() {
@@ -230,10 +227,10 @@ var _ = Describe("The Rep", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(failedWorks.LRPStarts).Should(BeEmpty())
 
-					Eventually(claimedActualLRPs(bbs)).Should(HaveLen(1))
-					actualLRPs, err := claimedActualLRPs(bbs)()
+					Eventually(claimedActualLRPs).Should(HaveLen(1))
+					actualLRPs, err := claimedActualLRPs()
 					Ω(err).ShouldNot(HaveOccurred())
-					Ω(actualLRPs[0].ProcessGuid).Should(Equal("the-process-guid"))
+					Ω(actualLRPs[0].ProcessGuid).Should(Equal(expectedProcessGuid))
 					Ω(actualLRPs[0].State).Should(Equal(models.ActualLRPStateClaimed))
 				})
 			})
@@ -333,7 +330,12 @@ var _ = Describe("The Rep", func() {
 				ghttp.RespondWith(http.StatusOK, "[]"),
 			)
 
-			claimActual(models.NewActualLRP("process-guid", "a-new-instance-guid", cellID, "the-domain", 0, ""))
+			lrpKey := models.NewActualLRPKey("guid", 1, "domian")
+			_, err := bbs.CreateActualLRP(lrpKey)
+			Ω(err).ShouldNot(HaveOccurred())
+			containerKey := models.NewActualLRPContainerKey("instance", cellID)
+			_, err = bbs.ClaimActualLRP(lrpKey, containerKey)
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("eventually reaps actual LRPs with no corresponding container", func() {
@@ -342,45 +344,41 @@ var _ = Describe("The Rep", func() {
 	})
 
 	Describe("when a StopLRPInstance request comes in", func() {
-		var runningLRP models.ActualLRP
-
+		var runningLRP *models.ActualLRP
+		const instanceGuid = "some-instance-guid"
+		const expectedDeleteRoute = "/containers/" + instanceGuid
 		BeforeEach(func() {
+
 			fakeExecutor.AppendHandlers(
 				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("DELETE", "/containers/some-instance-guid"),
+					ghttp.VerifyRequest("DELETE", expectedDeleteRoute),
 					ghttp.RespondWith(http.StatusOK, nil),
 				),
 			)
 
-			runningLRP = models.ActualLRP{
-				ProcessGuid:  "some-process-guid",
-				InstanceGuid: "some-instance-guid",
-				Domain:       "the-domain",
-				Index:        3,
+			lrpKey := models.NewActualLRPKey("process-guid", 1, "domain")
+			containerKey := models.NewActualLRPContainerKey(instanceGuid, cellID)
+			netInfo := models.NewActualLRPNetInfo(lrpHost, []models.PortMapping{})
 
-				CellID: cellID,
-
-				State: models.ActualLRPStateRunning,
-			}
-
-			_, err := bbs.StartActualLRP(runningLRP)
+			var err error
+			runningLRP, err = bbs.StartActualLRP(lrpKey, containerKey, netInfo)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should delete the container and resolve the StopLRPInstance", func() {
-			err := bbs.RequestStopLRPInstance(runningLRP)
+			err := bbs.RequestStopLRPInstance(*runningLRP)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			findDeleteRequest := func() string {
+			findDeleteRequest := func() bool {
 				for _, req := range fakeExecutor.ReceivedRequests() {
-					if req.Method == "DELETE" {
-						return req.URL.Path
+					if req.URL.Path == expectedDeleteRoute {
+						return true
 					}
 				}
-				return ""
+				return false
 			}
 
-			Eventually(findDeleteRequest).Should(Equal("/containers/some-instance-guid"))
+			Eventually(findDeleteRequest).Should(BeTrue())
 			Eventually(bbs.ActualLRPs).Should(BeEmpty())
 		})
 	})

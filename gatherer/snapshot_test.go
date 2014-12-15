@@ -15,6 +15,7 @@ import (
 )
 
 var _ = Describe("Snapshot", func() {
+	const cellID = "cell-id-1"
 	var snapshot Snapshot
 	var snapshoterr error
 	var bbs *fake_bbs.FakeRepBBS
@@ -49,10 +50,12 @@ var _ = Describe("Snapshot", func() {
 
 		actualLRPs = []models.ActualLRP{
 			models.ActualLRP{
-				InstanceGuid: "instance-guid-1",
+				ActualLRPKey:          models.NewActualLRPKey("process-guid-1", 1, "domain"),
+				ActualLRPContainerKey: models.NewActualLRPContainerKey("instance-guid-1", cellID),
 			},
 			models.ActualLRP{
-				InstanceGuid: "instance-guid-2",
+				ActualLRPKey:          models.NewActualLRPKey("process-guid-2", 2, "domain"),
+				ActualLRPContainerKey: models.NewActualLRPContainerKey("instance-guid-2", cellID),
 			},
 		}
 
@@ -75,7 +78,7 @@ var _ = Describe("Snapshot", func() {
 	})
 
 	JustBeforeEach(func() {
-		snapshot, snapshoterr = NewSnapshot("cell-1", bbs, executorClient)
+		snapshot, snapshoterr = NewSnapshot(cellID, bbs, executorClient)
 	})
 
 	Describe("ListContainers", func() {
@@ -171,7 +174,7 @@ var _ = Describe("Snapshot", func() {
 
 				Context("and it's for the current cell", func() {
 					BeforeEach(func() {
-						foundTask.CellID = "cell-1"
+						foundTask.CellID = cellID
 					})
 
 					It("returns the task", func() {

@@ -54,7 +54,7 @@ func (stopper *lrpStopper) StopInstance(lrp models.ActualLRP) error {
 		return err
 	}
 
-	err = stopper.bbs.RemoveActualLRP(lrp)
+	err = stopper.bbs.RemoveActualLRP(lrp.ActualLRPKey, lrp.ActualLRPContainerKey)
 	if err != nil {
 		stopLog.Error("failed-to-remove-actual-lrp", err)
 		return err

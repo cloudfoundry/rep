@@ -2,6 +2,7 @@ package harvester_test
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/executor/fakes"
@@ -24,8 +25,12 @@ var _ = Describe("LRP Processor", func() {
 		executorClient *fakes.FakeClient
 		bbs            *fake_bbs.FakeRepBBS
 		tags           executor.Tags
-		ports          []models.PortMapping
 		processor      harvester.Processor
+		container      executor.Container
+
+		expectedLRPKey          models.ActualLRPKey
+		expectedLRPContainerKey models.ActualLRPContainerKey
+		expectedNetInfo         models.ActualLRPNetInfo
 	)
 
 	itDoesNotClaimTheLRP := func() {
@@ -35,53 +40,42 @@ var _ = Describe("LRP Processor", func() {
 	}
 
 	itStartsTheLRP := func() {
-		It("reports the lrp as running", func() {
+		It("starts the LRP", func() {
 			Ω(bbs.StartActualLRPCallCount()).Should(Equal(1))
 
-			actualLrp := bbs.StartActualLRPArgsForCall(0)
+			lrpKey, containerKey, netInfo := bbs.StartActualLRPArgsForCall(0)
 
-			Ω(actualLrp.ProcessGuid).Should(Equal("process-guid"))
-			Ω(actualLrp.InstanceGuid).Should(Equal("completed-lrp-guid"))
-			Ω(actualLrp.Domain).Should(Equal("my-domain"))
-			Ω(actualLrp.Index).Should(Equal(999))
-			Ω(actualLrp.Host).Should(Equal(expectedExecutorHost))
-			Ω(actualLrp.CellID).Should(Equal(expectedCellId))
+			Ω(lrpKey).Should(Equal(expectedLRPKey))
+			Ω(containerKey).Should(Equal(expectedLRPContainerKey))
+			Ω(netInfo).Should(Equal(expectedNetInfo))
 		})
 	}
 
 	itClaimsTheLRP := func() {
-		It("reports the lrp as starting", func() {
+		It("claims the LRP", func() {
 			Ω(bbs.ClaimActualLRPCallCount()).Should(Equal(1))
 
-			claimingLRP := bbs.ClaimActualLRPArgsForCall(0)
+			lrpKey, containerKey := bbs.ClaimActualLRPArgsForCall(0)
 
-			Ω(claimingLRP.ProcessGuid).Should(Equal("process-guid"))
-			Ω(claimingLRP.InstanceGuid).Should(Equal("completed-lrp-guid"))
-			Ω(claimingLRP.CellID).Should(Equal(expectedCellId))
-			Ω(claimingLRP.Domain).Should(Equal("my-domain"))
-			Ω(claimingLRP.Index).Should(Equal(999))
+			Ω(lrpKey).Should(Equal(expectedLRPKey))
+			Ω(containerKey).Should(Equal(expectedLRPContainerKey))
 		})
 	}
 
 	itRemovesTheLRP := func() {
-		It("removes the lrp", func() {
+		It("removes the LRP", func() {
 			Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
-			actualLrp := bbs.RemoveActualLRPArgsForCall(0)
+			lrpKey, containerKey := bbs.RemoveActualLRPArgsForCall(0)
 
-			Ω(actualLrp.ProcessGuid).Should(Equal("process-guid"))
-			Ω(actualLrp.InstanceGuid).Should(Equal("completed-lrp-guid"))
-			Ω(actualLrp.Domain).Should(Equal("my-domain"))
-			Ω(actualLrp.Index).Should(Equal(999))
-			Ω(actualLrp.Host).Should(Equal(expectedExecutorHost))
-			Ω(actualLrp.CellID).Should(Equal(expectedCellId))
-			Ω(actualLrp.Ports).Should(Equal(ports))
+			Ω(lrpKey).Should(Equal(expectedLRPKey))
+			Ω(containerKey).Should(Equal(expectedLRPContainerKey))
 		})
 	}
 
 	itRemovesTheContainer := func() {
 		It("removes the container", func() {
 			Ω(executorClient.DeleteContainerCallCount()).Should(Equal(1))
-			Ω(executorClient.DeleteContainerArgsForCall(0)).Should(Equal("completed-lrp-guid"))
+			Ω(executorClient.DeleteContainerArgsForCall(0)).Should(Equal(expectedLRPContainerKey.InstanceGuid))
 		})
 	}
 
@@ -91,22 +85,21 @@ var _ = Describe("LRP Processor", func() {
 		})
 	}
 
-	var container executor.Container
-
 	BeforeEach(func() {
+		expectedLRPKey = models.NewActualLRPKey("process-guid", 999, "my-domain")
+		expectedLRPContainerKey = models.NewActualLRPContainerKey("instance-guid", expectedCellId)
+		expectedNetInfo = models.NewActualLRPNetInfo(expectedExecutorHost, []models.PortMapping{{ContainerPort: 1234, HostPort: 5678}})
+
 		executorClient = new(fakes.FakeClient)
 		bbs = new(fake_bbs.FakeRepBBS)
 		tags = executor.Tags{
 			rep.LifecycleTag:    rep.LRPLifecycle,
-			rep.DomainTag:       "my-domain",
-			rep.ProcessGuidTag:  "process-guid",
-			rep.ProcessIndexTag: "999",
-		}
-		ports = []models.PortMapping{
-			{ContainerPort: 1234, HostPort: 5678},
+			rep.ProcessGuidTag:  expectedLRPKey.ProcessGuid,
+			rep.ProcessIndexTag: strconv.Itoa(expectedLRPKey.Index),
+			rep.DomainTag:       expectedLRPKey.Domain,
 		}
 		container = executor.Container{
-			Guid:  "completed-lrp-guid",
+			Guid:  expectedLRPContainerKey.InstanceGuid,
 			State: executor.StateCompleted,
 			Tags:  tags,
 			Ports: []executor.PortMapping{

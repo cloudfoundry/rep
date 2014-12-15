@@ -29,6 +29,7 @@ import (
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/gunk/workpool"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
+	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/localip"
 	"github.com/tedsuo/ifrit"
@@ -233,7 +234,7 @@ func initializeServer(
 	executorClient executor.Client,
 	logger lager.Logger,
 ) (ifrit.Runner, string) {
-	auctionCellRep := auction_cell_rep.New(*cellID, *stack, bbs, executorClient, logger)
+	auctionCellRep := auction_cell_rep.New(*cellID, *stack, generateGuid, bbs, executorClient, logger)
 	handlers := auction_http_handlers.New(auctionCellRep, logger)
 
 	handlers[bbsroutes.StopLRPInstance] = repserver.NewStopLRPInstanceHandler(logger, stopper)
@@ -253,4 +254,12 @@ func initializeServer(
 	address := fmt.Sprintf("http://%s:%s", ip, port)
 
 	return http_server.New(*listenAddr, router), address
+}
+
+func generateGuid() (string, error) {
+	guid, err := uuid.NewV4()
+	if err != nil {
+		return "", err
+	}
+	return guid.String(), nil
 }

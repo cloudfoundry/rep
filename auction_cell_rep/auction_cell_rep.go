@@ -14,17 +14,19 @@ import (
 )
 
 type AuctionCellRep struct {
-	cellID string
-	stack  string
-	bbs    Bbs.RepBBS
-	client executor.Client
-	logger lager.Logger
+	cellID                string
+	stack                 string
+	generateContainerGuid func() (string, error)
+	bbs                   Bbs.RepBBS
+	client                executor.Client
+	logger                lager.Logger
 }
 
-func New(cellID string, stack string, bbs Bbs.RepBBS, client executor.Client, logger lager.Logger) *AuctionCellRep {
+func New(cellID string, stack string, generateContainerGuid func() (string, error), bbs Bbs.RepBBS, client executor.Client, logger lager.Logger) *AuctionCellRep {
 	return &AuctionCellRep{
 		cellID: cellID,
 		stack:  stack,
+		generateContainerGuid: generateContainerGuid,
 		bbs:    bbs,
 		client: client,
 		logger: logger.Session("auction-delegate"),
@@ -61,11 +63,10 @@ func (a *AuctionCellRep) State() (auctiontypes.CellState, error) {
 	for _, container := range lrpContainers {
 		index, _ := strconv.Atoi(container.Tags[rep.ProcessIndexTag])
 		lrp := auctiontypes.LRP{
-			ProcessGuid:  container.Tags[rep.ProcessGuidTag],
-			InstanceGuid: container.Guid,
-			Index:        index,
-			MemoryMB:     container.MemoryMB,
-			DiskMB:       container.DiskMB,
+			ProcessGuid: container.Tags[rep.ProcessGuidTag],
+			Index:       index,
+			MemoryMB:    container.MemoryMB,
+			DiskMB:      container.DiskMB,
 		}
 		lrps = append(lrps, lrp)
 	}
@@ -92,11 +93,10 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 
 	for _, start := range work.LRPStarts {
 		startLogger := logger.Session("lrp-start-instance", lager.Data{
-			"process-guid":  start.DesiredLRP.ProcessGuid,
-			"instance-guid": start.InstanceGuid,
-			"index":         start.Index,
-			"memory-mb":     start.DesiredLRP.MemoryMB,
-			"disk-mb":       start.DesiredLRP.DiskMB,
+			"process-guid": start.DesiredLRP.ProcessGuid,
+			"index":        start.Index,
+			"memory-mb":    start.DesiredLRP.MemoryMB,
+			"disk-mb":      start.DesiredLRP.DiskMB,
 		})
 		startLogger.Info("starting")
 		err := a.startLRP(start, startLogger)
@@ -129,11 +129,16 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 
 func (a *AuctionCellRep) startLRP(startAuction models.LRPStartAuction, logger lager.Logger) error {
 
-	containerGuid := startAuction.InstanceGuid
+	containerGuidString, err := a.generateContainerGuid()
+	if err != nil {
+		logger.Error("generating-instance-guid-failed", err)
+		return err
+	}
 
+	logger = logger.WithData(lager.Data{"instance-guid": containerGuidString})
 	logger.Info("reserving")
-	_, err := a.client.AllocateContainer(executor.Container{
-		Guid: containerGuid,
+	_, err = a.client.AllocateContainer(executor.Container{
+		Guid: containerGuidString,
 
 		Tags: executor.Tags{
 			rep.LifecycleTag:    rep.LRPLifecycle,
@@ -160,7 +165,7 @@ func (a *AuctionCellRep) startLRP(startAuction models.LRPStartAuction, logger la
 		Monitor: startAuction.DesiredLRP.Monitor,
 
 		Env: append([]executor.EnvironmentVariable{
-			{Name: "INSTANCE_GUID", Value: startAuction.InstanceGuid},
+			{Name: "INSTANCE_GUID", Value: containerGuidString},
 			{Name: "INSTANCE_INDEX", Value: strconv.Itoa(startAuction.Index)},
 		}, executor.EnvironmentVariablesFromModel(startAuction.DesiredLRP.EnvironmentVariables)...),
 	})
@@ -172,30 +177,31 @@ func (a *AuctionCellRep) startLRP(startAuction models.LRPStartAuction, logger la
 	logger.Info("succeeded-reserving")
 
 	go func() {
-		claiming := models.NewActualLRP(
+		lrpKey := models.NewActualLRPKey(
 			startAuction.DesiredLRP.ProcessGuid,
-			startAuction.InstanceGuid,
-			a.cellID,
-			startAuction.DesiredLRP.Domain,
 			startAuction.Index,
-			"",
+			startAuction.DesiredLRP.Domain,
+		)
+		lrpContainerKey := models.NewActualLRPContainerKey(
+			containerGuidString,
+			a.cellID,
 		)
 
 		logger.Info("announcing-to-bbs")
-		_, claimErr := a.bbs.ClaimActualLRP(claiming)
+		_, claimErr := a.bbs.ClaimActualLRP(lrpKey, lrpContainerKey)
 		if claimErr != nil {
 			logger.Error("failed-announcing-to-bbs", claimErr)
-			a.client.DeleteContainer(containerGuid)
+			a.client.DeleteContainer(containerGuidString)
 			return
 		}
 		logger.Info("succeeded-announcing-to-bbs")
 
 		logger.Info("running-container")
-		runErr := a.client.RunContainer(containerGuid)
+		runErr := a.client.RunContainer(containerGuidString)
 		if runErr != nil {
 			logger.Error("failed-running-container", runErr)
-			a.client.DeleteContainer(containerGuid)
-			a.bbs.RemoveActualLRP(claiming)
+			a.client.DeleteContainer(containerGuidString)
+			a.bbs.RemoveActualLRP(lrpKey, lrpContainerKey)
 		}
 		logger.Info("succeeded-running-container")
 	}()

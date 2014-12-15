@@ -47,14 +47,11 @@ var _ = Describe("Handlers", func() {
 			var actualLRP models.ActualLRP
 
 			BeforeEach(func() {
-				actualLRP = models.NewActualLRP(
-					"p-guid",
-					"i-guid",
-					"cell-id",
-					"webbernet",
-					1,
-					"",
-				)
+				actualLRP = models.ActualLRP{
+					ActualLRPKey:          models.NewActualLRPKey("process-guid", 1, "domain"),
+					ActualLRPContainerKey: models.NewActualLRPContainerKey("instance-guid", "cell-id"),
+					State: models.ActualLRPStateRunning,
+				}
 				Ω(actualLRP.Validate()).ShouldNot(HaveOccurred())
 
 				payload, err := json.Marshal(actualLRP)
