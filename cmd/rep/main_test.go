@@ -29,6 +29,7 @@ var _ = Describe("The Rep", func() {
 		fakeExecutor    *ghttp.Server
 		bbs             *Bbs.BBS
 		pollingInterval time.Duration
+		logger          *lagertest.TestLogger
 	)
 
 	BeforeEach(func() {
@@ -38,7 +39,8 @@ var _ = Describe("The Rep", func() {
 		fakeExecutor.RouteToHandler("GET", "/ping", ghttp.RespondWith(http.StatusOK, nil))
 
 		etcdAdapter = etcdRunner.Adapter()
-		bbs = Bbs.NewBBS(etcdAdapter, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
+		logger = lagertest.NewTestLogger("test")
+		bbs = Bbs.NewBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
 
 		pollingInterval = 50 * time.Millisecond
 
@@ -50,7 +52,7 @@ var _ = Describe("The Rep", func() {
 			fakeExecutor.URL(),
 			fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
 			"info",
-			auctionServerPort,
+			serverPort,
 			time.Second,
 			pollingInterval,
 		)
@@ -65,11 +67,17 @@ var _ = Describe("The Rep", func() {
 		close(done)
 	})
 
-	claimActual := func(a models.ActualLRP) *models.ActualLRP {
-		_, err := bbs.CreateActualLRP(a)
+	claimActual := func(processGuid, cellID, domain string, index int) {
+		desiredLRP := models.DesiredLRP{
+			ProcessGuid: processGuid,
+			Domain:      domain,
+			Instances:   index + 1,
+		}
+		actualLRP, err := bbs.CreateActualLRP(desiredLRP, index, logger)
 		Ω(err).ShouldNot(HaveOccurred())
-		claimed, err := bbs.ClaimActualLRP(a)
-		return claimed
+		actualLRP.CellID = cellID
+		_, err = bbs.ClaimActualLRP(*actualLRP)
+		Ω(err).ShouldNot(HaveOccurred())
 	}
 
 	Describe("when an interrupt signal is sent to the representative", func() {
@@ -175,25 +183,27 @@ var _ = Describe("The Rep", func() {
 
 		Describe("performing work", func() {
 			Describe("starting LRPs", func() {
-				var lrpStartAuction models.LRPStartAuction
+				var desiredLRP models.DesiredLRP
+				var instanceGuid string
+				var index int
 
 				BeforeEach(func() {
-					lrpStartAuction = models.LRPStartAuction{
-						DesiredLRP: models.DesiredLRP{
-							ProcessGuid: "the-process-guid",
-							MemoryMB:    2,
-							DiskMB:      2,
-							Stack:       "the-stack",
-							Domain:      "the-domain",
-						},
-						InstanceGuid: "the-instance-guid",
-						Index:        1,
+					index = 1
+					desiredLRP = models.DesiredLRP{
+						ProcessGuid: "the-process-guid",
+						MemoryMB:    2,
+						DiskMB:      2,
+						Stack:       "the-stack",
+						Domain:      "the-domain",
+						Instances:   index + 1,
 					}
-					_, err := bbs.CreateActualLRP(models.NewActualLRP("the-process-guid", "the-instance-guid", "", "the-domain", 1, "UNCLAIMED"))
+
+					actualLRP, err := bbs.CreateActualLRP(desiredLRP, index, logger)
 					Ω(err).ShouldNot(HaveOccurred())
+					instanceGuid = actualLRP.InstanceGuid
 
 					fakeExecutor.RouteToHandler("POST", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, executor.Container{}))
-					fakeExecutor.RouteToHandler("POST", "/containers/the-instance-guid/run", ghttp.RespondWith(http.StatusOK, ""))
+					fakeExecutor.RouteToHandler("POST", fmt.Sprintf("/containers/%s/run", instanceGuid), ghttp.RespondWith(http.StatusOK, ""))
 				})
 
 				var claimedActualLRPs = func(bbs *Bbs.BBS) func() ([]models.ActualLRP, error) {
@@ -224,7 +234,11 @@ var _ = Describe("The Rep", func() {
 					Ω(bbs.RunningActualLRPs()).Should(BeEmpty())
 
 					works := auctiontypes.Work{
-						LRPStarts: []models.LRPStartAuction{lrpStartAuction},
+						LRPStarts: []models.LRPStartAuction{{
+							DesiredLRP:   desiredLRP,
+							InstanceGuid: instanceGuid,
+							Index:        index,
+						}},
 					}
 					failedWorks, err := client.Perform(works)
 					Ω(err).ShouldNot(HaveOccurred())
@@ -333,7 +347,7 @@ var _ = Describe("The Rep", func() {
 				ghttp.RespondWith(http.StatusOK, "[]"),
 			)
 
-			claimActual(models.NewActualLRP("process-guid", "a-new-instance-guid", cellID, "the-domain", 0, ""))
+			claimActual("process-guid", cellID, "some-domain", 0)
 		})
 
 		It("eventually reaps actual LRPs with no corresponding container", func() {
