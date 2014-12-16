@@ -9,7 +9,7 @@ import (
 )
 
 type lrpProcessor struct {
-	cellId         string
+	cellID         string
 	executorHost   string
 	logger         lager.Logger
 	bbs            bbs.RepBBS
@@ -17,14 +17,14 @@ type lrpProcessor struct {
 }
 
 func NewLRPProcessor(
-	cellId string,
+	cellID string,
 	executorHost string,
 	logger lager.Logger,
 	bbs bbs.RepBBS,
 	executorClient executor.Client,
 ) Processor {
 	return &lrpProcessor{
-		cellId:         cellId,
+		cellID:         cellID,
 		executorHost:   executorHost,
 		logger:         logger,
 		bbs:            bbs,
@@ -43,9 +43,21 @@ func (p *lrpProcessor) Process(container executor.Container) {
 		return
 	}
 
-	lrpKey, lrpContainerKey, lrpNetInfo, err := rep.ActualLRPFromContainer(container, p.cellId, p.executorHost)
+	lrpKey, err := rep.ActualLRPKeyFromContainer(container)
 	if err != nil {
-		logger.Error("failed-to-validate-container-lrp-metdata", err)
+		logger.Error("failed-to-generate-lrp-key-from-container", err)
+		return
+	}
+
+	lrpContainerKey, err := rep.ActualLRPContainerKeyFromContainer(container, p.cellID)
+	if err != nil {
+		logger.Error("failed-to-generate-container-key-from-container", err)
+		return
+	}
+
+	lrpNetInfo, err := rep.ActualLRPNetInfoFromContainer(container, p.executorHost)
+	if err != nil {
+		logger.Error("failed-to-generate-net-info-from-container", err)
 		return
 	}
 

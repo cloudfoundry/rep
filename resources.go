@@ -25,18 +25,14 @@ var (
 	ErrInvalidProcessIndex  = errors.New("container does not have a valid process index")
 )
 
-func ActualLRPFromContainer(
-	container executor.Container,
-	cellID string,
-	executorHost string,
-) (models.ActualLRPKey, models.ActualLRPContainerKey, models.ActualLRPNetInfo, error) {
+func ActualLRPKeyFromContainer(container executor.Container) (models.ActualLRPKey, error) {
 	if container.Tags == nil {
-		return models.ActualLRPKey{}, models.ActualLRPContainerKey{}, models.ActualLRPNetInfo{}, ErrContainerMissingTags
+		return models.ActualLRPKey{}, ErrContainerMissingTags
 	}
 
 	processIndex, err := strconv.Atoi(container.Tags[ProcessIndexTag])
 	if err != nil {
-		return models.ActualLRPKey{}, models.ActualLRPContainerKey{}, models.ActualLRPNetInfo{}, ErrInvalidProcessIndex
+		return models.ActualLRPKey{}, ErrInvalidProcessIndex
 	}
 
 	actualLRPKey := models.NewActualLRPKey(
@@ -47,19 +43,28 @@ func ActualLRPFromContainer(
 
 	err = actualLRPKey.Validate()
 	if err != nil {
-		return models.ActualLRPKey{}, models.ActualLRPContainerKey{}, models.ActualLRPNetInfo{}, err
+		return models.ActualLRPKey{}, err
 	}
+
+	return actualLRPKey, nil
+}
+
+func ActualLRPContainerKeyFromContainer(container executor.Container, cellID string) (models.ActualLRPContainerKey, error) {
 
 	actualLRPContainerKey := models.NewActualLRPContainerKey(
 		container.Guid,
 		cellID,
 	)
 
-	err = actualLRPContainerKey.Validate()
+	err := actualLRPContainerKey.Validate()
 	if err != nil {
-		return models.ActualLRPKey{}, models.ActualLRPContainerKey{}, models.ActualLRPNetInfo{}, err
+		return models.ActualLRPContainerKey{}, err
 	}
 
+	return actualLRPContainerKey, nil
+}
+
+func ActualLRPNetInfoFromContainer(container executor.Container, executorHost string) (models.ActualLRPNetInfo, error) {
 	ports := []models.PortMapping{}
 	for _, portMapping := range container.Ports {
 		ports = append(ports, models.PortMapping{
@@ -70,5 +75,10 @@ func ActualLRPFromContainer(
 
 	actualLRPNetInfo := models.NewActualLRPNetInfo(executorHost, ports)
 
-	return actualLRPKey, actualLRPContainerKey, actualLRPNetInfo, nil
+	err := actualLRPNetInfo.Validate()
+	if err != nil {
+		return models.ActualLRPNetInfo{}, err
+	}
+
+	return actualLRPNetInfo, nil
 }
