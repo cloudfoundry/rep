@@ -14,7 +14,7 @@ var cellID string
 var representativePath string
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
 var etcdPort, natsPort int
-var auctionServerPort int
+var serverPort int
 
 func TestRep(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -31,7 +31,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	cellID = "the-rep-id-" + strconv.Itoa(GinkgoParallelNode())
 
 	etcdPort = 4001 + GinkgoParallelNode()
-	auctionServerPort = 1800 + GinkgoParallelNode()
+	serverPort = 1800 + GinkgoParallelNode()
 
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
 })

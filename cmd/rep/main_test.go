@@ -31,6 +31,7 @@ var _ = Describe("The Rep", func() {
 		bbs             *Bbs.BBS
 		pollingInterval time.Duration
 		lrpHost         string
+		logger          *lagertest.TestLogger
 	)
 
 	BeforeEach(func() {
@@ -40,7 +41,9 @@ var _ = Describe("The Rep", func() {
 		fakeExecutor.RouteToHandler("GET", "/ping", ghttp.RespondWith(http.StatusOK, nil))
 
 		etcdAdapter = etcdRunner.Adapter()
-		bbs = Bbs.NewBBS(etcdAdapter, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
+		logger = lagertest.NewTestLogger("test")
+		bbs = Bbs.NewBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
+
 		lrpHost = "the-lrp-host"
 
 		pollingInterval = 50 * time.Millisecond
@@ -53,7 +56,7 @@ var _ = Describe("The Rep", func() {
 			fakeExecutor.URL(),
 			fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
 			"info",
-			auctionServerPort,
+			serverPort,
 			time.Second,
 			pollingInterval,
 		)
@@ -171,24 +174,21 @@ var _ = Describe("The Rep", func() {
 
 		Describe("performing work", func() {
 			Describe("starting LRPs", func() {
-				var lrpStartAuction models.LRPStartAuction
-				const expectedProcessGuid = "the-process-guid"
-				const expectedIndex = 1
-				const expectedDomain = "the-domain"
+				var desiredLRP models.DesiredLRP
+				var index int
 
 				BeforeEach(func() {
-					lrpStartAuction = models.LRPStartAuction{
-						DesiredLRP: models.DesiredLRP{
-							ProcessGuid: expectedProcessGuid,
-							MemoryMB:    2,
-							DiskMB:      2,
-							Stack:       "the-stack",
-							Domain:      expectedDomain,
-						},
-						Index: expectedIndex,
+					index = 1
+					desiredLRP = models.DesiredLRP{
+						ProcessGuid: "the-process-guid",
+						MemoryMB:    2,
+						DiskMB:      2,
+						Stack:       "the-stack",
+						Domain:      "the-domain",
+						Instances:   index + 1,
 					}
 
-					_, err := bbs.CreateActualLRP(models.NewActualLRPKey(expectedProcessGuid, expectedIndex, expectedDomain))
+					_, err := bbs.CreateActualLRP(desiredLRP, index, logger)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					fakeExecutor.RouteToHandler("POST", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, executor.Container{}))
@@ -221,7 +221,10 @@ var _ = Describe("The Rep", func() {
 					Ω(bbs.RunningActualLRPs()).Should(BeEmpty())
 
 					works := auctiontypes.Work{
-						LRPStarts: []models.LRPStartAuction{lrpStartAuction},
+						LRPStarts: []models.LRPStartAuction{{
+							DesiredLRP: desiredLRP,
+							Index:      index,
+						}},
 					}
 					failedWorks, err := client.Perform(works)
 					Ω(err).ShouldNot(HaveOccurred())
@@ -230,7 +233,7 @@ var _ = Describe("The Rep", func() {
 					Eventually(claimedActualLRPs).Should(HaveLen(1))
 					actualLRPs, err := claimedActualLRPs()
 					Ω(err).ShouldNot(HaveOccurred())
-					Ω(actualLRPs[0].ProcessGuid).Should(Equal(expectedProcessGuid))
+					Ω(actualLRPs[0].ProcessGuid).Should(Equal(desiredLRP.ProcessGuid))
 					Ω(actualLRPs[0].State).Should(Equal(models.ActualLRPStateClaimed))
 				})
 			})
@@ -330,11 +333,21 @@ var _ = Describe("The Rep", func() {
 				ghttp.RespondWith(http.StatusOK, "[]"),
 			)
 
-			lrpKey := models.NewActualLRPKey("guid", 1, "domian")
-			_, err := bbs.CreateActualLRP(lrpKey)
+			desiredLRP := models.DesiredLRP{
+				ProcessGuid: "process-guid",
+				Domain:      "some-domain",
+				Instances:   1,
+			}
+			index := 0
+
+			_, err := bbs.CreateActualLRP(desiredLRP, index, logger)
 			Ω(err).ShouldNot(HaveOccurred())
-			containerKey := models.NewActualLRPContainerKey("instance", cellID)
-			_, err = bbs.ClaimActualLRP(lrpKey, containerKey)
+
+			actualLRP, err := bbs.ActualLRPByProcessGuidAndIndex(desiredLRP.ProcessGuid, index)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			containerKey := models.NewActualLRPContainerKey("some-instance-guid", cellID)
+			_, err = bbs.ClaimActualLRP(actualLRP.ActualLRPKey, containerKey)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
