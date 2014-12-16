@@ -50,7 +50,9 @@ var _ = Describe("Handlers", func() {
 				actualLRP = models.ActualLRP{
 					ActualLRPKey:          models.NewActualLRPKey("process-guid", 1, "domain"),
 					ActualLRPContainerKey: models.NewActualLRPContainerKey("instance-guid", "cell-id"),
-					State: models.ActualLRPStateRunning,
+					ActualLRPNetInfo:      models.NewActualLRPNetInfo("1.2.3.4", []models.PortMapping{}),
+					State:                 models.ActualLRPStateRunning,
+					Since:                 5000,
 				}
 				Ω(actualLRP.Validate()).ShouldNot(HaveOccurred())
 
