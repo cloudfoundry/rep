@@ -32,7 +32,7 @@ func (r *ActualLRPReaper) Process(snapshot gatherer.Snapshot) {
 		if !ok {
 			r.logger.Info("actual-lrp-with-no-corresponding-container", lager.Data{"actual-lrp": lrp})
 
-			err := r.bbs.RemoveActualLRP(lrp.ActualLRPKey, lrp.ActualLRPContainerKey)
+			err := r.bbs.RemoveActualLRP(lrp.ActualLRPKey, lrp.ActualLRPContainerKey, r.logger)
 			if err != nil {
 				r.logger.Error("failed-to-reap-actual-lrp-with-no-corresponding-container", err, lager.Data{"actual-lrp": lrp})
 			}

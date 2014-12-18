@@ -43,7 +43,7 @@ var _ = Describe("LRP Processor", func() {
 		It("starts the LRP", func() {
 			Ω(bbs.StartActualLRPCallCount()).Should(Equal(1))
 
-			lrpKey, containerKey, netInfo := bbs.StartActualLRPArgsForCall(0)
+			lrpKey, containerKey, netInfo, _ := bbs.StartActualLRPArgsForCall(0)
 
 			Ω(lrpKey).Should(Equal(expectedLRPKey))
 			Ω(containerKey).Should(Equal(expectedLRPContainerKey))
@@ -55,7 +55,7 @@ var _ = Describe("LRP Processor", func() {
 		It("claims the LRP", func() {
 			Ω(bbs.ClaimActualLRPCallCount()).Should(Equal(1))
 
-			lrpKey, containerKey := bbs.ClaimActualLRPArgsForCall(0)
+			lrpKey, containerKey, _ := bbs.ClaimActualLRPArgsForCall(0)
 
 			Ω(lrpKey).Should(Equal(expectedLRPKey))
 			Ω(containerKey).Should(Equal(expectedLRPContainerKey))
@@ -65,7 +65,7 @@ var _ = Describe("LRP Processor", func() {
 	itRemovesTheLRP := func() {
 		It("removes the LRP", func() {
 			Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
-			lrpKey, containerKey := bbs.RemoveActualLRPArgsForCall(0)
+			lrpKey, containerKey, _ := bbs.RemoveActualLRPArgsForCall(0)
 
 			Ω(lrpKey).Should(Equal(expectedLRPKey))
 			Ω(containerKey).Should(Equal(expectedLRPContainerKey))

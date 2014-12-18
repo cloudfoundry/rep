@@ -63,7 +63,7 @@ func (p *lrpProcessor) Process(container executor.Container) {
 
 	switch container.State {
 	case executor.StateInitializing, executor.StateCreated:
-		err = p.bbs.ClaimActualLRP(lrpKey, lrpContainerKey)
+		err = p.bbs.ClaimActualLRP(lrpKey, lrpContainerKey, logger)
 		if err == bbserrors.ErrActualLRPCannotBeClaimed {
 			logger.Debug("failed-to-claim-actual-lrp")
 			p.deleteContainer(lrpContainerKey.InstanceGuid, logger)
@@ -76,7 +76,7 @@ func (p *lrpProcessor) Process(container executor.Container) {
 		logger.Debug("claimed-actual-lrp")
 
 	case executor.StateRunning:
-		err := p.bbs.StartActualLRP(lrpKey, lrpContainerKey, lrpNetInfo)
+		err := p.bbs.StartActualLRP(lrpKey, lrpContainerKey, lrpNetInfo, logger)
 		if err == bbserrors.ErrActualLRPCannotBeStarted {
 			logger.Debug("failed-to-start-actual-lrp")
 			p.deleteContainer(lrpContainerKey.InstanceGuid, logger)
@@ -89,7 +89,7 @@ func (p *lrpProcessor) Process(container executor.Container) {
 		logger.Debug("started-actual-lrp")
 
 	case executor.StateCompleted:
-		err := p.bbs.RemoveActualLRP(lrpKey, lrpContainerKey)
+		err := p.bbs.RemoveActualLRP(lrpKey, lrpContainerKey, logger)
 		if err != nil {
 			logger.Error("failed-to-remove-actual-lrp", err)
 		} else {

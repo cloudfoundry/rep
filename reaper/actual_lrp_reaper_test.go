@@ -56,7 +56,7 @@ var _ = Describe("Actual LRP Reaper", func() {
 			It("remove those actual LRPs from the BBS", func() {
 				Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
 
-				lrpKey, containerKey := bbs.RemoveActualLRPArgsForCall(0)
+				lrpKey, containerKey, _ := bbs.RemoveActualLRPArgsForCall(0)
 				Ω(lrpKey).Should(Equal(expectedLRPKey))
 				Ω(containerKey).Should(Equal(expectedContainerKey))
 

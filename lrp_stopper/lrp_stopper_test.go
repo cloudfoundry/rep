@@ -61,7 +61,7 @@ var _ = Describe("LRP Stopper", func() {
 		})
 
 		It("marks the LRP as stopped", func() {
-			lrpKey, containerKey := bbs.RemoveActualLRPArgsForCall(0)
+			lrpKey, containerKey, _ := bbs.RemoveActualLRPArgsForCall(0)
 			Ω(lrpKey).Should(Equal(actualLRP.ActualLRPKey))
 			Ω(containerKey).Should(Equal(actualLRP.ActualLRPContainerKey))
 		})
@@ -86,7 +86,7 @@ var _ = Describe("LRP Stopper", func() {
 			})
 
 			It("marks the LRP as stopped", func() {
-				lrpKey, containerKey := bbs.RemoveActualLRPArgsForCall(0)
+				lrpKey, containerKey, _ := bbs.RemoveActualLRPArgsForCall(0)
 				Ω(lrpKey).Should(Equal(actualLRP.ActualLRPKey))
 				Ω(containerKey).Should(Equal(actualLRP.ActualLRPContainerKey))
 			})

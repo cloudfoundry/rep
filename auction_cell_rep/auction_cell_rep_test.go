@@ -10,6 +10,7 @@ import (
 	. "github.com/cloudfoundry-incubator/rep/auction_cell_rep"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
@@ -243,7 +244,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 					Eventually(bbs.ClaimActualLRPCallCount).Should(Equal(1))
 
-					claimingLRPKey, claimingLRPContainerKey := bbs.ClaimActualLRPArgsForCall(0)
+					claimingLRPKey, claimingLRPContainerKey, _ := bbs.ClaimActualLRPArgsForCall(0)
 					Ω(claimingLRPKey).Should(Equal(expectedLRPKey))
 					Ω(claimingLRPContainerKey).Should(Equal(expectedLRPContainerKey))
 				})
@@ -252,7 +253,7 @@ var _ = Describe("AuctionCellRep", func() {
 					triggerClaimChan := make(chan struct{})
 					triggerClaimCalled := make(chan struct{})
 
-					bbs.ClaimActualLRPStub = func(_ models.ActualLRPKey, _ models.ActualLRPContainerKey) error {
+					bbs.ClaimActualLRPStub = func(_ models.ActualLRPKey, _ models.ActualLRPContainerKey, _ lager.Logger) error {
 						<-triggerClaimChan
 						close(triggerClaimCalled)
 						return nil
@@ -302,7 +303,7 @@ var _ = Describe("AuctionCellRep", func() {
 							cellRep.Perform(work)
 
 							Eventually(bbs.RemoveActualLRPCallCount).Should(Equal(1))
-							removingLRPKey, removingLRPContainerKey := bbs.RemoveActualLRPArgsForCall(0)
+							removingLRPKey, removingLRPContainerKey, _ := bbs.RemoveActualLRPArgsForCall(0)
 							Ω(removingLRPKey).Should(Equal(expectedLRPKey))
 							Ω(removingLRPContainerKey).Should(Equal(expectedLRPContainerKey))
 						})

@@ -347,7 +347,7 @@ var _ = Describe("The Rep", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			containerKey := models.NewActualLRPContainerKey("some-instance-guid", cellID)
-			err = bbs.ClaimActualLRP(actualLRP.ActualLRPKey, containerKey)
+			err = bbs.ClaimActualLRP(actualLRP.ActualLRPKey, containerKey, logger)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -373,7 +373,7 @@ var _ = Describe("The Rep", func() {
 			containerKey := models.NewActualLRPContainerKey(instanceGuid, cellID)
 			netInfo := models.NewActualLRPNetInfo(lrpHost, []models.PortMapping{})
 
-			err := bbs.StartActualLRP(lrpKey, containerKey, netInfo)
+			err := bbs.StartActualLRP(lrpKey, containerKey, netInfo, logger)
 			Ω(err).ShouldNot(HaveOccurred())
 			runningLRP, err = bbs.ActualLRPByProcessGuidAndIndex(lrpKey.ProcessGuid, lrpKey.Index)
 			Ω(err).ShouldNot(HaveOccurred())
