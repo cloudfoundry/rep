@@ -252,10 +252,10 @@ var _ = Describe("AuctionCellRep", func() {
 					triggerClaimChan := make(chan struct{})
 					triggerClaimCalled := make(chan struct{})
 
-					bbs.ClaimActualLRPStub = func(_ models.ActualLRPKey, _ models.ActualLRPContainerKey) (*models.ActualLRP, error) {
+					bbs.ClaimActualLRPStub = func(_ models.ActualLRPKey, _ models.ActualLRPContainerKey) error {
 						<-triggerClaimChan
 						close(triggerClaimCalled)
-						return nil, nil
+						return nil
 					}
 
 					failedWork, err := cellRep.Perform(work)
@@ -269,7 +269,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 				Context("when reporting to BBS succeeds", func() {
 					BeforeEach(func() {
-						bbs.ClaimActualLRPReturns(nil, nil)
+						bbs.ClaimActualLRPReturns(nil)
 					})
 
 					It("runs the lrp", func() {
@@ -323,7 +323,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 				Context("when reporting to BBS fails", func() {
 					BeforeEach(func() {
-						bbs.ClaimActualLRPReturns(nil, commonErr)
+						bbs.ClaimActualLRPReturns(commonErr)
 					})
 
 					It("responds successfully", func() {

@@ -136,7 +136,7 @@ var _ = Describe("LRP Processor", func() {
 
 		Context("but the BBS reports the LRP cannot be claimed", func() {
 			BeforeEach(func() {
-				bbs.ClaimActualLRPReturns(nil, bbserrors.ErrActualLRPCannotBeClaimed)
+				bbs.ClaimActualLRPReturns(bbserrors.ErrActualLRPCannotBeClaimed)
 			})
 
 			itRemovesTheContainer()
@@ -144,7 +144,7 @@ var _ = Describe("LRP Processor", func() {
 
 		Context("but the BBS reports some other error", func() {
 			BeforeEach(func() {
-				bbs.ClaimActualLRPReturns(nil, errors.New("oh no!"))
+				bbs.ClaimActualLRPReturns(errors.New("oh no!"))
 			})
 
 			itDoesNotRemoveTheContainer()
@@ -160,7 +160,7 @@ var _ = Describe("LRP Processor", func() {
 
 		Context("but the BBS reports the LRP cannot be claimed", func() {
 			BeforeEach(func() {
-				bbs.ClaimActualLRPReturns(nil, bbserrors.ErrActualLRPCannotBeClaimed)
+				bbs.ClaimActualLRPReturns(bbserrors.ErrActualLRPCannotBeClaimed)
 			})
 
 			itRemovesTheContainer()
@@ -168,7 +168,7 @@ var _ = Describe("LRP Processor", func() {
 
 		Context("but the BBS reports some other error", func() {
 			BeforeEach(func() {
-				bbs.ClaimActualLRPReturns(nil, errors.New("oh no!"))
+				bbs.ClaimActualLRPReturns(errors.New("oh no!"))
 			})
 
 			itDoesNotRemoveTheContainer()
@@ -184,7 +184,7 @@ var _ = Describe("LRP Processor", func() {
 
 		Context("but the BBS reports the LRP cannot be started", func() {
 			BeforeEach(func() {
-				bbs.StartActualLRPReturns(nil, bbserrors.ErrActualLRPCannotBeStarted)
+				bbs.StartActualLRPReturns(bbserrors.ErrActualLRPCannotBeStarted)
 			})
 
 			itRemovesTheContainer()
@@ -192,7 +192,7 @@ var _ = Describe("LRP Processor", func() {
 
 		Context("but the BBS reports some other error", func() {
 			BeforeEach(func() {
-				bbs.ClaimActualLRPReturns(nil, errors.New("oh no!"))
+				bbs.ClaimActualLRPReturns(errors.New("oh no!"))
 			})
 
 			itDoesNotRemoveTheContainer()

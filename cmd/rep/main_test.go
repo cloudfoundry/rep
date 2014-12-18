@@ -188,7 +188,7 @@ var _ = Describe("The Rep", func() {
 						Instances:   index + 1,
 					}
 
-					_, err := bbs.CreateActualLRP(desiredLRP, index, logger)
+					err := bbs.CreateActualLRP(desiredLRP, index, logger)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					fakeExecutor.RouteToHandler("POST", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, executor.Container{}))
@@ -340,14 +340,14 @@ var _ = Describe("The Rep", func() {
 			}
 			index := 0
 
-			_, err := bbs.CreateActualLRP(desiredLRP, index, logger)
+			err := bbs.CreateActualLRP(desiredLRP, index, logger)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			actualLRP, err := bbs.ActualLRPByProcessGuidAndIndex(desiredLRP.ProcessGuid, index)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			containerKey := models.NewActualLRPContainerKey("some-instance-guid", cellID)
-			_, err = bbs.ClaimActualLRP(actualLRP.ActualLRPKey, containerKey)
+			err = bbs.ClaimActualLRP(actualLRP.ActualLRPKey, containerKey)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -373,8 +373,9 @@ var _ = Describe("The Rep", func() {
 			containerKey := models.NewActualLRPContainerKey(instanceGuid, cellID)
 			netInfo := models.NewActualLRPNetInfo(lrpHost, []models.PortMapping{})
 
-			var err error
-			runningLRP, err = bbs.StartActualLRP(lrpKey, containerKey, netInfo)
+			err := bbs.StartActualLRP(lrpKey, containerKey, netInfo)
+			Ω(err).ShouldNot(HaveOccurred())
+			runningLRP, err = bbs.ActualLRPByProcessGuidAndIndex(lrpKey.ProcessGuid, lrpKey.Index)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 

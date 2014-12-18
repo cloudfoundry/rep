@@ -188,7 +188,7 @@ func (a *AuctionCellRep) startLRP(startAuction models.LRPStartAuction, logger la
 		)
 
 		logger.Info("announcing-to-bbs")
-		_, claimErr := a.bbs.ClaimActualLRP(lrpKey, lrpContainerKey)
+		claimErr := a.bbs.ClaimActualLRP(lrpKey, lrpContainerKey)
 		if claimErr != nil {
 			logger.Error("failed-announcing-to-bbs", claimErr)
 			a.client.DeleteContainer(containerGuidString)
