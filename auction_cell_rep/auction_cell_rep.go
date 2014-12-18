@@ -127,7 +127,7 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 	return failedWork, nil
 }
 
-func (a *AuctionCellRep) startLRP(startAuction models.LRPStartAuction, logger lager.Logger) error {
+func (a *AuctionCellRep) startLRP(lrpStart models.LRPStart, logger lager.Logger) error {
 
 	containerGuidString, err := a.generateContainerGuid()
 	if err != nil {
@@ -142,32 +142,32 @@ func (a *AuctionCellRep) startLRP(startAuction models.LRPStartAuction, logger la
 
 		Tags: executor.Tags{
 			rep.LifecycleTag:    rep.LRPLifecycle,
-			rep.DomainTag:       startAuction.DesiredLRP.Domain,
-			rep.ProcessGuidTag:  startAuction.DesiredLRP.ProcessGuid,
-			rep.ProcessIndexTag: strconv.Itoa(startAuction.Index),
+			rep.DomainTag:       lrpStart.DesiredLRP.Domain,
+			rep.ProcessGuidTag:  lrpStart.DesiredLRP.ProcessGuid,
+			rep.ProcessIndexTag: strconv.Itoa(lrpStart.Index),
 		},
 
-		MemoryMB:     startAuction.DesiredLRP.MemoryMB,
-		DiskMB:       startAuction.DesiredLRP.DiskMB,
-		CPUWeight:    startAuction.DesiredLRP.CPUWeight,
-		RootFSPath:   startAuction.DesiredLRP.RootFSPath,
-		Ports:        a.convertPortMappings(startAuction.DesiredLRP.Ports),
-		StartTimeout: startAuction.DesiredLRP.StartTimeout,
+		MemoryMB:     lrpStart.DesiredLRP.MemoryMB,
+		DiskMB:       lrpStart.DesiredLRP.DiskMB,
+		CPUWeight:    lrpStart.DesiredLRP.CPUWeight,
+		RootFSPath:   lrpStart.DesiredLRP.RootFSPath,
+		Ports:        a.convertPortMappings(lrpStart.DesiredLRP.Ports),
+		StartTimeout: lrpStart.DesiredLRP.StartTimeout,
 
 		Log: executor.LogConfig{
-			Guid:       startAuction.DesiredLRP.LogGuid,
-			SourceName: startAuction.DesiredLRP.LogSource,
-			Index:      &startAuction.Index,
+			Guid:       lrpStart.DesiredLRP.LogGuid,
+			SourceName: lrpStart.DesiredLRP.LogSource,
+			Index:      &lrpStart.Index,
 		},
 
-		Setup:   startAuction.DesiredLRP.Setup,
-		Action:  startAuction.DesiredLRP.Action,
-		Monitor: startAuction.DesiredLRP.Monitor,
+		Setup:   lrpStart.DesiredLRP.Setup,
+		Action:  lrpStart.DesiredLRP.Action,
+		Monitor: lrpStart.DesiredLRP.Monitor,
 
 		Env: append([]executor.EnvironmentVariable{
 			{Name: "INSTANCE_GUID", Value: containerGuidString},
-			{Name: "INSTANCE_INDEX", Value: strconv.Itoa(startAuction.Index)},
-		}, executor.EnvironmentVariablesFromModel(startAuction.DesiredLRP.EnvironmentVariables)...),
+			{Name: "INSTANCE_INDEX", Value: strconv.Itoa(lrpStart.Index)},
+		}, executor.EnvironmentVariablesFromModel(lrpStart.DesiredLRP.EnvironmentVariables)...),
 	})
 
 	if err != nil {
@@ -178,9 +178,9 @@ func (a *AuctionCellRep) startLRP(startAuction models.LRPStartAuction, logger la
 
 	go func() {
 		lrpKey := models.NewActualLRPKey(
-			startAuction.DesiredLRP.ProcessGuid,
-			startAuction.Index,
-			startAuction.DesiredLRP.Domain,
+			lrpStart.DesiredLRP.ProcessGuid,
+			lrpStart.Index,
+			lrpStart.DesiredLRP.Domain,
 		)
 		lrpContainerKey := models.NewActualLRPContainerKey(
 			containerGuidString,

@@ -221,7 +221,7 @@ var _ = Describe("The Rep", func() {
 					Ω(bbs.RunningActualLRPs()).Should(BeEmpty())
 
 					works := auctiontypes.Work{
-						LRPStarts: []models.LRPStartAuction{{
+						LRPStarts: []models.LRPStart{{
 							DesiredLRP: desiredLRP,
 							Index:      index,
 						}},
