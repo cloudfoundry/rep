@@ -359,12 +359,12 @@ var _ = Describe("The Rep", func() {
 	Describe("when a StopLRPInstance request comes in", func() {
 		var runningLRP *models.ActualLRP
 		const instanceGuid = "some-instance-guid"
-		const expectedDeleteRoute = "/containers/" + instanceGuid
-		BeforeEach(func() {
+		const expectedStopRoute = "/containers/" + instanceGuid + "/stop"
 
+		BeforeEach(func() {
 			fakeExecutor.AppendHandlers(
 				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("DELETE", expectedDeleteRoute),
+					ghttp.VerifyRequest("POST", expectedStopRoute),
 					ghttp.RespondWith(http.StatusOK, nil),
 				),
 			)
@@ -379,21 +379,21 @@ var _ = Describe("The Rep", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
-		It("should delete the container and resolve the StopLRPInstance", func() {
+		It("should stop the container", func() {
 			err := bbs.RequestStopLRPInstance(*runningLRP)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			findDeleteRequest := func() bool {
+			findStopRequest := func() bool {
 				for _, req := range fakeExecutor.ReceivedRequests() {
-					if req.URL.Path == expectedDeleteRoute {
+					if req.URL.Path == expectedStopRoute {
 						return true
 					}
 				}
 				return false
 			}
 
-			Eventually(findDeleteRequest).Should(BeTrue())
-			Eventually(bbs.ActualLRPs).Should(BeEmpty())
+			Eventually(findStopRequest).Should(BeTrue())
+			Consistently(bbs.ActualLRPs).Should(HaveLen(1))
 		})
 	})
 })

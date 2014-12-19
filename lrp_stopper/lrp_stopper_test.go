@@ -1,8 +1,6 @@
 package lrp_stopper_test
 
 import (
-	"errors"
-
 	"github.com/cloudfoundry-incubator/executor"
 	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
 	. "github.com/cloudfoundry-incubator/rep/lrp_stopper"
@@ -18,7 +16,7 @@ import (
 
 var _ = Describe("LRP Stopper", func() {
 	var (
-		cellID    string = "the-cell-id"
+		cellID    string
 		stopper   LRPStopper
 		bbs       *fake_bbs.FakeRepBBS
 		client    *fake_client.FakeClient
@@ -27,6 +25,7 @@ var _ = Describe("LRP Stopper", func() {
 	)
 
 	BeforeEach(func() {
+		cellID = "the-cell-id"
 		actualLRP = models.ActualLRP{
 			ActualLRPKey: models.NewActualLRPKey(
 				"some-process-guid",
@@ -46,65 +45,24 @@ var _ = Describe("LRP Stopper", func() {
 		stopper = New(cellID, bbs, client, logger)
 	})
 
-	Context("when told to stop an instance", func() {
+	Describe("StopInstance", func() {
 		var returnedError error
 
 		JustBeforeEach(func() {
 			returnedError = stopper.StopInstance(actualLRP)
 		})
 
-		It("attempts to delete the container", func() {
-			Ω(client.DeleteContainerCallCount()).Should(Equal(1))
-
-			allocationGuid := client.DeleteContainerArgsForCall(0)
-			Ω(allocationGuid).Should(Equal(actualLRP.InstanceGuid))
-		})
-
-		It("marks the LRP as stopped", func() {
-			lrpKey, containerKey, _ := bbs.RemoveActualLRPArgsForCall(0)
-			Ω(lrpKey).Should(Equal(actualLRP.ActualLRPKey))
-			Ω(containerKey).Should(Equal(actualLRP.ActualLRPContainerKey))
-		})
-
 		It("succeeds", func() {
 			Ω(returnedError).ShouldNot(HaveOccurred())
 		})
 
-		Context("when deleting the container fails", func() {
-			BeforeEach(func() {
-				client.DeleteContainerReturns(errors.New("Couldn't delete that"))
-			})
-
-			It("does not mark the LRP as stopped", func() {
-				Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(0))
-			})
-		})
-
 		Context("when the executor returns 'not found'", func() {
 			BeforeEach(func() {
-				client.DeleteContainerReturns(executor.ErrContainerNotFound)
-			})
-
-			It("marks the LRP as stopped", func() {
-				lrpKey, containerKey, _ := bbs.RemoveActualLRPArgsForCall(0)
-				Ω(lrpKey).Should(Equal(actualLRP.ActualLRPKey))
-				Ω(containerKey).Should(Equal(actualLRP.ActualLRPContainerKey))
+				client.StopContainerReturns(executor.ErrContainerNotFound)
 			})
 
 			It("succeeds because the container is apparently already gone", func() {
 				Ω(returnedError).ShouldNot(HaveOccurred())
-			})
-		})
-
-		Context("when marking the LRP as stopped fails", func() {
-			var expectedError = errors.New("ker-blewie")
-
-			BeforeEach(func() {
-				bbs.RemoveActualLRPReturns(expectedError)
-			})
-
-			It("returns an error", func() {
-				Ω(returnedError).Should(Equal(expectedError))
 			})
 		})
 	})

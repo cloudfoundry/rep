@@ -40,24 +40,13 @@ func (stopper *lrpStopper) StopInstance(lrp models.ActualLRP) error {
 		"container": containerId,
 	})
 
-	err := stopper.client.DeleteContainer(containerId)
+	err := stopper.client.StopContainer(containerId)
 	switch err {
 	case nil:
 	case executor.ErrContainerNotFound:
 		stopLog.Info("container-already-deleted", lager.Data{
 			"container-id": containerId,
 		})
-	default:
-		stopLog.Error("failed-to-delete-container", err, lager.Data{
-			"container-id": containerId,
-		})
-		return err
-	}
-
-	err = stopper.bbs.RemoveActualLRP(lrp.ActualLRPKey, lrp.ActualLRPContainerKey, stopper.logger)
-	if err != nil {
-		stopLog.Error("failed-to-remove-actual-lrp", err)
-		return err
 	}
 
 	return nil
