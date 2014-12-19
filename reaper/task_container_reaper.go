@@ -57,10 +57,10 @@ func (r *TaskContainerReaper) Process(snapshot gatherer.Snapshot) {
 			lagerData["task-state"] = task.State
 		}
 
-		r.logger.Info("deleting-container", lagerData)
-		err = r.executorClient.DeleteContainer(container.Guid)
+		r.logger.Info("stopping-container", lagerData)
+		err = r.executorClient.StopContainer(container.Guid)
 		if err != nil {
-			r.logger.Error("failed-to-delete-container", err, lagerData)
+			r.logger.Error("failed-to-stop-container", err, lagerData)
 		}
 	}
 

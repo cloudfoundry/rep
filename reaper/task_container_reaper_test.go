@@ -32,7 +32,7 @@ var _ = Describe("TaskContainerReaper", func() {
 		taskContainerReaper.Process(snapshot)
 	})
 
-	Describe("deleting containers which are not supposed to be running anymore", func() {
+	Describe("stopping containers which are not supposed to be running anymore", func() {
 		It("queries task containers", func() {
 			Ω(snapshot.ListContainersCallCount()).Should(Equal(1))
 
@@ -50,8 +50,8 @@ var _ = Describe("TaskContainerReaper", func() {
 				snapshot.LookupTaskReturns(nil, false, nil)
 			})
 
-			It("does not delete the container", func() {
-				Ω(executorClient.DeleteContainerCallCount()).Should(Equal(0))
+			It("does not stop the container", func() {
+				Ω(executorClient.StopContainerCallCount()).Should(Equal(0))
 			})
 		})
 
@@ -70,8 +70,8 @@ var _ = Describe("TaskContainerReaper", func() {
 					}
 				})
 
-				It("does not delete the container", func() {
-					Ω(executorClient.DeleteContainerCallCount()).Should(Equal(0))
+				It("does not stop the container", func() {
+					Ω(executorClient.StopContainerCallCount()).Should(Equal(0))
 				})
 			})
 
@@ -88,9 +88,9 @@ var _ = Describe("TaskContainerReaper", func() {
 					}
 				})
 
-				It("deletes the container", func() {
-					Ω(executorClient.DeleteContainerCallCount()).Should(Equal(1))
-					Ω(executorClient.DeleteContainerArgsForCall(0)).Should(Equal("some-task-guid"))
+				It("stops the container", func() {
+					Ω(executorClient.StopContainerCallCount()).Should(Equal(1))
+					Ω(executorClient.StopContainerArgsForCall(0)).Should(Equal("some-task-guid"))
 				})
 			})
 
@@ -107,9 +107,9 @@ var _ = Describe("TaskContainerReaper", func() {
 					}
 				})
 
-				It("deletes the container", func() {
-					Ω(executorClient.DeleteContainerCallCount()).Should(Equal(1))
-					Ω(executorClient.DeleteContainerArgsForCall(0)).Should(Equal("some-task-guid"))
+				It("stops the container", func() {
+					Ω(executorClient.StopContainerCallCount()).Should(Equal(1))
+					Ω(executorClient.StopContainerArgsForCall(0)).Should(Equal("some-task-guid"))
 				})
 			})
 
@@ -121,9 +121,9 @@ var _ = Describe("TaskContainerReaper", func() {
 					}
 				})
 
-				It("deletes the container", func() {
-					Ω(executorClient.DeleteContainerCallCount()).Should(Equal(1))
-					Ω(executorClient.DeleteContainerArgsForCall(0)).Should(Equal("some-task-guid"))
+				It("stops the container", func() {
+					Ω(executorClient.StopContainerCallCount()).Should(Equal(1))
+					Ω(executorClient.StopContainerArgsForCall(0)).Should(Equal("some-task-guid"))
 				})
 			})
 
@@ -135,8 +135,8 @@ var _ = Describe("TaskContainerReaper", func() {
 					}
 				})
 
-				It("does not delete the container", func() {
-					Ω(executorClient.DeleteContainerCallCount()).Should(Equal(0))
+				It("does not stop the container", func() {
+					Ω(executorClient.StopContainerCallCount()).Should(Equal(0))
 				})
 			})
 		})
