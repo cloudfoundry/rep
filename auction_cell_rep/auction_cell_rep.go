@@ -202,6 +202,7 @@ func (a *AuctionCellRep) startLRP(lrpStart models.LRPStart, logger lager.Logger)
 			logger.Error("failed-running-container", runErr)
 			a.client.DeleteContainer(containerGuidString)
 			a.bbs.RemoveActualLRP(lrpKey, lrpContainerKey, logger)
+			return
 		}
 		logger.Info("succeeded-running-container")
 	}()
