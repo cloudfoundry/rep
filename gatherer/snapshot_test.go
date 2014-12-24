@@ -74,7 +74,7 @@ var _ = Describe("Snapshot", func() {
 		bbs.TasksByCellIDReturns(tasks, nil)
 
 		// set base case for LookupTask fallthrough
-		bbs.TaskByGuidReturns(nil, bbserrors.ErrStoreResourceNotFound)
+		bbs.TaskByGuidReturns(models.Task{}, bbserrors.ErrStoreResourceNotFound)
 	})
 
 	JustBeforeEach(func() {
@@ -118,7 +118,7 @@ var _ = Describe("Snapshot", func() {
 		It("returns nothing when its not there", func() {
 			c, ok := snapshot.GetContainer("bogus")
 			Ω(ok).Should(BeFalse())
-			Ω(c).Should(BeNil())
+			Ω(c).Should(BeZero())
 		})
 	})
 
@@ -142,7 +142,7 @@ var _ = Describe("Snapshot", func() {
 				t, ok, err := snapshot.LookupTask("task-guid-2")
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(ok).Should(BeTrue())
-				Ω(t).Should(Equal(&models.Task{
+				Ω(t).Should(Equal(models.Task{
 					TaskGuid: "task-guid-2",
 					State:    models.TaskStateRunning,
 					Action: &models.RunAction{
@@ -158,23 +158,23 @@ var _ = Describe("Snapshot", func() {
 				t, ok, err := snapshot.LookupTask("bogus")
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(ok).Should(BeFalse())
-				Ω(t).Should(BeNil())
+				Ω(t).Should(BeZero())
 
 				Ω(bbs.TaskByGuidCallCount()).Should(Equal(1))
 				Ω(bbs.TaskByGuidArgsForCall(0)).Should(Equal("bogus"))
 			})
 
 			Context("and it actually does exist in the BBS, the cache was just old", func() {
-				var foundTask *models.Task
+				var foundTask models.Task
 
 				BeforeEach(func() {
-					foundTask = &models.Task{}
-					bbs.TaskByGuidReturns(foundTask, nil)
+					foundTask = models.Task{}
 				})
 
 				Context("and it's for the current cell", func() {
 					BeforeEach(func() {
 						foundTask.CellID = cellID
+						bbs.TaskByGuidReturns(foundTask, nil)
 					})
 
 					It("returns the task", func() {
@@ -188,27 +188,28 @@ var _ = Describe("Snapshot", func() {
 				Context("but it's for a different cell", func() {
 					BeforeEach(func() {
 						foundTask.CellID = "other-cell"
+						bbs.TaskByGuidReturns(foundTask, nil)
 					})
 
 					It("returns nothing", func() {
 						t, ok, err := snapshot.LookupTask("some-guid")
 						Ω(err).ShouldNot(HaveOccurred())
 						Ω(ok).Should(BeFalse())
-						Ω(t).Should(BeNil())
+						Ω(t).Should(BeZero())
 					})
 				})
 			})
 
 			Context("and it also does not exist in the BBS", func() {
 				BeforeEach(func() {
-					bbs.TaskByGuidReturns(nil, bbserrors.ErrStoreResourceNotFound)
+					bbs.TaskByGuidReturns(models.Task{}, bbserrors.ErrStoreResourceNotFound)
 				})
 
 				It("returns nothing", func() {
 					t, ok, err := snapshot.LookupTask("bogus")
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(ok).Should(BeFalse())
-					Ω(t).Should(BeNil())
+					Ω(t).Should(BeZero())
 				})
 			})
 
@@ -216,14 +217,14 @@ var _ = Describe("Snapshot", func() {
 				disaster := errors.New("some reason")
 
 				BeforeEach(func() {
-					bbs.TaskByGuidReturns(nil, disaster)
+					bbs.TaskByGuidReturns(models.Task{}, disaster)
 				})
 
 				It("returns the error", func() {
 					t, ok, err := snapshot.LookupTask("bogus")
 					Ω(err).Should(Equal(disaster))
 					Ω(ok).Should(BeFalse())
-					Ω(t).Should(BeNil())
+					Ω(t).Should(BeZero())
 				})
 			})
 		})
@@ -232,7 +233,7 @@ var _ = Describe("Snapshot", func() {
 	Describe("NewSnapshot", func() {
 		Context("with no error", func() {
 			It("returns a snapshot", func() {
-				Ω(snapshot).ShouldNot(BeNil())
+				Ω(snapshot).ShouldNot(BeZero())
 				Ω(snapshoterr).ShouldNot(HaveOccurred())
 			})
 		})

@@ -47,7 +47,7 @@ var _ = Describe("TaskContainerReaper", func() {
 					executor.Container{Guid: "some-task-guid", State: executor.StateReserved},
 				})
 
-				snapshot.LookupTaskReturns(nil, false, nil)
+				snapshot.LookupTaskReturns(models.Task{}, false, nil)
 			})
 
 			It("does not stop the container", func() {
@@ -64,9 +64,9 @@ var _ = Describe("TaskContainerReaper", func() {
 
 			Context("which belongs to a pending task", func() {
 				BeforeEach(func() {
-					snapshot.LookupTaskStub = func(taskGuid string) (*models.Task, bool, error) {
+					snapshot.LookupTaskStub = func(taskGuid string) (models.Task, bool, error) {
 						Ω(taskGuid).Should(Equal("some-task-guid"))
-						return &models.Task{State: models.TaskStatePending}, true, nil
+						return models.Task{State: models.TaskStatePending}, true, nil
 					}
 				})
 
@@ -77,9 +77,9 @@ var _ = Describe("TaskContainerReaper", func() {
 
 			Context("which belongs to a completed task", func() {
 				BeforeEach(func() {
-					snapshot.LookupTaskStub = func(taskGuid string) (*models.Task, bool, error) {
+					snapshot.LookupTaskStub = func(taskGuid string) (models.Task, bool, error) {
 						Ω(taskGuid).Should(Equal("some-task-guid"))
-						return &models.Task{
+						return models.Task{
 							State: models.TaskStateCompleted,
 							Action: &models.RunAction{
 								Path: "ls",
@@ -96,9 +96,9 @@ var _ = Describe("TaskContainerReaper", func() {
 
 			Context("which belongs to a resolving task", func() {
 				BeforeEach(func() {
-					snapshot.LookupTaskStub = func(taskGuid string) (*models.Task, bool, error) {
+					snapshot.LookupTaskStub = func(taskGuid string) (models.Task, bool, error) {
 						Ω(taskGuid).Should(Equal("some-task-guid"))
-						return &models.Task{
+						return models.Task{
 							State: models.TaskStateResolving,
 							Action: &models.RunAction{
 								Path: "ls",
@@ -115,9 +115,9 @@ var _ = Describe("TaskContainerReaper", func() {
 
 			Context("for which there is no associated task", func() {
 				BeforeEach(func() {
-					snapshot.LookupTaskStub = func(taskGuid string) (*models.Task, bool, error) {
+					snapshot.LookupTaskStub = func(taskGuid string) (models.Task, bool, error) {
 						Ω(taskGuid).Should(Equal("some-task-guid"))
-						return nil, false, nil
+						return models.Task{}, false, nil
 					}
 				})
 
@@ -129,9 +129,9 @@ var _ = Describe("TaskContainerReaper", func() {
 
 			Context("when checking for the task fails", func() {
 				BeforeEach(func() {
-					snapshot.LookupTaskStub = func(taskGuid string) (*models.Task, bool, error) {
+					snapshot.LookupTaskStub = func(taskGuid string) (models.Task, bool, error) {
 						Ω(taskGuid).Should(Equal("some-task-guid"))
-						return nil, false, errors.New("welp")
+						return models.Task{}, false, errors.New("welp")
 					}
 				})
 

@@ -30,22 +30,22 @@ type FakeSnapshot struct {
 	ActualLRPsStub        func() []models.ActualLRP
 	actualLRPsMutex       sync.RWMutex
 	actualLRPsArgsForCall []struct{}
-	actualLRPsReturns     struct {
+	actualLRPsReturns struct {
 		result1 []models.ActualLRP
 	}
 	TasksStub        func() []models.Task
 	tasksMutex       sync.RWMutex
 	tasksArgsForCall []struct{}
-	tasksReturns     struct {
+	tasksReturns struct {
 		result1 []models.Task
 	}
-	LookupTaskStub        func(guid string) (*models.Task, bool, error)
+	LookupTaskStub        func(guid string) (models.Task, bool, error)
 	lookupTaskMutex       sync.RWMutex
 	lookupTaskArgsForCall []struct {
 		guid string
 	}
 	lookupTaskReturns struct {
-		result1 *models.Task
+		result1 models.Task
 		result2 bool
 		result3 error
 	}
@@ -164,7 +164,7 @@ func (fake *FakeSnapshot) TasksReturns(result1 []models.Task) {
 	}{result1}
 }
 
-func (fake *FakeSnapshot) LookupTask(guid string) (*models.Task, bool, error) {
+func (fake *FakeSnapshot) LookupTask(guid string) (models.Task, bool, error) {
 	fake.lookupTaskMutex.Lock()
 	fake.lookupTaskArgsForCall = append(fake.lookupTaskArgsForCall, struct {
 		guid string
@@ -189,10 +189,10 @@ func (fake *FakeSnapshot) LookupTaskArgsForCall(i int) string {
 	return fake.lookupTaskArgsForCall[i].guid
 }
 
-func (fake *FakeSnapshot) LookupTaskReturns(result1 *models.Task, result2 bool, result3 error) {
+func (fake *FakeSnapshot) LookupTaskReturns(result1 models.Task, result2 bool, result3 error) {
 	fake.LookupTaskStub = nil
 	fake.lookupTaskReturns = struct {
-		result1 *models.Task
+		result1 models.Task
 		result2 bool
 		result3 error
 	}{result1, result2, result3}

@@ -357,7 +357,7 @@ var _ = Describe("The Rep", func() {
 	})
 
 	Describe("when a StopLRPInstance request comes in", func() {
-		var runningLRP *models.ActualLRP
+		var runningLRP models.ActualLRP
 		const instanceGuid = "some-instance-guid"
 		const expectedStopRoute = "/containers/" + instanceGuid + "/stop"
 
@@ -375,12 +375,13 @@ var _ = Describe("The Rep", func() {
 
 			err := bbs.StartActualLRP(lrpKey, containerKey, netInfo, logger)
 			Ω(err).ShouldNot(HaveOccurred())
+
 			runningLRP, err = bbs.ActualLRPByProcessGuidAndIndex(lrpKey.ProcessGuid, lrpKey.Index)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should stop the container", func() {
-			err := bbs.RequestStopLRPInstance(*runningLRP)
+			err := bbs.RequestStopLRPInstance(runningLRP)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			findStopRequest := func() bool {

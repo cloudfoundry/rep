@@ -9,6 +9,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
+//go:generate counterfeiter -o fake_gatherer/fake_snapshot.go . Snapshot
 type Snapshot interface {
 	// Containers
 	ListContainers(tags executor.Tags) []executor.Container
@@ -19,7 +20,7 @@ type Snapshot interface {
 
 	// Tasks
 	Tasks() []models.Task
-	LookupTask(guid string) (*models.Task, bool, error)
+	LookupTask(guid string) (models.Task, bool, error)
 }
 
 type snapshot struct {
@@ -64,23 +65,24 @@ func (s *snapshot) Tasks() []models.Task {
 	return s.tasks
 }
 
-func (s *snapshot) LookupTask(guid string) (*models.Task, bool, error) {
+func (s *snapshot) LookupTask(guid string) (models.Task, bool, error) {
 	for _, t := range s.tasks {
 		if t.TaskGuid == guid {
-			return &t, true, nil
+			return t, true, nil
 		}
 	}
 
 	task, err := s.bbs.TaskByGuid(guid)
 	if err != nil {
 		if err == bbserrors.ErrStoreResourceNotFound {
-			return nil, false, nil
+			return models.Task{}, false, nil
 		}
-		return nil, false, err
+
+		return models.Task{}, false, err
 	}
 
 	if task.CellID != s.cellID {
-		return nil, false, nil
+		return models.Task{}, false, nil
 	}
 
 	return task, true, nil
