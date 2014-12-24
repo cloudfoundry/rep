@@ -504,8 +504,9 @@ var _ = Describe("AuctionCellRep", func() {
 							cellRep.Perform(work)
 
 							Eventually(bbs.CompleteTaskCallCount).Should(Equal(1))
-							actualTaskGuid, actualFailed, actualFailureReason, _ := bbs.CompleteTaskArgsForCall(0)
+							actualTaskGuid, actualCellID, actualFailed, actualFailureReason, _ := bbs.CompleteTaskArgsForCall(0)
 							Ω(actualTaskGuid).Should(Equal(task.TaskGuid))
+							Ω(actualCellID).Should(Equal(expectedCellID))
 							Ω(actualFailed).Should(BeTrue())
 							Ω(actualFailureReason).Should(ContainSubstring("failed to run container"))
 						})

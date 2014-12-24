@@ -36,7 +36,7 @@ func (r *TaskCompleter) Process(snapshot gatherer.Snapshot) {
 
 		if !ok {
 			r.logger.Info("task-with-no-corresponding-container", lager.Data{"task-guid": task.TaskGuid})
-			err := r.bbs.CompleteTask(task.TaskGuid, true, "task container no longer exists", "")
+			err := r.bbs.CompleteTask(task.TaskGuid, task.CellID, true, "task container no longer exists", "")
 			if err != nil {
 				r.logger.Error("failed-to-complete-task-with-no-corresponding-container", err, lager.Data{"task-guid": task.TaskGuid})
 			}

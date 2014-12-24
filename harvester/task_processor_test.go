@@ -26,12 +26,15 @@ var _ = Describe("Task Processor", func() {
 		processor Processor
 	)
 
+	const expectedCellID = "some-cell-id"
+
 	BeforeEach(func() {
 		executorClient = new(fakes.FakeClient)
 		bbs = new(fake_bbs.FakeRepBBS)
 
 		processor = NewTaskProcessor(
 			lagertest.NewTestLogger("test"),
+			expectedCellID,
 			bbs,
 			executorClient,
 		)
@@ -94,8 +97,9 @@ var _ = Describe("Task Processor", func() {
 					It("completes the task successfully with the result", func() {
 						Ω(bbs.CompleteTaskCallCount()).Should(Equal(1))
 
-						taskGuid, failed, failureReason, result := bbs.CompleteTaskArgsForCall(0)
+						taskGuid, cellID, failed, failureReason, result := bbs.CompleteTaskArgsForCall(0)
 						Ω(taskGuid).Should(Equal("completed-guid"))
+						Ω(cellID).Should(Equal(expectedCellID))
 						Ω(failed).Should(BeFalse())
 						Ω(failureReason).Should(BeEmpty())
 						Ω(result).Should(Equal("something"))
@@ -112,8 +116,9 @@ var _ = Describe("Task Processor", func() {
 					It("completes the task with failure", func() {
 						Ω(bbs.CompleteTaskCallCount()).Should(Equal(1))
 
-						taskGuid, failed, failureReason, result := bbs.CompleteTaskArgsForCall(0)
+						taskGuid, cellID, failed, failureReason, result := bbs.CompleteTaskArgsForCall(0)
 						Ω(taskGuid).Should(Equal("completed-guid"))
+						Ω(cellID).Should(Equal(expectedCellID))
 						Ω(failed).Should(BeTrue())
 						Ω(failureReason).Should(Equal("failed to fetch result"))
 						Ω(result).Should(BeEmpty())
@@ -133,8 +138,9 @@ var _ = Describe("Task Processor", func() {
 			It("completes the task with failure", func() {
 				Ω(bbs.CompleteTaskCallCount()).Should(Equal(1))
 
-				taskGuid, failed, failureReason, result := bbs.CompleteTaskArgsForCall(0)
+				taskGuid, cellID, failed, failureReason, result := bbs.CompleteTaskArgsForCall(0)
 				Ω(taskGuid).Should(Equal("completed-guid"))
+				Ω(cellID).Should(Equal(expectedCellID))
 				Ω(failed).Should(BeTrue())
 				Ω(failureReason).Should(Equal("shiitake mushrooms are happening"))
 				Ω(result).Should(BeEmpty())

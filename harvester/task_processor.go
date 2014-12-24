@@ -14,18 +14,21 @@ const MAX_RESULT_SIZE = 1024 * 10
 type taskProcessor struct {
 	logger lager.Logger
 
+	cellID         string
 	bbs            bbs.RepBBS
 	executorClient executor.Client
 }
 
 func NewTaskProcessor(
 	logger lager.Logger,
+	cellID string,
 	bbs bbs.RepBBS,
 	executorClient executor.Client,
 ) Processor {
 	return &taskProcessor{
 		logger: logger,
 
+		cellID:         cellID,
 		bbs:            bbs,
 		executorClient: executorClient,
 	}
@@ -60,7 +63,7 @@ func (p *taskProcessor) Process(container executor.Container) {
 		}
 	}
 
-	err = p.bbs.CompleteTask(taskGuid, taskFailed, failureReason, taskResult)
+	err = p.bbs.CompleteTask(taskGuid, p.cellID, taskFailed, failureReason, taskResult)
 	if err != nil {
 		pLog.Error("failed-to-mark-complete", err)
 	}

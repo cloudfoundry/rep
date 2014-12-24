@@ -167,6 +167,7 @@ func initializeHarvesters(
 ) (gatherer.Processor, ifrit.Runner) {
 	taskProcessor := harvester.NewTaskProcessor(
 		logger,
+		*cellID,
 		bbs,
 		executorClient,
 	)
