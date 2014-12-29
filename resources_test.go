@@ -203,7 +203,7 @@ var _ = Describe("Resources", func() {
 							HostPort:      6789,
 						},
 					},
-					Host: executorHost,
+					Address: executorHost,
 				}
 
 				Ω(lrpNetInfo).Should(Equal(expectedNetInfo))
@@ -226,7 +226,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("returns an invalid host error", func() {
-				Ω(netInfoConversionErr.Error()).Should(ContainSubstring("host"))
+				Ω(netInfoConversionErr.Error()).Should(ContainSubstring("address"))
 			})
 		})
 	})
