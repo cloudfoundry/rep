@@ -20,7 +20,6 @@ type Runner struct {
 type Config struct {
 	stack             string
 	cellID            string
-	lrpHost           string
 	executorURL       string
 	etcdCluster       string
 	serverPort        int
@@ -30,7 +29,7 @@ type Config struct {
 }
 
 func New(
-	binPath, cellID, stack, lrpHost, executorURL, etcdCluster, logLevel string,
+	binPath, cellID, stack, executorURL, etcdCluster, logLevel string,
 	serverPort int,
 	heartbeatInterval, pollingInterval time.Duration) *Runner {
 	return &Runner{
@@ -38,7 +37,6 @@ func New(
 		config: Config{
 			cellID:            cellID,
 			stack:             stack,
-			lrpHost:           lrpHost,
 			executorURL:       executorURL,
 			serverPort:        serverPort,
 			etcdCluster:       etcdCluster,
@@ -59,7 +57,6 @@ func (r *Runner) Start() {
 			r.binPath,
 			"-cellID", r.config.cellID,
 			"-stack", r.config.stack,
-			"-lrpHost", r.config.lrpHost,
 			"-executorURL", r.config.executorURL,
 			"-listenAddr", fmt.Sprintf("0.0.0.0:%d", r.config.serverPort),
 			"-etcdCluster", r.config.etcdCluster,

@@ -64,7 +64,7 @@ func ActualLRPContainerKeyFromContainer(container executor.Container, cellID str
 	return actualLRPContainerKey, nil
 }
 
-func ActualLRPNetInfoFromContainer(container executor.Container, executorHost string) (models.ActualLRPNetInfo, error) {
+func ActualLRPNetInfoFromContainer(container executor.Container) (models.ActualLRPNetInfo, error) {
 	ports := []models.PortMapping{}
 	for _, portMapping := range container.Ports {
 		ports = append(ports, models.PortMapping{
@@ -73,7 +73,7 @@ func ActualLRPNetInfoFromContainer(container executor.Container, executorHost st
 		})
 	}
 
-	actualLRPNetInfo := models.NewActualLRPNetInfo(executorHost, ports)
+	actualLRPNetInfo := models.NewActualLRPNetInfo(container.ExternalIP, ports)
 
 	err := actualLRPNetInfo.Validate()
 	if err != nil {

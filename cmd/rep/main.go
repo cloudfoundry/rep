@@ -63,12 +63,6 @@ var listenAddr = flag.String(
 	"host:port to serve auction and LRP stop requests on",
 )
 
-var lrpHost = flag.String(
-	"lrpHost",
-	"",
-	"address to route traffic to for LRP access",
-)
-
 var stack = flag.String(
 	"stack",
 	"",
@@ -108,10 +102,6 @@ func main() {
 
 	if *stack == "" {
 		log.Fatalf("-stack must be specified")
-	}
-
-	if *lrpHost == "" {
-		log.Fatalf("-lrpHost must be specified")
 	}
 
 	cf_debug_server.Run()
@@ -174,7 +164,6 @@ func initializeHarvesters(
 
 	lrpProcessor := harvester.NewLRPProcessor(
 		*cellID,
-		*lrpHost,
 		logger,
 		bbs,
 		executorClient,

@@ -19,7 +19,7 @@ import (
 
 var _ = Describe("LRP Processor", func() {
 	const expectedCellId = "cell-id"
-	const expectedExecutorHost = "example.com"
+	const expectedExecutorHost = "1.2.3.4"
 
 	var (
 		executorClient *fakes.FakeClient
@@ -92,23 +92,27 @@ var _ = Describe("LRP Processor", func() {
 
 		executorClient = new(fakes.FakeClient)
 		bbs = new(fake_bbs.FakeRepBBS)
+
 		tags = executor.Tags{
 			rep.LifecycleTag:    rep.LRPLifecycle,
 			rep.ProcessGuidTag:  expectedLRPKey.ProcessGuid,
 			rep.ProcessIndexTag: strconv.Itoa(expectedLRPKey.Index),
 			rep.DomainTag:       expectedLRPKey.Domain,
 		}
+
 		container = executor.Container{
 			Guid:  expectedLRPContainerKey.InstanceGuid,
 			State: executor.StateCompleted,
 			Tags:  tags,
+
+			ExternalIP: expectedNetInfo.Address,
 			Ports: []executor.PortMapping{
 				{ContainerPort: 1234, HostPort: 5678},
 			},
 		}
+
 		processor = harvester.NewLRPProcessor(
 			expectedCellId,
-			expectedExecutorHost,
 			lagertest.NewTestLogger("test"),
 			bbs,
 			executorClient,

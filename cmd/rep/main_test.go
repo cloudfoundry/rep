@@ -30,7 +30,6 @@ var _ = Describe("The Rep", func() {
 		fakeExecutor    *ghttp.Server
 		bbs             *Bbs.BBS
 		pollingInterval time.Duration
-		lrpHost         string
 		logger          *lagertest.TestLogger
 	)
 
@@ -44,15 +43,12 @@ var _ = Describe("The Rep", func() {
 		logger = lagertest.NewTestLogger("test")
 		bbs = Bbs.NewBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
 
-		lrpHost = "the-lrp-host"
-
 		pollingInterval = 50 * time.Millisecond
 
 		runner = testrunner.New(
 			representativePath,
 			cellID,
 			"the-stack",
-			lrpHost,
 			fakeExecutor.URL(),
 			fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
 			"info",
@@ -371,7 +367,7 @@ var _ = Describe("The Rep", func() {
 
 			lrpKey := models.NewActualLRPKey("process-guid", 1, "domain")
 			containerKey := models.NewActualLRPContainerKey(instanceGuid, cellID)
-			netInfo := models.NewActualLRPNetInfo(lrpHost, []models.PortMapping{})
+			netInfo := models.NewActualLRPNetInfo("bogus-ip", []models.PortMapping{})
 
 			err := bbs.StartActualLRP(lrpKey, containerKey, netInfo, logger)
 			Ω(err).ShouldNot(HaveOccurred())

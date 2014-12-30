@@ -10,7 +10,6 @@ import (
 
 type lrpProcessor struct {
 	cellID         string
-	executorHost   string
 	logger         lager.Logger
 	bbs            bbs.RepBBS
 	executorClient executor.Client
@@ -18,14 +17,12 @@ type lrpProcessor struct {
 
 func NewLRPProcessor(
 	cellID string,
-	executorHost string,
 	logger lager.Logger,
 	bbs bbs.RepBBS,
 	executorClient executor.Client,
 ) Processor {
 	return &lrpProcessor{
 		cellID:         cellID,
-		executorHost:   executorHost,
 		logger:         logger,
 		bbs:            bbs,
 		executorClient: executorClient,
@@ -55,7 +52,7 @@ func (p *lrpProcessor) Process(container executor.Container) {
 		return
 	}
 
-	lrpNetInfo, err := rep.ActualLRPNetInfoFromContainer(container, p.executorHost)
+	lrpNetInfo, err := rep.ActualLRPNetInfoFromContainer(container)
 	if err != nil {
 		logger.Error("failed-to-generate-net-info-from-container", err)
 		return

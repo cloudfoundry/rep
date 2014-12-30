@@ -25,7 +25,8 @@ var _ = Describe("Resources", func() {
 					rep.ProcessGuidTag:  "process-guid",
 					rep.ProcessIndexTag: "999",
 				},
-				Guid: "some-instance-guid",
+				Guid:       "some-instance-guid",
+				ExternalIP: "some-external-ip",
 				Ports: []executor.PortMapping{
 					{
 						ContainerPort: 1234,
@@ -43,8 +44,8 @@ var _ = Describe("Resources", func() {
 			It("does not return an error", func() {
 				Ω(keyConversionErr).ShouldNot(HaveOccurred())
 			})
-			It("converts a valid container without error", func() {
 
+			It("converts a valid container without error", func() {
 				expectedKey := models.ActualLRPKey{
 					ProcessGuid: "process-guid",
 					Index:       999,
@@ -159,12 +160,10 @@ var _ = Describe("Resources", func() {
 	})
 
 	Describe("ActualLRPNetInfoFromContainer", func() {
-
 		var (
 			container            executor.Container
 			lrpNetInfo           models.ActualLRPNetInfo
 			netInfoConversionErr error
-			executorHost         string
 		)
 
 		BeforeEach(func() {
@@ -175,7 +174,8 @@ var _ = Describe("Resources", func() {
 					rep.ProcessGuidTag:  "process-guid",
 					rep.ProcessIndexTag: "999",
 				},
-				Guid: "some-instance-guid",
+				Guid:       "some-instance-guid",
+				ExternalIP: "some-external-ip",
 				Ports: []executor.PortMapping{
 					{
 						ContainerPort: 1234,
@@ -183,11 +183,10 @@ var _ = Describe("Resources", func() {
 					},
 				},
 			}
-			executorHost = "executor.example.com:9753"
 		})
 
 		JustBeforeEach(func() {
-			lrpNetInfo, netInfoConversionErr = rep.ActualLRPNetInfoFromContainer(container, executorHost)
+			lrpNetInfo, netInfoConversionErr = rep.ActualLRPNetInfoFromContainer(container)
 		})
 
 		Context("when container and executor host are valid", func() {
@@ -203,7 +202,7 @@ var _ = Describe("Resources", func() {
 							HostPort:      6789,
 						},
 					},
-					Address: executorHost,
+					Address: "some-external-ip",
 				}
 
 				Ω(lrpNetInfo).Should(Equal(expectedNetInfo))
@@ -222,7 +221,7 @@ var _ = Describe("Resources", func() {
 
 		Context("when the executor host is invalid", func() {
 			BeforeEach(func() {
-				executorHost = ""
+				container.ExternalIP = ""
 			})
 
 			It("returns an invalid host error", func() {
