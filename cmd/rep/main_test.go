@@ -221,14 +221,14 @@ var _ = Describe("The Rep", func() {
 					Ω(bbs.RunningActualLRPs()).Should(BeEmpty())
 
 					works := auctiontypes.Work{
-						LRPStarts: []models.LRPStart{{
+						LRPs: []auctiontypes.LRPAuction{{
 							DesiredLRP: desiredLRP,
 							Index:      index,
 						}},
 					}
 					failedWorks, err := client.Perform(works)
 					Ω(err).ShouldNot(HaveOccurred())
-					Ω(failedWorks.LRPStarts).Should(BeEmpty())
+					Ω(failedWorks.LRPs).Should(BeEmpty())
 
 					Eventually(claimedActualLRPs).Should(HaveLen(1))
 					actualLRPs, err := claimedActualLRPs()

@@ -87,11 +87,11 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 	var failedWork = auctiontypes.Work{}
 
 	logger := a.logger.Session("auction-work", lager.Data{
-		"lrp-starts": len(work.LRPStarts),
+		"lrp-starts": len(work.LRPs),
 		"tasks":      len(work.Tasks),
 	})
 
-	for _, start := range work.LRPStarts {
+	for _, start := range work.LRPs {
 		startLogger := logger.Session("lrp-start-instance", lager.Data{
 			"process-guid": start.DesiredLRP.ProcessGuid,
 			"index":        start.Index,
@@ -102,7 +102,7 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 		err := a.startLRP(start, startLogger)
 		if err != nil {
 			startLogger.Error("failed-to-start", err)
-			failedWork.LRPStarts = append(failedWork.LRPStarts, start)
+			failedWork.LRPs = append(failedWork.LRPs, start)
 		} else {
 			startLogger.Info("started")
 		}
@@ -127,7 +127,7 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 	return failedWork, nil
 }
 
-func (a *AuctionCellRep) startLRP(lrpStart models.LRPStart, logger lager.Logger) error {
+func (a *AuctionCellRep) startLRP(lrpStart auctiontypes.LRPAuction, logger lager.Logger) error {
 
 	containerGuidString, err := a.generateContainerGuid()
 	if err != nil {

@@ -160,14 +160,14 @@ var _ = Describe("AuctionCellRep", func() {
 	Describe("performing work", func() {
 		var work auctiontypes.Work
 		Describe("performing starts", func() {
-			var lrpStart models.LRPStart
+			var lrpAuction auctiontypes.LRPAuction
 			var expectedLRPKey models.ActualLRPKey
 			var expectedLRPContainerKey models.ActualLRPContainerKey
 			var expectedIndex = 2
 			const expectedIndexString = "2"
 
 			BeforeEach(func() {
-				lrpStart = models.LRPStart{
+				lrpAuction = auctiontypes.LRPAuction{
 					DesiredLRP: models.DesiredLRP{
 						Domain:      "tests",
 						RootFSPath:  "some-root-fs",
@@ -192,9 +192,9 @@ var _ = Describe("AuctionCellRep", func() {
 					Index: expectedIndex,
 				}
 
-				expectedLRPKey = models.NewActualLRPKey(lrpStart.DesiredLRP.ProcessGuid, lrpStart.Index, lrpStart.DesiredLRP.Domain)
+				expectedLRPKey = models.NewActualLRPKey(lrpAuction.DesiredLRP.ProcessGuid, lrpAuction.Index, lrpAuction.DesiredLRP.Domain)
 				expectedLRPContainerKey = models.NewActualLRPContainerKey(expectedGuid, expectedCellID)
-				work = auctiontypes.Work{LRPStarts: []models.LRPStart{lrpStart}}
+				work = auctiontypes.Work{LRPs: []auctiontypes.LRPAuction{lrpAuction}}
 			})
 
 			It("should allocate a container", func() {
@@ -208,21 +208,21 @@ var _ = Describe("AuctionCellRep", func() {
 
 					Tags: executor.Tags{
 						rep.LifecycleTag:    rep.LRPLifecycle,
-						rep.DomainTag:       lrpStart.DesiredLRP.Domain,
-						rep.ProcessGuidTag:  lrpStart.DesiredLRP.ProcessGuid,
+						rep.DomainTag:       lrpAuction.DesiredLRP.Domain,
+						rep.ProcessGuidTag:  lrpAuction.DesiredLRP.ProcessGuid,
 						rep.ProcessIndexTag: expectedIndexString,
 					},
 
-					MemoryMB:   lrpStart.DesiredLRP.MemoryMB,
-					DiskMB:     lrpStart.DesiredLRP.DiskMB,
-					CPUWeight:  lrpStart.DesiredLRP.CPUWeight,
+					MemoryMB:   lrpAuction.DesiredLRP.MemoryMB,
+					DiskMB:     lrpAuction.DesiredLRP.DiskMB,
+					CPUWeight:  lrpAuction.DesiredLRP.CPUWeight,
 					RootFSPath: "some-root-fs",
 					Ports:      []executor.PortMapping{{ContainerPort: 8080}},
 					Log:        executor.LogConfig{Guid: "log-guid", Index: &expectedIndex},
 
-					Setup:   lrpStart.DesiredLRP.Setup,
-					Action:  lrpStart.DesiredLRP.Action,
-					Monitor: lrpStart.DesiredLRP.Monitor,
+					Setup:   lrpAuction.DesiredLRP.Setup,
+					Action:  lrpAuction.DesiredLRP.Action,
+					Monitor: lrpAuction.DesiredLRP.Monitor,
 
 					Env: []executor.EnvironmentVariable{
 						{Name: "INSTANCE_GUID", Value: expectedGuid},
@@ -354,7 +354,7 @@ var _ = Describe("AuctionCellRep", func() {
 				It("adds to the failed work", func() {
 					failedWork, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred())
-					Ω(failedWork.LRPStarts).Should(ConsistOf(lrpStart))
+					Ω(failedWork.LRPs).Should(ConsistOf(lrpAuction))
 				})
 
 				It("does not tell the BBS it has claimed the lrp", func() {
