@@ -52,12 +52,6 @@ func (p *lrpProcessor) Process(container executor.Container) {
 		return
 	}
 
-	lrpNetInfo, err := rep.ActualLRPNetInfoFromContainer(container)
-	if err != nil {
-		logger.Error("failed-to-generate-net-info-from-container", err)
-		return
-	}
-
 	switch container.State {
 	case executor.StateInitializing, executor.StateCreated:
 		err = p.bbs.ClaimActualLRP(lrpKey, lrpContainerKey, logger)
@@ -73,7 +67,13 @@ func (p *lrpProcessor) Process(container executor.Container) {
 		logger.Debug("claimed-actual-lrp")
 
 	case executor.StateRunning:
-		err := p.bbs.StartActualLRP(lrpKey, lrpContainerKey, lrpNetInfo, logger)
+		lrpNetInfo, err := rep.ActualLRPNetInfoFromContainer(container)
+		if err != nil {
+			logger.Error("failed-to-generate-net-info-from-container", err)
+			return
+		}
+
+		err = p.bbs.StartActualLRP(lrpKey, lrpContainerKey, lrpNetInfo, logger)
 		if err == bbserrors.ErrActualLRPCannotBeStarted {
 			logger.Debug("failed-to-start-actual-lrp")
 			p.deleteContainer(lrpContainerKey.InstanceGuid, logger)
