@@ -75,6 +75,12 @@ var cellID = flag.String(
 	"the ID used by the rep to identify itself to external systems - must be specified",
 )
 
+var zone = flag.String(
+	"zone",
+	"",
+	"the availability zone associated with the rep",
+)
+
 var pollingInterval = flag.Duration(
 	"pollingInterval",
 	30*time.Second,
@@ -194,6 +200,7 @@ func initializeCellHeartbeat(address string, bbs Bbs.RepBBS, executorClient exec
 		CellID:     *cellID,
 		RepAddress: address,
 		Stack:      *stack,
+		Zone:       *zone,
 	}
 
 	heartbeat := bbs.NewCellHeartbeat(cellPresence, *heartbeatInterval)
