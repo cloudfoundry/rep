@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/auction/communication/http/auction_http_handlers"
 	auctionroutes "github.com/cloudfoundry-incubator/auction/communication/http/routes"
 	"github.com/cloudfoundry-incubator/cf-debug-server"
+	"github.com/cloudfoundry-incubator/cf-http"
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/executor"
 	executorclient "github.com/cloudfoundry-incubator/executor/http/client"
@@ -93,9 +93,18 @@ var dropsondeDestination = flag.String(
 	"Destination for dropsonde-emitted metrics.",
 )
 
-func main() {
-	flag.Parse()
+var communicationTimeout = flag.Duration(
+	"communicationTimeout",
+	10*time.Second,
+	"Timeout applied to all HTTP requests.",
+)
 
+func init() {
+	flag.Parse()
+	cf_http.Initialize(*communicationTimeout)
+}
+
+func main() {
 	if *cellID == "" {
 		log.Fatalf("-cellID must be specified")
 	}
@@ -110,7 +119,7 @@ func main() {
 	initializeDropsonde(logger)
 	bbs := initializeRepBBS(logger)
 
-	executorClient := executorclient.New(http.DefaultClient, *executorURL)
+	executorClient := executorclient.New(cf_http.NewClient(), *executorURL)
 	lrpStopper := initializeLRPStopper(*cellID, bbs, executorClient, logger)
 
 	taskCompleter := reaper.NewTaskCompleter(bbs, logger)

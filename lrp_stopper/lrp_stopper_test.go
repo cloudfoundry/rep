@@ -1,6 +1,8 @@
 package lrp_stopper_test
 
 import (
+	"errors"
+
 	"github.com/cloudfoundry-incubator/executor"
 	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
 	. "github.com/cloudfoundry-incubator/rep/lrp_stopper"
@@ -63,6 +65,17 @@ var _ = Describe("LRP Stopper", func() {
 
 			It("succeeds because the container is apparently already gone", func() {
 				Ω(returnedError).ShouldNot(HaveOccurred())
+			})
+		})
+
+		Context("when the executor returns an unexpected error", func() {
+			BeforeEach(func() {
+				client.StopContainerReturns(errors.New("use of closed network connection"))
+			})
+
+			It("returns an error", func() {
+				Ω(returnedError).Should(HaveOccurred())
+				Ω(returnedError.Error()).Should(ContainSubstring("use of closed network connection"))
 			})
 		})
 	})
