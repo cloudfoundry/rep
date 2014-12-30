@@ -31,13 +31,7 @@ func (stopper *lrpStopper) StopInstance(processGuid, instanceGuid string) error 
 	})
 
 	stopLog.Info("stopping")
+	defer stopLog.Info("stopped")
 
-	err := stopper.client.StopContainer(instanceGuid)
-	switch err {
-	case nil:
-	case executor.ErrContainerNotFound:
-		stopLog.Info("container-already-deleted")
-	}
-
-	return nil
+	return stopper.client.StopContainer(instanceGuid)
 }

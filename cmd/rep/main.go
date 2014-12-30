@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -13,6 +12,7 @@ import (
 	auctionroutes "github.com/cloudfoundry-incubator/auction/communication/http/routes"
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
+	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry-incubator/executor"
 	executorclient "github.com/cloudfoundry-incubator/executor/http/client"
 	"github.com/cloudfoundry-incubator/rep/auction_cell_rep"
@@ -88,6 +88,12 @@ var pollingInterval = flag.Duration(
 	"the interval on which to scan the executor",
 )
 
+var communicationTimeout = flag.Duration(
+	"communicationTimeout",
+	10*time.Second,
+	"Timeout applied to all HTTP requests.",
+)
+
 const (
 	dropsondeDestination = "localhost:3457"
 	dropsondeOrigin      = "rep"
@@ -97,6 +103,8 @@ func main() {
 	cf_debug_server.AddFlags(flag.CommandLine)
 	cf_lager.AddFlags(flag.CommandLine)
 	flag.Parse()
+
+	cf_http.Initialize(*communicationTimeout)
 
 	logger := cf_lager.New("rep")
 	initializeDropsonde(logger)
@@ -110,7 +118,8 @@ func main() {
 	}
 
 	bbs := initializeRepBBS(logger)
-	executorClient := executorclient.New(http.DefaultClient, *executorURL)
+
+	executorClient := executorclient.New(cf_http.NewClient(), *executorURL)
 	server, address := initializeServer(bbs, executorClient, logger)
 	opGenerator := generator.New(*cellID, bbs, executorClient)
 
