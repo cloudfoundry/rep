@@ -231,7 +231,7 @@ func initializeServer(
 	executorClient executor.Client,
 	logger lager.Logger,
 ) (ifrit.Runner, string) {
-	auctionCellRep := auction_cell_rep.New(*cellID, *stack, generateGuid, bbs, executorClient, logger)
+	auctionCellRep := auction_cell_rep.New(*cellID, *stack, *zone, generateGuid, bbs, executorClient, logger)
 	handlers := auction_http_handlers.New(auctionCellRep, logger)
 
 	handlers[bbsroutes.StopLRPInstance] = repserver.NewStopLRPInstanceHandler(logger, stopper)

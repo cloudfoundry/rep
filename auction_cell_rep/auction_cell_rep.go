@@ -16,16 +16,18 @@ import (
 type AuctionCellRep struct {
 	cellID                string
 	stack                 string
+	zone                  string
 	generateContainerGuid func() (string, error)
 	bbs                   Bbs.RepBBS
 	client                executor.Client
 	logger                lager.Logger
 }
 
-func New(cellID string, stack string, generateContainerGuid func() (string, error), bbs Bbs.RepBBS, client executor.Client, logger lager.Logger) *AuctionCellRep {
+func New(cellID string, stack string, zone string, generateContainerGuid func() (string, error), bbs Bbs.RepBBS, client executor.Client, logger lager.Logger) *AuctionCellRep {
 	return &AuctionCellRep{
 		cellID: cellID,
 		stack:  stack,
+		zone:   zone,
 		generateContainerGuid: generateContainerGuid,
 		bbs:    bbs,
 		client: client,
@@ -76,6 +78,7 @@ func (a *AuctionCellRep) State() (auctiontypes.CellState, error) {
 		AvailableResources: availableResources,
 		TotalResources:     totalResources,
 		LRPs:               lrps,
+		Zone:               a.zone,
 	}
 
 	a.logger.Session("provided", lager.Data{"state": state})

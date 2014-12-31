@@ -37,7 +37,7 @@ var _ = Describe("AuctionCellRep", func() {
 		client = new(fake_client.FakeClient)
 		bbs = &fake_bbs.FakeRepBBS{}
 		logger = lagertest.NewTestLogger("test")
-		cellRep = New(expectedCellID, "lucid64", fakeGenerateContainerGuid, bbs, client, logger)
+		cellRep = New(expectedCellID, "lucid64", "the-zone", fakeGenerateContainerGuid, bbs, client, logger)
 		commonErr = errors.New("Failed to fetch")
 	})
 
