@@ -23,6 +23,7 @@ import (
 	"github.com/cloudfoundry-incubator/rep/maintain"
 	"github.com/cloudfoundry-incubator/rep/reaper"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	bbsroutes "github.com/cloudfoundry-incubator/runtime-schema/routes"
 	"github.com/cloudfoundry/dropsonde"
@@ -47,7 +48,7 @@ var etcdCluster = flag.String(
 
 var heartbeatInterval = flag.Duration(
 	"heartbeatInterval",
-	60*time.Second,
+	lock_bbs.HEARTBEAT_INTERVAL,
 	"the interval between heartbeats for maintaining presence",
 )
 
