@@ -93,6 +93,7 @@ const (
 )
 
 func main() {
+	cf_debug_server.AddFlags(flag.CommandLine)
 	flag.Parse()
 
 	if *cellID == "" {
@@ -102,8 +103,6 @@ func main() {
 	if *stack == "" {
 		log.Fatalf("-stack must be specified")
 	}
-
-	cf_debug_server.Run()
 
 	logger := cf_lager.New("rep")
 	initializeDropsonde(logger)
@@ -127,12 +126,20 @@ func main() {
 
 	server, address := initializeServer(lrpStopper, bbs, executorClient, logger)
 
-	group := grouper.NewOrdered(os.Interrupt, grouper.Members{
+	members := grouper.Members{
 		{"server", server},
 		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
 		{"gatherer", gatherer},
 		{"event-consumer", eventConsumer},
-	})
+	}
+
+	if dbgAddr := cf_debug_server.DebugAddress(flag.CommandLine); dbgAddr != "" {
+		members = append(grouper.Members{
+			{"debug-server", cf_debug_server.Runner(dbgAddr)},
+		}, members...)
+	}
+
+	group := grouper.NewOrdered(os.Interrupt, members)
 
 	monitor := ifrit.Invoke(sigmon.New(group))
 	logger.Info("started")
