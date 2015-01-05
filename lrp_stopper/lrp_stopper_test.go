@@ -42,14 +42,14 @@ var _ = Describe("LRP Stopper", func() {
 		client = new(fake_client.FakeClient)
 		logger = lagertest.NewTestLogger("test")
 
-		stopper = New(cellID, bbs, client, logger)
+		stopper = New(cellID, client, logger)
 	})
 
 	Describe("StopInstance", func() {
 		var returnedError error
 
 		JustBeforeEach(func() {
-			returnedError = stopper.StopInstance(actualLRP)
+			returnedError = stopper.StopInstance(actualLRP.ProcessGuid, actualLRP.InstanceGuid)
 		})
 
 		It("succeeds", func() {

@@ -110,7 +110,7 @@ func main() {
 	bbs := initializeRepBBS(logger)
 
 	executorClient := executorclient.New(http.DefaultClient, *executorURL)
-	lrpStopper := initializeLRPStopper(*cellID, bbs, executorClient, logger)
+	lrpStopper := initializeLRPStopper(*cellID, executorClient, logger)
 
 	taskCompleter := reaper.NewTaskCompleter(bbs, logger)
 	taskContainerReaper := reaper.NewTaskContainerReaper(executorClient, logger)
@@ -222,8 +222,8 @@ func initializeRepBBS(logger lager.Logger) Bbs.RepBBS {
 	return Bbs.NewRepBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
 }
 
-func initializeLRPStopper(guid string, bbs Bbs.RepBBS, executorClient executor.Client, logger lager.Logger) lrp_stopper.LRPStopper {
-	return lrp_stopper.New(guid, bbs, executorClient, logger)
+func initializeLRPStopper(guid string, executorClient executor.Client, logger lager.Logger) lrp_stopper.LRPStopper {
+	return lrp_stopper.New(guid, executorClient, logger)
 }
 
 func initializeServer(

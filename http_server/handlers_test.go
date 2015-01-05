@@ -2,10 +2,10 @@ package http_server_test
 
 import (
 	"bytes"
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 
 	"github.com/cloudfoundry-incubator/rep/http_server"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper/fake_lrp_stopper"
@@ -56,10 +56,10 @@ var _ = Describe("Handlers", func() {
 				}
 				Ω(actualLRP.Validate()).ShouldNot(HaveOccurred())
 
-				payload, err := json.Marshal(actualLRP)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				req.Body = ioutil.NopCloser(bytes.NewBuffer(payload))
+				values := make(url.Values)
+				values.Set(":process_guid", actualLRP.ProcessGuid)
+				values.Set(":instance_guid", actualLRP.InstanceGuid)
+				req.URL.RawQuery = values.Encode()
 			})
 
 			It("responds with 202 Accepted", func() {
@@ -69,7 +69,9 @@ var _ = Describe("Handlers", func() {
 			It("eventually stops the instance", func() {
 				Eventually(fakeStopper.StopInstanceCallCount).Should(Equal(1))
 
-				Ω(fakeStopper.StopInstanceArgsForCall(0)).Should(Equal(actualLRP))
+				processGuid, instanceGuid := fakeStopper.StopInstanceArgsForCall(0)
+				Ω(processGuid).Should(Equal(actualLRP.ProcessGuid))
+				Ω(instanceGuid).Should(Equal(actualLRP.InstanceGuid))
 			})
 		})
 

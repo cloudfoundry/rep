@@ -377,7 +377,7 @@ var _ = Describe("The Rep", func() {
 		})
 
 		It("should stop the container", func() {
-			err := bbs.RequestStopLRPInstance(runningLRP)
+			err := bbs.RequestStopLRPInstance(runningLRP.ActualLRPKey, runningLRP.ActualLRPContainerKey)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			findStopRequest := func() bool {

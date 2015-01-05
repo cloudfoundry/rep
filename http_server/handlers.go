@@ -1,12 +1,11 @@
 package http_server
 
 import (
-	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -23,25 +22,24 @@ func NewStopLRPInstanceHandler(logger lager.Logger, stopper lrp_stopper.LRPStopp
 }
 
 func (h StopLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	hLog := h.logger.Session("stop-lrp-instance")
+	processGuid := r.FormValue(":process_guid")
+	instanceGuid := r.FormValue(":instance_guid")
 
-	var actualLRP models.ActualLRP
-	err := json.NewDecoder(r.Body).Decode(&actualLRP)
-	if err != nil {
-		hLog.Error("malformed-request", err)
+	hLog := h.logger.Session("stop-lrp-instance", lager.Data{
+		"process-guid":  processGuid,
+		"instance-guid": instanceGuid,
+	})
+
+	if processGuid == "" {
+		err := errors.New("process_guid missing from request")
+		hLog.Error("missing-process-guid", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	hLog = h.logger.WithData(lager.Data{
-		"process-guid":  actualLRP.ProcessGuid,
-		"instance-guid": actualLRP.InstanceGuid,
-		"index":         actualLRP.Index,
-	})
-
-	err = actualLRP.Validate()
-	if err != nil {
-		hLog.Error("invalid-lrp", err)
+	if instanceGuid == "" {
+		err := errors.New("instance_guid missing from request")
+		hLog.Error("missing-instance-guid", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -49,7 +47,7 @@ func (h StopLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusAccepted)
 
 	go func() {
-		err = h.stopper.StopInstance(actualLRP)
+		err := h.stopper.StopInstance(processGuid, instanceGuid)
 		if err == bbserrors.ErrStoreComparisonFailed {
 			return
 		}

@@ -2,51 +2,41 @@ package lrp_stopper
 
 import (
 	"github.com/cloudfoundry-incubator/executor"
-	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 )
 
+//go:generate counterfeiter -o fake_lrp_stopper/fake_lrpstopper.go . LRPStopper
 type LRPStopper interface {
-	StopInstance(models.ActualLRP) error
+	StopInstance(processGuid, instanceGuid string) error
 }
 
 type lrpStopper struct {
 	guid   string
-	bbs    Bbs.RepBBS
 	client executor.Client
 	logger lager.Logger
 }
 
-func New(guid string, bbs Bbs.RepBBS, client executor.Client, logger lager.Logger) LRPStopper {
+func New(guid string, client executor.Client, logger lager.Logger) LRPStopper {
 	return &lrpStopper{
 		guid:   guid,
-		bbs:    bbs,
 		client: client,
 		logger: logger.Session("lrp-stopper"),
 	}
 }
 
-func (stopper *lrpStopper) StopInstance(lrp models.ActualLRP) error {
+func (stopper *lrpStopper) StopInstance(processGuid, instanceGuid string) error {
 	stopLog := stopper.logger.Session("stop", lager.Data{
-		"lrp": lrp,
+		"process-guid":  processGuid,
+		"instance-guid": instanceGuid,
 	})
 
-	stopLog.Info("received")
+	stopLog.Info("stopping")
 
-	containerId := lrp.InstanceGuid
-
-	stopLog.Info("stopping", lager.Data{
-		"container": containerId,
-	})
-
-	err := stopper.client.StopContainer(containerId)
+	err := stopper.client.StopContainer(instanceGuid)
 	switch err {
 	case nil:
 	case executor.ErrContainerNotFound:
-		stopLog.Info("container-already-deleted", lager.Data{
-			"container-id": containerId,
-		})
+		stopLog.Info("container-already-deleted")
 	}
 
 	return nil
