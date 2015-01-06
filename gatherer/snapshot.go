@@ -7,6 +7,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/pivotal-golang/lager"
 )
 
 //go:generate counterfeiter -o fake_gatherer/fake_snapshot.go . Snapshot
@@ -88,7 +89,7 @@ func (s *snapshot) LookupTask(guid string) (models.Task, bool, error) {
 	return task, true, nil
 }
 
-func NewSnapshot(cellID string, bbs bbs.RepBBS, executorClient executor.Client) (Snapshot, error) {
+func NewSnapshot(logger lager.Logger, cellID string, bbs bbs.RepBBS, executorClient executor.Client) (Snapshot, error) {
 	snap := &snapshot{
 		bbs:    bbs,
 		cellID: cellID,
@@ -116,7 +117,7 @@ func NewSnapshot(cellID string, bbs bbs.RepBBS, executorClient executor.Client) 
 	}()
 
 	go func() {
-		tasks, err := bbs.TasksByCellID(cellID)
+		tasks, err := bbs.TasksByCellID(logger, cellID)
 		if err != nil {
 			err = fmt.Errorf("snapshot-TasksByCellID failed: %s", err.Error())
 		}

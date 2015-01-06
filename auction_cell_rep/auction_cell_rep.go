@@ -249,7 +249,7 @@ func (a *AuctionCellRep) startTask(task models.Task, logger lager.Logger) error 
 
 	go func() {
 		logger.Info("starting-task")
-		err = a.bbs.StartTask(task.TaskGuid, a.cellID)
+		err = a.bbs.StartTask(logger, task.TaskGuid, a.cellID)
 		if err != nil {
 			logger.Error("failed-to-mark-task-started", err)
 			a.client.DeleteContainer(task.TaskGuid)
@@ -296,7 +296,7 @@ func (a *AuctionCellRep) fetchResourcesVia(fetcher func() (executor.ExecutorReso
 
 func (a *AuctionCellRep) markTaskAsFailed(logger lager.Logger, taskGuid string, err error) {
 	logger.Info("complete-task")
-	err = a.bbs.CompleteTask(taskGuid, a.cellID, true, "failed to run container - "+err.Error(), "")
+	err = a.bbs.CompleteTask(logger, taskGuid, a.cellID, true, "failed to run container - "+err.Error(), "")
 	if err != nil {
 		logger.Error("failed-to-complete-task", err)
 	}

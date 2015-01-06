@@ -97,7 +97,7 @@ var _ = Describe("Task Processor", func() {
 					It("completes the task successfully with the result", func() {
 						Ω(bbs.CompleteTaskCallCount()).Should(Equal(1))
 
-						taskGuid, cellID, failed, failureReason, result := bbs.CompleteTaskArgsForCall(0)
+						_, taskGuid, cellID, failed, failureReason, result := bbs.CompleteTaskArgsForCall(0)
 						Ω(taskGuid).Should(Equal("completed-guid"))
 						Ω(cellID).Should(Equal(expectedCellID))
 						Ω(failed).Should(BeFalse())
@@ -116,7 +116,7 @@ var _ = Describe("Task Processor", func() {
 					It("completes the task with failure", func() {
 						Ω(bbs.CompleteTaskCallCount()).Should(Equal(1))
 
-						taskGuid, cellID, failed, failureReason, result := bbs.CompleteTaskArgsForCall(0)
+						_, taskGuid, cellID, failed, failureReason, result := bbs.CompleteTaskArgsForCall(0)
 						Ω(taskGuid).Should(Equal("completed-guid"))
 						Ω(cellID).Should(Equal(expectedCellID))
 						Ω(failed).Should(BeTrue())
@@ -138,7 +138,7 @@ var _ = Describe("Task Processor", func() {
 			It("completes the task with failure", func() {
 				Ω(bbs.CompleteTaskCallCount()).Should(Equal(1))
 
-				taskGuid, cellID, failed, failureReason, result := bbs.CompleteTaskArgsForCall(0)
+				_, taskGuid, cellID, failed, failureReason, result := bbs.CompleteTaskArgsForCall(0)
 				Ω(taskGuid).Should(Equal("completed-guid"))
 				Ω(cellID).Should(Equal(expectedCellID))
 				Ω(failed).Should(BeTrue())

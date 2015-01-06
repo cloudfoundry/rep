@@ -59,7 +59,7 @@ func (g *gatherer) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 		case <-ticker.C():
 			g.logger.Info("gatherer-entering-loop")
 
-			snapshot, err := NewSnapshot(g.cellID, g.bbs, g.executorClient)
+			snapshot, err := NewSnapshot(g.logger, g.cellID, g.bbs, g.executorClient)
 			if err != nil {
 				g.logger.Error("failed-to-gather-snapshot", err)
 				break

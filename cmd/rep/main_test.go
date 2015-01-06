@@ -114,7 +114,7 @@ var _ = Describe("The Rep", func() {
 				ghttp.RespondWith(http.StatusCreated, `{"executor_guid":"executor-guid","guid":"guid-123"}`)),
 			)
 
-			bbs.DesireTask(models.Task{
+			bbs.DesireTask(logger, models.Task{
 				TaskGuid: "the-task-guid",
 				Stack:    "the-stack",
 				Action: &models.RunAction{
@@ -248,7 +248,7 @@ var _ = Describe("The Rep", func() {
 							Path: "date",
 						},
 					}
-					err := bbs.DesireTask(task)
+					err := bbs.DesireTask(logger, task)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					fakeExecutor.RouteToHandler("POST", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, executor.Container{}))
@@ -262,8 +262,8 @@ var _ = Describe("The Rep", func() {
 
 					client := auction_http_client.New(http.DefaultClient, cells[0].CellID, cells[0].RepAddress, lagertest.NewTestLogger("auction-client"))
 
-					Ω(bbs.PendingTasks()).Should(HaveLen(1))
-					Ω(bbs.RunningTasks()).Should(BeEmpty())
+					Ω(bbs.PendingTasks(logger)).Should(HaveLen(1))
+					Ω(bbs.RunningTasks(logger)).Should(BeEmpty())
 
 					works := auctiontypes.Work{
 						Tasks: []models.Task{task},
@@ -272,9 +272,13 @@ var _ = Describe("The Rep", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(failedWorks.Tasks).Should(BeEmpty())
 
-					Eventually(bbs.PendingTasks).Should(BeEmpty())
-					Eventually(bbs.RunningTasks).Should(HaveLen(1))
-					runningTasks, err := bbs.RunningTasks()
+					Eventually(func() ([]models.Task, error) {
+						return bbs.PendingTasks(logger)
+					}).Should(BeEmpty())
+					Eventually(func() ([]models.Task, error) {
+						return bbs.RunningTasks(logger)
+					}).Should(HaveLen(1))
+					runningTasks, err := bbs.RunningTasks(logger)
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(runningTasks[0].TaskGuid).Should(Equal("the-task-guid"))
 					Ω(runningTasks[0].State).Should(Equal(models.TaskStateRunning))
@@ -303,17 +307,19 @@ var _ = Describe("The Rep", func() {
 				Stack: "the-stack",
 			}
 
-			err := bbs.DesireTask(task)
+			err := bbs.DesireTask(logger, task)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.StartTask(task.TaskGuid, cellID)
+			err = bbs.StartTask(logger, task.TaskGuid, cellID)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("eventually marks tasks with no corresponding container as failed", func() {
-			Eventually(bbs.CompletedTasks, 5*pollingInterval).Should(HaveLen(1))
+			Eventually(func() ([]models.Task, error) {
+				return bbs.CompletedTasks(logger)
+			}, 5*pollingInterval).Should(HaveLen(1))
 
-			completedTasks, err := bbs.CompletedTasks()
+			completedTasks, err := bbs.CompletedTasks(logger)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(completedTasks[0].TaskGuid).Should(Equal(task.TaskGuid))

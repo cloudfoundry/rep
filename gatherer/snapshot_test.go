@@ -12,6 +12,8 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-golang/lager"
+	"github.com/pivotal-golang/lager/lagertest"
 )
 
 var _ = Describe("Snapshot", func() {
@@ -28,10 +30,12 @@ var _ = Describe("Snapshot", func() {
 
 	var lrpTags = executor.Tags{rep.LifecycleTag: rep.LRPLifecycle}
 	var taskTags = executor.Tags{rep.LifecycleTag: rep.TaskLifecycle}
+	var logger lager.Logger
 
 	BeforeEach(func() {
 		bbs = new(fake_bbs.FakeRepBBS)
 		executorClient = new(fakes.FakeClient)
+		logger = lagertest.NewTestLogger("test")
 
 		activeContainers = []executor.Container{
 			{Guid: "first-completed-task-guid", State: executor.StateCompleted, Tags: taskTags},
@@ -78,7 +82,7 @@ var _ = Describe("Snapshot", func() {
 	})
 
 	JustBeforeEach(func() {
-		snapshot, snapshoterr = NewSnapshot(cellID, bbs, executorClient)
+		snapshot, snapshoterr = NewSnapshot(logger, cellID, bbs, executorClient)
 	})
 
 	Describe("ListContainers", func() {

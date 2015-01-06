@@ -63,7 +63,7 @@ func (p *taskProcessor) Process(container executor.Container) {
 		}
 	}
 
-	err = p.bbs.CompleteTask(taskGuid, p.cellID, taskFailed, failureReason, taskResult)
+	err = p.bbs.CompleteTask(pLog, taskGuid, p.cellID, taskFailed, failureReason, taskResult)
 	if err != nil {
 		pLog.Error("failed-to-mark-complete", err)
 	}

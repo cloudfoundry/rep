@@ -430,7 +430,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 					Eventually(bbs.StartTaskCallCount).Should(Equal(1))
 
-					actualTaskGuid, actualCellID := bbs.StartTaskArgsForCall(0)
+					_, actualTaskGuid, actualCellID := bbs.StartTaskArgsForCall(0)
 					Ω(actualTaskGuid).Should(Equal(task.TaskGuid))
 					Ω(actualCellID).Should(Equal("some-cell-id"))
 				})
@@ -439,7 +439,7 @@ var _ = Describe("AuctionCellRep", func() {
 					triggerStartChan := make(chan struct{})
 					triggerStartCalled := make(chan struct{})
 
-					bbs.StartTaskStub = func(_, _ string) error {
+					bbs.StartTaskStub = func(_ lager.Logger, _ string, _ string) error {
 						<-triggerStartChan
 						close(triggerStartCalled)
 						return nil
@@ -504,7 +504,7 @@ var _ = Describe("AuctionCellRep", func() {
 							cellRep.Perform(work)
 
 							Eventually(bbs.CompleteTaskCallCount).Should(Equal(1))
-							actualTaskGuid, actualCellID, actualFailed, actualFailureReason, _ := bbs.CompleteTaskArgsForCall(0)
+							_, actualTaskGuid, actualCellID, actualFailed, actualFailureReason, _ := bbs.CompleteTaskArgsForCall(0)
 							Ω(actualTaskGuid).Should(Equal(task.TaskGuid))
 							Ω(actualCellID).Should(Equal(expectedCellID))
 							Ω(actualFailed).Should(BeTrue())

@@ -49,7 +49,7 @@ var _ = Describe("TaskCompleter", func() {
 				It("marks those tasks as complete & failed", func() {
 					Eventually(bbs.CompleteTaskCallCount()).Should(Equal(1))
 
-					taskGuid, cellID, failed, failureReason, _ := bbs.CompleteTaskArgsForCall(0)
+					_, taskGuid, cellID, failed, failureReason, _ := bbs.CompleteTaskArgsForCall(0)
 					Ω(taskGuid).Should(Equal("task-guid-1"))
 					Ω(cellID).Should(Equal("some-cell-id"))
 					Ω(failed).Should(BeTrue())
