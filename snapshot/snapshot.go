@@ -44,8 +44,6 @@ func NewOperation(logger lager.Logger, snap Snapshot, processor SnapshotProcesso
 	}
 }
 
-type Album map[string]operationq.Operation
-
 type LRP struct {
 	models.ActualLRPKey
 	models.ActualLRPContainerKey

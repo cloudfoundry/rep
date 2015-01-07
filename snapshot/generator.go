@@ -90,7 +90,7 @@ func (g *generator) BatchOperations(logger lager.Logger) ([]operationq.Operation
 		return nil, err
 	}
 
-	album := make(Album)
+	album := make(map[string]operationq.Operation)
 
 	// create snapshots for processes with containers
 	for guid, container := range containers {
