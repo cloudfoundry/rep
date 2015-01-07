@@ -178,38 +178,8 @@ func (a *AuctionCellRep) startLRP(lrpStart auctiontypes.LRPAuction, logger lager
 		logger.Error("failed-reserving", err)
 		return err
 	}
+
 	logger.Info("succeeded-reserving")
-
-	go func() {
-		lrpKey := models.NewActualLRPKey(
-			lrpStart.DesiredLRP.ProcessGuid,
-			lrpStart.Index,
-			lrpStart.DesiredLRP.Domain,
-		)
-		lrpContainerKey := models.NewActualLRPContainerKey(
-			containerGuidString,
-			a.cellID,
-		)
-
-		logger.Info("announcing-to-bbs")
-		claimErr := a.bbs.ClaimActualLRP(lrpKey, lrpContainerKey, logger)
-		if claimErr != nil {
-			logger.Error("failed-announcing-to-bbs", claimErr)
-			a.client.DeleteContainer(containerGuidString)
-			return
-		}
-		logger.Info("succeeded-announcing-to-bbs")
-
-		logger.Info("running-container")
-		runErr := a.client.RunContainer(containerGuidString)
-		if runErr != nil {
-			logger.Error("failed-running-container", runErr)
-			a.client.DeleteContainer(containerGuidString)
-			a.bbs.RemoveActualLRP(lrpKey, lrpContainerKey, logger)
-			return
-		}
-		logger.Info("succeeded-running-container")
-	}()
 
 	return nil
 }

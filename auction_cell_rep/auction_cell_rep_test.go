@@ -240,111 +240,10 @@ var _ = Describe("AuctionCellRep", func() {
 					client.AllocateContainerReturns(executor.Container{}, nil)
 				})
 
-				It("tells the BBS it has claimed the lrp", func() {
-					_, err := cellRep.Perform(work)
-					Ω(err).ShouldNot(HaveOccurred())
-
-					Eventually(bbs.ClaimActualLRPCallCount).Should(Equal(1))
-
-					claimingLRPKey, claimingLRPContainerKey, _ := bbs.ClaimActualLRPArgsForCall(0)
-					Ω(claimingLRPKey).Should(Equal(expectedLRPKey))
-					Ω(claimingLRPContainerKey).Should(Equal(expectedLRPContainerKey))
-				})
-
-				It("responds successfully before claiming the lrp in the BBS", func() {
-					triggerClaimChan := make(chan struct{})
-					triggerClaimCalled := make(chan struct{})
-
-					bbs.ClaimActualLRPStub = func(_ models.ActualLRPKey, _ models.ActualLRPContainerKey, _ lager.Logger) error {
-						<-triggerClaimChan
-						close(triggerClaimCalled)
-						return nil
-					}
-
+				It("responds successfully", func() {
 					failedWork, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(failedWork).Should(BeZero())
-
-					Consistently(triggerClaimCalled).ShouldNot(BeClosed())
-					close(triggerClaimChan)
-					Eventually(triggerClaimCalled).Should(BeClosed())
-				})
-
-				Context("when reporting to BBS succeeds", func() {
-					BeforeEach(func() {
-						bbs.ClaimActualLRPReturns(nil)
-					})
-
-					It("runs the lrp", func() {
-						_, err := cellRep.Perform(work)
-						Ω(err).ShouldNot(HaveOccurred())
-
-						Eventually(client.RunContainerCallCount).Should(Equal(1))
-						Ω(client.RunContainerArgsForCall(0)).Should(Equal(expectedGuid))
-					})
-
-					Context("when running the lrp fails", func() {
-						BeforeEach(func() {
-							client.RunContainerReturns(commonErr)
-						})
-
-						It("responds successfully", func() {
-							failedWork, err := cellRep.Perform(work)
-							Ω(err).ShouldNot(HaveOccurred())
-							Ω(failedWork).Should(BeZero())
-						})
-
-						It("deletes the container", func() {
-							cellRep.Perform(work)
-
-							Eventually(client.DeleteContainerCallCount).Should(Equal(1))
-							Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(expectedGuid))
-						})
-
-						It("removes the Actual from the BBS", func() {
-							cellRep.Perform(work)
-
-							Eventually(bbs.RemoveActualLRPCallCount).Should(Equal(1))
-							removingLRPKey, removingLRPContainerKey, _ := bbs.RemoveActualLRPArgsForCall(0)
-							Ω(removingLRPKey).Should(Equal(expectedLRPKey))
-							Ω(removingLRPContainerKey).Should(Equal(expectedLRPContainerKey))
-						})
-					})
-
-					Context("when running the lrp succeeds", func() {
-						BeforeEach(func() {
-							client.RunContainerReturns(nil)
-						})
-
-						It("responds successfully", func() {
-							failedWork, err := cellRep.Perform(work)
-							Ω(err).ShouldNot(HaveOccurred())
-							Ω(failedWork).Should(BeZero())
-						})
-					})
-				})
-
-				Context("when reporting to BBS fails", func() {
-					BeforeEach(func() {
-						bbs.ClaimActualLRPReturns(commonErr)
-					})
-
-					It("responds successfully", func() {
-						failedWork, err := cellRep.Perform(work)
-						Ω(err).ShouldNot(HaveOccurred())
-						Ω(failedWork).Should(BeZero())
-					})
-
-					It("does not try to run the lrp", func() {
-						cellRep.Perform(work)
-						Consistently(client.RunContainerCallCount).Should(Equal(0))
-					})
-
-					It("deletes the container", func() {
-						cellRep.Perform(work)
-						Eventually(client.DeleteContainerCallCount).Should(Equal(1))
-						Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(expectedGuid))
-					})
 				})
 			})
 
@@ -357,18 +256,6 @@ var _ = Describe("AuctionCellRep", func() {
 					failedWork, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(failedWork.LRPs).Should(ConsistOf(lrpAuction))
-				})
-
-				It("does not tell the BBS it has claimed the lrp", func() {
-					cellRep.Perform(work)
-
-					Consistently(bbs.ClaimActualLRPCallCount).Should(Equal(0))
-				})
-
-				It("does not try to run the lrp", func() {
-					cellRep.Perform(work)
-
-					Consistently(client.RunContainerCallCount).Should(Equal(0))
 				})
 			})
 		})

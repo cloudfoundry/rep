@@ -3,7 +3,6 @@ package main_test
 import (
 	"fmt"
 	"net/http"
-	"regexp"
 	"time"
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
@@ -172,6 +171,7 @@ var _ = Describe("The Rep", func() {
 			Describe("starting LRPs", func() {
 				var desiredLRP models.DesiredLRP
 				var index int
+				var gotReservation chan struct{}
 
 				BeforeEach(func() {
 					index = 1
@@ -184,37 +184,27 @@ var _ = Describe("The Rep", func() {
 						Instances:   index + 1,
 					}
 
+					gotReservation = make(chan struct{})
+
 					err := bbs.CreateActualLRP(desiredLRP, index, logger)
 					Ω(err).ShouldNot(HaveOccurred())
 
-					fakeExecutor.RouteToHandler("POST", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, executor.Container{}))
-					fakeExecutor.RouteToHandler("POST", regexp.MustCompile("/containers/[^/]+/run"), ghttp.RespondWith(http.StatusOK, ""))
+					fakeExecutor.RouteToHandler("POST", "/containers",
+						ghttp.CombineHandlers(
+							ghttp.RespondWithJSONEncoded(http.StatusOK, executor.Container{}),
+							func(w http.ResponseWriter, r *http.Request) {
+								close(gotReservation)
+							},
+						),
+					)
 				})
 
-				var claimedActualLRPs = func() ([]models.ActualLRP, error) {
-					actualLRPs, err := bbs.ActualLRPs()
-					if err != nil {
-						return []models.ActualLRP{}, err
-					}
-
-					result := []models.ActualLRP{}
-					for _, actualLRP := range actualLRPs {
-						if actualLRP.State == models.ActualLRPStateClaimed {
-							result = append(result, actualLRP)
-						}
-					}
-
-					return result, nil
-				}
-
-				It("makes a request to executor to allocate and run the container, and marks the state as claimed in the BBS", func() {
+				It("makes a request to executor to allocate the container", func() {
 					Eventually(bbs.Cells).Should(HaveLen(1))
 					cells, err := bbs.Cells()
 					Ω(err).ShouldNot(HaveOccurred())
 
 					client := auction_http_client.New(http.DefaultClient, cells[0].CellID, cells[0].RepAddress, lagertest.NewTestLogger("auction-client"))
-
-					Ω(bbs.RunningActualLRPs()).Should(BeEmpty())
 
 					works := auctiontypes.Work{
 						LRPs: []auctiontypes.LRPAuction{{
@@ -222,15 +212,12 @@ var _ = Describe("The Rep", func() {
 							Index:      index,
 						}},
 					}
+
 					failedWorks, err := client.Perform(works)
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(failedWorks.LRPs).Should(BeEmpty())
 
-					Eventually(claimedActualLRPs).Should(HaveLen(1))
-					actualLRPs, err := claimedActualLRPs()
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(actualLRPs[0].ProcessGuid).Should(Equal(desiredLRP.ProcessGuid))
-					Ω(actualLRPs[0].State).Should(Equal(models.ActualLRPStateClaimed))
+					Eventually(gotReservation).Should(BeClosed())
 				})
 			})
 
