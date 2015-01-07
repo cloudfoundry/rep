@@ -381,6 +381,8 @@ var _ = Describe("AuctionCellRep", func() {
 					Stack:    "lucid64",
 					DiskMB:   1024,
 					MemoryMB: 2048,
+					RootFSPath: "the-root-fs-path",
+					CPUWeight: 10,
 					Action: &models.RunAction{
 						Path: "date",
 					},
@@ -416,6 +418,8 @@ var _ = Describe("AuctionCellRep", func() {
 
 					MemoryMB: task.MemoryMB,
 					DiskMB:   task.DiskMB,
+					CPUWeight: task.CPUWeight,
+					RootFSPath: task.RootFSPath,
 				}))
 			})
 
