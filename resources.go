@@ -50,7 +50,6 @@ func ActualLRPKeyFromContainer(container executor.Container) (models.ActualLRPKe
 }
 
 func ActualLRPContainerKeyFromContainer(container executor.Container, cellID string) (models.ActualLRPContainerKey, error) {
-
 	actualLRPContainerKey := models.NewActualLRPContainerKey(
 		container.Guid,
 		cellID,

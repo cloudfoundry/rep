@@ -1,4 +1,4 @@
-package reaper_test
+package snapshot_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestReaper(t *testing.T) {
+func TestSnapshot(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Reaper Suite")
+	RunSpecs(t, "Snapshot Suite")
 }

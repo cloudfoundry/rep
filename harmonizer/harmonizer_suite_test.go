@@ -1,4 +1,4 @@
-package harvester_test
+package harmonizer_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestHarvester(t *testing.T) {
+func TestHarmonizer(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Harvester Suite")
+	RunSpecs(t, "Harmonizer Suite")
 }

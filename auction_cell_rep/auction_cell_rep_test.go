@@ -447,10 +447,10 @@ var _ = Describe("AuctionCellRep", func() {
 					triggerStartChan := make(chan struct{})
 					triggerStartCalled := make(chan struct{})
 
-					bbs.StartTaskStub = func(_ lager.Logger, _ string, _ string) error {
+					bbs.StartTaskStub = func(_ lager.Logger, _ string, _ string) (bool, error) {
 						<-triggerStartChan
 						close(triggerStartCalled)
-						return nil
+						return true, nil
 					}
 
 					failedWork, err := cellRep.Perform(work)
@@ -464,7 +464,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 				Context("when it succeeds marking the task as starting in the BBS", func() {
 					BeforeEach(func() {
-						bbs.StartTaskReturns(nil)
+						bbs.StartTaskReturns(true, nil)
 					})
 
 					It("runs the task", func() {
@@ -523,7 +523,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 				Context("when it fails to mark it starting in the BBS", func() {
 					BeforeEach(func() {
-						bbs.StartTaskReturns(commonErr)
+						bbs.StartTaskReturns(false, commonErr)
 					})
 
 					It("responds successfully", func() {

@@ -310,7 +310,7 @@ var _ = Describe("The Rep", func() {
 			err := bbs.DesireTask(logger, task)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.StartTask(logger, task.TaskGuid, cellID)
+			_, err = bbs.StartTask(logger, task.TaskGuid, cellID)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 

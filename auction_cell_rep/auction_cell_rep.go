@@ -251,7 +251,7 @@ func (a *AuctionCellRep) startTask(task models.Task, logger lager.Logger) error 
 
 	go func() {
 		logger.Info("starting-task")
-		err = a.bbs.StartTask(logger, task.TaskGuid, a.cellID)
+		_, err = a.bbs.StartTask(logger, task.TaskGuid, a.cellID)
 		if err != nil {
 			logger.Error("failed-to-mark-task-started", err)
 			a.client.DeleteContainer(task.TaskGuid)

@@ -16,12 +16,11 @@ import (
 	"github.com/cloudfoundry-incubator/executor"
 	executorclient "github.com/cloudfoundry-incubator/executor/http/client"
 	"github.com/cloudfoundry-incubator/rep/auction_cell_rep"
-	"github.com/cloudfoundry-incubator/rep/gatherer"
-	"github.com/cloudfoundry-incubator/rep/harvester"
+	"github.com/cloudfoundry-incubator/rep/harmonizer"
 	repserver "github.com/cloudfoundry-incubator/rep/http_server"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
-	"github.com/cloudfoundry-incubator/rep/reaper"
+	"github.com/cloudfoundry-incubator/rep/snapshot"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -33,6 +32,7 @@ import (
 	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/localip"
+	"github.com/pivotal-golang/operationq"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
@@ -106,32 +106,21 @@ func main() {
 	}
 
 	logger := cf_lager.New("rep")
+
 	initializeDropsonde(logger)
+
 	bbs := initializeRepBBS(logger)
-
 	executorClient := executorclient.New(http.DefaultClient, *executorURL)
-	lrpStopper := initializeLRPStopper(*cellID, executorClient, logger)
+	queue := operationq.NewQueue()
 
-	taskCompleter := reaper.NewTaskCompleter(bbs, logger)
-	taskContainerReaper := reaper.NewTaskContainerReaper(executorClient, logger)
-	actualLRPReaper := reaper.NewActualLRPReaper(bbs, logger)
-
-	bulkProcessor, eventConsumer := initializeHarvesters(logger, *pollingInterval, executorClient, bbs)
-
-	gatherer := gatherer.NewGatherer(*pollingInterval, timeprovider.NewTimeProvider(), []gatherer.Processor{
-		bulkProcessor,
-		taskCompleter,
-		taskContainerReaper,
-		actualLRPReaper,
-	}, *cellID, bbs, executorClient, logger)
-
-	server, address := initializeServer(lrpStopper, bbs, executorClient, logger)
+	server, address := initializeServer(bbs, executorClient, logger)
+	generator := initializeGenerator(bbs, executorClient, logger)
 
 	members := grouper.Members{
 		{"server", server},
 		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
-		{"gatherer", gatherer},
-		{"event-consumer", eventConsumer},
+		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, timeprovider.NewTimeProvider(), generator, queue)},
+		{"event-consumer", harmonizer.NewEventConsumer(logger, executorClient, generator, queue)},
 	}
 
 	if dbgAddr := cf_debug_server.DebugAddress(flag.CommandLine); dbgAddr != "" {
@@ -143,7 +132,8 @@ func main() {
 	group := grouper.NewOrdered(os.Interrupt, members)
 
 	monitor := ifrit.Invoke(sigmon.New(group))
-	logger.Info("started")
+
+	logger.Info("started", lager.Data{"cell-id": *cellID})
 
 	<-monitor.Wait()
 	logger.Info("shutting-down")
@@ -156,44 +146,12 @@ func initializeDropsonde(logger lager.Logger) {
 	}
 }
 
-func initializeHarvesters(
-	logger lager.Logger,
-	pollInterval time.Duration,
-	executorClient executor.Client,
-	bbs Bbs.RepBBS,
-) (gatherer.Processor, ifrit.Runner) {
-	taskProcessor := harvester.NewTaskProcessor(
-		logger,
-		*cellID,
-		bbs,
-		executorClient,
-	)
-
-	lrpProcessor := harvester.NewLRPProcessor(
-		*cellID,
-		logger,
-		bbs,
-		executorClient,
-	)
-
-	containerProcessor := harvester.NewContainerProcessor(
-		logger,
-		taskProcessor,
-		lrpProcessor,
-	)
-
-	bulkProcessor := harvester.NewBulkContainerProcessor(
-		containerProcessor,
-		logger,
-	)
-
-	eventConsumer := harvester.NewEventConsumer(
-		logger,
-		executorClient,
-		containerProcessor,
-	)
-
-	return bulkProcessor, eventConsumer
+func initializeGenerator(bbs Bbs.RepBBS, executorClient executor.Client, logger lager.Logger) snapshot.Generator {
+	containerDelegate := snapshot.NewContainerDelegate(executorClient)
+	lrpProcessor := snapshot.NewLRPProcessor(bbs, containerDelegate)
+	taskProcessor := snapshot.NewTaskProcessor(bbs, containerDelegate, *cellID)
+	snapshotProcessor := snapshot.NewSnapshotProcessor(lrpProcessor, taskProcessor)
+	return snapshot.NewGenerator(*cellID, bbs, executorClient, snapshotProcessor)
 }
 
 func initializeCellHeartbeat(address string, bbs Bbs.RepBBS, executorClient executor.Client, logger lager.Logger) ifrit.Runner {
@@ -227,15 +185,16 @@ func initializeLRPStopper(guid string, executorClient executor.Client, logger la
 }
 
 func initializeServer(
-	stopper lrp_stopper.LRPStopper,
 	bbs Bbs.RepBBS,
 	executorClient executor.Client,
 	logger lager.Logger,
 ) (ifrit.Runner, string) {
+	lrpStopper := initializeLRPStopper(*cellID, executorClient, logger)
+
 	auctionCellRep := auction_cell_rep.New(*cellID, *stack, *zone, generateGuid, bbs, executorClient, logger)
 	handlers := auction_http_handlers.New(auctionCellRep, logger)
 
-	handlers[bbsroutes.StopLRPInstance] = repserver.NewStopLRPInstanceHandler(logger, stopper)
+	handlers[bbsroutes.StopLRPInstance] = repserver.NewStopLRPInstanceHandler(logger, lrpStopper)
 	routes := append(auctionroutes.Routes, bbsroutes.StopLRPRoutes...)
 
 	router, err := rata.NewRouter(routes, handlers)
