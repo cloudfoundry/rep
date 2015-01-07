@@ -154,6 +154,7 @@ func (a *AuctionCellRep) startLRP(lrpStart auctiontypes.LRPAuction, logger lager
 		DiskMB:       lrpStart.DesiredLRP.DiskMB,
 		CPUWeight:    lrpStart.DesiredLRP.CPUWeight,
 		RootFSPath:   lrpStart.DesiredLRP.RootFSPath,
+		Privileged:   lrpStart.DesiredLRP.Privileged,
 		Ports:        a.convertPortMappings(lrpStart.DesiredLRP.Ports),
 		StartTimeout: lrpStart.DesiredLRP.StartTimeout,
 
@@ -232,6 +233,7 @@ func (a *AuctionCellRep) startTask(task models.Task, logger lager.Logger) error 
 		MemoryMB:   task.MemoryMB,
 		CPUWeight:  task.CPUWeight,
 		RootFSPath: task.RootFSPath,
+		Privileged: task.Privileged,
 		Log: executor.LogConfig{
 			Guid:       task.LogGuid,
 			SourceName: task.LogSource,

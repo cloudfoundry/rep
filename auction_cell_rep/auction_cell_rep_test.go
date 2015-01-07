@@ -175,6 +175,7 @@ var _ = Describe("AuctionCellRep", func() {
 						DiskMB:      1024,
 						MemoryMB:    2048,
 						CPUWeight:   42,
+						Privileged:  true,
 						EnvironmentVariables: []models.EnvironmentVariable{
 							{Name: "var1", Value: "val1"},
 							{Name: "var2", Value: "val2"},
@@ -217,6 +218,7 @@ var _ = Describe("AuctionCellRep", func() {
 					DiskMB:     lrpAuction.DesiredLRP.DiskMB,
 					CPUWeight:  lrpAuction.DesiredLRP.CPUWeight,
 					RootFSPath: "some-root-fs",
+					Privileged: lrpAuction.DesiredLRP.Privileged,
 					Ports:      []executor.PortMapping{{ContainerPort: 8080}},
 					Log:        executor.LogConfig{Guid: "log-guid", Index: &expectedIndex},
 
@@ -376,13 +378,14 @@ var _ = Describe("AuctionCellRep", func() {
 
 			BeforeEach(func() {
 				task = models.Task{
-					Domain:   "tests",
-					TaskGuid: "the-task-guid",
-					Stack:    "lucid64",
-					DiskMB:   1024,
-					MemoryMB: 2048,
+					Domain:     "tests",
+					TaskGuid:   "the-task-guid",
+					Stack:      "lucid64",
+					DiskMB:     1024,
+					MemoryMB:   2048,
 					RootFSPath: "the-root-fs-path",
-					CPUWeight: 10,
+					Privileged: true,
+					CPUWeight:  10,
 					Action: &models.RunAction{
 						Path: "date",
 					},
@@ -416,10 +419,11 @@ var _ = Describe("AuctionCellRep", func() {
 						{Name: "FOO", Value: "BAR"},
 					},
 
-					MemoryMB: task.MemoryMB,
-					DiskMB:   task.DiskMB,
-					CPUWeight: task.CPUWeight,
+					MemoryMB:   task.MemoryMB,
+					DiskMB:     task.DiskMB,
+					CPUWeight:  task.CPUWeight,
 					RootFSPath: task.RootFSPath,
+					Privileged: task.Privileged,
 				}))
 			})
 
