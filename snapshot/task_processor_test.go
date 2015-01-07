@@ -119,6 +119,8 @@ var _ = Describe("Task <-> Container table", func() {
 			})
 
 			itCompletesTheTaskWithFailure("failed to fetch result")(container, task, logger)
+
+			itDeletesTheContainer(container, task, logger)
 		})
 	}
 

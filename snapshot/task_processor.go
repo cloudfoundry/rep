@@ -86,13 +86,16 @@ func (p *taskProcessor) processCompletedContainer(logger lager.Logger, snap *Tas
 	} else {
 		logger.Info("completing-task")
 
-		result, err := p.containerDelegate.FetchContainerResult(logger, snap.Container.Guid, snap.Task.ResultFile)
-		if err != nil {
-			p.failTask(logger, snap.Container.Guid, TaskCompletionReasonFailedToFetchResult)
-			return
+		if snap.Task.State == models.TaskStatePending {
+			p.failTask(logger, snap.Container.Guid, TaskCompletionReasonInvalidTransition)
+		} else if snap.Task.State == models.TaskStateRunning {
+			result, err := p.containerDelegate.FetchContainerResult(logger, snap.Container.Guid, snap.Task.ResultFile)
+			if err != nil {
+				p.failTask(logger, snap.Container.Guid, TaskCompletionReasonFailedToFetchResult)
+			} else {
+				p.completeTask(logger, snap.Container.Guid, snap.Container.RunResult.Failed, snap.Container.RunResult.FailureReason, result)
+			}
 		}
-
-		p.completeTask(logger, snap.Container.Guid, snap.Container.RunResult.Failed, snap.Container.RunResult.FailureReason, result)
 
 		p.containerDelegate.DeleteContainer(logger, snap.Container.Guid)
 	}
