@@ -18,22 +18,20 @@ type EventConsumer struct {
 
 func NewEventConsumer(
 	logger lager.Logger,
-	executorClient executor.Client,
 	generator snapshot.Generator,
 	queue operationq.Queue,
 ) *EventConsumer {
 	return &EventConsumer{
-		logger:         logger,
-		executorClient: executorClient,
-		generator:      generator,
-		queue:          queue,
+		logger:    logger,
+		generator: generator,
+		queue:     queue,
 	}
 }
 
 func (consumer *EventConsumer) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	logger := consumer.logger.Session("event-consumer")
 
-	events, err := consumer.executorClient.SubscribeToEvents()
+	stream, err := consumer.generator.OperationStream(logger)
 	if err != nil {
 		return err
 	}
@@ -42,15 +40,13 @@ func (consumer *EventConsumer) Run(signals <-chan os.Signal, ready chan<- struct
 
 	for {
 		select {
-		case e, ok := <-events:
+		case op, ok := <-stream:
 			if !ok {
 				logger.Info("event-stream-closed")
 				return nil
 			}
 
-			consumer.processEvent(e, logger.Session("event", lager.Data{
-				"event-type": e.EventType(),
-			}))
+			consumer.queue.Push(op)
 
 		case <-signals:
 			logger.Info("stopped")
@@ -59,25 +55,4 @@ func (consumer *EventConsumer) Run(signals <-chan os.Signal, ready chan<- struct
 	}
 
 	return nil
-}
-
-func (consumer *EventConsumer) processEvent(e executor.Event, logger lager.Logger) {
-	sess := logger.Session("process")
-
-	sess.Debug("start")
-	defer sess.Debug("done")
-
-	switch event := e.(type) {
-	case executor.LifecycleEvent:
-		op, err := consumer.generator.ContainerOperation(logger, event.Container())
-		if err != nil {
-			sess.Error("failed-to-generate-operation", err)
-			return
-		}
-
-		consumer.queue.Push(op)
-
-	default:
-		sess.Debug("ignoring")
-	}
 }

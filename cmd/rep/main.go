@@ -120,7 +120,7 @@ func main() {
 		{"server", server},
 		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
 		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, timeprovider.NewTimeProvider(), generator, queue)},
-		{"event-consumer", harmonizer.NewEventConsumer(logger, executorClient, generator, queue)},
+		{"event-consumer", harmonizer.NewEventConsumer(logger, generator, queue)},
 	}
 
 	if dbgAddr := cf_debug_server.DebugAddress(flag.CommandLine); dbgAddr != "" {

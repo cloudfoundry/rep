@@ -15,7 +15,7 @@ import (
 
 type Generator interface {
 	BatchOperations(lager.Logger) ([]operationq.Operation, error)
-	ContainerOperation(lager.Logger, executor.Container) (operationq.Operation, error)
+	OperationStream(lager.Logger) (<-chan operationq.Operation, error)
 }
 
 type generator struct {
@@ -128,7 +128,46 @@ func (g *generator) BatchOperations(logger lager.Logger) ([]operationq.Operation
 	return ops, nil
 }
 
-func (g *generator) ContainerOperation(logger lager.Logger, container executor.Container) (operationq.Operation, error) {
+func (g *generator) OperationStream(logger lager.Logger) (<-chan operationq.Operation, error) {
+	events, err := g.executorClient.SubscribeToEvents()
+	if err != nil {
+		return nil, err
+	}
+
+	opChan := make(chan operationq.Operation)
+
+	go func() {
+		for {
+			select {
+			case e, ok := <-events:
+				if !ok {
+					close(opChan)
+					return
+				}
+
+				lifecycle, ok := e.(executor.LifecycleEvent)
+				if !ok {
+					continue
+				}
+
+				container := lifecycle.Container()
+				session := logger.Session("operation-from-container", lager.Data{"container-guid": container.Guid})
+				session.Debug("started")
+				operation, err := g.operationFromContainer(session, container)
+				if err != nil {
+					session.Error("failed", err)
+					continue
+				}
+				session.Debug("completed")
+				opChan <- operation
+			}
+		}
+	}()
+
+	return opChan, nil
+}
+
+func (g *generator) operationFromContainer(logger lager.Logger, container executor.Container) (operationq.Operation, error) {
 	lifecycle := container.Tags[rep.LifecycleTag]
 
 	switch lifecycle {

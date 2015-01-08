@@ -4,7 +4,6 @@ package fake_snapshot
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep/snapshot"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/operationq"
@@ -20,14 +19,13 @@ type FakeGenerator struct {
 		result1 []operationq.Operation
 		result2 error
 	}
-	ContainerOperationStub        func(lager.Logger, executor.Container) (operationq.Operation, error)
-	containerOperationMutex       sync.RWMutex
-	containerOperationArgsForCall []struct {
+	OperationStreamStub        func(lager.Logger) (<-chan operationq.Operation, error)
+	operationStreamMutex       sync.RWMutex
+	operationStreamArgsForCall []struct {
 		arg1 lager.Logger
-		arg2 executor.Container
 	}
-	containerOperationReturns struct {
-		result1 operationq.Operation
+	operationStreamReturns struct {
+		result1 <-chan operationq.Operation
 		result2 error
 	}
 }
@@ -65,36 +63,35 @@ func (fake *FakeGenerator) BatchOperationsReturns(result1 []operationq.Operation
 	}{result1, result2}
 }
 
-func (fake *FakeGenerator) ContainerOperation(arg1 lager.Logger, arg2 executor.Container) (operationq.Operation, error) {
-	fake.containerOperationMutex.Lock()
-	fake.containerOperationArgsForCall = append(fake.containerOperationArgsForCall, struct {
+func (fake *FakeGenerator) OperationStream(arg1 lager.Logger) (<-chan operationq.Operation, error) {
+	fake.operationStreamMutex.Lock()
+	fake.operationStreamArgsForCall = append(fake.operationStreamArgsForCall, struct {
 		arg1 lager.Logger
-		arg2 executor.Container
-	}{arg1, arg2})
-	fake.containerOperationMutex.Unlock()
-	if fake.ContainerOperationStub != nil {
-		return fake.ContainerOperationStub(arg1, arg2)
+	}{arg1})
+	fake.operationStreamMutex.Unlock()
+	if fake.OperationStreamStub != nil {
+		return fake.OperationStreamStub(arg1)
 	} else {
-		return fake.containerOperationReturns.result1, fake.containerOperationReturns.result2
+		return fake.operationStreamReturns.result1, fake.operationStreamReturns.result2
 	}
 }
 
-func (fake *FakeGenerator) ContainerOperationCallCount() int {
-	fake.containerOperationMutex.RLock()
-	defer fake.containerOperationMutex.RUnlock()
-	return len(fake.containerOperationArgsForCall)
+func (fake *FakeGenerator) OperationStreamCallCount() int {
+	fake.operationStreamMutex.RLock()
+	defer fake.operationStreamMutex.RUnlock()
+	return len(fake.operationStreamArgsForCall)
 }
 
-func (fake *FakeGenerator) ContainerOperationArgsForCall(i int) (lager.Logger, executor.Container) {
-	fake.containerOperationMutex.RLock()
-	defer fake.containerOperationMutex.RUnlock()
-	return fake.containerOperationArgsForCall[i].arg1, fake.containerOperationArgsForCall[i].arg2
+func (fake *FakeGenerator) OperationStreamArgsForCall(i int) lager.Logger {
+	fake.operationStreamMutex.RLock()
+	defer fake.operationStreamMutex.RUnlock()
+	return fake.operationStreamArgsForCall[i].arg1
 }
 
-func (fake *FakeGenerator) ContainerOperationReturns(result1 operationq.Operation, result2 error) {
-	fake.ContainerOperationStub = nil
-	fake.containerOperationReturns = struct {
-		result1 operationq.Operation
+func (fake *FakeGenerator) OperationStreamReturns(result1 <-chan operationq.Operation, result2 error) {
+	fake.OperationStreamStub = nil
+	fake.operationStreamReturns = struct {
+		result1 <-chan operationq.Operation
 		result2 error
 	}{result1, result2}
 }
