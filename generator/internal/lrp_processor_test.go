@@ -1,11 +1,13 @@
-package snapshot_test
+package internal_test
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/cloudfoundry-incubator/executor"
-	"github.com/cloudfoundry-incubator/rep/snapshot"
-	"github.com/cloudfoundry-incubator/rep/snapshot/fake_snapshot"
+	"github.com/cloudfoundry-incubator/rep"
+	"github.com/cloudfoundry-incubator/rep/generator/internal"
+	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -17,15 +19,17 @@ import (
 )
 
 var _ = Describe("LrpProcessor", func() {
-	var processor snapshot.LRPProcessor
+	const expectedCellID = "cell-id"
+
+	var processor internal.LRPProcessor
 	var logger *lagertest.TestLogger
 	var bbs *fake_bbs.FakeRepBBS
-	var containerDelegate *fake_snapshot.FakeContainerDelegate
+	var containerDelegate *fake_internal.FakeContainerDelegate
 
 	BeforeEach(func() {
 		bbs = new(fake_bbs.FakeRepBBS)
-		containerDelegate = new(fake_snapshot.FakeContainerDelegate)
-		processor = snapshot.NewLRPProcessor(bbs, containerDelegate)
+		containerDelegate = new(fake_internal.FakeContainerDelegate)
+		processor = internal.NewLRPProcessor(bbs, containerDelegate, expectedCellID)
 		logger = lagertest.NewTestLogger("test")
 	})
 
@@ -43,47 +47,26 @@ var _ = Describe("LrpProcessor", func() {
 			expectedNetInfo = models.NewActualLRPNetInfo("1.2.3.4", []models.PortMapping{{ContainerPort: 8080, HostPort: 99999}})
 		})
 
-		Context("when given an invalid snapshot", func() {
-			BeforeEach(func() {
-				snap := snapshot.NewLRPSnapshot(nil, nil)
-				processor.Process(logger, snap)
-			})
-
-			It("logs an error", func() {
-				Ω(logger).Should(Say(sessionPrefix + "invalid-snapshot"))
-			})
-		})
-
-		Context("when given a snapshot containing only an LRP", func() {
-			JustBeforeEach(func() {
-				lrp := snapshot.NewLRP(expectedLrpKey, expectedContainerKey)
-				snap := snapshot.NewLRPSnapshot(lrp, nil)
-				processor.Process(logger, snap)
-			})
-
-			It("removes the actualLRP from the BBS", func() {
-				Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
-
-				lrpKey, containerKey, bbsLogger := bbs.RemoveActualLRPArgsForCall(0)
-				Ω(lrpKey).Should(Equal(expectedLrpKey))
-				Ω(containerKey).Should(Equal(expectedContainerKey))
-				Ω(bbsLogger.SessionName()).Should(Equal(sessionPrefix + "process-missing-container"))
-			})
-		})
-
-		Context("when given a snapshot containing both an LRP and a Container", func() {
-			var container *executor.Container
+		Context("when given an LRP container", func() {
+			var container executor.Container
 
 			BeforeEach(func() {
-				container = &executor.Container{
-					Guid: expectedContainerKey.InstanceGuid,
-				}
+				container = newLRPContainer(expectedLrpKey, expectedContainerKey, expectedNetInfo)
 			})
 
 			JustBeforeEach(func() {
-				lrp := snapshot.NewLRP(expectedLrpKey, expectedContainerKey)
-				snap := snapshot.NewLRPSnapshot(lrp, container)
-				processor.Process(logger, snap)
+				processor.Process(logger, container)
+			})
+
+			Context("and the container is INVALID", func() {
+				BeforeEach(func() {
+					expectedSessionName = sessionPrefix + "process-invalid-container"
+					container.State = executor.StateInvalid
+				})
+
+				It("logs an error", func() {
+					Ω(logger).Should(Say(expectedSessionName))
+				})
 			})
 
 			Context("and the container is RESERVED", func() {
@@ -296,3 +279,25 @@ var _ = Describe("LrpProcessor", func() {
 		})
 	})
 })
+
+func newLRPContainer(lrpKey models.ActualLRPKey, containerKey models.ActualLRPContainerKey, netInfo models.ActualLRPNetInfo) executor.Container {
+	ports := []executor.PortMapping{}
+	for _, portMap := range netInfo.Ports {
+		ports = append(ports, executor.PortMapping{
+			ContainerPort: portMap.ContainerPort,
+			HostPort:      portMap.HostPort,
+		})
+	}
+
+	return executor.Container{
+		Guid:       containerKey.InstanceGuid,
+		Action:     &models.RunAction{Path: "true"},
+		ExternalIP: netInfo.Address,
+		Ports:      ports,
+		Tags: executor.Tags{
+			rep.ProcessGuidTag:  lrpKey.ProcessGuid,
+			rep.ProcessIndexTag: strconv.Itoa(lrpKey.Index),
+			rep.DomainTag:       lrpKey.Domain,
+		},
+	}
+}

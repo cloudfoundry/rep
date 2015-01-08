@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/cloudfoundry-incubator/rep/snapshot"
+	"github.com/cloudfoundry-incubator/rep/generator"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/operationq"
@@ -15,7 +15,7 @@ type Bulker struct {
 
 	pollInterval time.Duration
 	timeProvider timeprovider.TimeProvider
-	generator    snapshot.Generator
+	generator    generator.Generator
 	queue        operationq.Queue
 }
 
@@ -23,7 +23,7 @@ func NewBulker(
 	logger lager.Logger,
 	pollInterval time.Duration,
 	timeProvider timeprovider.TimeProvider,
-	generator snapshot.Generator,
+	generator generator.Generator,
 	queue operationq.Queue,
 ) *Bulker {
 	return &Bulker{

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"os"
 
+	"github.com/cloudfoundry-incubator/rep/generator/fake_generator"
 	. "github.com/cloudfoundry-incubator/rep/harmonizer"
-	"github.com/cloudfoundry-incubator/rep/snapshot/fake_snapshot"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -17,7 +17,7 @@ import (
 var _ = Describe("EventConsumer", func() {
 	var (
 		logger        *lagertest.TestLogger
-		fakeGenerator *fake_snapshot.FakeGenerator
+		fakeGenerator *fake_generator.FakeGenerator
 		fakeQueue     *fake_operationq.FakeQueue
 
 		consumer *EventConsumer
@@ -26,7 +26,7 @@ var _ = Describe("EventConsumer", func() {
 
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
-		fakeGenerator = new(fake_snapshot.FakeGenerator)
+		fakeGenerator = new(fake_generator.FakeGenerator)
 		fakeQueue = new(fake_operationq.FakeQueue)
 
 		consumer = NewEventConsumer(logger, fakeGenerator, fakeQueue)

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/rep/harmonizer"
-	"github.com/cloudfoundry-incubator/rep/snapshot/fake_snapshot"
+	"github.com/cloudfoundry-incubator/rep/generator/fake_generator"
 	"github.com/cloudfoundry/gunk/timeprovider/faketimeprovider"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -22,7 +22,7 @@ var _ = Describe("Bulker", func() {
 		logger           *lagertest.TestLogger
 		pollInterval     time.Duration
 		fakeTimeProvider *faketimeprovider.FakeTimeProvider
-		fakeGenerator    *fake_snapshot.FakeGenerator
+		fakeGenerator    *fake_generator.FakeGenerator
 		fakeQueue        *fake_operationq.FakeQueue
 
 		bulker  *harmonizer.Bulker
@@ -33,7 +33,7 @@ var _ = Describe("Bulker", func() {
 		logger = lagertest.NewTestLogger("test")
 		pollInterval = 30 * time.Second
 		fakeTimeProvider = faketimeprovider.New(time.Unix(123, 456))
-		fakeGenerator = new(fake_snapshot.FakeGenerator)
+		fakeGenerator = new(fake_generator.FakeGenerator)
 		fakeQueue = new(fake_operationq.FakeQueue)
 
 		bulker = harmonizer.NewBulker(logger, pollInterval, fakeTimeProvider, fakeGenerator, fakeQueue)

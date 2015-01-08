@@ -1,11 +1,11 @@
-package snapshot_test
+package internal_test
 
 import (
 	"errors"
 
 	"github.com/cloudfoundry-incubator/executor"
-	"github.com/cloudfoundry-incubator/rep/snapshot"
-	"github.com/cloudfoundry-incubator/rep/snapshot/fake_snapshot"
+	"github.com/cloudfoundry-incubator/rep/generator/internal"
+	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gunk/timeprovider"
@@ -17,12 +17,11 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
-	//	. "github.com/onsi/gomega/gbytes"
 )
 
 const taskGuid = "my-guid"
 
-var processor snapshot.TaskProcessor
+var processor internal.TaskProcessor
 var BBS *bbs.BBS
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
 var etcdClient storeadapter.StoreAdapter
@@ -38,7 +37,7 @@ var _ = AfterSuite(func() {
 
 var _ = Describe("Task <-> Container table", func() {
 	var (
-		containerDelegate *fake_snapshot.FakeContainerDelegate
+		containerDelegate *fake_internal.FakeContainerDelegate
 	)
 	const (
 		localCellID   = "a"
@@ -50,25 +49,24 @@ var _ = Describe("Task <-> Container table", func() {
 		etcdRunner.Stop()
 		etcdRunner.Start()
 		BBS = bbs.NewBBS(etcdClient, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test-bbs"))
-		containerDelegate = new(fake_snapshot.FakeContainerDelegate)
-		processor = snapshot.NewTaskProcessor(BBS, containerDelegate, localCellID)
+		containerDelegate = new(fake_internal.FakeContainerDelegate)
+		processor = internal.NewTaskProcessor(BBS, containerDelegate, localCellID)
 
 		containerDelegate.DeleteContainerReturns(true)
 		containerDelegate.StopContainerReturns(true)
 		containerDelegate.RunContainerReturns(true)
 	})
 
-	itDeletesTheContainer := func(container *executor.Container, task *snapshot.Task, logger *lagertest.TestLogger) {
+	itDeletesTheContainer := func(logger *lagertest.TestLogger) {
 		It("deletes the container", func() {
 			Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(1))
-			delegateLogger, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
-			Ω(delegateLogger.SessionName()).Should(Equal(sessionPrefix + ".task-processor.process-" + string(container.State) + "-container"))
+			_, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
 			Ω(containerGuid).Should(Equal(taskGuid))
 		})
 	}
 
-	itCompletesTheTaskWithFailure := func(reason string) func(*executor.Container, *snapshot.Task, *lagertest.TestLogger) {
-		return func(container *executor.Container, task *snapshot.Task, logger *lagertest.TestLogger) {
+	itCompletesTheTaskWithFailure := func(reason string) func(*lagertest.TestLogger) {
+		return func(logger *lagertest.TestLogger) {
 			It("completes the task with failure", func() {
 				task, err := BBS.TaskByGuid(taskGuid)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -80,7 +78,7 @@ var _ = Describe("Task <-> Container table", func() {
 		}
 	}
 
-	itCompletesTheTaskAndDeletesTheContainer := func(container *executor.Container, task *snapshot.Task, logger *lagertest.TestLogger) {
+	itCompletesTheTaskAndDeletesTheContainer := func(logger *lagertest.TestLogger) {
 		Context("when fetching the result succeeds", func() {
 			BeforeEach(func() {
 				containerDelegate.FetchContainerResultReturns("some-result", nil)
@@ -95,7 +93,7 @@ var _ = Describe("Task <-> Container table", func() {
 				}
 			})
 
-			itDeletesTheContainer(container, task, logger)
+			itDeletesTheContainer(logger)
 
 			It("completes the task with the failure info and result", func() {
 				task, err := BBS.TaskByGuid(taskGuid)
@@ -118,13 +116,13 @@ var _ = Describe("Task <-> Container table", func() {
 				containerDelegate.FetchContainerResultReturns("", disaster)
 			})
 
-			itCompletesTheTaskWithFailure("failed to fetch result")(container, task, logger)
+			itCompletesTheTaskWithFailure("failed to fetch result")(logger)
 
-			itDeletesTheContainer(container, task, logger)
+			itDeletesTheContainer(logger)
 		})
 	}
 
-	itSetsTheTaskToRunning := func(container *executor.Container, task *snapshot.Task, logger *lagertest.TestLogger) {
+	itSetsTheTaskToRunning := func(logger *lagertest.TestLogger) {
 		It("transitions the task to the running state", func() {
 			task, err := BBS.TaskByGuid(taskGuid)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -133,13 +131,12 @@ var _ = Describe("Task <-> Container table", func() {
 		})
 	}
 
-	itRunsTheContainer := func(container *executor.Container, task *snapshot.Task, logger *lagertest.TestLogger) {
-		itSetsTheTaskToRunning(container, task, logger)
+	itRunsTheContainer := func(logger *lagertest.TestLogger) {
+		itSetsTheTaskToRunning(logger)
 
 		It("runs the container", func() {
 			Ω(containerDelegate.RunContainerCallCount()).Should(Equal(1))
-			delegateLogger, containerGuid := containerDelegate.RunContainerArgsForCall(0)
-			Ω(delegateLogger.SessionName()).Should(Equal(sessionPrefix + ".task-processor.process-" + string(container.State) + "-container"))
+			_, containerGuid := containerDelegate.RunContainerArgsForCall(0)
 			Ω(containerGuid).Should(Equal(taskGuid))
 		})
 
@@ -148,11 +145,11 @@ var _ = Describe("Task <-> Container table", func() {
 				containerDelegate.RunContainerReturns(false)
 			})
 
-			itCompletesTheTaskWithFailure("failed to run container")(container, task, logger)
+			itCompletesTheTaskWithFailure("failed to run container")(logger)
 		})
 	}
 
-	itDoesNothing := func(container *executor.Container, task *snapshot.Task, logger *lagertest.TestLogger) {
+	itDoesNothing := func(logger *lagertest.TestLogger) {
 		It("does not run the container", func() {
 			Ω(containerDelegate.RunContainerCallCount()).Should(Equal(0))
 		})
@@ -379,23 +376,6 @@ var _ = Describe("Task <-> Container table", func() {
 				NewTask("w", models.TaskStateResolving),
 				itDeletesTheContainer,
 			),
-
-			// container missing
-			Conceivable( // cell may have gone haywire and lost/reaped its container
-				nil,
-				NewTask("a", models.TaskStateRunning),
-				itCompletesTheTaskWithFailure("task container does not exist"),
-			),
-			Conceivable( // don't really care about these cases, but worth covering
-				nil,
-				NewTask("a", models.TaskStateCompleted),
-				itDoesNothing,
-			),
-			Conceivable( // don't really care about these cases, but worth covering
-				nil,
-				NewTask("a", models.TaskStateResolving),
-				itDoesNothing,
-			),
 		},
 	}
 
@@ -404,7 +384,7 @@ var _ = Describe("Task <-> Container table", func() {
 
 type TaskTable struct {
 	LocalCellID string
-	Processor   *snapshot.TaskProcessor
+	Processor   *internal.TaskProcessor
 	Logger      *lagertest.TestLogger
 	Rows        []Row
 }
@@ -424,33 +404,26 @@ type Row interface {
 	Test(*lagertest.TestLogger)
 }
 
-type TaskTest func(*executor.Container, *snapshot.Task, *lagertest.TestLogger)
+type TaskTest func(*lagertest.TestLogger)
 
 type TaskRow struct {
-	Container *executor.Container
-	Task      *snapshot.Task
+	Container executor.Container
+	Task      *models.Task
 	TestFunc  TaskTest
 }
 
 func (e TaskRow) Test(logger *lagertest.TestLogger) {
 	BeforeEach(func() {
-		task := models.Task{
-			TaskGuid: taskGuid,
-			Domain:   "domain",
-			Stack:    "stack",
-			Action:   &models.RunAction{Path: "ls"},
-		}
-
 		if e.Task != nil {
-			walkToState(logger, BBS, task, e.Task)
+			walkToState(logger, BBS, *e.Task)
 		}
 	})
 
 	JustBeforeEach(func() {
-		processor.Process(logger, snapshot.NewTaskSnapshot(e.Task, e.Container))
+		processor.Process(logger, e.Container)
 	})
 
-	e.TestFunc(e.Container, e.Task, logger)
+	e.TestFunc(logger)
 }
 
 func (t TaskRow) ContextDescription() string {
@@ -458,9 +431,6 @@ func (t TaskRow) ContextDescription() string {
 }
 
 func (t TaskRow) containerDescription() string {
-	if t.Container == nil {
-		return "missing"
-	}
 	return string(t.Container.State)
 }
 
@@ -477,9 +447,9 @@ func (t TaskRow) taskDescription() string {
 	return msg
 }
 
-func Expected(container *executor.Container, task *snapshot.Task, test TaskTest) Row {
-	expectedTest := func(container *executor.Container, task *snapshot.Task, logger *lagertest.TestLogger) {
-		test(container, task, logger)
+func Expected(container executor.Container, task *models.Task, test TaskTest) Row {
+	expectedTest := func(logger *lagertest.TestLogger) {
+		test(logger)
 
 		//		It("does not log that it's inconceivable", func() {
 		//			Ω(logger).ShouldNot(gbytes.Say("inconceivable-state"))
@@ -489,9 +459,9 @@ func Expected(container *executor.Container, task *snapshot.Task, test TaskTest)
 	return TaskRow{container, task, TaskTest(expectedTest)}
 }
 
-func Conceivable(container *executor.Container, task *snapshot.Task, test TaskTest) Row {
-	conceivableTest := func(container *executor.Container, task *snapshot.Task, logger *lagertest.TestLogger) {
-		test(container, task, logger)
+func Conceivable(container executor.Container, task *models.Task, test TaskTest) Row {
+	conceivableTest := func(logger *lagertest.TestLogger) {
+		test(logger)
 
 		//		It("does not log that it's inconceivable", func() {
 		//			Ω(logger).ShouldNot(gbytes.Say("inconceivable-state"))
@@ -501,9 +471,9 @@ func Conceivable(container *executor.Container, task *snapshot.Task, test TaskTe
 	return TaskRow{container, task, TaskTest(conceivableTest)}
 }
 
-func Inconceivable(container *executor.Container, task *snapshot.Task, test TaskTest) Row {
-	inconceivableTest := func(container *executor.Container, task *snapshot.Task, logger *lagertest.TestLogger) {
-		test(container, task, logger)
+func Inconceivable(container executor.Container, task *models.Task, test TaskTest) Row {
+	inconceivableTest := func(logger *lagertest.TestLogger) {
+		test(logger)
 
 		//		It("logs that it's inconceivable", func() {
 		//			Ω(logger).Should(gbytes.Say("inconceivable-state"))
@@ -513,15 +483,15 @@ func Inconceivable(container *executor.Container, task *snapshot.Task, test Task
 	return TaskRow{container, task, TaskTest(inconceivableTest)}
 }
 
-func NewContainer(containerState executor.State) *executor.Container {
-	return &executor.Container{
+func NewContainer(containerState executor.State) executor.Container {
+	return executor.Container{
 		Guid:  taskGuid,
 		State: containerState,
 	}
 }
 
-func NewCompletedContainer() *executor.Container {
-	return &executor.Container{
+func NewCompletedContainer() executor.Container {
+	return executor.Container{
 		Guid:  taskGuid,
 		State: executor.StateCompleted,
 
@@ -532,40 +502,50 @@ func NewCompletedContainer() *executor.Container {
 	}
 }
 
-func NewTask(cellID string, taskState models.TaskState) *snapshot.Task {
-	return snapshot.NewTask(taskGuid, cellID, taskState, "some-result-filename")
+func NewTask(cellID string, taskState models.TaskState) *models.Task {
+	return &models.Task{
+		TaskGuid:   taskGuid,
+		CellID:     cellID,
+		State:      taskState,
+		ResultFile: "some-result-filename",
+		Domain:     "domain",
+		Stack:      "stack",
+		Action:     &models.RunAction{Path: "ls"},
+	}
 }
 
-func walkToState(logger lager.Logger, BBS *bbs.BBS, task models.Task, desiredState *snapshot.Task) {
-	if task.State == desiredState.State {
-		return
+func walkToState(logger lager.Logger, BBS *bbs.BBS, task models.Task) {
+	var currentState models.TaskState
+	desiredState := task.State
+	for desiredState != currentState {
+		currentState = advanceState(logger, BBS, task, currentState)
 	}
+}
 
-	switch task.State {
+func advanceState(logger lager.Logger, BBS *bbs.BBS, task models.Task, currentState models.TaskState) models.TaskState {
+	switch currentState {
 	case models.TaskStateInvalid:
 		err := BBS.DesireTask(logger, task)
 		Ω(err).ShouldNot(HaveOccurred())
-		task.State = models.TaskStatePending
+		return models.TaskStatePending
 
 	case models.TaskStatePending:
-		changed, err := BBS.StartTask(logger, task.TaskGuid, desiredState.CellID)
+		changed, err := BBS.StartTask(logger, task.TaskGuid, task.CellID)
 		Ω(err).ShouldNot(HaveOccurred())
 		Ω(changed).Should(BeTrue())
-		task.State = models.TaskStateRunning
+		return models.TaskStateRunning
 
 	case models.TaskStateRunning:
-		err := BBS.CompleteTask(logger, task.TaskGuid, desiredState.CellID, true, "reason", "result")
+		err := BBS.CompleteTask(logger, task.TaskGuid, task.CellID, true, "reason", "result")
 		Ω(err).ShouldNot(HaveOccurred())
-		task.State = models.TaskStateCompleted
+		return models.TaskStateCompleted
 
 	case models.TaskStateCompleted:
 		err := BBS.ResolvingTask(logger, task.TaskGuid)
 		Ω(err).ShouldNot(HaveOccurred())
-		task.State = models.TaskStateResolving
+		return models.TaskStateResolving
 
 	default:
 		panic("not a thing.")
 	}
-
-	walkToState(logger, BBS, task, desiredState)
 }

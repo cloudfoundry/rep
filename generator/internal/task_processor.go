@@ -1,4 +1,4 @@
-package snapshot
+package internal
 
 import (
 	"github.com/cloudfoundry-incubator/executor"
@@ -13,10 +13,10 @@ const TaskCompletionReasonFailedToRunContainer = "failed to run container"
 const TaskCompletionReasonInvalidTransition = "invalid state transition"
 const TaskCompletionReasonFailedToFetchResult = "failed to fetch result"
 
-//go:generate counterfeiter -o fake_snapshot/fake_task_processor.go task_processor.go TaskProcessor
+//go:generate counterfeiter -o fake_internal/fake_task_processor.go task_processor.go TaskProcessor
 
 type TaskProcessor interface {
-	Process(lager.Logger, *TaskSnapshot)
+	Process(lager.Logger, executor.Container)
 }
 
 type taskProcessor struct {
@@ -33,72 +33,75 @@ func NewTaskProcessor(bbs bbs.RepBBS, containerDelegate ContainerDelegate, cellI
 	}
 }
 
-func (p *taskProcessor) Process(logger lager.Logger, snap *TaskSnapshot) {
-	logger = logger.Session("task-processor", lagerDataFromTaskSnapshot(snap))
-	err := snap.Validate()
-	if err != nil {
-		logger.Error("invalid-snapshot", err)
-		return
-	}
+func (p *taskProcessor) Process(logger lager.Logger, container executor.Container) {
+	logger = logger.Session("task-processor")
 
-	if snap.Container == nil {
-		p.processMissingContainer(logger.Session("process-missing-container"), snap)
-		return
-	}
-
-	switch snap.Container.State {
+	switch container.State {
 	case executor.StateReserved:
-		p.processActiveContainer(logger.Session("process-reserved-container"), snap)
+		p.processActiveContainer(logger.Session("process-reserved-container"), container)
 	case executor.StateInitializing:
-		p.processActiveContainer(logger.Session("process-initializing-container"), snap)
+		p.processActiveContainer(logger.Session("process-initializing-container"), container)
 	case executor.StateCreated:
-		p.processActiveContainer(logger.Session("process-created-container"), snap)
+		p.processActiveContainer(logger.Session("process-created-container"), container)
 	case executor.StateRunning:
-		p.processActiveContainer(logger.Session("process-running-container"), snap)
+		p.processActiveContainer(logger.Session("process-running-container"), container)
 	case executor.StateCompleted:
-		p.processCompletedContainer(logger.Session("process-completed-container"), snap)
+		p.processCompletedContainer(logger.Session("process-completed-container"), container)
 	}
 }
 
-func (p *taskProcessor) processMissingContainer(logger lager.Logger, snap *TaskSnapshot) {
-	if snap.Task.State == models.TaskStateRunning {
-		p.failTask(logger, snap.Task.TaskGuid, TaskCompletionReasonMissingContainer)
-	}
-}
+func (p *taskProcessor) processActiveContainer(logger lager.Logger, container executor.Container) {
+	logger.Debug("start")
+	defer logger.Debug("complete")
 
-func (p *taskProcessor) processActiveContainer(logger lager.Logger, snap *TaskSnapshot) {
-	ok := p.startTask(logger, snap.Container.Guid)
+	ok := p.startTask(logger, container.Guid)
 	if !ok {
 		return
 	}
 
-	ok = p.containerDelegate.RunContainer(logger, snap.Container.Guid)
+	ok = p.containerDelegate.RunContainer(logger, container.Guid)
 	if !ok {
-		p.failTask(logger, snap.Container.Guid, TaskCompletionReasonFailedToRunContainer)
+		p.failTask(logger, container.Guid, TaskCompletionReasonFailedToRunContainer)
 	}
 }
 
-func (p *taskProcessor) processCompletedContainer(logger lager.Logger, snap *TaskSnapshot) {
-	logger.Info("started")
+func (p *taskProcessor) processCompletedContainer(logger lager.Logger, container executor.Container) {
+	logger.Debug("start")
+	defer logger.Debug("complete")
 
-	if snap.Task == nil {
-		p.containerDelegate.DeleteContainer(logger, snap.Container.Guid)
+	task, ok := p.fetchTask(logger, container.Guid)
+	if !ok {
+		p.containerDelegate.DeleteContainer(logger, container.Guid)
 	} else {
 		logger.Info("completing-task")
 
-		if snap.Task.State == models.TaskStatePending {
-			p.failTask(logger, snap.Container.Guid, TaskCompletionReasonInvalidTransition)
-		} else if snap.Task.State == models.TaskStateRunning {
-			result, err := p.containerDelegate.FetchContainerResult(logger, snap.Container.Guid, snap.Task.ResultFile)
+		if task.State == models.TaskStatePending {
+			p.failTask(logger, container.Guid, TaskCompletionReasonInvalidTransition)
+		} else if task.State == models.TaskStateRunning {
+			result, err := p.containerDelegate.FetchContainerResult(logger, container.Guid, task.ResultFile)
 			if err != nil {
-				p.failTask(logger, snap.Container.Guid, TaskCompletionReasonFailedToFetchResult)
+				p.failTask(logger, container.Guid, TaskCompletionReasonFailedToFetchResult)
 			} else {
-				p.completeTask(logger, snap.Container.Guid, snap.Container.RunResult.Failed, snap.Container.RunResult.FailureReason, result)
+				p.completeTask(logger, container.Guid, container.RunResult.Failed, container.RunResult.FailureReason, result)
 			}
 		}
 
-		p.containerDelegate.DeleteContainer(logger, snap.Container.Guid)
+		p.containerDelegate.DeleteContainer(logger, container.Guid)
 	}
+}
+
+func (p *taskProcessor) fetchTask(logger lager.Logger, guid string) (models.Task, bool) {
+	logger = logger.Session("fetch-task")
+	logger.Debug("start")
+	defer logger.Debug("complete")
+
+	task, err := p.bbs.TaskByGuid(guid)
+	if err != nil {
+		logger.Error("failed", err)
+		return task, false
+	}
+
+	return task, true
 }
 
 func (p *taskProcessor) startTask(logger lager.Logger, guid string) bool {
@@ -145,18 +148,4 @@ func (p *taskProcessor) failTask(logger lager.Logger, guid string, reason string
 	}
 
 	failLog.Info("succeeded")
-}
-
-func lagerDataFromTaskSnapshot(snap *TaskSnapshot) lager.Data {
-	data := lager.Data{}
-	if snap.Task != nil {
-		data["task"] = snap.Task
-	}
-
-	if snap.Container != nil {
-		data["container-guid"] = snap.Container.Guid
-		data["container-state"] = snap.Container.State
-	}
-
-	return data
 }

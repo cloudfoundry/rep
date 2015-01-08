@@ -1,11 +1,11 @@
-package snapshot_test
+package internal_test
 
 import (
 	"errors"
 	"strings"
 
 	"github.com/cloudfoundry-incubator/executor/fakes"
-	"github.com/cloudfoundry-incubator/rep/snapshot"
+	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/pivotal-golang/lager/lagertest"
 
@@ -15,7 +15,7 @@ import (
 )
 
 var _ = Describe("ContainerDelegate", func() {
-	var containerDelegate snapshot.ContainerDelegate
+	var containerDelegate internal.ContainerDelegate
 	var executorClient *fakes.FakeClient
 	var logger *lagertest.TestLogger
 	var expectedGuid = "some-instance-guid"
@@ -23,7 +23,7 @@ var _ = Describe("ContainerDelegate", func() {
 
 	BeforeEach(func() {
 		executorClient = new(fakes.FakeClient)
-		containerDelegate = snapshot.NewContainerDelegate(executorClient)
+		containerDelegate = internal.NewContainerDelegate(executorClient)
 		logger = lagertest.NewTestLogger(sessionPrefix)
 	})
 
@@ -220,7 +220,7 @@ var _ = Describe("ContainerDelegate", func() {
 						fileStream,
 						[]test_helper.ArchiveFile{{
 							Name: "some-file",
-							Body: strings.Repeat("x", snapshot.MAX_RESULT_SIZE+1),
+							Body: strings.Repeat("x", internal.MAX_RESULT_SIZE+1),
 							Mode: 0600,
 						}},
 					)

@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/cloudfoundry-incubator/executor"
-	"github.com/cloudfoundry-incubator/rep/snapshot"
+	"github.com/cloudfoundry-incubator/rep/generator"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/operationq"
 )
@@ -12,13 +12,13 @@ import (
 type EventConsumer struct {
 	logger         lager.Logger
 	executorClient executor.Client
-	generator      snapshot.Generator
+	generator      generator.Generator
 	queue          operationq.Queue
 }
 
 func NewEventConsumer(
 	logger lager.Logger,
-	generator snapshot.Generator,
+	generator generator.Generator,
 	queue operationq.Queue,
 ) *EventConsumer {
 	return &EventConsumer{

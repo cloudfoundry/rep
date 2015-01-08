@@ -16,11 +16,11 @@ import (
 	"github.com/cloudfoundry-incubator/executor"
 	executorclient "github.com/cloudfoundry-incubator/executor/http/client"
 	"github.com/cloudfoundry-incubator/rep/auction_cell_rep"
+	"github.com/cloudfoundry-incubator/rep/generator"
 	"github.com/cloudfoundry-incubator/rep/harmonizer"
 	repserver "github.com/cloudfoundry-incubator/rep/http_server"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
-	"github.com/cloudfoundry-incubator/rep/snapshot"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -93,10 +93,15 @@ const (
 	dropsondeOrigin      = "rep"
 )
 
-func main() {
-	cf_debug_server.AddFlags(flag.CommandLine)
-	flag.Parse()
+var logger = cf_lager.New("rep")
 
+func init() {
+	cf_debug_server.AddFlags(flag.CommandLine)
+	initializeDropsonde(logger)
+	flag.Parse()
+}
+
+func main() {
 	if *cellID == "" {
 		log.Fatalf("-cellID must be specified")
 	}
@@ -105,22 +110,19 @@ func main() {
 		log.Fatalf("-stack must be specified")
 	}
 
-	logger := cf_lager.New("rep")
-
-	initializeDropsonde(logger)
-
 	bbs := initializeRepBBS(logger)
 	executorClient := executorclient.New(http.DefaultClient, *executorURL)
-	queue := operationq.NewQueue()
-
 	server, address := initializeServer(bbs, executorClient, logger)
-	generator := initializeGenerator(bbs, executorClient, logger)
+	opGenerator := generator.New(*cellID, bbs, executorClient)
+
+	// only one outstanding operation per container is necessary
+	queue := operationq.NewSlidingQueue(1)
 
 	members := grouper.Members{
 		{"server", server},
 		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
-		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, timeprovider.NewTimeProvider(), generator, queue)},
-		{"event-consumer", harmonizer.NewEventConsumer(logger, generator, queue)},
+		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, timeprovider.NewTimeProvider(), opGenerator, queue)},
+		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 	}
 
 	if dbgAddr := cf_debug_server.DebugAddress(flag.CommandLine); dbgAddr != "" {
@@ -144,14 +146,6 @@ func initializeDropsonde(logger lager.Logger) {
 	if err != nil {
 		logger.Error("failed to initialize dropsonde: %v", err)
 	}
-}
-
-func initializeGenerator(bbs Bbs.RepBBS, executorClient executor.Client, logger lager.Logger) snapshot.Generator {
-	containerDelegate := snapshot.NewContainerDelegate(executorClient)
-	lrpProcessor := snapshot.NewLRPProcessor(bbs, containerDelegate)
-	taskProcessor := snapshot.NewTaskProcessor(bbs, containerDelegate, *cellID)
-	snapshotProcessor := snapshot.NewSnapshotProcessor(lrpProcessor, taskProcessor)
-	return snapshot.NewGenerator(*cellID, bbs, executorClient, snapshotProcessor)
 }
 
 func initializeCellHeartbeat(address string, bbs Bbs.RepBBS, executorClient executor.Client, logger lager.Logger) ifrit.Runner {

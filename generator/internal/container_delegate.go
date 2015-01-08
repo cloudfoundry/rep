@@ -1,4 +1,4 @@
-package snapshot
+package internal
 
 import (
 	"archive/tar"
@@ -15,9 +15,10 @@ var ErrResultFileTooLarge = errors.New(
 	fmt.Sprintf("result file is too large (over %d bytes)", MAX_RESULT_SIZE),
 )
 
-//go:generate counterfeiter -o fake_snapshot/fake_container_delegate.go container_delegate.go ContainerDelegate
+//go:generate counterfeiter -o fake_internal/fake_container_delegate.go container_delegate.go ContainerDelegate
 
 type ContainerDelegate interface {
+	GetContainer(logger lager.Logger, guid string) (executor.Container, bool)
 	RunContainer(logger lager.Logger, guid string) bool
 	StopContainer(logger lager.Logger, guid string) bool
 	DeleteContainer(logger lager.Logger, guid string) bool
@@ -32,6 +33,17 @@ func NewContainerDelegate(client executor.Client) ContainerDelegate {
 	return &containerDelegate{
 		client: client,
 	}
+}
+
+func (d *containerDelegate) GetContainer(logger lager.Logger, guid string) (executor.Container, bool) {
+	logger.Info("fetch-container")
+	container, err := d.client.GetContainer(guid)
+	if err != nil {
+		logger.Error("faileed-fetch-container", err)
+		return container, false
+	}
+	logger.Info("succeeded-fetch-container")
+	return container, true
 }
 
 func (d *containerDelegate) RunContainer(logger lager.Logger, guid string) bool {

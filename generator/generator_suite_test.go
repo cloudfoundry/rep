@@ -1,4 +1,4 @@
-package snapshot_test
+package generator_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestSnapshot(t *testing.T) {
+func TestGenerator(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Snapshot Suite")
+	RunSpecs(t, "Generator Suite")
 }
