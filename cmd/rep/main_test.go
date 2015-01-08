@@ -223,6 +223,7 @@ var _ = Describe("The Rep", func() {
 
 			Describe("running tasks", func() {
 				var task models.Task
+				var gotReservation chan struct{}
 
 				BeforeEach(func() {
 					task = models.Task{
@@ -235,14 +236,23 @@ var _ = Describe("The Rep", func() {
 							Path: "date",
 						},
 					}
+
+					gotReservation = make(chan struct{})
+
 					err := bbs.DesireTask(logger, task)
 					Ω(err).ShouldNot(HaveOccurred())
 
-					fakeExecutor.RouteToHandler("POST", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, executor.Container{}))
-					fakeExecutor.RouteToHandler("POST", "/containers/the-task-guid/run", ghttp.RespondWith(http.StatusOK, ""))
+					fakeExecutor.RouteToHandler("POST", "/containers",
+						ghttp.CombineHandlers(
+							ghttp.RespondWithJSONEncoded(http.StatusOK, executor.Container{}),
+							func(w http.ResponseWriter, r *http.Request) {
+								close(gotReservation)
+							},
+						),
+					)
 				})
 
-				It("makes a request to executor to allocate and run the container, and marks the task as running in the BBS", func() {
+				It("makes a request to executor to allocate the container", func() {
 					Eventually(bbs.Cells).Should(HaveLen(1))
 					cells, err := bbs.Cells()
 					Ω(err).ShouldNot(HaveOccurred())
@@ -255,20 +265,12 @@ var _ = Describe("The Rep", func() {
 					works := auctiontypes.Work{
 						Tasks: []models.Task{task},
 					}
+
 					failedWorks, err := client.Perform(works)
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(failedWorks.Tasks).Should(BeEmpty())
 
-					Eventually(func() ([]models.Task, error) {
-						return bbs.PendingTasks(logger)
-					}).Should(BeEmpty())
-					Eventually(func() ([]models.Task, error) {
-						return bbs.RunningTasks(logger)
-					}).Should(HaveLen(1))
-					runningTasks, err := bbs.RunningTasks(logger)
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(runningTasks[0].TaskGuid).Should(Equal("the-task-guid"))
-					Ω(runningTasks[0].State).Should(Equal(models.TaskStateRunning))
+					Eventually(gotReservation).Should(BeClosed())
 				})
 			})
 		})

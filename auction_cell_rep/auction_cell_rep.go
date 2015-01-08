@@ -213,33 +213,13 @@ func (a *AuctionCellRep) startTask(task models.Task, logger lager.Logger) error 
 
 		Env: executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
 	})
+
 	if err != nil {
 		logger.Error("failed-to-allocate-container", err)
 		return err
 	}
+
 	logger.Info("successfully-allocated-container")
-
-	go func() {
-		logger.Info("starting-task")
-		_, err = a.bbs.StartTask(logger, task.TaskGuid, a.cellID)
-		if err != nil {
-			logger.Error("failed-to-mark-task-started", err)
-			a.client.DeleteContainer(task.TaskGuid)
-			return
-		}
-		logger.Info("successfully-started-task")
-
-		logger.Info("running-task")
-		err = a.client.RunContainer(task.TaskGuid)
-		if err != nil {
-			logger.Error("failed-to-run-task", err)
-			a.client.DeleteContainer(task.TaskGuid)
-			a.markTaskAsFailed(logger, task.TaskGuid, err)
-			return
-		}
-		logger.Info("successfully-ran-task")
-	}()
-
 	return nil
 }
 

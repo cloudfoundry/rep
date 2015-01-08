@@ -10,7 +10,6 @@ import (
 	. "github.com/cloudfoundry-incubator/rep/auction_cell_rep"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
@@ -319,114 +318,10 @@ var _ = Describe("AuctionCellRep", func() {
 					client.AllocateContainerReturns(executor.Container{}, nil)
 				})
 
-				It("tells the BBS it started the task", func() {
-					_, err := cellRep.Perform(work)
-					Ω(err).ShouldNot(HaveOccurred())
-
-					Eventually(bbs.StartTaskCallCount).Should(Equal(1))
-
-					_, actualTaskGuid, actualCellID := bbs.StartTaskArgsForCall(0)
-					Ω(actualTaskGuid).Should(Equal(task.TaskGuid))
-					Ω(actualCellID).Should(Equal("some-cell-id"))
-				})
-
 				It("responds successfully before starting the task in the BBS", func() {
-					triggerStartChan := make(chan struct{})
-					triggerStartCalled := make(chan struct{})
-
-					bbs.StartTaskStub = func(_ lager.Logger, _ string, _ string) (bool, error) {
-						<-triggerStartChan
-						close(triggerStartCalled)
-						return true, nil
-					}
-
 					failedWork, err := cellRep.Perform(work)
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(failedWork).Should(BeZero())
-
-					Consistently(triggerStartCalled).ShouldNot(BeClosed())
-					close(triggerStartChan)
-					Eventually(triggerStartCalled).Should(BeClosed())
-				})
-
-				Context("when it succeeds marking the task as starting in the BBS", func() {
-					BeforeEach(func() {
-						bbs.StartTaskReturns(true, nil)
-					})
-
-					It("runs the task", func() {
-						_, err := cellRep.Perform(work)
-						Ω(err).ShouldNot(HaveOccurred())
-						Eventually(client.RunContainerCallCount).Should(Equal(1))
-						Ω(client.RunContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
-					})
-
-					Context("when running the task succeeds", func() {
-						BeforeEach(func() {
-							client.RunContainerReturns(nil)
-						})
-
-						It("responds successfully", func() {
-							failedWork, err := cellRep.Perform(work)
-							Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
-							Ω(failedWork.Tasks).Should(BeZero())
-						})
-
-						It("does not delete the container", func() {
-							cellRep.Perform(work)
-							Consistently(client.DeleteContainerCallCount).Should(Equal(0))
-						})
-					})
-
-					Context("when running the task fails", func() {
-						BeforeEach(func() {
-							client.RunContainerReturns(commonErr)
-						})
-
-						It("responds successfully", func() {
-							failedWork, err := cellRep.Perform(work)
-							Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
-							Ω(failedWork.Tasks).Should(BeZero())
-						})
-
-						It("deletes the container", func() {
-							cellRep.Perform(work)
-							Eventually(client.DeleteContainerCallCount).Should(Equal(1))
-							Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
-						})
-
-						It("marks the state as failed in the BBS", func() {
-							cellRep.Perform(work)
-
-							Eventually(bbs.FailTaskCallCount).Should(Equal(1))
-							_, actualTaskGuid, actualFailureReason := bbs.FailTaskArgsForCall(0)
-							Ω(actualTaskGuid).Should(Equal(task.TaskGuid))
-							Ω(actualFailureReason).Should(ContainSubstring("failed to run container"))
-						})
-					})
-				})
-
-				Context("when it fails to mark it starting in the BBS", func() {
-					BeforeEach(func() {
-						bbs.StartTaskReturns(false, commonErr)
-					})
-
-					It("responds successfully", func() {
-						failedWork, err := cellRep.Perform(work)
-						Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
-						Ω(failedWork.Tasks).Should(BeZero())
-					})
-
-					It("doesn't run the container", func() {
-						cellRep.Perform(work)
-						Consistently(client.RunContainerCallCount).Should(Equal(0))
-					})
-
-					It("deletes the container", func() {
-						cellRep.Perform(work)
-						Eventually(client.DeleteContainerCallCount).Should(Equal(1))
-						Ω(client.DeleteContainerArgsForCall(0)).Should(Equal(task.TaskGuid))
-					})
 				})
 			})
 
