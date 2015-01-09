@@ -198,11 +198,11 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 
 			It("should allocate a container", func() {
+
 				_, err := cellRep.Perform(work)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(client.AllocateContainersCallCount()).Should(Equal(1))
-
 				Ω(client.AllocateContainersArgsForCall(0)).Should(Equal([]executor.Container{
 					{
 						Guid: expectedGuid,
@@ -218,28 +218,10 @@ var _ = Describe("AuctionCellRep", func() {
 						DiskMB:     lrpAuction.DesiredLRP.DiskMB,
 						CPUWeight:  lrpAuction.DesiredLRP.CPUWeight,
 						RootFSPath: "some-root-fs",
+						Privileged: lrpAuction.DesiredLRP.Privileged,
 						Ports:      []executor.PortMapping{{ContainerPort: 8080}},
 						Log:        executor.LogConfig{Guid: "log-guid", Index: &expectedIndex},
 
-<<<<<<< HEAD
-					MemoryMB:   lrpAuction.DesiredLRP.MemoryMB,
-					DiskMB:     lrpAuction.DesiredLRP.DiskMB,
-					CPUWeight:  lrpAuction.DesiredLRP.CPUWeight,
-					RootFSPath: "some-root-fs",
-					Privileged: lrpAuction.DesiredLRP.Privileged,
-					Ports:      []executor.PortMapping{{ContainerPort: 8080}},
-					Log:        executor.LogConfig{Guid: "log-guid", Index: &expectedIndex},
-
-					Setup:   lrpAuction.DesiredLRP.Setup,
-					Action:  lrpAuction.DesiredLRP.Action,
-					Monitor: lrpAuction.DesiredLRP.Monitor,
-
-					Env: []executor.EnvironmentVariable{
-						{Name: "INSTANCE_GUID", Value: expectedGuid},
-						{Name: "INSTANCE_INDEX", Value: expectedIndexString},
-						{Name: "var1", Value: "val1"},
-						{Name: "var2", Value: "val2"},
-=======
 						Setup:   lrpAuction.DesiredLRP.Setup,
 						Action:  lrpAuction.DesiredLRP.Action,
 						Monitor: lrpAuction.DesiredLRP.Monitor,
@@ -250,10 +232,8 @@ var _ = Describe("AuctionCellRep", func() {
 							{Name: "var1", Value: "val1"},
 							{Name: "var2", Value: "val2"},
 						},
->>>>>>> Avoid http call if list of LRP or tasks is empty
-					},
-				},
-				))
+					}}))
+
 			})
 
 			Context("when allocation succeeds", func() {
@@ -312,7 +292,6 @@ var _ = Describe("AuctionCellRep", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(client.AllocateContainersCallCount()).Should(Equal(1))
-
 				Ω(client.AllocateContainersArgsForCall(0)).Should(Equal([]executor.Container{
 					{
 						Guid: task.TaskGuid,
@@ -330,18 +309,13 @@ var _ = Describe("AuctionCellRep", func() {
 							{Name: "FOO", Value: "BAR"},
 						},
 
-<<<<<<< HEAD
-					MemoryMB:   task.MemoryMB,
-					DiskMB:     task.DiskMB,
-					CPUWeight:  task.CPUWeight,
-					RootFSPath: task.RootFSPath,
-					Privileged: task.Privileged,
+						MemoryMB:   task.MemoryMB,
+						DiskMB:     task.DiskMB,
+						CPUWeight:  task.CPUWeight,
+						RootFSPath: task.RootFSPath,
+						Privileged: task.Privileged,
+					},
 				}))
-=======
-						MemoryMB: task.MemoryMB,
-						DiskMB:   task.DiskMB,
-					}}))
->>>>>>> Avoid http call if list of LRP or tasks is empty
 			})
 
 			Context("when allocation succeeds", func() {

@@ -155,6 +155,7 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 			DiskMB:       lrpStart.DesiredLRP.DiskMB,
 			CPUWeight:    lrpStart.DesiredLRP.CPUWeight,
 			RootFSPath:   lrpStart.DesiredLRP.RootFSPath,
+			Privileged:   lrpStart.DesiredLRP.Privileged,
 			Ports:        a.convertPortMappings(lrpStart.DesiredLRP.Ports),
 			StartTimeout: lrpStart.DesiredLRP.StartTimeout,
 
@@ -244,7 +245,7 @@ func (a *AuctionCellRep) tasksToContainers(tasks []models.Task) []executor.Conta
 
 func (a *AuctionCellRep) startTask(task models.Task, logger lager.Logger) {
 	logger.Info("starting-task")
-	err := a.bbs.StartTask(logger, task.TaskGuid, a.cellID)
+	_, err := a.bbs.StartTask(logger, task.TaskGuid, a.cellID)
 	if err != nil {
 		logger.Error("failed-to-mark-task-started", err)
 		a.client.DeleteContainer(task.TaskGuid)
