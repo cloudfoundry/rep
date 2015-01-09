@@ -191,12 +191,13 @@ var _ = Describe("The Rep", func() {
 
 					fakeExecutor.RouteToHandler("POST", "/containers",
 						ghttp.CombineHandlers(
-							ghttp.RespondWithJSONEncoded(http.StatusOK, executor.Container{}),
+							ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{}),
 							func(w http.ResponseWriter, r *http.Request) {
 								close(gotReservation)
 							},
 						),
 					)
+
 				})
 
 				It("makes a request to executor to allocate the container", func() {
@@ -244,12 +245,13 @@ var _ = Describe("The Rep", func() {
 
 					fakeExecutor.RouteToHandler("POST", "/containers",
 						ghttp.CombineHandlers(
-							ghttp.RespondWithJSONEncoded(http.StatusOK, executor.Container{}),
+							ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{}),
 							func(w http.ResponseWriter, r *http.Request) {
 								close(gotReservation)
 							},
 						),
 					)
+
 				})
 
 				It("makes a request to executor to allocate the container", func() {

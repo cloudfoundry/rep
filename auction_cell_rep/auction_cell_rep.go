@@ -92,38 +92,41 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 		"tasks":      len(work.Tasks),
 	})
 
-	containers, lrpAuctionMap, err := a.lrpsToContainers(work.LRPs)
-	if err != nil {
-		failedWork.LRPs = work.LRPs
-	} else {
-		errMessageMap, err := a.client.AllocateContainers(containers)
+	if len(work.LRPs) > 0 {
+		containers, lrpAuctionMap, err := a.lrpsToContainers(work.LRPs)
 		if err != nil {
 			failedWork.LRPs = work.LRPs
 		} else {
-			for guid, lrpStart := range lrpAuctionMap {
-				if _, found := errMessageMap[guid]; found {
-					failedWork.LRPs = append(failedWork.LRPs, lrpStart)
-				} else {
-					go a.startLRP(guid, lrpStart, logger)
+			errMessageMap, err := a.client.AllocateContainers(containers)
+			if err != nil {
+				failedWork.LRPs = work.LRPs
+			} else {
+				for guid, lrpStart := range lrpAuctionMap {
+					if _, found := errMessageMap[guid]; found {
+						failedWork.LRPs = append(failedWork.LRPs, lrpStart)
+					} else {
+						go a.startLRP(guid, lrpStart, logger)
+					}
 				}
 			}
 		}
 	}
 
-	containers = a.tasksToContainers(work.Tasks)
-	errMessageMap, err := a.client.AllocateContainers(containers)
-	if err != nil {
-		failedWork.Tasks = work.Tasks
-	} else {
-		for _, task := range work.Tasks {
-			if _, found := errMessageMap[task.TaskGuid]; found {
-				failedWork.Tasks = append(failedWork.Tasks, task)
-			} else {
-				go a.startTask(task, logger)
+	if len(work.Tasks) > 0 {
+		containers := a.tasksToContainers(work.Tasks)
+		errMessageMap, err := a.client.AllocateContainers(containers)
+		if err != nil {
+			failedWork.Tasks = work.Tasks
+		} else {
+			for _, task := range work.Tasks {
+				if _, found := errMessageMap[task.TaskGuid]; found {
+					failedWork.Tasks = append(failedWork.Tasks, task)
+				} else {
+					go a.startTask(task, logger)
+				}
 			}
 		}
 	}
-
 	return failedWork, nil
 }
 

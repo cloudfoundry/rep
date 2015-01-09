@@ -201,18 +201,27 @@ var _ = Describe("AuctionCellRep", func() {
 				_, err := cellRep.Perform(work)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Ω(client.AllocateContainerCallCount()).Should(Equal(1))
+				Ω(client.AllocateContainersCallCount()).Should(Equal(1))
 
-				Ω(client.AllocateContainerArgsForCall(0)).Should(Equal(executor.Container{
-					Guid: expectedGuid,
+				Ω(client.AllocateContainersArgsForCall(0)).Should(Equal([]executor.Container{
+					{
+						Guid: expectedGuid,
 
-					Tags: executor.Tags{
-						rep.LifecycleTag:    rep.LRPLifecycle,
-						rep.DomainTag:       lrpAuction.DesiredLRP.Domain,
-						rep.ProcessGuidTag:  lrpAuction.DesiredLRP.ProcessGuid,
-						rep.ProcessIndexTag: expectedIndexString,
-					},
+						Tags: executor.Tags{
+							rep.LifecycleTag:    rep.LRPLifecycle,
+							rep.DomainTag:       lrpAuction.DesiredLRP.Domain,
+							rep.ProcessGuidTag:  lrpAuction.DesiredLRP.ProcessGuid,
+							rep.ProcessIndexTag: expectedIndexString,
+						},
 
+						MemoryMB:   lrpAuction.DesiredLRP.MemoryMB,
+						DiskMB:     lrpAuction.DesiredLRP.DiskMB,
+						CPUWeight:  lrpAuction.DesiredLRP.CPUWeight,
+						RootFSPath: "some-root-fs",
+						Ports:      []executor.PortMapping{{ContainerPort: 8080}},
+						Log:        executor.LogConfig{Guid: "log-guid", Index: &expectedIndex},
+
+<<<<<<< HEAD
 					MemoryMB:   lrpAuction.DesiredLRP.MemoryMB,
 					DiskMB:     lrpAuction.DesiredLRP.DiskMB,
 					CPUWeight:  lrpAuction.DesiredLRP.CPUWeight,
@@ -230,13 +239,26 @@ var _ = Describe("AuctionCellRep", func() {
 						{Name: "INSTANCE_INDEX", Value: expectedIndexString},
 						{Name: "var1", Value: "val1"},
 						{Name: "var2", Value: "val2"},
+=======
+						Setup:   lrpAuction.DesiredLRP.Setup,
+						Action:  lrpAuction.DesiredLRP.Action,
+						Monitor: lrpAuction.DesiredLRP.Monitor,
+
+						Env: []executor.EnvironmentVariable{
+							{Name: "INSTANCE_GUID", Value: expectedGuid},
+							{Name: "INSTANCE_INDEX", Value: expectedIndexString},
+							{Name: "var1", Value: "val1"},
+							{Name: "var2", Value: "val2"},
+						},
+>>>>>>> Avoid http call if list of LRP or tasks is empty
 					},
-				}))
+				},
+				))
 			})
 
 			Context("when allocation succeeds", func() {
 				BeforeEach(func() {
-					client.AllocateContainerReturns(executor.Container{}, nil)
+					client.AllocateContainersReturns(map[string]string{}, nil)
 				})
 
 				It("responds successfully", func() {
@@ -248,7 +270,9 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Context("when allocation fails", func() {
 				BeforeEach(func() {
-					client.AllocateContainerReturns(executor.Container{}, commonErr)
+					client.AllocateContainersReturns(map[string]string{
+						expectedGuid: commonErr.Error(),
+					}, nil)
 				})
 
 				It("adds to the failed work", func() {
@@ -287,35 +311,42 @@ var _ = Describe("AuctionCellRep", func() {
 				_, err := cellRep.Perform(work)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Ω(client.AllocateContainerCallCount()).Should(Equal(1))
+				Ω(client.AllocateContainersCallCount()).Should(Equal(1))
 
-				Ω(client.AllocateContainerArgsForCall(0)).Should(Equal(executor.Container{
-					Guid: task.TaskGuid,
+				Ω(client.AllocateContainersArgsForCall(0)).Should(Equal([]executor.Container{
+					{
+						Guid: task.TaskGuid,
 
-					Tags: executor.Tags{
-						rep.LifecycleTag:  rep.TaskLifecycle,
-						rep.DomainTag:     task.Domain,
-						rep.ResultFileTag: task.ResultFile,
-					},
+						Tags: executor.Tags{
+							rep.LifecycleTag:  rep.TaskLifecycle,
+							rep.DomainTag:     task.Domain,
+							rep.ResultFileTag: task.ResultFile,
+						},
 
-					Action: &models.RunAction{
-						Path: "date",
-					},
-					Env: []executor.EnvironmentVariable{
-						{Name: "FOO", Value: "BAR"},
-					},
+						Action: &models.RunAction{
+							Path: "date",
+						},
+						Env: []executor.EnvironmentVariable{
+							{Name: "FOO", Value: "BAR"},
+						},
 
+<<<<<<< HEAD
 					MemoryMB:   task.MemoryMB,
 					DiskMB:     task.DiskMB,
 					CPUWeight:  task.CPUWeight,
 					RootFSPath: task.RootFSPath,
 					Privileged: task.Privileged,
 				}))
+=======
+						MemoryMB: task.MemoryMB,
+						DiskMB:   task.DiskMB,
+					}}))
+>>>>>>> Avoid http call if list of LRP or tasks is empty
 			})
 
 			Context("when allocation succeeds", func() {
 				BeforeEach(func() {
-					client.AllocateContainerReturns(executor.Container{}, nil)
+					client.AllocateContainersReturns(map[string]string{}, nil)
 				})
 
 				It("responds successfully before starting the task in the BBS", func() {
@@ -327,7 +358,9 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Context("when the container fails to allocate", func() {
 				BeforeEach(func() {
-					client.AllocateContainerReturns(executor.Container{}, commonErr)
+					client.AllocateContainersReturns(map[string]string{
+						task.TaskGuid: commonErr.Error(),
+					}, nil)
 				})
 
 				It("adds to the failed work", func() {
