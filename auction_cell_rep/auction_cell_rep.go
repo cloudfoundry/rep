@@ -93,9 +93,12 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 	})
 
 	if len(work.LRPs) > 0 {
+		lrpLogger := logger.Session("lrp-allocate-instances")
+		lrpLogger.Info("allocating")
 		containers, lrpAuctionMap, err := a.lrpsToContainers(work.LRPs)
 		if err != nil {
 			failedWork.LRPs = work.LRPs
+			lrpLogger.Info("failed-to-allocate")
 		} else {
 			errMessageMap, err := a.client.AllocateContainers(containers)
 			if err != nil {
@@ -104,27 +107,28 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 				for guid, lrpStart := range lrpAuctionMap {
 					if _, found := errMessageMap[guid]; found {
 						failedWork.LRPs = append(failedWork.LRPs, lrpStart)
-					} else {
-						go a.startLRP(guid, lrpStart, logger)
 					}
 				}
+				lrpLogger.Info("allocated")
 			}
 		}
 	}
 
 	if len(work.Tasks) > 0 {
+		taskLogger := logger.Session("task-allocate-instances")
+		taskLogger.Info("allocating")
 		containers := a.tasksToContainers(work.Tasks)
 		errMessageMap, err := a.client.AllocateContainers(containers)
 		if err != nil {
 			failedWork.Tasks = work.Tasks
+			taskLogger.Info("failed-to-allocate")
 		} else {
 			for _, task := range work.Tasks {
 				if _, found := errMessageMap[task.TaskGuid]; found {
 					failedWork.Tasks = append(failedWork.Tasks, task)
-				} else {
-					go a.startTask(task, logger)
 				}
 			}
+			taskLogger.Info("allocated")
 		}
 	}
 	return failedWork, nil
@@ -180,37 +184,6 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 	return containers, lrpAuctionMap, nil
 }
 
-func (a *AuctionCellRep) startLRP(guid string, lrpStart auctiontypes.LRPAuction, logger lager.Logger) {
-	lrpKey := models.NewActualLRPKey(
-		lrpStart.DesiredLRP.ProcessGuid,
-		lrpStart.Index,
-		lrpStart.DesiredLRP.Domain,
-	)
-	lrpContainerKey := models.NewActualLRPContainerKey(
-		guid,
-		a.cellID,
-	)
-
-	logger.Info("announcing-to-bbs")
-	claimErr := a.bbs.ClaimActualLRP(lrpKey, lrpContainerKey, logger)
-	if claimErr != nil {
-		logger.Error("failed-announcing-to-bbs", claimErr)
-		a.client.DeleteContainer(guid)
-		return
-	}
-	logger.Info("succeeded-announcing-to-bbs")
-
-	logger.Info("running-container")
-	runErr := a.client.RunContainer(guid)
-	if runErr != nil {
-		logger.Error("failed-running-container", runErr)
-		a.client.DeleteContainer(guid)
-		a.bbs.RemoveActualLRP(lrpKey, lrpContainerKey, logger)
-		return
-	}
-	logger.Info("succeeded-running-container")
-}
-
 func (a *AuctionCellRep) tasksToContainers(tasks []models.Task) []executor.Container {
 	containers := make([]executor.Container, 0, len(tasks))
 
@@ -241,27 +214,6 @@ func (a *AuctionCellRep) tasksToContainers(tasks []models.Task) []executor.Conta
 	}
 
 	return containers
-}
-
-func (a *AuctionCellRep) startTask(task models.Task, logger lager.Logger) {
-	logger.Info("starting-task")
-	_, err := a.bbs.StartTask(logger, task.TaskGuid, a.cellID)
-	if err != nil {
-		logger.Error("failed-to-mark-task-started", err)
-		a.client.DeleteContainer(task.TaskGuid)
-		return
-	}
-	logger.Info("successfully-started-task")
-
-	logger.Info("running-task")
-	err = a.client.RunContainer(task.TaskGuid)
-	if err != nil {
-		logger.Error("failed-to-run-task", err)
-		a.client.DeleteContainer(task.TaskGuid)
-		a.markTaskAsFailed(logger, task.TaskGuid, err)
-		return
-	}
-	logger.Info("successfully-ran-task")
 }
 
 func (a *AuctionCellRep) convertPortMappings(containerPorts []uint32) []executor.PortMapping {
