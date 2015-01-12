@@ -93,15 +93,13 @@ const (
 	dropsondeOrigin      = "rep"
 )
 
-var logger = cf_lager.New("rep")
-
-func init() {
-	cf_debug_server.AddFlags(flag.CommandLine)
-	initializeDropsonde(logger)
-	flag.Parse()
-}
-
 func main() {
+	cf_debug_server.AddFlags(flag.CommandLine)
+	flag.Parse()
+
+	logger := cf_lager.New("rep")
+	initializeDropsonde(logger)
+
 	if *cellID == "" {
 		log.Fatalf("-cellID must be specified")
 	}
