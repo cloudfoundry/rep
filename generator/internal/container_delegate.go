@@ -39,7 +39,7 @@ func (d *containerDelegate) GetContainer(logger lager.Logger, guid string) (exec
 	logger.Info("fetch-container")
 	container, err := d.client.GetContainer(guid)
 	if err != nil {
-		logger.Error("faileed-fetch-container", err)
+		logger.Error("failed-fetch-container", err)
 		return container, false
 	}
 	logger.Info("succeeded-fetch-container")
