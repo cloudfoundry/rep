@@ -177,6 +177,7 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 				{Name: "INSTANCE_GUID", Value: containerGuidString},
 				{Name: "INSTANCE_INDEX", Value: strconv.Itoa(lrpStart.Index)},
 			}, executor.EnvironmentVariablesFromModel(lrpStart.DesiredLRP.EnvironmentVariables)...),
+			SecurityGroupRules: lrpStart.DesiredLRP.SecurityGroupRules,
 		}
 		containers = append(containers, container)
 	}
@@ -208,7 +209,8 @@ func (a *AuctionCellRep) tasksToContainers(tasks []models.Task) []executor.Conta
 
 			Action: task.Action,
 
-			Env: executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
+			Env:                executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
+			SecurityGroupRules: task.SecurityGroupRules,
 		}
 		containers = append(containers, container)
 	}
