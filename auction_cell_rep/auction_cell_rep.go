@@ -238,12 +238,3 @@ func (a *AuctionCellRep) fetchResourcesVia(fetcher func() (executor.ExecutorReso
 		Containers: resources.Containers,
 	}, nil
 }
-
-func (a *AuctionCellRep) markTaskAsFailed(logger lager.Logger, taskGuid string, err error) {
-	logger.Info("fail-task")
-	err = a.bbs.FailTask(logger, taskGuid, "failed to run container - "+err.Error())
-	if err != nil {
-		logger.Error("failed-to-fail-task", err)
-	}
-	logger.Info("successfully-failed-task")
-}
