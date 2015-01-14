@@ -114,7 +114,7 @@ func (g *generator) BatchOperations(logger lager.Logger) ([]operationq.Operation
 	for guid, lrp := range lrps {
 		_, found := batch[guid]
 		if !found {
-			batch[guid] = newMissingLRPOperation(logger, g.bbs, lrp.ActualLRPKey, lrp.ActualLRPContainerKey)
+			batch[guid] = NewMissingLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPContainerKey)
 		}
 	}
 
@@ -122,7 +122,7 @@ func (g *generator) BatchOperations(logger lager.Logger) ([]operationq.Operation
 	for guid, _ := range tasks {
 		_, found := batch[guid]
 		if !found {
-			batch[guid] = newMissingTaskOperation(logger, g.bbs, guid)
+			batch[guid] = NewMissingTaskOperation(logger, g.bbs, g.containerDelegate, guid)
 		}
 	}
 
@@ -167,5 +167,5 @@ func (g *generator) OperationStream(logger lager.Logger) (<-chan operationq.Oper
 }
 
 func (g *generator) operationFromContainer(logger lager.Logger, guid string) operationq.Operation {
-	return newContainerOperation(logger, g.bbs, g.lrpProcessor, g.taskProcessor, g.containerDelegate, guid)
+	return NewContainerOperation(logger, g.lrpProcessor, g.taskProcessor, g.containerDelegate, guid)
 }

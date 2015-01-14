@@ -7,9 +7,7 @@ import (
 	efakes "github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/generator"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/pivotal-golang/operationq"
 
 	. "github.com/onsi/ginkgo"
@@ -18,18 +16,14 @@ import (
 
 var _ = Describe("Generator", func() {
 	var (
-		logger             *lagertest.TestLogger
 		cellID             string
 		fakeExecutorClient *efakes.FakeClient
-		fakeBBS            *fake_bbs.FakeRepBBS
 
 		opGenerator generator.Generator
 	)
 
 	BeforeEach(func() {
-		logger = lagertest.NewTestLogger("test")
 		cellID = "some-cell-id"
-		fakeBBS = new(fake_bbs.FakeRepBBS)
 		fakeExecutorClient = new(efakes.FakeClient)
 
 		opGenerator = generator.New(cellID, fakeBBS, fakeExecutorClient)
