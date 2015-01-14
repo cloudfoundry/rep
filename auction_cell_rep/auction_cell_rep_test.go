@@ -156,16 +156,25 @@ var _ = Describe("AuctionCellRep", func() {
 		})
 	})
 
-	Describe("performing work", func() {
+	Describe("Perform", func() {
 		var work auctiontypes.Work
 		Describe("performing starts", func() {
 			var lrpAuction auctiontypes.LRPAuction
 			var expectedLRPKey models.ActualLRPKey
 			var expectedLRPContainerKey models.ActualLRPContainerKey
 			var expectedIndex = 2
+			var securityRule models.SecurityGroupRule
 			const expectedIndexString = "2"
 
 			BeforeEach(func() {
+				securityRule = models.SecurityGroupRule{
+					Protocol:    "tcp",
+					Destination: "0.0.0.0/0",
+					PortRange: models.PortRange{
+						Start: 1,
+						End:   1024,
+					},
+				}
 				lrpAuction = auctiontypes.LRPAuction{
 					DesiredLRP: models.DesiredLRP{
 						Domain:      "tests",
@@ -186,6 +195,9 @@ var _ = Describe("AuctionCellRep", func() {
 						LogGuid: "log-guid",
 						Ports: []uint32{
 							8080,
+						},
+						SecurityGroupRules: []models.SecurityGroupRule{
+							securityRule,
 						},
 					},
 
@@ -232,6 +244,9 @@ var _ = Describe("AuctionCellRep", func() {
 							{Name: "var1", Value: "val1"},
 							{Name: "var2", Value: "val2"},
 						},
+						SecurityGroupRules: []models.SecurityGroupRule{
+							securityRule,
+						},
 					}}))
 
 			})
@@ -265,8 +280,17 @@ var _ = Describe("AuctionCellRep", func() {
 
 		Describe("starting tasks", func() {
 			var task models.Task
+			var securityRule models.SecurityGroupRule
 
 			BeforeEach(func() {
+				securityRule = models.SecurityGroupRule{
+					Protocol:    "tcp",
+					Destination: "0.0.0.0/0",
+					PortRange: models.PortRange{
+						Start: 1,
+						End:   1024,
+					},
+				}
 				task = models.Task{
 					Domain:     "tests",
 					TaskGuid:   "the-task-guid",
@@ -281,6 +305,9 @@ var _ = Describe("AuctionCellRep", func() {
 					},
 					EnvironmentVariables: []models.EnvironmentVariable{
 						{Name: "FOO", Value: "BAR"},
+					},
+					SecurityGroupRules: []models.SecurityGroupRule{
+						securityRule,
 					},
 				}
 
@@ -314,6 +341,9 @@ var _ = Describe("AuctionCellRep", func() {
 						CPUWeight:  task.CPUWeight,
 						RootFSPath: task.RootFSPath,
 						Privileged: task.Privileged,
+						SecurityGroupRules: []models.SecurityGroupRule{
+							securityRule,
+						},
 					},
 				}))
 			})
