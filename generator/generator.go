@@ -135,10 +135,16 @@ func (g *generator) BatchOperations(logger lager.Logger) ([]operationq.Operation
 }
 
 func (g *generator) OperationStream(logger lager.Logger) (<-chan operationq.Operation, error) {
+	logger = logger.Session("operation-stream")
+
+	logger.Info("subscribing")
 	events, err := g.executorClient.SubscribeToEvents()
 	if err != nil {
+		logger.Error("failed-subscribing", err)
 		return nil, err
 	}
+
+	logger.Info("succeeded-subscribing")
 
 	opChan := make(chan operationq.Operation)
 
@@ -147,18 +153,19 @@ func (g *generator) OperationStream(logger lager.Logger) (<-chan operationq.Oper
 			select {
 			case e, ok := <-events:
 				if !ok {
+					logger.Debug("event-stream-closed")
 					close(opChan)
 					return
 				}
 
 				lifecycle, ok := e.(executor.LifecycleEvent)
 				if !ok {
+					logger.Debug("received-non-lifecycle-event")
 					continue
 				}
 
 				container := lifecycle.Container()
-				session := logger.Session("operation-from-container", lager.Data{"container-guid": container.Guid})
-				opChan <- g.operationFromContainer(session, container.Guid)
+				opChan <- g.operationFromContainer(logger, container.Guid)
 			}
 		}
 	}()
