@@ -36,6 +36,175 @@ var _ = Describe("Generator", func() {
 		opGenerator = generator.New(cellID, fakeBBS, fakeExecutorClient)
 	})
 
+	Describe("BatchOperations", func() {
+		const sessionName = "test.batch-operations"
+
+		var (
+			batch    map[string]operationq.Operation
+			batchErr error
+		)
+
+		JustBeforeEach(func() {
+			batch, batchErr = opGenerator.BatchOperations(logger)
+		})
+
+		It("logs its lifecycle", func() {
+			Ω(logger).Should(Say(sessionName + ".started"))
+		})
+
+		It("retrieves all actual lrps for its cell id", func() {
+			Ω(fakeBBS.ActualLRPsByCellIDCallCount()).Should(Equal(1))
+			Ω(fakeBBS.ActualLRPsByCellIDArgsForCall(0)).Should(Equal(cellID))
+		})
+
+		It("retrieves all tasks for its cell id", func() {
+			Ω(fakeBBS.TasksByCellIDCallCount()).Should(Equal(1))
+			actualLogger, actualCellID := fakeBBS.TasksByCellIDArgsForCall(0)
+			Ω(actualLogger.SessionName()).Should(Equal(sessionName))
+			Ω(actualCellID).Should(Equal(cellID))
+		})
+
+		It("lists all containers from the executor", func() {
+			Ω(fakeExecutorClient.ListContainersCallCount()).Should(Equal(1))
+			tags := fakeExecutorClient.ListContainersArgsForCall(0)
+			Ω(tags).Should(BeNil())
+		})
+
+		Context("when retrieving container and BBS data succeeds", func() {
+			var (
+				instanceGuid1 string
+				instanceGuid2 string
+				instanceGuid3 string
+				instanceGuid4 string
+				instanceGuid5 string
+			)
+
+			BeforeEach(func() {
+				instanceGuid1 = "instance-guid-1"
+				instanceGuid2 = "instance-guid-2"
+				instanceGuid3 = "instance-guid-3"
+				instanceGuid4 = "instance-guid-4"
+				instanceGuid5 = "instance-guid-5"
+
+				containers := []executor.Container{
+					{Guid: instanceGuid1},
+					{Guid: instanceGuid2},
+					{Guid: instanceGuid3},
+				}
+
+				lrps := []models.ActualLRP{
+					{ActualLRPContainerKey: models.NewActualLRPContainerKey(instanceGuid1, cellID)},
+					{ActualLRPContainerKey: models.NewActualLRPContainerKey(instanceGuid4, cellID)},
+				}
+
+				tasks := []models.Task{
+					{TaskGuid: instanceGuid2},
+					{TaskGuid: instanceGuid5},
+				}
+
+				fakeExecutorClient.ListContainersReturns(containers, nil)
+
+				fakeBBS.ActualLRPsByCellIDReturns(lrps, nil)
+				fakeBBS.TasksByCellIDReturns(tasks, nil)
+			})
+
+			It("does not return an error", func() {
+				Ω(batchErr).ShouldNot(HaveOccurred())
+			})
+
+			It("logs success", func() {
+				Ω(logger).Should(Say(sessionName + ".succeeded"))
+			})
+
+			It("returns a batch of the correct size", func() {
+				Ω(batch).Should(HaveLen(5))
+			})
+
+			assertBatchHasAContainerOperationForGuid := func(guid string, batch map[string]operationq.Operation) {
+				operation, found := batch[guid]
+				Ω(found).Should(BeTrue(), "no operation for '"+guid+"'")
+				_, ok := operation.(*generator.ContainerOperation)
+				Ω(ok).Should(BeTrue(), "operation for '"+guid+"' was not a container operation")
+			}
+
+			It("returns a container operation for a container with an lrp", func() {
+				assertBatchHasAContainerOperationForGuid(instanceGuid1, batch)
+			})
+
+			It("returns a container operation for a container with a task", func() {
+				assertBatchHasAContainerOperationForGuid(instanceGuid2, batch)
+			})
+
+			It("returns a container operation for a container with nothing in bbs", func() {
+				assertBatchHasAContainerOperationForGuid(instanceGuid3, batch)
+			})
+
+			It("returns a missing lrp operation for an lrp with no container", func() {
+				guid := instanceGuid4
+				operation, found := batch[guid]
+				Ω(found).Should(BeTrue(), "no operation for '"+guid+"'")
+				_, ok := operation.(*generator.MissingLRPOperation)
+				Ω(ok).Should(BeTrue(), "operation for '"+guid+"' was not a missing lrp operation")
+			})
+
+			It("returns a missing task operation for a task with no container", func() {
+				guid := instanceGuid5
+				operation, found := batch[guid]
+				Ω(found).Should(BeTrue(), "no operation for '"+guid+"'")
+				_, ok := operation.(*generator.MissingTaskOperation)
+				Ω(ok).Should(BeTrue(), "operation for '"+guid+"' was not a missing task operation")
+			})
+
+		})
+
+		Context("when retrieving data fails", func() {
+			Context("when retrieving the containers fails", func() {
+				BeforeEach(func() {
+					fakeExecutorClient.ListContainersReturns(nil, errors.New("oh no, no container!"))
+				})
+
+				It("returns an error", func() {
+					Ω(batchErr).Should(HaveOccurred())
+					Ω(batchErr).Should(MatchError(ContainSubstring("oh no, no container!")))
+				})
+
+				It("logs the failure", func() {
+					Ω(logger).Should(Say(sessionName + ".failed-to-list-containers"))
+				})
+			})
+
+			Context("when retrieving the tasks fails", func() {
+				BeforeEach(func() {
+					fakeBBS.TasksByCellIDReturns(nil, errors.New("oh no, no task!"))
+				})
+
+				It("returns an error", func() {
+					Ω(batchErr).Should(HaveOccurred())
+					Ω(batchErr).Should(MatchError(ContainSubstring("oh no, no task!")))
+				})
+
+				It("logs the failure", func() {
+					Ω(logger).Should(Say(sessionName + ".failed-to-retrieve-tasks"))
+				})
+			})
+
+			Context("when retrieving the LRPs fails", func() {
+				BeforeEach(func() {
+					fakeBBS.ActualLRPsByCellIDReturns(nil, errors.New("oh no, no lrp!"))
+				})
+
+				It("returns an error", func() {
+					Ω(batchErr).Should(HaveOccurred())
+					Ω(batchErr).Should(MatchError(ContainSubstring("oh no, no lrp!")))
+				})
+
+				It("logs the failure", func() {
+					Ω(logger).Should(Say(sessionName + ".failed-to-retrieve-lrps"))
+				})
+			})
+		})
+	})
+
 	Describe("OperationStream", func() {
 		const sessionPrefix = "test.operation-stream."
 

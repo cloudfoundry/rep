@@ -48,6 +48,9 @@ func New(cellID string, bbs bbs.RepBBS, executorClient executor.Client) Generato
 }
 
 func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.Operation, error) {
+	logger = logger.Session("batch-operations")
+	logger.Info("started")
+
 	containers := make(map[string]executor.Container)
 	lrps := make(map[string]models.ActualLRP)
 	tasks := make(map[string]models.Task)
@@ -57,7 +60,8 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	go func() {
 		foundContainers, err := g.executorClient.ListContainers(nil)
 		if err != nil {
-			err = fmt.Errorf("generator-ListContainers failed: %s", err.Error())
+			logger.Error("failed-to-list-containers", err)
+			err = fmt.Errorf("failed to list containers: %s", err.Error())
 		}
 
 		for _, c := range foundContainers {
@@ -70,7 +74,8 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	go func() {
 		foundLRPS, err := g.bbs.ActualLRPsByCellID(g.cellID)
 		if err != nil {
-			err = fmt.Errorf("generator-ActualLRPsByCellID failed: %s", err.Error())
+			logger.Error("failed-to-retrieve-lrps", err)
+			err = fmt.Errorf("failed to retrieve lrps: %s", err.Error())
 		}
 
 		for _, lrp := range foundLRPS {
@@ -82,7 +87,8 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	go func() {
 		foundTasks, err := g.bbs.TasksByCellID(logger, g.cellID)
 		if err != nil {
-			err = fmt.Errorf("generator-TasksByCellID failed: %s", err.Error())
+			logger.Error("failed-to-retrieve-tasks", err)
+			err = fmt.Errorf("failed to retrieve tasks: %s", err.Error())
 		}
 
 		for _, task := range foundTasks {
@@ -126,6 +132,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 		}
 	}
 
+	logger.Info("succeeded", lager.Data{"batch-size": len(batch)})
 	return batch, nil
 }
 
