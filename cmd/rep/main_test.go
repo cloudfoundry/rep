@@ -106,28 +106,6 @@ var _ = Describe("The Rep", func() {
 		})
 	})
 
-	Describe("when a task is written to the BBS", func() {
-		BeforeEach(func() {
-			fakeExecutor.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("POST", "/containers/the-task-guid"),
-				ghttp.RespondWith(http.StatusCreated, `{"executor_guid":"executor-guid","guid":"guid-123"}`)),
-			)
-
-			bbs.DesireTask(logger, models.Task{
-				TaskGuid: "the-task-guid",
-				Stack:    "the-stack",
-				Action: &models.RunAction{
-					Path: "cat",
-					Args: []string{"/tmp/file"},
-				},
-			})
-		})
-
-		It("makes a request to the executor", func() {
-			Eventually(fakeExecutor.ReceivedRequests).Should(HaveLen(2))
-		})
-	})
-
 	Describe("acting as an auction representative", func() {
 		Describe("reporting the state of its resources", func() {
 			BeforeEach(func() {
