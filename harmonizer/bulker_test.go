@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/cloudfoundry-incubator/rep/harmonizer"
 	"github.com/cloudfoundry-incubator/rep/generator/fake_generator"
+	"github.com/cloudfoundry-incubator/rep/harmonizer"
 	"github.com/cloudfoundry/gunk/timeprovider/faketimeprovider"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -59,14 +59,17 @@ var _ = Describe("Bulker", func() {
 				operation1 = new(fake_operationq.FakeOperation)
 				operation2 = new(fake_operationq.FakeOperation)
 
-				fakeGenerator.BatchOperationsReturns([]operationq.Operation{operation1, operation2}, nil)
+				fakeGenerator.BatchOperationsReturns(map[string]operationq.Operation{"guid1": operation1, "guid2": operation2}, nil)
 			})
 
 			It("pushes them onto the queue", func() {
 				Eventually(fakeQueue.PushCallCount).Should(Equal(2))
 
-				Ω(fakeQueue.PushArgsForCall(0)).Should(Equal(operation1))
-				Ω(fakeQueue.PushArgsForCall(1)).Should(Equal(operation2))
+				enqueuedOperations := make([]operationq.Operation, 0, 2)
+				enqueuedOperations = append(enqueuedOperations, fakeQueue.PushArgsForCall(0))
+				enqueuedOperations = append(enqueuedOperations, fakeQueue.PushArgsForCall(1))
+
+				Ω(enqueuedOperations).Should(ConsistOf(operation1, operation2))
 			})
 		})
 

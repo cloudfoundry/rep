@@ -10,13 +10,13 @@ import (
 )
 
 type FakeGenerator struct {
-	BatchOperationsStub        func(lager.Logger) ([]operationq.Operation, error)
+	BatchOperationsStub        func(lager.Logger) (map[string]operationq.Operation, error)
 	batchOperationsMutex       sync.RWMutex
 	batchOperationsArgsForCall []struct {
 		arg1 lager.Logger
 	}
 	batchOperationsReturns struct {
-		result1 []operationq.Operation
+		result1 map[string]operationq.Operation
 		result2 error
 	}
 	OperationStreamStub        func(lager.Logger) (<-chan operationq.Operation, error)
@@ -30,7 +30,7 @@ type FakeGenerator struct {
 	}
 }
 
-func (fake *FakeGenerator) BatchOperations(arg1 lager.Logger) ([]operationq.Operation, error) {
+func (fake *FakeGenerator) BatchOperations(arg1 lager.Logger) (map[string]operationq.Operation, error) {
 	fake.batchOperationsMutex.Lock()
 	fake.batchOperationsArgsForCall = append(fake.batchOperationsArgsForCall, struct {
 		arg1 lager.Logger
@@ -55,10 +55,10 @@ func (fake *FakeGenerator) BatchOperationsArgsForCall(i int) lager.Logger {
 	return fake.batchOperationsArgsForCall[i].arg1
 }
 
-func (fake *FakeGenerator) BatchOperationsReturns(result1 []operationq.Operation, result2 error) {
+func (fake *FakeGenerator) BatchOperationsReturns(result1 map[string]operationq.Operation, result2 error) {
 	fake.BatchOperationsStub = nil
 	fake.batchOperationsReturns = struct {
-		result1 []operationq.Operation
+		result1 map[string]operationq.Operation
 		result2 error
 	}{result1, result2}
 }

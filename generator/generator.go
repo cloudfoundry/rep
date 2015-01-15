@@ -17,7 +17,7 @@ import (
 // Generator encapsulates operation creation in the Rep.
 type Generator interface {
 	// BatchOperations creates a set of operations across all containers the Rep is managing.
-	BatchOperations(lager.Logger) ([]operationq.Operation, error)
+	BatchOperations(lager.Logger) (map[string]operationq.Operation, error)
 
 	// OperationStream creates an operation every time a container lifecycle event is observed.
 	OperationStream(lager.Logger) (<-chan operationq.Operation, error)
@@ -47,7 +47,7 @@ func New(cellID string, bbs bbs.RepBBS, executorClient executor.Client) Generato
 	}
 }
 
-func (g *generator) BatchOperations(logger lager.Logger) ([]operationq.Operation, error) {
+func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.Operation, error) {
 	containers := make(map[string]executor.Container)
 	lrps := make(map[string]models.ActualLRP)
 	tasks := make(map[string]models.Task)
@@ -126,12 +126,7 @@ func (g *generator) BatchOperations(logger lager.Logger) ([]operationq.Operation
 		}
 	}
 
-	ops := make([]operationq.Operation, 0, len(batch))
-	for _, op := range batch {
-		ops = append(ops, op)
-	}
-
-	return ops, nil
+	return batch, nil
 }
 
 func (g *generator) OperationStream(logger lager.Logger) (<-chan operationq.Operation, error) {
