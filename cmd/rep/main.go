@@ -111,14 +111,14 @@ func main() {
 
 	bbs := initializeRepBBS(logger)
 	executorClient := executorclient.New(http.DefaultClient, *executorURL)
-	server, address := initializeServer(bbs, executorClient, logger)
+	httpServer, address := initializeServer(bbs, executorClient, logger)
 	opGenerator := generator.New(*cellID, bbs, executorClient)
 
 	// only one outstanding operation per container is necessary
 	queue := operationq.NewSlidingQueue(1)
 
 	members := grouper.Members{
-		{"server", server},
+		{"http_server", httpServer},
 		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
 		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, timeprovider.NewTimeProvider(), opGenerator, queue)},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
