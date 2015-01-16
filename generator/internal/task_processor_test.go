@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/cloudfoundry-incubator/executor"
+	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
@@ -450,10 +451,6 @@ func (t TaskRow) taskDescription() string {
 func Expected(container executor.Container, task *models.Task, test TaskTest) Row {
 	expectedTest := func(logger *lagertest.TestLogger) {
 		test(logger)
-
-		//		It("does not log that it's inconceivable", func() {
-		//			Ω(logger).ShouldNot(gbytes.Say("inconceivable-state"))
-		//		})
 	}
 
 	return TaskRow{container, task, TaskTest(expectedTest)}
@@ -462,10 +459,6 @@ func Expected(container executor.Container, task *models.Task, test TaskTest) Ro
 func Conceivable(container executor.Container, task *models.Task, test TaskTest) Row {
 	conceivableTest := func(logger *lagertest.TestLogger) {
 		test(logger)
-
-		//		It("does not log that it's inconceivable", func() {
-		//			Ω(logger).ShouldNot(gbytes.Say("inconceivable-state"))
-		//		})
 	}
 
 	return TaskRow{container, task, TaskTest(conceivableTest)}
@@ -474,10 +467,6 @@ func Conceivable(container executor.Container, task *models.Task, test TaskTest)
 func Inconceivable(container executor.Container, task *models.Task, test TaskTest) Row {
 	inconceivableTest := func(logger *lagertest.TestLogger) {
 		test(logger)
-
-		//		It("logs that it's inconceivable", func() {
-		//			Ω(logger).Should(gbytes.Say("inconceivable-state"))
-		//		})
 	}
 
 	return TaskRow{container, task, TaskTest(inconceivableTest)}
@@ -487,19 +476,19 @@ func NewContainer(containerState executor.State) executor.Container {
 	return executor.Container{
 		Guid:  taskGuid,
 		State: containerState,
+		Tags: executor.Tags{
+			rep.ResultFileTag: "some-result-filename",
+		},
 	}
 }
 
 func NewCompletedContainer() executor.Container {
-	return executor.Container{
-		Guid:  taskGuid,
-		State: executor.StateCompleted,
-
-		RunResult: executor.ContainerRunResult{
-			Failed:        true,
-			FailureReason: "because",
-		},
+	container := NewContainer(executor.StateCompleted)
+	container.RunResult = executor.ContainerRunResult{
+		Failed:        true,
+		FailureReason: "because",
 	}
+	return container
 }
 
 func NewTask(cellID string, taskState models.TaskState) *models.Task {

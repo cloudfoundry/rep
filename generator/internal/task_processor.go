@@ -2,6 +2,7 @@ package internal
 
 import (
 	"github.com/cloudfoundry-incubator/executor"
+	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -69,25 +70,8 @@ func (p *taskProcessor) processCompletedContainer(logger lager.Logger, container
 	logger.Debug("start")
 	defer logger.Debug("complete")
 
-	task, ok := p.fetchTask(logger, container.Guid)
-	if !ok {
-		p.containerDelegate.DeleteContainer(logger, container.Guid)
-	} else {
-		logger.Info("completing-task")
-
-		if task.State == models.TaskStatePending {
-			p.failTask(logger, container.Guid, TaskCompletionReasonInvalidTransition)
-		} else if task.State == models.TaskStateRunning {
-			result, err := p.containerDelegate.FetchContainerResult(logger, container.Guid, task.ResultFile)
-			if err != nil {
-				p.failTask(logger, container.Guid, TaskCompletionReasonFailedToFetchResult)
-			} else {
-				p.completeTask(logger, container.Guid, container.RunResult.Failed, container.RunResult.FailureReason, result)
-			}
-		}
-
-		p.containerDelegate.DeleteContainer(logger, container.Guid)
-	}
+	p.completeTask(logger, container)
+	p.containerDelegate.DeleteContainer(logger, container.Guid)
 }
 
 func (p *taskProcessor) fetchTask(logger lager.Logger, guid string) (models.Task, bool) {
@@ -126,17 +110,26 @@ func (p *taskProcessor) startTask(logger lager.Logger, guid string) bool {
 	return changed
 }
 
-func (p *taskProcessor) completeTask(logger lager.Logger, guid string, failed bool, reason string, result string) {
-	err := p.bbs.CompleteTask(logger, guid, p.cellID, failed, reason, result)
+func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Container) {
+	logger.Info("completing-task")
+
+	result, err := p.containerDelegate.FetchContainerResult(logger, container.Guid, container.Tags[rep.ResultFileTag])
+	if err != nil {
+		p.failTask(logger, container.Guid, TaskCompletionReasonFailedToFetchResult)
+		return
+	}
+
+	err = p.bbs.CompleteTask(logger, container.Guid, p.cellID, container.RunResult.Failed, container.RunResult.FailureReason, result)
 	if err != nil {
 		logger.Error("failed-completing-task", err)
 
 		if _, ok := err.(bbserrors.TaskStateTransitionError); ok {
-			p.failTask(logger, guid, TaskCompletionReasonInvalidTransition)
+			p.failTask(logger, container.Guid, TaskCompletionReasonInvalidTransition)
 		}
-	} else {
-		logger.Info("succeeded-completing-task")
+		return
 	}
+
+	logger.Info("succeeded-completing-task")
 }
 
 func (p *taskProcessor) failTask(logger lager.Logger, guid string, reason string) {
