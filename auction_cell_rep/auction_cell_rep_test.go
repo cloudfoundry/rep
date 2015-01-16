@@ -214,7 +214,7 @@ var _ = Describe("AuctionCellRep", func() {
 						Ports: []uint32{
 							8080,
 						},
-						SecurityGroupRules: []models.SecurityGroupRule{
+						EgressRules: []models.SecurityGroupRule{
 							securityRule,
 						},
 					},
@@ -288,7 +288,7 @@ var _ = Describe("AuctionCellRep", func() {
 							{Name: "var1", Value: "val1"},
 							{Name: "var2", Value: "val2"},
 						},
-						SecurityGroupRules: []models.SecurityGroupRule{
+						EgressRules: []models.SecurityGroupRule{
 							securityRule,
 						},
 					},
@@ -383,7 +383,7 @@ var _ = Describe("AuctionCellRep", func() {
 					EnvironmentVariables: []models.EnvironmentVariable{
 						{Name: "FOO", Value: "BAR"},
 					},
-					SecurityGroupRules: []models.SecurityGroupRule{
+					EgressRules: []models.SecurityGroupRule{
 						securityRule,
 					},
 				}
@@ -418,7 +418,7 @@ var _ = Describe("AuctionCellRep", func() {
 						CPUWeight:  task.CPUWeight,
 						RootFSPath: task.RootFSPath,
 						Privileged: task.Privileged,
-						SecurityGroupRules: []models.SecurityGroupRule{
+						EgressRules: []models.SecurityGroupRule{
 							securityRule,
 						},
 					},
