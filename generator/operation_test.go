@@ -128,57 +128,21 @@ var _ = Describe("Operation", func() {
 					containerDelegate.GetContainerReturns(executor.Container{}, false)
 				})
 
-				It("fetches the task", func() {
-					Ω(fakeBBS.TaskByGuidCallCount()).Should(Equal(1))
-					actualTaskGuid := fakeBBS.TaskByGuidArgsForCall(0)
-					Ω(actualTaskGuid).To(Equal(taskGuid))
+				It("fails the task", func() {
+					Ω(fakeBBS.FailTaskCallCount()).Should(Equal(1))
+					actualLogger, actualTaskGuid, actualFailureReason := fakeBBS.FailTaskArgsForCall(0)
+					Ω(actualLogger.SessionName()).Should(Equal(sessionName))
+					Ω(actualTaskGuid).Should(Equal(taskGuid))
+					Ω(actualFailureReason).Should(Equal(internal.TaskCompletionReasonMissingContainer))
 				})
 
-				Context("when the task is Running", func() {
+				Context("when failing the task fails", func() {
 					BeforeEach(func() {
-						fakeBBS.TaskByGuidReturns(models.Task{State: models.TaskStateRunning}, nil)
-					})
-
-					It("fails the task", func() {
-						Ω(fakeBBS.FailTaskCallCount()).Should(Equal(1))
-						actualLogger, actualTaskGuid, actualFailureReason := fakeBBS.FailTaskArgsForCall(0)
-						Ω(actualLogger.SessionName()).Should(Equal(sessionName))
-						Ω(actualTaskGuid).Should(Equal(taskGuid))
-						Ω(actualFailureReason).Should(Equal(internal.TaskCompletionReasonMissingContainer))
-					})
-
-					Context("when failing the task fails", func() {
-						BeforeEach(func() {
-							fakeBBS.FailTaskReturns(errors.New("failed"))
-						})
-
-						It("logs the failure", func() {
-							Ω(logger).Should(Say(sessionName + ".failed-to-fail-task"))
-						})
-					})
-				})
-
-				Context("when the task is not Running", func() {
-					BeforeEach(func() {
-						fakeBBS.TaskByGuidReturns(models.Task{State: models.TaskStateCompleted}, nil)
-					})
-
-					It("does not fail the task", func() {
-						Ω(fakeBBS.FailTaskCallCount()).Should(Equal(0))
-					})
-
-					It("logs the fact that it skipped", func() {
-						Ω(logger).Should(Say(sessionName + ".skipped-because-task-is-not-running"))
-					})
-				})
-
-				Context("when fetching the task fails", func() {
-					BeforeEach(func() {
-						fakeBBS.TaskByGuidReturns(models.Task{}, errors.New("failed"))
+						fakeBBS.FailTaskReturns(errors.New("failed"))
 					})
 
 					It("logs the failure", func() {
-						Ω(logger).Should(Say(sessionName + ".failed-to-fetch-task"))
+						Ω(logger).Should(Say(sessionName + ".failed-to-fail-task"))
 					})
 				})
 			})

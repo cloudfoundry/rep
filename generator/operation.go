@@ -88,18 +88,7 @@ func (o *MissingTaskOperation) Execute() {
 		return
 	}
 
-	task, err := o.bbs.TaskByGuid(o.TaskGuid)
-	if err != nil {
-		logger.Error("failed-to-fetch-task", err)
-		return
-	}
-
-	if task.State != models.TaskStateRunning {
-		logger.Info("skipped-because-task-is-not-running")
-		return
-	}
-
-	err = o.bbs.FailTask(logger, o.TaskGuid, internal.TaskCompletionReasonMissingContainer)
+	err := o.bbs.FailTask(logger, o.TaskGuid, internal.TaskCompletionReasonMissingContainer)
 	if err != nil {
 		logger.Error("failed-to-fail-task", err)
 	}
