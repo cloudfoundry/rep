@@ -184,7 +184,7 @@ var _ = Describe("Task <-> Container table", func() {
 				NewTask("a", models.TaskStateRunning),
 				itDoesNothing,
 			),
-			Inconceivable( // state machine borked? no two cells should reserve the same task.
+			Conceivable( // maybe the rep reserved the container and failed to report success back to the auctioneer
 				NewContainer(executor.StateReserved),
 				NewTask("w", models.TaskStateRunning),
 				itDeletesTheContainer,
@@ -194,7 +194,7 @@ var _ = Describe("Task <-> Container table", func() {
 				NewTask("a", models.TaskStateCompleted),
 				itDeletesTheContainer,
 			),
-			Inconceivable( // state machine borked?
+			Conceivable( // maybe the rep reserved the container and failed to report success back to the auctioneer
 				NewContainer(executor.StateReserved),
 				NewTask("w", models.TaskStateCompleted),
 				itDeletesTheContainer,
@@ -204,7 +204,7 @@ var _ = Describe("Task <-> Container table", func() {
 				NewTask("a", models.TaskStateResolving),
 				itDeletesTheContainer,
 			),
-			Inconceivable( // state machine borked?
+			Conceivable( // maybe the rep reserved the container and failed to report success back to the auctioneer
 				NewContainer(executor.StateReserved),
 				NewTask("w", models.TaskStateResolving),
 				itDeletesTheContainer,
@@ -231,7 +231,7 @@ var _ = Describe("Task <-> Container table", func() {
 				NewTask("w", models.TaskStateRunning),
 				itDeletesTheContainer,
 			),
-			Inconceivable( // today there shouldn't be anything completing an initializing container.
+			Conceivable( // task was cancelled
 				NewContainer(executor.StateInitializing),
 				NewTask("a", models.TaskStateCompleted),
 				itDeletesTheContainer,
@@ -241,7 +241,7 @@ var _ = Describe("Task <-> Container table", func() {
 				NewTask("w", models.TaskStateCompleted),
 				itDeletesTheContainer,
 			),
-			Inconceivable( // today there shouldn't be anything completing an initializing container.
+			Conceivable( // task was cancelled
 				NewContainer(executor.StateInitializing),
 				NewTask("a", models.TaskStateResolving),
 				itDeletesTheContainer,
@@ -273,7 +273,7 @@ var _ = Describe("Task <-> Container table", func() {
 				NewTask("w", models.TaskStateRunning),
 				itDeletesTheContainer,
 			),
-			Inconceivable( // today there shouldn't be anything completing a still-active container.
+			Conceivable( // task was cancelled
 				NewContainer(executor.StateCreated),
 				NewTask("a", models.TaskStateCompleted),
 				itDeletesTheContainer,
@@ -283,7 +283,7 @@ var _ = Describe("Task <-> Container table", func() {
 				NewTask("w", models.TaskStateCompleted),
 				itDeletesTheContainer,
 			),
-			Inconceivable( // container should be completed before anyone resolves it.
+			Conceivable( // task was cancelled
 				NewContainer(executor.StateCreated),
 				NewTask("a", models.TaskStateResolving),
 				itDeletesTheContainer,
@@ -315,7 +315,7 @@ var _ = Describe("Task <-> Container table", func() {
 				NewTask("w", models.TaskStateRunning),
 				itDeletesTheContainer,
 			),
-			Inconceivable( // today there shouldn't be anything completing a still-active container.
+			Conceivable( // task was cancelled
 				NewContainer(executor.StateRunning),
 				NewTask("a", models.TaskStateCompleted),
 				itDeletesTheContainer,
@@ -325,7 +325,7 @@ var _ = Describe("Task <-> Container table", func() {
 				NewTask("w", models.TaskStateCompleted),
 				itDeletesTheContainer,
 			),
-			Inconceivable( // container should be completed before anyone resolves it.
+			Conceivable( // task was cancelled
 				NewContainer(executor.StateRunning),
 				NewTask("a", models.TaskStateResolving),
 				itDeletesTheContainer,
