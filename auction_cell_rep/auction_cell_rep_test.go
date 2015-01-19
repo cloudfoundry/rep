@@ -363,10 +363,7 @@ var _ = Describe("AuctionCellRep", func() {
 				securityRule = models.SecurityGroupRule{
 					Protocol:    "tcp",
 					Destination: "0.0.0.0/0",
-					PortRange: &models.PortRange{
-						Start: 1,
-						End:   1024,
-					},
+					Ports:       []uint16{80},
 				}
 				task = models.Task{
 					Domain:     "tests",
