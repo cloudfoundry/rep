@@ -139,6 +139,7 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 	lrpAuctionMap := map[string]auctiontypes.LRPAuction{}
 
 	for _, lrpStart := range lrps {
+		lrpStart := lrpStart
 		containerGuidString, err := a.generateContainerGuid()
 		if err != nil {
 			return nil, nil, err
