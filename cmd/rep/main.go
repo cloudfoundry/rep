@@ -136,8 +136,13 @@ func main() {
 
 	logger.Info("started", lager.Data{"cell-id": *cellID})
 
-	<-monitor.Wait()
-	logger.Info("shutting-down")
+	err := <-monitor.Wait()
+	if err != nil {
+		logger.Error("exited-with-failure", err)
+		os.Exit(1)
+	}
+
+	logger.Info("exited")
 }
 
 func initializeDropsonde(logger lager.Logger) {
