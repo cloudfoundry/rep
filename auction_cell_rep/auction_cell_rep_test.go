@@ -186,8 +186,8 @@ var _ = Describe("AuctionCellRep", func() {
 				}
 
 				securityRule = models.SecurityGroupRule{
-					Protocol:    "tcp",
-					Destination: "0.0.0.0/0",
+					Protocol:     "tcp",
+					Destinations: []string{"0.0.0.0/0"},
 					PortRange: &models.PortRange{
 						Start: 1,
 						End:   1024,
@@ -243,7 +243,7 @@ var _ = Describe("AuctionCellRep", func() {
 						Ports: []uint32{
 							8080,
 						},
-						SecurityGroupRules: []models.SecurityGroupRule{
+						EgressRules: []models.SecurityGroupRule{
 							securityRule,
 						},
 					},
@@ -320,7 +320,7 @@ var _ = Describe("AuctionCellRep", func() {
 							{Name: "var1", Value: "val1"},
 							{Name: "var2", Value: "val2"},
 						},
-						SecurityGroupRules: []models.SecurityGroupRule{
+						EgressRules: []models.SecurityGroupRule{
 							securityRule,
 						},
 					},
@@ -361,9 +361,9 @@ var _ = Describe("AuctionCellRep", func() {
 
 			BeforeEach(func() {
 				securityRule = models.SecurityGroupRule{
-					Protocol:    "tcp",
-					Destination: "0.0.0.0/0",
-					Ports:       []uint16{80},
+					Protocol:     "tcp",
+					Destinations: []string{"0.0.0.0/0"},
+					Ports:        []uint16{80},
 				}
 				task = models.Task{
 					Domain:     "tests",
