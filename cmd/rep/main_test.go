@@ -333,11 +333,10 @@ var _ = Describe("The Rep", func() {
 		const expectedStopRoute = "/containers/" + instanceGuid + "/stop"
 
 		BeforeEach(func() {
-			fakeExecutor.AppendHandlers(
-				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("POST", expectedStopRoute),
-					ghttp.RespondWith(http.StatusOK, nil),
-				),
+			fakeExecutor.RouteToHandler(
+				"POST",
+				expectedStopRoute,
+				ghttp.RespondWith(http.StatusOK, nil),
 			)
 
 			lrpKey := models.NewActualLRPKey("process-guid", 1, "domain")
