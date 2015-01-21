@@ -119,7 +119,7 @@ func main() {
 
 	bbs := initializeRepBBS(logger)
 
-	executorClient := executorclient.New(cf_http.NewClient(), *executorURL)
+	executorClient := executorclient.New(cf_http.NewClient(), cf_http.NewStreamingClient(), *executorURL)
 	httpServer, address := initializeServer(bbs, executorClient, logger)
 	opGenerator := generator.New(*cellID, bbs, executorClient)
 
