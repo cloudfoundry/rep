@@ -121,10 +121,10 @@ func (p *lrpProcessor) processRunningContainer(logger lager.Logger, lrpContainer
 func (p *lrpProcessor) processCompletedContainer(logger lager.Logger, lrpContainer *lrpContainer) {
 	logger = logger.Session("process-completed-container")
 
-	if lrpContainer.RunResult.Failed {
-		p.bbs.CrashActualLRP(lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey, logger)
-	} else {
+	if lrpContainer.RunResult.Stopped {
 		p.bbs.RemoveActualLRP(lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey, logger)
+	} else {
+		p.bbs.CrashActualLRP(lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey, logger)
 	}
 
 	p.containerDelegate.DeleteContainer(logger, lrpContainer.Guid)

@@ -236,9 +236,9 @@ var _ = Describe("LrpProcessor", func() {
 					container.State = executor.StateCompleted
 				})
 
-				Context("and the run result is SUCCESSFUL", func() {
+				Context("and the container was requested to stop", func() {
 					BeforeEach(func() {
-						container.RunResult.Failed = false
+						container.RunResult.Stopped = true
 					})
 
 					It("removes the actual LRP", func() {
@@ -272,9 +272,9 @@ var _ = Describe("LrpProcessor", func() {
 					})
 				})
 
-				Context("and the run result is FAILED", func() {
+				Context("and the container was not requested to stop", func() {
 					BeforeEach(func() {
-						container.RunResult.Failed = true
+						container.RunResult.Stopped = false
 					})
 
 					It("crashes the actual LRP", func() {
@@ -292,7 +292,6 @@ var _ = Describe("LrpProcessor", func() {
 						Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
 					})
 				})
-
 			})
 
 			Context("and the container is in an invalid state", func() {
