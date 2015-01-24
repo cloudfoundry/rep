@@ -7,10 +7,13 @@ import (
 
 	"github.com/cloudfoundry-incubator/rep/generator/fake_generator"
 	"github.com/cloudfoundry-incubator/rep/harmonizer"
+	"github.com/cloudfoundry/dropsonde/metric_sender/fake"
+	"github.com/cloudfoundry/dropsonde/metrics"
 	"github.com/cloudfoundry/gunk/timeprovider/faketimeprovider"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/pivotal-golang/operationq"
 	"github.com/pivotal-golang/operationq/fake_operationq"
@@ -19,6 +22,8 @@ import (
 
 var _ = Describe("Bulker", func() {
 	var (
+		sender *fake.FakeMetricSender
+
 		logger           *lagertest.TestLogger
 		pollInterval     time.Duration
 		fakeTimeProvider *faketimeprovider.FakeTimeProvider
@@ -30,6 +35,9 @@ var _ = Describe("Bulker", func() {
 	)
 
 	BeforeEach(func() {
+		sender = fake.NewFakeMetricSender()
+		metrics.Initialize(sender)
+
 		logger = lagertest.NewTestLogger("test")
 		pollInterval = 30 * time.Second
 		fakeTimeProvider = faketimeprovider.New(time.Unix(123, 456))
@@ -59,7 +67,10 @@ var _ = Describe("Bulker", func() {
 				operation1 = new(fake_operationq.FakeOperation)
 				operation2 = new(fake_operationq.FakeOperation)
 
-				fakeGenerator.BatchOperationsReturns(map[string]operationq.Operation{"guid1": operation1, "guid2": operation2}, nil)
+				fakeGenerator.BatchOperationsStub = func(lager.Logger) (map[string]operationq.Operation, error) {
+					fakeTimeProvider.Increment(10 * time.Second)
+					return map[string]operationq.Operation{"guid1": operation1, "guid2": operation2}, nil
+				}
 			})
 
 			It("pushes them onto the queue", func() {
@@ -70,6 +81,14 @@ var _ = Describe("Bulker", func() {
 				enqueuedOperations = append(enqueuedOperations, fakeQueue.PushArgsForCall(1))
 
 				Ω(enqueuedOperations).Should(ConsistOf(operation1, operation2))
+			})
+
+			It("emits the duration it took to generate the batch operations", func() {
+				Eventually(fakeQueue.PushCallCount).Should(Equal(2))
+
+				reportedDuration := sender.GetValue("RepBulkSyncDuration")
+				Ω(reportedDuration.Unit).Should(Equal("nanos"))
+				Ω(reportedDuration.Value).Should(BeNumerically("==", 10*time.Second))
 			})
 		})
 

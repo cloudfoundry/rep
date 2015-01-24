@@ -5,10 +5,13 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/rep/generator"
+	"github.com/cloudfoundry-incubator/runtime-schema/metric"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/operationq"
 )
+
+const repBulkSyncDuration = metric.Duration("RepBulkSyncDuration")
 
 type Bulker struct {
 	logger lager.Logger
@@ -62,7 +65,14 @@ func (b *Bulker) sync(logger lager.Logger) {
 	logger.Info("start")
 	defer logger.Info("done")
 
+	startTime := b.timeProvider.Now()
+
 	ops, err := b.generator.BatchOperations(logger)
+
+	endTime := b.timeProvider.Now()
+
+	repBulkSyncDuration.Send(endTime.Sub(startTime))
+
 	if err != nil {
 		logger.Error("failed-to-generate-operations", err)
 		return
