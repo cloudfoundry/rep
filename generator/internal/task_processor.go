@@ -113,10 +113,14 @@ func (p *taskProcessor) startTask(logger lager.Logger, guid string) bool {
 func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Container) {
 	logger.Info("completing-task")
 
-	result, err := p.containerDelegate.FetchContainerResult(logger, container.Guid, container.Tags[rep.ResultFileTag])
-	if err != nil {
-		p.failTask(logger, container.Guid, TaskCompletionReasonFailedToFetchResult)
-		return
+	var result string
+	var err error
+	if !container.RunResult.Failed {
+		result, err = p.containerDelegate.FetchContainerResult(logger, container.Guid, container.Tags[rep.ResultFileTag])
+		if err != nil {
+			p.failTask(logger, container.Guid, TaskCompletionReasonFailedToFetchResult)
+			return
+		}
 	}
 
 	err = p.bbs.CompleteTask(logger, container.Guid, p.cellID, container.RunResult.Failed, container.RunResult.FailureReason, result)

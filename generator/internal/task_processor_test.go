@@ -79,7 +79,11 @@ var _ = Describe("Task <-> Container table", func() {
 		}
 	}
 
-	itCompletesTheTaskAndDeletesTheContainer := func(logger *lagertest.TestLogger) {
+	successfulRunResult := executor.ContainerRunResult{
+		Failed: false,
+	}
+
+	itCompletesTheSuccessfulTaskAndDeletesTheContainer := func(logger *lagertest.TestLogger) {
 		Context("when fetching the result succeeds", func() {
 			BeforeEach(func() {
 				containerDelegate.FetchContainerResultReturns("some-result", nil)
@@ -94,20 +98,19 @@ var _ = Describe("Task <-> Container table", func() {
 				}
 			})
 
-			itDeletesTheContainer(logger)
-
-			It("completes the task with the failure info and result", func() {
+			It("completes the task with the result", func() {
 				task, err := BBS.TaskByGuid(taskGuid)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Ω(task.Failed).Should(Equal(true))
-				Ω(task.FailureReason).Should(Equal("because"))
-				Ω(task.Result).Should(Equal("some-result"))
+				Ω(task.Failed).Should(BeFalse())
 
 				_, guid, filename := containerDelegate.FetchContainerResultArgsForCall(0)
 				Ω(guid).Should(Equal(taskGuid))
 				Ω(filename).Should(Equal("some-result-filename"))
+				Ω(task.Result).Should(Equal("some-result"))
 			})
+
+			itDeletesTheContainer(logger)
 		})
 
 		Context("when fetching the result fails", func() {
@@ -121,6 +124,21 @@ var _ = Describe("Task <-> Container table", func() {
 
 			itDeletesTheContainer(logger)
 		})
+	}
+
+	failedRunResult := executor.ContainerRunResult{
+		Failed:        true,
+		FailureReason: "because",
+	}
+
+	itCompletesTheFailedTaskAndDeletesTheContainer := func(logger *lagertest.TestLogger) {
+		It("does not attempt to fetch the result", func() {
+			Ω(containerDelegate.FetchContainerResultCallCount()).Should(BeZero())
+		})
+
+		itCompletesTheTaskWithFailure("because")(logger)
+
+		itDeletesTheContainer(logger)
 	}
 
 	itSetsTheTaskToRunning := func(logger *lagertest.TestLogger) {
@@ -338,42 +356,47 @@ var _ = Describe("Task <-> Container table", func() {
 
 			// container completed
 			Conceivable( // task deleted? (operator/etcd?)
-				NewCompletedContainer(),
+				NewCompletedContainer(failedRunResult),
 				nil,
 				itDeletesTheContainer,
 			),
 			Inconceivable( // task should be walked through lifecycle by the time we get here
-				NewCompletedContainer(),
+				NewCompletedContainer(failedRunResult),
 				NewTask("", models.TaskStatePending),
 				itCompletesTheTaskWithFailure("invalid state transition"),
 			),
-			Expected( // container completed; complete the task with its result
-				NewCompletedContainer(),
+			Expected( // container completed and failed; complete the task with its failure reason
+				NewCompletedContainer(failedRunResult),
 				NewTask("a", models.TaskStateRunning),
-				itCompletesTheTaskAndDeletesTheContainer,
+				itCompletesTheFailedTaskAndDeletesTheContainer,
+			),
+			Expected( // container completed and succeeded; complete the task with its result
+				NewCompletedContainer(successfulRunResult),
+				NewTask("a", models.TaskStateRunning),
+				itCompletesTheSuccessfulTaskAndDeletesTheContainer,
 			),
 			Inconceivable( // state machine borked? no other cell should get this far.
-				NewCompletedContainer(),
+				NewCompletedContainer(failedRunResult),
 				NewTask("w", models.TaskStateRunning),
 				itDeletesTheContainer,
 			),
 			Conceivable( // may have completed the task and then failed to delete the container
-				NewCompletedContainer(),
+				NewCompletedContainer(failedRunResult),
 				NewTask("a", models.TaskStateCompleted),
 				itDeletesTheContainer,
 			),
 			Inconceivable( // state machine borked? no other cell should get this far.
-				NewCompletedContainer(),
+				NewCompletedContainer(failedRunResult),
 				NewTask("w", models.TaskStateCompleted),
 				itDeletesTheContainer,
 			),
 			Conceivable( // may have completed the task and then failed to delete the container, and someone started processing the completion
-				NewCompletedContainer(),
+				NewCompletedContainer(failedRunResult),
 				NewTask("a", models.TaskStateResolving),
 				itDeletesTheContainer,
 			),
 			Inconceivable( // state machine borked? no other cell should get this far.
-				NewCompletedContainer(),
+				NewCompletedContainer(failedRunResult),
 				NewTask("w", models.TaskStateResolving),
 				itDeletesTheContainer,
 			),
@@ -482,12 +505,9 @@ func NewContainer(containerState executor.State) executor.Container {
 	}
 }
 
-func NewCompletedContainer() executor.Container {
+func NewCompletedContainer(runResult executor.ContainerRunResult) executor.Container {
 	container := NewContainer(executor.StateCompleted)
-	container.RunResult = executor.ContainerRunResult{
-		Failed:        true,
-		FailureReason: "because",
-	}
+	container.RunResult = runResult
 	return container
 }
 
