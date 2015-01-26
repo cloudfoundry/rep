@@ -171,7 +171,54 @@ var _ = Describe("AuctionCellRep", func() {
 	})
 
 	Describe("Perform", func() {
-		var work auctiontypes.Work
+		var (
+			work       auctiontypes.Work
+			lrpAuction auctiontypes.LRPAuction
+			task       models.Task
+
+			expectedIndex = 1
+		)
+
+		Context("when evacuating", func() {
+			BeforeEach(func() {
+				evacuationContext.EvacuatingReturns(true)
+
+				lrpAuction = auctiontypes.LRPAuction{
+					DesiredLRP: models.DesiredLRP{
+						Domain:      "tests",
+						RootFSPath:  "some-root-fs",
+						ProcessGuid: "process-guid",
+						DiskMB:      1024,
+						MemoryMB:    2048,
+						CPUWeight:   42,
+						Privileged:  true,
+						LogGuid:     "log-guid",
+					},
+
+					Index: expectedIndex,
+				}
+
+				task = models.Task{
+					Domain:     "tests",
+					TaskGuid:   "the-task-guid",
+					Stack:      "lucid64",
+					DiskMB:     1024,
+					MemoryMB:   2048,
+					RootFSPath: "the-root-fs-path",
+					Privileged: true,
+					CPUWeight:  10,
+				}
+
+				work = auctiontypes.Work{
+					LRPs:  []auctiontypes.LRPAuction{lrpAuction},
+					Tasks: []models.Task{task},
+				}
+			})
+
+			It("returns all work it was given", func() {
+				Ω(cellRep.Perform(work)).Should(Equal(work))
+			})
+		})
 
 		Describe("performing starts", func() {
 			var lrpAuctionOne auctiontypes.LRPAuction

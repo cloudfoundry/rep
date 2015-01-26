@@ -105,6 +105,10 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 		"tasks":      len(work.Tasks),
 	})
 
+	if a.evacuationContext.Evacuating() {
+		return work, nil
+	}
+
 	if len(work.LRPs) > 0 {
 		lrpLogger := logger.Session("lrp-allocate-instances")
 		lrpLogger.Info("allocating")
