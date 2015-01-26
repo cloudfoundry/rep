@@ -49,7 +49,7 @@ var _ = Describe("The Rep", func() {
 
 		etcdAdapter = etcdRunner.Adapter()
 		logger = lagertest.NewTestLogger("test")
-		bbs = Bbs.NewBBS(etcdAdapter, clock.NewClock(), models.NewDefaultRestartCalculator(), logger)
+		bbs = Bbs.NewBBS(etcdAdapter, clock.NewClock(), logger)
 
 		pollingInterval = 50 * time.Millisecond
 
