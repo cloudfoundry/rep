@@ -26,10 +26,10 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	bbsroutes "github.com/cloudfoundry-incubator/runtime-schema/routes"
 	"github.com/cloudfoundry/dropsonde"
-	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/gunk/workpool"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/nu7hatch/gouuid"
+	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/localip"
 	"github.com/pivotal-golang/operationq"
@@ -129,7 +129,7 @@ func main() {
 	members := grouper.Members{
 		{"http_server", httpServer},
 		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
-		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, timeprovider.NewTimeProvider(), opGenerator, queue)},
+		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, clock.NewClock(), opGenerator, queue)},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 	}
 
@@ -170,7 +170,7 @@ func initializeCellHeartbeat(address string, bbs Bbs.RepBBS, executorClient exec
 	}
 
 	heartbeat := bbs.NewCellHeartbeat(cellPresence, *heartbeatInterval)
-	return maintain.New(executorClient, heartbeat, logger, *heartbeatInterval, timeprovider.NewTimeProvider())
+	return maintain.New(executorClient, heartbeat, logger, *heartbeatInterval, clock.NewClock())
 }
 
 func initializeRepBBS(logger lager.Logger) Bbs.RepBBS {
@@ -184,7 +184,7 @@ func initializeRepBBS(logger lager.Logger) Bbs.RepBBS {
 		logger.Fatal("failed-to-connect-to-etcd", err)
 	}
 
-	return Bbs.NewRepBBS(etcdAdapter, timeprovider.NewTimeProvider(), logger)
+	return Bbs.NewRepBBS(etcdAdapter, clock.NewClock(), logger)
 }
 
 func initializeLRPStopper(guid string, executorClient executor.Client, logger lager.Logger) lrp_stopper.LRPStopper {

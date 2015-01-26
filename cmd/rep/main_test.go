@@ -10,8 +10,8 @@ import (
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep/cmd/rep/testrunner"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter"
+	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager/lagertest"
 
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
@@ -40,7 +40,7 @@ var _ = Describe("The Rep", func() {
 
 		etcdAdapter = etcdRunner.Adapter()
 		logger = lagertest.NewTestLogger("test")
-		bbs = Bbs.NewBBS(etcdAdapter, timeprovider.NewTimeProvider(), models.NewDefaultRestartCalculator(), logger)
+		bbs = Bbs.NewBBS(etcdAdapter, clock.NewClock(), models.NewDefaultRestartCalculator(), logger)
 
 		pollingInterval = 50 * time.Millisecond
 

@@ -6,7 +6,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/rep/generator"
 	"github.com/cloudfoundry-incubator/runtime-schema/metric"
-	"github.com/cloudfoundry/gunk/timeprovider"
+	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/operationq"
 )
@@ -17,7 +17,7 @@ type Bulker struct {
 	logger lager.Logger
 
 	pollInterval time.Duration
-	timeProvider timeprovider.TimeProvider
+	clock        clock.Clock
 	generator    generator.Generator
 	queue        operationq.Queue
 }
@@ -25,7 +25,7 @@ type Bulker struct {
 func NewBulker(
 	logger lager.Logger,
 	pollInterval time.Duration,
-	timeProvider timeprovider.TimeProvider,
+	clock clock.Clock,
 	generator generator.Generator,
 	queue operationq.Queue,
 ) *Bulker {
@@ -33,7 +33,7 @@ func NewBulker(
 		logger: logger,
 
 		pollInterval: pollInterval,
-		timeProvider: timeProvider,
+		clock:        clock,
 		generator:    generator,
 		queue:        queue,
 	}
@@ -47,7 +47,7 @@ func (b *Bulker) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	logger.Info("starting", lager.Data{"interval": b.pollInterval.String()})
 	defer logger.Info("completed")
 
-	ticker := b.timeProvider.NewTicker(b.pollInterval)
+	ticker := b.clock.NewTicker(b.pollInterval)
 	defer ticker.Stop()
 
 	for {
@@ -65,11 +65,11 @@ func (b *Bulker) sync(logger lager.Logger) {
 	logger.Info("start")
 	defer logger.Info("done")
 
-	startTime := b.timeProvider.Now()
+	startTime := b.clock.Now()
 
 	ops, err := b.generator.BatchOperations(logger)
 
-	endTime := b.timeProvider.Now()
+	endTime := b.clock.Now()
 
 	repBulkSyncDuration.Send(endTime.Sub(startTime))
 

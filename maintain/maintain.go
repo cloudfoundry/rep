@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/executor"
-	"github.com/cloudfoundry/gunk/timeprovider"
+	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 )
@@ -15,7 +15,7 @@ type Maintainer struct {
 	executorClient    executor.Client
 	logger            lager.Logger
 	heartbeatInterval time.Duration
-	timeProvider      timeprovider.TimeProvider
+	clock             clock.Clock
 }
 
 func New(
@@ -23,14 +23,14 @@ func New(
 	heartbeater ifrit.Runner,
 	logger lager.Logger,
 	heartbeatInterval time.Duration,
-	timeProvider timeprovider.TimeProvider,
+	clock clock.Clock,
 ) *Maintainer {
 	return &Maintainer{
 		heartbeater:       heartbeater,
 		executorClient:    executorClient,
 		logger:            logger.Session("maintainer"),
 		heartbeatInterval: heartbeatInterval,
-		timeProvider:      timeProvider,
+		clock:             clock,
 	}
 }
 
@@ -42,7 +42,7 @@ func (m *Maintainer) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error 
 		}
 
 		m.logger.Error("failed-to-ping-executor-on-start", err)
-		m.timeProvider.Sleep(time.Second)
+		m.clock.Sleep(time.Second)
 	}
 
 	heartbeatProcess := ifrit.Invoke(m.heartbeater)
@@ -50,7 +50,7 @@ func (m *Maintainer) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error 
 
 	close(ready)
 
-	ticker := m.timeProvider.NewTicker(m.heartbeatInterval)
+	ticker := m.clock.NewTicker(m.heartbeatInterval)
 	defer ticker.Stop()
 
 	for {

@@ -9,10 +9,10 @@ import (
 	"github.com/cloudfoundry-incubator/rep/harmonizer"
 	"github.com/cloudfoundry/dropsonde/metric_sender/fake"
 	"github.com/cloudfoundry/dropsonde/metrics"
-	"github.com/cloudfoundry/gunk/timeprovider/faketimeprovider"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/pivotal-golang/operationq"
@@ -24,11 +24,11 @@ var _ = Describe("Bulker", func() {
 	var (
 		sender *fake.FakeMetricSender
 
-		logger           *lagertest.TestLogger
-		pollInterval     time.Duration
-		fakeTimeProvider *faketimeprovider.FakeTimeProvider
-		fakeGenerator    *fake_generator.FakeGenerator
-		fakeQueue        *fake_operationq.FakeQueue
+		logger        *lagertest.TestLogger
+		pollInterval  time.Duration
+		fakeClock     *fakeclock.FakeClock
+		fakeGenerator *fake_generator.FakeGenerator
+		fakeQueue     *fake_operationq.FakeQueue
 
 		bulker  *harmonizer.Bulker
 		process ifrit.Process
@@ -40,11 +40,11 @@ var _ = Describe("Bulker", func() {
 
 		logger = lagertest.NewTestLogger("test")
 		pollInterval = 30 * time.Second
-		fakeTimeProvider = faketimeprovider.New(time.Unix(123, 456))
+		fakeClock = fakeclock.NewFakeClock(time.Unix(123, 456))
 		fakeGenerator = new(fake_generator.FakeGenerator)
 		fakeQueue = new(fake_operationq.FakeQueue)
 
-		bulker = harmonizer.NewBulker(logger, pollInterval, fakeTimeProvider, fakeGenerator, fakeQueue)
+		bulker = harmonizer.NewBulker(logger, pollInterval, fakeClock, fakeGenerator, fakeQueue)
 	})
 
 	JustBeforeEach(func() {
@@ -68,7 +68,7 @@ var _ = Describe("Bulker", func() {
 				operation2 = new(fake_operationq.FakeOperation)
 
 				fakeGenerator.BatchOperationsStub = func(lager.Logger) (map[string]operationq.Operation, error) {
-					fakeTimeProvider.Increment(10 * time.Second)
+					fakeClock.Increment(10 * time.Second)
 					return map[string]operationq.Operation{"guid1": operation1, "guid2": operation2}, nil
 				}
 			})
@@ -108,14 +108,14 @@ var _ = Describe("Bulker", func() {
 
 	Context("when the poll interval elapses", func() {
 		JustBeforeEach(func() {
-			fakeTimeProvider.Increment(pollInterval + 1)
+			fakeClock.Increment(pollInterval + 1)
 		})
 
 		itPerformsBatchOperations()
 
 		Context("and elapses again", func() {
 			BeforeEach(func() {
-				fakeTimeProvider.Increment(pollInterval)
+				fakeClock.Increment(pollInterval)
 			})
 
 			itPerformsBatchOperations()
@@ -124,7 +124,7 @@ var _ = Describe("Bulker", func() {
 
 	Context("when the poll interval has not elapsed", func() {
 		JustBeforeEach(func() {
-			fakeTimeProvider.Increment(pollInterval - 1)
+			fakeClock.Increment(pollInterval - 1)
 		})
 
 		It("does not fetch batch operations", func() {
