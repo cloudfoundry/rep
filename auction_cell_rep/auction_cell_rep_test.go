@@ -8,6 +8,7 @@ import (
 	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
 	. "github.com/cloudfoundry-incubator/rep/auction_cell_rep"
+	"github.com/cloudfoundry-incubator/rep/evacuation/fake_evacuator"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -22,6 +23,7 @@ var _ = Describe("AuctionCellRep", func() {
 	var commonErr error
 	var bbs *fake_bbs.FakeRepBBS
 	var logger *lagertest.TestLogger
+	var evacuationContext *fake_evacuator.FakeEvacuationContext
 
 	const expectedCellID = "some-cell-id"
 	var expectedGuid string
@@ -32,6 +34,7 @@ var _ = Describe("AuctionCellRep", func() {
 		client = new(fake_client.FakeClient)
 		bbs = &fake_bbs.FakeRepBBS{}
 		logger = lagertest.NewTestLogger("test")
+		evacuationContext = &fake_evacuator.FakeEvacuationContext{}
 
 		expectedGuid = "container-guid"
 		expectedGuidError = nil
@@ -43,13 +46,17 @@ var _ = Describe("AuctionCellRep", func() {
 	})
 
 	JustBeforeEach(func() {
-		cellRep = New(expectedCellID, "lucid64", "the-zone", fakeGenerateContainerGuid, bbs, client, logger)
+		cellRep = New(expectedCellID, "lucid64", "the-zone", fakeGenerateContainerGuid, bbs, client, evacuationContext, logger)
 	})
 
 	Describe("State", func() {
-		var availableResources, totalResources executor.ExecutorResources
-		var containers []executor.Container
+		var (
+			availableResources, totalResources executor.ExecutorResources
+			containers                         []executor.Container
+		)
+
 		BeforeEach(func() {
+			evacuationContext.EvacuatingReturns(true)
 			totalResources = executor.ExecutorResources{
 				MemoryMB:   1024,
 				DiskMB:     2048,
@@ -98,6 +105,7 @@ var _ = Describe("AuctionCellRep", func() {
 				rep.LifecycleTag: rep.LRPLifecycle,
 			}))
 
+			Ω(state.Evacuating).Should(BeTrue())
 			Ω(state.Stack).Should(Equal("lucid64"))
 			Ω(state.AvailableResources).Should(Equal(auctiontypes.Resources{
 				MemoryMB:   availableResources.MemoryMB,

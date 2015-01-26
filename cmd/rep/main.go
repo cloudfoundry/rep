@@ -16,6 +16,7 @@ import (
 	"github.com/cloudfoundry-incubator/executor"
 	executorclient "github.com/cloudfoundry-incubator/executor/http/client"
 	"github.com/cloudfoundry-incubator/rep/auction_cell_rep"
+	"github.com/cloudfoundry-incubator/rep/evacuation"
 	"github.com/cloudfoundry-incubator/rep/generator"
 	"github.com/cloudfoundry-incubator/rep/harmonizer"
 	repserver "github.com/cloudfoundry-incubator/rep/http_server"
@@ -119,8 +120,11 @@ func main() {
 
 	bbs := initializeRepBBS(logger)
 
+	evacuator := evacuation.NewEvacuator(logger)
+	evacuationContext := evacuator.EvacuationContext()
+
 	executorClient := executorclient.New(cf_http.NewClient(), cf_http.NewStreamingClient(), *executorURL)
-	httpServer, address := initializeServer(bbs, executorClient, logger)
+	httpServer, address := initializeServer(bbs, executorClient, evacuationContext, logger)
 	opGenerator := generator.New(*cellID, bbs, executorClient)
 
 	// only one outstanding operation per container is necessary
@@ -131,6 +135,7 @@ func main() {
 		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
 		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, clock.NewClock(), opGenerator, queue)},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
+		{"evacuator", evacuator},
 	}
 
 	if dbgAddr := cf_debug_server.DebugAddress(flag.CommandLine); dbgAddr != "" {
@@ -194,11 +199,12 @@ func initializeLRPStopper(guid string, executorClient executor.Client, logger la
 func initializeServer(
 	bbs Bbs.RepBBS,
 	executorClient executor.Client,
+	evacuationContext evacuation.EvacuationContext,
 	logger lager.Logger,
 ) (ifrit.Runner, string) {
 	lrpStopper := initializeLRPStopper(*cellID, executorClient, logger)
 
-	auctionCellRep := auction_cell_rep.New(*cellID, *stack, *zone, generateGuid, bbs, executorClient, logger)
+	auctionCellRep := auction_cell_rep.New(*cellID, *stack, *zone, generateGuid, bbs, executorClient, evacuationContext, logger)
 	handlers := auction_http_handlers.New(auctionCellRep, logger)
 
 	handlers[bbsroutes.StopLRPInstance] = repserver.NewStopLRPInstanceHandler(logger, lrpStopper)
