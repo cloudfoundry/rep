@@ -30,13 +30,22 @@ var _ = Describe("The Rep", func() {
 		bbs             *Bbs.BBS
 		pollingInterval time.Duration
 		logger          *lagertest.TestLogger
+
+		flushEvents chan struct{}
 	)
 
 	BeforeEach(func() {
+		flushEvents = make(chan struct{})
 		fakeExecutor = ghttp.NewServer()
 		// these tests only look for the start of a sequence of requests
 		fakeExecutor.AllowUnhandledRequests = true
 		fakeExecutor.RouteToHandler("GET", "/ping", ghttp.RespondWith(http.StatusOK, nil))
+		fakeExecutor.RouteToHandler("GET", "/events", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.(http.Flusher).Flush()
+			// keep event stream from terminating
+			<-flushEvents
+		})
 
 		etcdAdapter = etcdRunner.Adapter()
 		logger = lagertest.NewTestLogger("test")
@@ -60,6 +69,7 @@ var _ = Describe("The Rep", func() {
 	})
 
 	AfterEach(func(done Done) {
+		close(flushEvents)
 		etcdAdapter.Disconnect()
 		runner.KillWithFire()
 		fakeExecutor.Close()
