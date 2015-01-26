@@ -95,6 +95,12 @@ var communicationTimeout = flag.Duration(
 	"Timeout applied to all HTTP requests.",
 )
 
+var evacuationTimeout = flag.Duration(
+	"evacuationTimeout",
+	3*time.Minute,
+	"Timeout to wait for evacuation to complete",
+)
+
 const (
 	dropsondeDestination = "localhost:3457"
 	dropsondeOrigin      = "rep"
@@ -120,7 +126,9 @@ func main() {
 
 	bbs := initializeRepBBS(logger)
 
-	evacuator := evacuation.NewEvacuator(logger)
+	clock := clock.NewClock()
+
+	evacuator := evacuation.NewEvacuator(logger, clock, *evacuationTimeout)
 	evacuationContext := evacuator.EvacuationContext()
 
 	executorClient := executorclient.New(cf_http.NewClient(), cf_http.NewStreamingClient(), *executorURL)
@@ -133,7 +141,7 @@ func main() {
 	members := grouper.Members{
 		{"http_server", httpServer},
 		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
-		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, clock.NewClock(), opGenerator, queue)},
+		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, clock, opGenerator, queue)},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 		{"evacuator", evacuator},
 	}

@@ -4,7 +4,9 @@ import (
 	"os"
 	"sync/atomic"
 	"syscall"
+	"time"
 
+	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -23,11 +25,15 @@ func (e *evacuationContext) Evacuating() bool {
 
 type Evacuator struct {
 	evacuationContext evacuationContext
+	evacuationTimeout time.Duration
+	clock             clock.Clock
 }
 
-func NewEvacuator(logger lager.Logger) *Evacuator {
+func NewEvacuator(logger lager.Logger, clock clock.Clock, evacuationTimeout time.Duration) *Evacuator {
 	return &Evacuator{
 		evacuationContext: evacuationContext{},
+		evacuationTimeout: evacuationTimeout,
+		clock:             clock,
 	}
 }
 
@@ -42,8 +48,10 @@ func (e *Evacuator) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	case signal := <-signals:
 		if signal == syscall.SIGUSR1 {
 			atomic.AddInt32(&e.evacuationContext.evacuating, 1)
+
+			timer := e.clock.NewTimer(e.evacuationTimeout)
+			<-timer.C()
 		}
-		return nil
 	}
 
 	return nil

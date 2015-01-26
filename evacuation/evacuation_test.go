@@ -2,8 +2,10 @@ package evacuation_test
 
 import (
 	"syscall"
+	"time"
 
 	"github.com/cloudfoundry-incubator/rep/evacuation"
+	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 
@@ -17,23 +19,40 @@ var _ = Describe("Evacuation", func() {
 		evacuator         *evacuation.Evacuator
 		logger            *lagertest.TestLogger
 		evacuationContext evacuation.EvacuationContext
+		evacuationTimeout time.Duration
+		fakeClock         *fakeclock.FakeClock
 	)
 
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
-		evacuator = evacuation.NewEvacuator(logger)
+		fakeClock = fakeclock.NewFakeClock(time.Now())
+		evacuationTimeout = 3 * time.Minute
+		evacuator = evacuation.NewEvacuator(logger, fakeClock, evacuationTimeout)
 		evacuationContext = evacuator.EvacuationContext()
 		process = ifrit.Invoke(evacuator)
 	})
 
 	Describe("Signal", func() {
 		Context("SIGUSR1", func() {
-			BeforeEach(func() {
+			It("flips the bit on the evacuationContext", func() {
 				process.Signal(syscall.SIGUSR1)
+				Eventually(evacuationContext.Evacuating).Should(BeTrue())
 			})
 
-			It("flips the bit on the evacuationContext", func() {
-				Eventually(evacuationContext.Evacuating).Should(BeTrue())
+			It("exits after the evacuationTimeout has elapsed", func() {
+				exitedCh := make(chan struct{})
+				go func() {
+					<-process.Wait()
+					close(exitedCh)
+				}()
+
+				process.Signal(syscall.SIGUSR1)
+				Eventually(fakeClock.WatcherCount).Should(Equal(1))
+
+				fakeClock.IncrementBySeconds(179)
+				Consistently(exitedCh).ShouldNot(BeClosed())
+				fakeClock.IncrementBySeconds(2)
+				Eventually(exitedCh).Should(BeClosed())
 			})
 		})
 
@@ -44,6 +63,12 @@ var _ = Describe("Evacuation", func() {
 
 			It("does not flip the bit on the evacuationContext", func() {
 				Consistently(evacuationContext.Evacuating).Should(BeFalse())
+			})
+
+			It("does not wait for evacuation before exiting", func() {
+				wait := process.Wait()
+				Eventually(wait).Should(Receive())
+				Consistently(fakeClock.WatcherCount).Should(Equal(0))
 			})
 		})
 	})
