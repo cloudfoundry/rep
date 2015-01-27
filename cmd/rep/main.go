@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/cloudfoundry-incubator/auction/communication/http/auction_http_handlers"
@@ -154,7 +155,7 @@ func main() {
 
 	group := grouper.NewOrdered(os.Interrupt, members)
 
-	monitor := ifrit.Invoke(sigmon.New(group))
+	monitor := ifrit.Invoke(sigmon.New(group, syscall.SIGUSR1))
 
 	logger.Info("started", lager.Data{"cell-id": *cellID})
 
