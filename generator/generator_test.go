@@ -217,10 +217,6 @@ var _ = Describe("Generator", func() {
 			stream, streamErr = opGenerator.OperationStream(logger)
 		})
 
-		It("logs its lifecycle", func() {
-			Ω(logger).Should(Say(sessionPrefix + "subscribing"))
-		})
-
 		Context("when subscribing to the executor succeeds", func() {
 			var receivedEvents chan<- executor.Event
 
@@ -228,10 +224,21 @@ var _ = Describe("Generator", func() {
 				events := make(chan executor.Event, 1)
 				receivedEvents = events
 
-				fakeExecutorClient.SubscribeToEventsReturns(events, nil)
+				fakeExecutorSource := new(efakes.FakeEventSource)
+				fakeExecutorSource.NextStub = func() (executor.Event, error) {
+					ev, ok := <-events
+					if !ok {
+						return nil, errors.New("nope")
+					}
+
+					return ev, nil
+				}
+
+				fakeExecutorClient.SubscribeToEventsReturns(fakeExecutorSource, nil)
 			})
 
 			It("logs that it succeeded", func() {
+				Ω(logger).Should(Say(sessionPrefix + "subscribing"))
 				Ω(logger).Should(Say(sessionPrefix + "succeeded-subscribing"))
 			})
 

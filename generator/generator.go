@@ -151,24 +151,24 @@ func (g *generator) OperationStream(logger lager.Logger) (<-chan operationq.Oper
 	opChan := make(chan operationq.Operation)
 
 	go func() {
+		defer events.Close()
+
 		for {
-			select {
-			case e, ok := <-events:
-				if !ok {
-					logger.Debug("event-stream-closed")
-					close(opChan)
-					return
-				}
-
-				lifecycle, ok := e.(executor.LifecycleEvent)
-				if !ok {
-					logger.Debug("received-non-lifecycle-event")
-					continue
-				}
-
-				container := lifecycle.Container()
-				opChan <- g.operationFromContainer(logger, container.Guid)
+			e, err := events.Next()
+			if err != nil {
+				logger.Debug("event-stream-closed")
+				close(opChan)
+				return
 			}
+
+			lifecycle, ok := e.(executor.LifecycleEvent)
+			if !ok {
+				logger.Debug("received-non-lifecycle-event")
+				continue
+			}
+
+			container := lifecycle.Container()
+			opChan <- g.operationFromContainer(logger, container.Guid)
 		}
 	}()
 

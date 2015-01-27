@@ -11,7 +11,7 @@ type FakeEvacuationContext struct {
 	EvacuatingStub        func() bool
 	evacuatingMutex       sync.RWMutex
 	evacuatingArgsForCall []struct{}
-	evacuatingReturns struct {
+	evacuatingReturns     struct {
 		result1 bool
 	}
 }
