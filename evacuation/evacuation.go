@@ -24,6 +24,7 @@ func (e *evacuationContext) Evacuating() bool {
 }
 
 type Evacuator struct {
+	logger            lager.Logger
 	evacuationContext evacuationContext
 	evacuationTimeout time.Duration
 	clock             clock.Clock
@@ -31,6 +32,7 @@ type Evacuator struct {
 
 func NewEvacuator(logger lager.Logger, clock clock.Clock, evacuationTimeout time.Duration) *Evacuator {
 	return &Evacuator{
+		logger:            logger,
 		evacuationContext: evacuationContext{},
 		evacuationTimeout: evacuationTimeout,
 		clock:             clock,
@@ -42,10 +44,12 @@ func (e *Evacuator) EvacuationContext() EvacuationContext {
 }
 
 func (e *Evacuator) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
+	logger := e.logger.Session("run")
 	close(ready)
 
 	select {
 	case signal := <-signals:
+		logger.Info("run-signaled", lager.Data{"signal": signal.String()})
 		if signal == syscall.SIGUSR1 {
 			atomic.AddInt32(&e.evacuationContext.evacuating, 1)
 
