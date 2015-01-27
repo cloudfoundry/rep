@@ -92,7 +92,7 @@ func (a *AuctionCellRep) State() (auctiontypes.CellState, error) {
 		Evacuating:         a.evacuationContext.Evacuating(),
 	}
 
-	a.logger.Session("provided", lager.Data{"state": state})
+	a.logger.Info("provided", lager.Data{"state": state})
 
 	return state, nil
 }
