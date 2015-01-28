@@ -3,6 +3,7 @@ package internal
 import (
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
+	"github.com/cloudfoundry-incubator/rep/evacuation"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -33,13 +34,19 @@ type lrpProcessor struct {
 	bbs               bbs.RepBBS
 	containerDelegate ContainerDelegate
 	cellID            string
+	evacuationContext evacuation.EvacuationContext
 }
 
-func NewLRPProcessor(bbs bbs.RepBBS, containerDelegate ContainerDelegate, cellID string) LRPProcessor {
+func NewLRPProcessor(bbs bbs.RepBBS,
+	containerDelegate ContainerDelegate,
+	cellID string,
+	evacuationContext evacuation.EvacuationContext,
+) LRPProcessor {
 	return &lrpProcessor{
 		bbs:               bbs,
 		containerDelegate: containerDelegate,
 		cellID:            cellID,
+		evacuationContext: evacuationContext,
 	}
 }
 
@@ -63,7 +70,9 @@ func (p *lrpProcessor) Process(logger lager.Logger, container executor.Container
 
 	switch lrpContainer.Container.State {
 	case executor.StateReserved:
-		p.processReservedContainer(logger, lrpContainer)
+		if !p.evacuationContext.Evacuating() {
+			p.processReservedContainer(logger, lrpContainer)
+		}
 	case executor.StateInitializing:
 		p.processInitializingContainer(logger, lrpContainer)
 	case executor.StateCreated:

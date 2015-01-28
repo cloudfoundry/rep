@@ -6,6 +6,7 @@ import (
 	"github.com/cloudfoundry-incubator/executor"
 	efakes "github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
+	"github.com/cloudfoundry-incubator/rep/evacuation/fake_evacuator"
 	"github.com/cloudfoundry-incubator/rep/generator"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/operationq"
@@ -25,6 +26,7 @@ var _ = Describe("Generator", func() {
 	var (
 		cellID             string
 		fakeExecutorClient *efakes.FakeClient
+		evacuationContext  *fake_evacuator.FakeEvacuationContext
 
 		opGenerator generator.Generator
 	)
@@ -32,8 +34,9 @@ var _ = Describe("Generator", func() {
 	BeforeEach(func() {
 		cellID = "some-cell-id"
 		fakeExecutorClient = new(efakes.FakeClient)
+		evacuationContext = &fake_evacuator.FakeEvacuationContext{}
 
-		opGenerator = generator.New(cellID, fakeBBS, fakeExecutorClient)
+		opGenerator = generator.New(cellID, fakeBBS, fakeExecutorClient, evacuationContext)
 	})
 
 	Describe("BatchOperations", func() {

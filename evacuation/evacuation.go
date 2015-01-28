@@ -8,6 +8,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 )
@@ -28,6 +29,8 @@ func (e *evacuationContext) Evacuating() bool {
 type Evacuator struct {
 	logger            lager.Logger
 	executorClient    executor.Client
+	bbs               bbs.RepBBS
+	cellID            string
 	evacuationTimeout time.Duration
 	pollingInterval   time.Duration
 	clock             clock.Clock
@@ -38,6 +41,8 @@ type Evacuator struct {
 func NewEvacuator(
 	logger lager.Logger,
 	executorClient executor.Client,
+	bbs bbs.RepBBS,
+	cellID string,
 	evacuationTimeout time.Duration,
 	pollingInterval time.Duration,
 	clock clock.Clock,
@@ -45,6 +50,8 @@ func NewEvacuator(
 	return &Evacuator{
 		logger:            logger,
 		executorClient:    executorClient,
+		bbs:               bbs,
+		cellID:            cellID,
 		evacuationTimeout: evacuationTimeout,
 		pollingInterval:   pollingInterval,
 		clock:             clock,
@@ -101,19 +108,51 @@ func (e *Evacuator) evacuate(doneCh chan<- struct{}) {
 }
 
 func (e *Evacuator) allContainersEvacuated(logger lager.Logger) bool {
-	filter := map[string]string{rep.LifecycleTag: rep.TaskLifecycle}
-
-	containers, err := e.executorClient.ListContainers(filter)
+	containers, err := e.executorClient.ListContainers(nil)
 	if err != nil {
 		logger.Error("failed-to-list-containers", err)
 		return false
 	}
 
 	for _, container := range containers {
-		if container.State != executor.StateCompleted {
-			return false
+		switch container.Tags[rep.LifecycleTag] {
+		case rep.TaskLifecycle:
+			if container.State != executor.StateCompleted {
+				return false
+			}
+		case rep.LRPLifecycle:
+			err := e.evacuateLRP(logger, container)
+			if err != nil {
+				logger.Error("evacuation-failed", err)
+			}
 		}
 	}
 
 	return true
+}
+
+func (e *Evacuator) evacuateLRP(logger lager.Logger, container executor.Container) error {
+	lrpKey, err := rep.ActualLRPKeyFromContainer(container)
+	if err != nil {
+		return err
+	}
+
+	if container.State == executor.StateReserved {
+		containerKey, err := rep.ActualLRPContainerKeyFromContainer(container, e.cellID)
+		if err != nil {
+			return err
+		}
+
+		err = e.bbs.EvacuateActualLRP(logger, lrpKey, containerKey)
+		if err != nil {
+			return err
+		}
+
+		err = e.executorClient.StopContainer(container.Guid)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

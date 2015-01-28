@@ -102,6 +102,12 @@ var evacuationTimeout = flag.Duration(
 	"Timeout to wait for evacuation to complete",
 )
 
+var evacuationPollingInterval = flag.Duration(
+	"evacuationPollingInterval",
+	30*time.Second,
+	"the interval on which to scan the executor for containers during evacuation",
+)
+
 const (
 	dropsondeDestination = "localhost:3457"
 	dropsondeOrigin      = "rep"
@@ -129,12 +135,13 @@ func main() {
 
 	clock := clock.NewClock()
 
-	evacuator := evacuation.NewEvacuator(logger, clock, *evacuationTimeout)
+	executorClient := executorclient.New(cf_http.NewClient(), cf_http.NewStreamingClient(), *executorURL)
+
+	evacuator := evacuation.NewEvacuator(logger, executorClient, bbs, *cellID, *evacuationTimeout, *evacuationPollingInterval, clock)
 	evacuationContext := evacuator.EvacuationContext()
 
-	executorClient := executorclient.New(cf_http.NewClient(), cf_http.NewStreamingClient(), *executorURL)
 	httpServer, address := initializeServer(bbs, executorClient, evacuationContext, logger)
-	opGenerator := generator.New(*cellID, bbs, executorClient)
+	opGenerator := generator.New(*cellID, bbs, executorClient, evacuationContext)
 
 	// only one outstanding operation per container is necessary
 	queue := operationq.NewSlidingQueue(1)
