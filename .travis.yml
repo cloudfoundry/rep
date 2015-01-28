@@ -14,5 +14,3 @@ before_script:
   - export PATH=$HOME/gopath/bin:$PATH
 
 script: ginkgo -r -race -failOnPending -randomizeAllSpecs
-
-sudo: false
