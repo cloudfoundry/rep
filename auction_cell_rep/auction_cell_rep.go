@@ -6,7 +6,7 @@ import (
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
-	"github.com/cloudfoundry-incubator/rep/evacuation"
+	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
@@ -19,7 +19,7 @@ type AuctionCellRep struct {
 	generateContainerGuid func() (string, error)
 	bbs                   Bbs.RepBBS
 	client                executor.Client
-	evacuationContext     evacuation.EvacuationContext
+	evacuationReporter    evacuation_context.EvacuationReporter
 	logger                lager.Logger
 }
 
@@ -30,7 +30,7 @@ func New(
 	generateContainerGuid func() (string, error),
 	bbs Bbs.RepBBS,
 	client executor.Client,
-	evacuationContext evacuation.EvacuationContext,
+	evacuationReporter evacuation_context.EvacuationReporter,
 	logger lager.Logger,
 ) *AuctionCellRep {
 	return &AuctionCellRep{
@@ -38,10 +38,10 @@ func New(
 		stack:  stack,
 		zone:   zone,
 		generateContainerGuid: generateContainerGuid,
-		bbs:               bbs,
-		client:            client,
-		evacuationContext: evacuationContext,
-		logger:            logger.Session("auction-delegate"),
+		bbs:                bbs,
+		client:             client,
+		evacuationReporter: evacuationReporter,
+		logger:             logger.Session("auction-delegate"),
 	}
 }
 
@@ -89,7 +89,7 @@ func (a *AuctionCellRep) State() (auctiontypes.CellState, error) {
 		TotalResources:     totalResources,
 		LRPs:               lrps,
 		Zone:               a.zone,
-		Evacuating:         a.evacuationContext.Evacuating(),
+		Evacuating:         a.evacuationReporter.Evacuating(),
 	}
 
 	a.logger.Info("provided", lager.Data{"state": state})
@@ -105,7 +105,7 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 		"tasks":      len(work.Tasks),
 	})
 
-	if a.evacuationContext.Evacuating() {
+	if a.evacuationReporter.Evacuating() {
 		return work, nil
 	}
 

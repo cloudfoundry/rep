@@ -10,6 +10,7 @@ import (
 	"github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/evacuation"
+	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/clock/fakeclock"
@@ -22,17 +23,18 @@ import (
 
 var _ = Describe("Evacuation", func() {
 	var (
-		process           ifrit.Process
-		evacuator         *evacuation.Evacuator
-		logger            *lagertest.TestLogger
-		evacuationContext evacuation.EvacuationContext
-		evacuationTimeout time.Duration
-		fakeClock         *fakeclock.FakeClock
-		executorClient    *fakes.FakeClient
-		bbs               *fake_bbs.FakeRepBBS
-		cellID            string
-		TaskTags          map[string]string
-		LRPTags           func(string, int) map[string]string
+		process            ifrit.Process
+		evacuator          *evacuation.Evacuator
+		logger             *lagertest.TestLogger
+		evacuationReporter evacuation_context.EvacuationReporter
+		evacuatable        evacuation_context.Evacuatable
+		evacuationTimeout  time.Duration
+		fakeClock          *fakeclock.FakeClock
+		executorClient     *fakes.FakeClient
+		bbs                *fake_bbs.FakeRepBBS
+		cellID             string
+		TaskTags           map[string]string
+		LRPTags            func(string, int) map[string]string
 	)
 
 	BeforeEach(func() {
@@ -44,8 +46,8 @@ var _ = Describe("Evacuation", func() {
 		bbs = &fake_bbs.FakeRepBBS{}
 		cellID = "cell-id"
 
-		evacuator = evacuation.NewEvacuator(logger, executorClient, bbs, cellID, evacuationTimeout, pollingInterval, fakeClock)
-		evacuationContext = evacuator.EvacuationContext()
+		evacuatable, evacuationReporter = evacuation_context.New()
+		evacuator = evacuation.NewEvacuator(logger, executorClient, bbs, evacuatable, cellID, evacuationTimeout, pollingInterval, fakeClock)
 
 		process = ifrit.Invoke(evacuator)
 
@@ -62,9 +64,9 @@ var _ = Describe("Evacuation", func() {
 
 	Describe("Signal", func() {
 		Context("SIGUSR1", func() {
-			It("flips the bit on the evacuationContext", func() {
+			It("causes the evacuationReporter to report Evacuation is underway", func() {
 				process.Signal(syscall.SIGUSR1)
-				Eventually(evacuationContext.Evacuating).Should(BeTrue())
+				Eventually(evacuationReporter.Evacuating).Should(BeTrue())
 			})
 
 			It("exits after the evacuationTimeout has elapsed", func() {
@@ -221,8 +223,8 @@ var _ = Describe("Evacuation", func() {
 				process.Signal(syscall.SIGINT)
 			})
 
-			It("does not flip the bit on the evacuationContext", func() {
-				Consistently(evacuationContext.Evacuating).Should(BeFalse())
+			It("does not cause the evacuationReporter to report Evacuation is underway", func() {
+				Consistently(evacuationReporter.Evacuating).Should(BeFalse())
 			})
 
 			It("does not wait for evacuation before exiting", func() {

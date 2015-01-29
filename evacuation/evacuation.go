@@ -2,46 +2,33 @@ package evacuation
 
 import (
 	"os"
-	"sync/atomic"
 	"syscall"
 	"time"
 
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
+	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 )
 
-//go:generate counterfeiter -o fake_evacuator/fake_evacuator.go . EvacuationContext
-type EvacuationContext interface {
-	Evacuating() bool
-}
-
-type evacuationContext struct {
-	evacuating int32
-}
-
-func (e *evacuationContext) Evacuating() bool {
-	return atomic.LoadInt32(&e.evacuating) != 0
-}
-
 type Evacuator struct {
 	logger            lager.Logger
 	executorClient    executor.Client
 	bbs               bbs.RepBBS
+	evacuatable       evacuation_context.Evacuatable
 	cellID            string
 	evacuationTimeout time.Duration
 	pollingInterval   time.Duration
 	clock             clock.Clock
-
-	evacuationContext evacuationContext
 }
 
 func NewEvacuator(
 	logger lager.Logger,
 	executorClient executor.Client,
 	bbs bbs.RepBBS,
+	evacuatable evacuation_context.Evacuatable,
 	cellID string,
 	evacuationTimeout time.Duration,
 	pollingInterval time.Duration,
@@ -51,17 +38,12 @@ func NewEvacuator(
 		logger:            logger,
 		executorClient:    executorClient,
 		bbs:               bbs,
+		evacuatable:       evacuatable,
 		cellID:            cellID,
 		evacuationTimeout: evacuationTimeout,
 		pollingInterval:   pollingInterval,
 		clock:             clock,
-
-		evacuationContext: evacuationContext{},
 	}
-}
-
-func (e *Evacuator) EvacuationContext() EvacuationContext {
-	return &e.evacuationContext
 }
 
 func (e *Evacuator) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
@@ -72,7 +54,7 @@ func (e *Evacuator) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	case signal := <-signals:
 		logger.Info("run-signaled", lager.Data{"signal": signal.String()})
 		if signal == syscall.SIGUSR1 {
-			atomic.AddInt32(&e.evacuationContext.evacuating, 1)
+			e.evacuatable.Evacuate()
 
 			doneCh := make(chan struct{})
 			go e.evacuate(doneCh)

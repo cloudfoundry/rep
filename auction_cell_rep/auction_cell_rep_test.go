@@ -8,7 +8,7 @@ import (
 	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
 	. "github.com/cloudfoundry-incubator/rep/auction_cell_rep"
-	"github.com/cloudfoundry-incubator/rep/evacuation/fake_evacuator"
+	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -23,7 +23,7 @@ var _ = Describe("AuctionCellRep", func() {
 	var commonErr error
 	var bbs *fake_bbs.FakeRepBBS
 	var logger *lagertest.TestLogger
-	var evacuationContext *fake_evacuator.FakeEvacuationContext
+	var evacuationReporter *fake_evacuation_context.FakeEvacuationReporter
 
 	const expectedCellID = "some-cell-id"
 	var expectedGuid string
@@ -34,7 +34,7 @@ var _ = Describe("AuctionCellRep", func() {
 		client = new(fake_client.FakeClient)
 		bbs = &fake_bbs.FakeRepBBS{}
 		logger = lagertest.NewTestLogger("test")
-		evacuationContext = &fake_evacuator.FakeEvacuationContext{}
+		evacuationReporter = &fake_evacuation_context.FakeEvacuationReporter{}
 
 		expectedGuid = "container-guid"
 		expectedGuidError = nil
@@ -46,7 +46,7 @@ var _ = Describe("AuctionCellRep", func() {
 	})
 
 	JustBeforeEach(func() {
-		cellRep = New(expectedCellID, "lucid64", "the-zone", fakeGenerateContainerGuid, bbs, client, evacuationContext, logger)
+		cellRep = New(expectedCellID, "lucid64", "the-zone", fakeGenerateContainerGuid, bbs, client, evacuationReporter, logger)
 	})
 
 	Describe("State", func() {
@@ -56,7 +56,7 @@ var _ = Describe("AuctionCellRep", func() {
 		)
 
 		BeforeEach(func() {
-			evacuationContext.EvacuatingReturns(true)
+			evacuationReporter.EvacuatingReturns(true)
 			totalResources = executor.ExecutorResources{
 				MemoryMB:   1024,
 				DiskMB:     2048,
@@ -181,7 +181,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 		Context("when evacuating", func() {
 			BeforeEach(func() {
-				evacuationContext.EvacuatingReturns(true)
+				evacuationReporter.EvacuatingReturns(true)
 
 				lrpAuction = auctiontypes.LRPAuction{
 					DesiredLRP: models.DesiredLRP{

@@ -6,7 +6,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
-	"github.com/cloudfoundry-incubator/rep/evacuation/fake_evacuator"
+	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
@@ -26,13 +26,13 @@ var _ = Describe("LrpProcessor", func() {
 	var logger *lagertest.TestLogger
 	var bbs *fake_bbs.FakeRepBBS
 	var containerDelegate *fake_internal.FakeContainerDelegate
-	var evacuationContext *fake_evacuator.FakeEvacuationContext
+	var evacuationReporter *fake_evacuation_context.FakeEvacuationReporter
 
 	BeforeEach(func() {
 		bbs = new(fake_bbs.FakeRepBBS)
 		containerDelegate = new(fake_internal.FakeContainerDelegate)
-		evacuationContext = &fake_evacuator.FakeEvacuationContext{}
-		processor = internal.NewLRPProcessor(bbs, containerDelegate, expectedCellID, evacuationContext)
+		evacuationReporter = &fake_evacuation_context.FakeEvacuationReporter{}
+		processor = internal.NewLRPProcessor(bbs, containerDelegate, expectedCellID, evacuationReporter)
 		logger = lagertest.NewTestLogger("test")
 	})
 
@@ -80,7 +80,7 @@ var _ = Describe("LrpProcessor", func() {
 
 				Context("when the cell is evacuating", func() {
 					BeforeEach(func() {
-						evacuationContext.EvacuatingReturns(true)
+						evacuationReporter.EvacuatingReturns(true)
 					})
 
 					It("does not claim the actualLRP in the bbs", func() {
