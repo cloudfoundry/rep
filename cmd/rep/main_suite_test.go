@@ -34,14 +34,12 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	serverPort = 1800 + GinkgoParallelNode()
 
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
-})
 
-var _ = BeforeEach(func() {
 	etcdRunner.Start()
 })
 
-var _ = AfterEach(func() {
-	etcdRunner.Stop()
+var _ = BeforeEach(func() {
+	etcdRunner.Reset()
 })
 
 var _ = SynchronizedAfterSuite(func() {
