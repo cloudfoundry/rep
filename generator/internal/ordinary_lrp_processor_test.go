@@ -19,7 +19,7 @@ import (
 	. "github.com/onsi/gomega/gbytes"
 )
 
-var _ = Describe("LrpProcessor", func() {
+var _ = Describe("OrdinaryLRPProcessor", func() {
 	const expectedCellID = "cell-id"
 
 	var processor internal.LRPProcessor
@@ -32,12 +32,13 @@ var _ = Describe("LrpProcessor", func() {
 		bbs = new(fake_bbs.FakeRepBBS)
 		containerDelegate = new(fake_internal.FakeContainerDelegate)
 		evacuationReporter = &fake_evacuation_context.FakeEvacuationReporter{}
+		evacuationReporter.EvacuatingReturns(false)
 		processor = internal.NewLRPProcessor(bbs, containerDelegate, expectedCellID, evacuationReporter)
 		logger = lagertest.NewTestLogger("test")
 	})
 
 	Describe("Process", func() {
-		const sessionPrefix = "test.lrp-processor."
+		const sessionPrefix = "test.ordinary-lrp-processor."
 
 		var expectedLrpKey models.ActualLRPKey
 		var expectedContainerKey models.ActualLRPContainerKey
@@ -78,76 +79,64 @@ var _ = Describe("LrpProcessor", func() {
 					container.State = executor.StateReserved
 				})
 
-				Context("when the cell is evacuating", func() {
+				It("claims the actualLRP in the bbs", func() {
+					Ω(bbs.ClaimActualLRPCallCount()).Should(Equal(1))
+					lrpKey, containerKey, bbsLogger := bbs.ClaimActualLRPArgsForCall(0)
+					Ω(lrpKey).Should(Equal(expectedLrpKey))
+					Ω(containerKey).Should(Equal(expectedContainerKey))
+					Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
+				})
+
+				Context("when claiming fails because ErrActualLRPCannotBeClaimed", func() {
 					BeforeEach(func() {
-						evacuationReporter.EvacuatingReturns(true)
+						bbs.ClaimActualLRPReturns(bbserrors.ErrActualLRPCannotBeClaimed)
 					})
 
-					It("does not claim the actualLRP in the bbs", func() {
-						Ω(bbs.ClaimActualLRPCallCount()).Should(Equal(0))
+					It("deletes the container", func() {
+						Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(1))
+						delegateLogger, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
+						Ω(containerGuid).Should(Equal(expectedContainerKey.InstanceGuid))
+						Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
+					})
+
+					It("does not try to run the container", func() {
+						Ω(containerDelegate.RunContainerCallCount()).Should(Equal(0))
 					})
 				})
 
-				Context("when the cell is not evacuating", func() {
-					It("claims the actualLRP in the bbs", func() {
-						Ω(bbs.ClaimActualLRPCallCount()).Should(Equal(1))
-						lrpKey, containerKey, bbsLogger := bbs.ClaimActualLRPArgsForCall(0)
-						Ω(lrpKey).Should(Equal(expectedLrpKey))
-						Ω(containerKey).Should(Equal(expectedContainerKey))
-						Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
+				Context("when claiming fails for an unknown reason", func() {
+					BeforeEach(func() {
+						bbs.ClaimActualLRPReturns(errors.New("boom"))
 					})
 
-					Context("when claiming fails because ErrActualLRPCannotBeClaimed", func() {
+					It("does not delete the container", func() {
+						Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(0))
+					})
+
+					It("does not try to run the container", func() {
+						Ω(containerDelegate.RunContainerCallCount()).Should(Equal(0))
+					})
+				})
+
+				Context("when claiming succeeds", func() {
+					It("runs the container", func() {
+						Ω(containerDelegate.RunContainerCallCount()).Should(Equal(1))
+						delegateLogger, containerGuid := containerDelegate.RunContainerArgsForCall(0)
+						Ω(containerGuid).Should(Equal(expectedContainerKey.InstanceGuid))
+						Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
+					})
+
+					Context("when running fails", func() {
 						BeforeEach(func() {
-							bbs.ClaimActualLRPReturns(bbserrors.ErrActualLRPCannotBeClaimed)
+							containerDelegate.RunContainerReturns(false)
 						})
 
-						It("deletes the container", func() {
-							Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(1))
-							delegateLogger, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
-							Ω(containerGuid).Should(Equal(expectedContainerKey.InstanceGuid))
-							Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
-						})
-
-						It("does not try to run the container", func() {
-							Ω(containerDelegate.RunContainerCallCount()).Should(Equal(0))
-						})
-					})
-
-					Context("when claiming fails for an unknown reason", func() {
-						BeforeEach(func() {
-							bbs.ClaimActualLRPReturns(errors.New("boom"))
-						})
-
-						It("does not delete the container", func() {
-							Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(0))
-						})
-
-						It("does not try to run the container", func() {
-							Ω(containerDelegate.RunContainerCallCount()).Should(Equal(0))
-						})
-					})
-
-					Context("when claiming succeeds", func() {
-						It("runs the container", func() {
-							Ω(containerDelegate.RunContainerCallCount()).Should(Equal(1))
-							delegateLogger, containerGuid := containerDelegate.RunContainerArgsForCall(0)
-							Ω(containerGuid).Should(Equal(expectedContainerKey.InstanceGuid))
-							Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
-						})
-
-						Context("when running fails", func() {
-							BeforeEach(func() {
-								containerDelegate.RunContainerReturns(false)
-							})
-
-							It("removes the actual LRP", func() {
-								Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
-								lrpKey, containerKey, bbsLogger := bbs.RemoveActualLRPArgsForCall(0)
-								Ω(lrpKey).Should(Equal(expectedLrpKey))
-								Ω(containerKey).Should(Equal(expectedContainerKey))
-								Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
-							})
+						It("removes the actual LRP", func() {
+							Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
+							lrpKey, containerKey, bbsLogger := bbs.RemoveActualLRPArgsForCall(0)
+							Ω(lrpKey).Should(Equal(expectedLrpKey))
+							Ω(containerKey).Should(Equal(expectedContainerKey))
+							Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
 						})
 					})
 				})

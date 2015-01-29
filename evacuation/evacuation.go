@@ -8,9 +8,12 @@ import (
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
+	"github.com/cloudfoundry-incubator/rep/generator"
+	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
+	"github.com/pivotal-golang/operationq"
 )
 
 type Evacuator struct {
@@ -18,6 +21,10 @@ type Evacuator struct {
 	executorClient    executor.Client
 	bbs               bbs.RepBBS
 	evacuatable       evacuation_context.Evacuatable
+	lrpProcessor      internal.LRPProcessor
+	taskProcessor     internal.TaskProcessor
+	containerDelegate internal.ContainerDelegate
+	queue             operationq.Queue
 	cellID            string
 	evacuationTimeout time.Duration
 	pollingInterval   time.Duration
@@ -29,6 +36,10 @@ func NewEvacuator(
 	executorClient executor.Client,
 	bbs bbs.RepBBS,
 	evacuatable evacuation_context.Evacuatable,
+	lrpProcessor internal.LRPProcessor,
+	taskProcessor internal.TaskProcessor,
+	containerDelegate internal.ContainerDelegate,
+	queue operationq.Queue,
 	cellID string,
 	evacuationTimeout time.Duration,
 	pollingInterval time.Duration,
@@ -39,6 +50,10 @@ func NewEvacuator(
 		executorClient:    executorClient,
 		bbs:               bbs,
 		evacuatable:       evacuatable,
+		lrpProcessor:      lrpProcessor,
+		taskProcessor:     taskProcessor,
+		containerDelegate: containerDelegate,
+		queue:             queue,
 		cellID:            cellID,
 		evacuationTimeout: evacuationTimeout,
 		pollingInterval:   pollingInterval,
@@ -96,45 +111,20 @@ func (e *Evacuator) allContainersEvacuated(logger lager.Logger) bool {
 		return false
 	}
 
+	done := true
+
 	for _, container := range containers {
 		switch container.Tags[rep.LifecycleTag] {
 		case rep.TaskLifecycle:
 			if container.State != executor.StateCompleted {
-				return false
+				done = false
 			}
 		case rep.LRPLifecycle:
-			err := e.evacuateLRP(logger, container)
-			if err != nil {
-				logger.Error("evacuation-failed", err)
-			}
+			done = false
+			containerOperation := generator.NewContainerOperation(logger, e.lrpProcessor, e.taskProcessor, e.containerDelegate, container.Guid)
+			e.queue.Push(containerOperation)
 		}
 	}
 
-	return true
-}
-
-func (e *Evacuator) evacuateLRP(logger lager.Logger, container executor.Container) error {
-	lrpKey, err := rep.ActualLRPKeyFromContainer(container)
-	if err != nil {
-		return err
-	}
-
-	if container.State == executor.StateReserved {
-		containerKey, err := rep.ActualLRPContainerKeyFromContainer(container, e.cellID)
-		if err != nil {
-			return err
-		}
-
-		err = e.bbs.EvacuateActualLRP(logger, lrpKey, containerKey)
-		if err != nil {
-			return err
-		}
-
-		err = e.executorClient.StopContainer(container.Guid)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return done
 }

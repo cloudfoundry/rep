@@ -20,6 +20,7 @@ import (
 	"github.com/cloudfoundry-incubator/rep/evacuation"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
 	"github.com/cloudfoundry-incubator/rep/generator"
+	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/cloudfoundry-incubator/rep/harmonizer"
 	repserver "github.com/cloudfoundry-incubator/rep/http_server"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
@@ -139,13 +140,31 @@ func main() {
 	executorClient := executorclient.New(cf_http.NewClient(), cf_http.NewStreamingClient(), *executorURL)
 
 	evacuatable, evacuationReporter := evacuation_context.New()
-	evacuator := evacuation.NewEvacuator(logger, executorClient, bbs, evacuatable, *cellID, *evacuationTimeout, *evacuationPollingInterval, clock)
-
-	httpServer, address := initializeServer(bbs, executorClient, evacuationReporter, logger)
-	opGenerator := generator.New(*cellID, bbs, executorClient, evacuationReporter)
 
 	// only one outstanding operation per container is necessary
 	queue := operationq.NewSlidingQueue(1)
+
+	containerDelegate := internal.NewContainerDelegate(executorClient)
+	lrpProcessor := internal.NewLRPProcessor(bbs, containerDelegate, *cellID, evacuationReporter)
+	taskProcessor := internal.NewTaskProcessor(bbs, containerDelegate, *cellID)
+
+	evacuator := evacuation.NewEvacuator(
+		logger,
+		executorClient,
+		bbs,
+		evacuatable,
+		lrpProcessor,
+		taskProcessor,
+		containerDelegate,
+		queue,
+		*cellID,
+		*evacuationTimeout,
+		*evacuationPollingInterval,
+		clock,
+	)
+
+	httpServer, address := initializeServer(bbs, executorClient, evacuationReporter, logger)
+	opGenerator := generator.New(*cellID, bbs, executorClient, lrpProcessor, taskProcessor, containerDelegate)
 
 	members := grouper.Members{
 		{"http_server", httpServer},

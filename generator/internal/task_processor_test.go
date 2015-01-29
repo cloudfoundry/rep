@@ -9,32 +9,17 @@ import (
 	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry/storeadapter"
-	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 )
 
 const taskGuid = "my-guid"
 
 var processor internal.TaskProcessor
-var BBS *bbs.BBS
-var etcdRunner *etcdstorerunner.ETCDClusterRunner
-var etcdClient storeadapter.StoreAdapter
-
-var _ = BeforeSuite(func() {
-	etcdRunner = etcdstorerunner.NewETCDClusterRunner(5001+config.GinkgoConfig.ParallelNode, 1)
-	etcdClient = etcdRunner.Adapter()
-})
-
-var _ = AfterSuite(func() {
-	etcdRunner.Stop()
-})
 
 var _ = Describe("Task <-> Container table", func() {
 	var (
@@ -187,215 +172,215 @@ var _ = Describe("Task <-> Container table", func() {
 		Logger:      lagertest.NewTestLogger(sessionPrefix),
 		Rows: []Row{
 			// container reserved
-			Conceivable( // task deleted? (operator/etcd?)
+			ConceivableTaskScenario( // task deleted? (operator/etcd?)
 				NewContainer(executor.StateReserved),
 				nil,
 				itDeletesTheContainer,
 			),
-			Expected( // container is reserved for a pending container
+			ExpectedTaskScenario( // container is reserved for a pending container
 				NewContainer(executor.StateReserved),
 				NewTask("", models.TaskStatePending),
 				itRunsTheContainer,
 			),
-			Expected( // task is started before we run the container. it should eventually transition to initializing or be reaped if things really go wrong.
+			ExpectedTaskScenario( // task is started before we run the container. it should eventually transition to initializing or be reaped if things really go wrong.
 				NewContainer(executor.StateReserved),
 				NewTask("a", models.TaskStateRunning),
 				itDoesNothing,
 			),
-			Conceivable( // maybe the rep reserved the container and failed to report success back to the auctioneer
+			ConceivableTaskScenario( // maybe the rep reserved the container and failed to report success back to the auctioneer
 				NewContainer(executor.StateReserved),
 				NewTask("w", models.TaskStateRunning),
 				itDeletesTheContainer,
 			),
-			Conceivable( // if the Run call to the executor fails we complete the task with failure, and try to remove the reservation, but there's a time window.
+			ConceivableTaskScenario( // if the Run call to the executor fails we complete the task with failure, and try to remove the reservation, but there's a time window.
 				NewContainer(executor.StateReserved),
 				NewTask("a", models.TaskStateCompleted),
 				itDeletesTheContainer,
 			),
-			Conceivable( // maybe the rep reserved the container and failed to report success back to the auctioneer
+			ConceivableTaskScenario( // maybe the rep reserved the container and failed to report success back to the auctioneer
 				NewContainer(executor.StateReserved),
 				NewTask("w", models.TaskStateCompleted),
 				itDeletesTheContainer,
 			),
-			Conceivable( // caller is processing failure from Run call
+			ConceivableTaskScenario( // caller is processing failure from Run call
 				NewContainer(executor.StateReserved),
 				NewTask("a", models.TaskStateResolving),
 				itDeletesTheContainer,
 			),
-			Conceivable( // maybe the rep reserved the container and failed to report success back to the auctioneer
+			ConceivableTaskScenario( // maybe the rep reserved the container and failed to report success back to the auctioneer
 				NewContainer(executor.StateReserved),
 				NewTask("w", models.TaskStateResolving),
 				itDeletesTheContainer,
 			),
 
 			// container initializing
-			Conceivable( // task deleted? (operator/etcd?)
+			ConceivableTaskScenario( // task deleted? (operator/etcd?)
 				NewContainer(executor.StateInitializing),
 				nil,
 				itDeletesTheContainer,
 			),
-			Inconceivable( // task should be started before anyone tries to run
+			InconceivableTaskScenario( // task should be started before anyone tries to run
 				NewContainer(executor.StateInitializing),
 				NewTask("", models.TaskStatePending),
 				itRunsTheContainer,
 			),
-			Expected( // task is running throughout initializing, completed, and running
+			ExpectedTaskScenario( // task is running throughout initializing, completed, and running
 				NewContainer(executor.StateInitializing),
 				NewTask("a", models.TaskStateRunning),
 				itDoesNothing,
 			),
-			Inconceivable( // state machine borked? no other cell should get this far.
+			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
 				NewContainer(executor.StateInitializing),
 				NewTask("w", models.TaskStateRunning),
 				itDeletesTheContainer,
 			),
-			Conceivable( // task was cancelled
+			ConceivableTaskScenario( // task was cancelled
 				NewContainer(executor.StateInitializing),
 				NewTask("a", models.TaskStateCompleted),
 				itDeletesTheContainer,
 			),
-			Inconceivable( // state machine borked? no other cell should get this far.
+			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
 				NewContainer(executor.StateInitializing),
 				NewTask("w", models.TaskStateCompleted),
 				itDeletesTheContainer,
 			),
-			Conceivable( // task was cancelled
+			ConceivableTaskScenario( // task was cancelled
 				NewContainer(executor.StateInitializing),
 				NewTask("a", models.TaskStateResolving),
 				itDeletesTheContainer,
 			),
-			Inconceivable( // state machine borked? no other cell should get this far.
+			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
 				NewContainer(executor.StateInitializing),
 				NewTask("w", models.TaskStateResolving),
 				itDeletesTheContainer,
 			),
 
 			// container created
-			Conceivable( // task deleted? (operator/etcd?)
+			ConceivableTaskScenario( // task deleted? (operator/etcd?)
 				NewContainer(executor.StateCreated),
 				nil,
 				itDeletesTheContainer,
 			),
-			Inconceivable( // task should be started before anyone tries to run
+			InconceivableTaskScenario( // task should be started before anyone tries to run
 				NewContainer(executor.StateCreated),
 				NewTask("", models.TaskStatePending),
 				itSetsTheTaskToRunning,
 			),
-			Expected( // task is running throughout initializing, completed, and running
+			ExpectedTaskScenario( // task is running throughout initializing, completed, and running
 				NewContainer(executor.StateCreated),
 				NewTask("a", models.TaskStateRunning),
 				itDoesNothing,
 			),
-			Inconceivable( // state machine borked? no other cell should get this far.
+			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
 				NewContainer(executor.StateCreated),
 				NewTask("w", models.TaskStateRunning),
 				itDeletesTheContainer,
 			),
-			Conceivable( // task was cancelled
+			ConceivableTaskScenario( // task was cancelled
 				NewContainer(executor.StateCreated),
 				NewTask("a", models.TaskStateCompleted),
 				itDeletesTheContainer,
 			),
-			Inconceivable( // state machine borked? no other cell should get this far.
+			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
 				NewContainer(executor.StateCreated),
 				NewTask("w", models.TaskStateCompleted),
 				itDeletesTheContainer,
 			),
-			Conceivable( // task was cancelled
+			ConceivableTaskScenario( // task was cancelled
 				NewContainer(executor.StateCreated),
 				NewTask("a", models.TaskStateResolving),
 				itDeletesTheContainer,
 			),
-			Inconceivable( // state machine borked? no other cell should get this far.
+			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
 				NewContainer(executor.StateCreated),
 				NewTask("w", models.TaskStateResolving),
 				itDeletesTheContainer,
 			),
 
 			// container running
-			Conceivable( // task deleted? (operator/etcd?)
+			ConceivableTaskScenario( // task deleted? (operator/etcd?)
 				NewContainer(executor.StateRunning),
 				nil,
 				itDeletesTheContainer,
 			),
-			Inconceivable( // task should be started before anyone tries to run
+			InconceivableTaskScenario( // task should be started before anyone tries to run
 				NewContainer(executor.StateRunning),
 				NewTask("", models.TaskStatePending),
 				itSetsTheTaskToRunning,
 			),
-			Expected( // task is running throughout initializing, completed, and running
+			ExpectedTaskScenario( // task is running throughout initializing, completed, and running
 				NewContainer(executor.StateRunning),
 				NewTask("a", models.TaskStateRunning),
 				itDoesNothing,
 			),
-			Inconceivable( // state machine borked? no other cell should get this far.
+			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
 				NewContainer(executor.StateRunning),
 				NewTask("w", models.TaskStateRunning),
 				itDeletesTheContainer,
 			),
-			Conceivable( // task was cancelled
+			ConceivableTaskScenario( // task was cancelled
 				NewContainer(executor.StateRunning),
 				NewTask("a", models.TaskStateCompleted),
 				itDeletesTheContainer,
 			),
-			Inconceivable( // state machine borked? no other cell should get this far.
+			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
 				NewContainer(executor.StateRunning),
 				NewTask("w", models.TaskStateCompleted),
 				itDeletesTheContainer,
 			),
-			Conceivable( // task was cancelled
+			ConceivableTaskScenario( // task was cancelled
 				NewContainer(executor.StateRunning),
 				NewTask("a", models.TaskStateResolving),
 				itDeletesTheContainer,
 			),
-			Inconceivable( // state machine borked? no other cell should get this far.
+			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
 				NewContainer(executor.StateRunning),
 				NewTask("w", models.TaskStateResolving),
 				itDeletesTheContainer,
 			),
 
 			// container completed
-			Conceivable( // task deleted? (operator/etcd?)
+			ConceivableTaskScenario( // task deleted? (operator/etcd?)
 				NewCompletedContainer(failedRunResult),
 				nil,
 				itDeletesTheContainer,
 			),
-			Inconceivable( // task should be walked through lifecycle by the time we get here
+			InconceivableTaskScenario( // task should be walked through lifecycle by the time we get here
 				NewCompletedContainer(failedRunResult),
 				NewTask("", models.TaskStatePending),
 				itCompletesTheTaskWithFailure("invalid state transition"),
 			),
-			Expected( // container completed and failed; complete the task with its failure reason
+			ExpectedTaskScenario( // container completed and failed; complete the task with its failure reason
 				NewCompletedContainer(failedRunResult),
 				NewTask("a", models.TaskStateRunning),
 				itCompletesTheFailedTaskAndDeletesTheContainer,
 			),
-			Expected( // container completed and succeeded; complete the task with its result
+			ExpectedTaskScenario( // container completed and succeeded; complete the task with its result
 				NewCompletedContainer(successfulRunResult),
 				NewTask("a", models.TaskStateRunning),
 				itCompletesTheSuccessfulTaskAndDeletesTheContainer,
 			),
-			Inconceivable( // state machine borked? no other cell should get this far.
+			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
 				NewCompletedContainer(failedRunResult),
 				NewTask("w", models.TaskStateRunning),
 				itDeletesTheContainer,
 			),
-			Conceivable( // may have completed the task and then failed to delete the container
+			ConceivableTaskScenario( // may have completed the task and then failed to delete the container
 				NewCompletedContainer(failedRunResult),
 				NewTask("a", models.TaskStateCompleted),
 				itDeletesTheContainer,
 			),
-			Inconceivable( // state machine borked? no other cell should get this far.
+			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
 				NewCompletedContainer(failedRunResult),
 				NewTask("w", models.TaskStateCompleted),
 				itDeletesTheContainer,
 			),
-			Conceivable( // may have completed the task and then failed to delete the container, and someone started processing the completion
+			ConceivableTaskScenario( // may have completed the task and then failed to delete the container, and someone started processing the completion
 				NewCompletedContainer(failedRunResult),
 				NewTask("a", models.TaskStateResolving),
 				itDeletesTheContainer,
 			),
-			Inconceivable( // state machine borked? no other cell should get this far.
+			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
 				NewCompletedContainer(failedRunResult),
 				NewTask("w", models.TaskStateResolving),
 				itDeletesTheContainer,
@@ -471,7 +456,7 @@ func (t TaskRow) taskDescription() string {
 	return msg
 }
 
-func Expected(container executor.Container, task *models.Task, test TaskTest) Row {
+func ExpectedTaskScenario(container executor.Container, task *models.Task, test TaskTest) Row {
 	expectedTest := func(logger *lagertest.TestLogger) {
 		test(logger)
 	}
@@ -479,7 +464,7 @@ func Expected(container executor.Container, task *models.Task, test TaskTest) Ro
 	return TaskRow{container, task, TaskTest(expectedTest)}
 }
 
-func Conceivable(container executor.Container, task *models.Task, test TaskTest) Row {
+func ConceivableTaskScenario(container executor.Container, task *models.Task, test TaskTest) Row {
 	conceivableTest := func(logger *lagertest.TestLogger) {
 		test(logger)
 	}
@@ -487,7 +472,7 @@ func Conceivable(container executor.Container, task *models.Task, test TaskTest)
 	return TaskRow{container, task, TaskTest(conceivableTest)}
 }
 
-func Inconceivable(container executor.Container, task *models.Task, test TaskTest) Row {
+func InconceivableTaskScenario(container executor.Container, task *models.Task, test TaskTest) Row {
 	inconceivableTest := func(logger *lagertest.TestLogger) {
 		test(logger)
 	}

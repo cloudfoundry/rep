@@ -11,10 +11,12 @@ import (
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/evacuation"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
+	"github.com/cloudfoundry-incubator/rep/generator"
+	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/pivotal-golang/lager/lagertest"
+	"github.com/pivotal-golang/operationq/fake_operationq"
 	"github.com/tedsuo/ifrit"
 
 	. "github.com/onsi/ginkgo"
@@ -26,28 +28,51 @@ var _ = Describe("Evacuation", func() {
 		process            ifrit.Process
 		evacuator          *evacuation.Evacuator
 		logger             *lagertest.TestLogger
-		evacuationReporter evacuation_context.EvacuationReporter
 		evacuatable        evacuation_context.Evacuatable
+		evacuationReporter evacuation_context.EvacuationReporter
 		evacuationTimeout  time.Duration
+		containerDelegate  *fake_internal.FakeContainerDelegate
+		lrpProcessor       *fake_internal.FakeLRPProcessor
+		taskProcessor      *fake_internal.FakeTaskProcessor
 		fakeClock          *fakeclock.FakeClock
 		executorClient     *fakes.FakeClient
 		bbs                *fake_bbs.FakeRepBBS
-		cellID             string
-		TaskTags           map[string]string
-		LRPTags            func(string, int) map[string]string
+		fakeQueue          *fake_operationq.FakeQueue
+
+		cellID   string
+		TaskTags map[string]string
+		LRPTags  func(string, int) map[string]string
 	)
 
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
-		fakeClock = fakeclock.NewFakeClock(time.Now())
-		pollingInterval := 30 * time.Second
-		evacuationTimeout = 3 * time.Minute
 		executorClient = &fakes.FakeClient{}
 		bbs = &fake_bbs.FakeRepBBS{}
+		lrpProcessor = new(fake_internal.FakeLRPProcessor)
+		taskProcessor = new(fake_internal.FakeTaskProcessor)
+		containerDelegate = new(fake_internal.FakeContainerDelegate)
+		fakeQueue = new(fake_operationq.FakeQueue)
+		evacuationTimeout = 3 * time.Minute
+		pollingInterval := 30 * time.Second
+		fakeClock = fakeclock.NewFakeClock(time.Now())
+
 		cellID = "cell-id"
 
 		evacuatable, evacuationReporter = evacuation_context.New()
-		evacuator = evacuation.NewEvacuator(logger, executorClient, bbs, evacuatable, cellID, evacuationTimeout, pollingInterval, fakeClock)
+		evacuator = evacuation.NewEvacuator(
+			logger,
+			executorClient,
+			bbs,
+			evacuatable,
+			lrpProcessor,
+			taskProcessor,
+			containerDelegate,
+			fakeQueue,
+			cellID,
+			evacuationTimeout,
+			pollingInterval,
+			fakeClock,
+		)
 
 		process = ifrit.Invoke(evacuator)
 
@@ -164,7 +189,7 @@ var _ = Describe("Evacuation", func() {
 				})
 			})
 
-			Context("when there are CLAIMED actualLRPs", func() {
+			Context("when there are actualLRPs", func() {
 				var (
 					containers [][]executor.Container
 				)
@@ -172,13 +197,15 @@ var _ = Describe("Evacuation", func() {
 				BeforeEach(func() {
 					containers = [][]executor.Container{
 						{
-							{Guid: "guid-1", State: executor.StateReserved, Tags: LRPTags("process-guid-1", 1)},
-							{Guid: "guid-2", State: executor.StateCreated, Tags: LRPTags("process-guid-2", 2)},
-							{Guid: "guid-3", State: executor.StateRunning, Tags: LRPTags("process-guid-3", 3)},
+							{Guid: "task-guid-1", State: executor.StateCompleted, Tags: TaskTags},
+							{Guid: "lrp-guid-1", State: executor.StateReserved, Tags: LRPTags("process-guid-1", 1)},
+							{Guid: "lrp-guid-2", State: executor.StateCreated, Tags: LRPTags("process-guid-2", 2)},
+							{Guid: "lrp-guid-3", State: executor.StateRunning, Tags: LRPTags("process-guid-3", 3)},
 						},
 						{
-							{Guid: "guid-2", State: executor.StateRunning, Tags: LRPTags("process-guid-2", 2)},
-							{Guid: "guid-3", State: executor.StateRunning, Tags: LRPTags("process-guid-3", 3)},
+							{Guid: "task-guid-1", State: executor.StateCompleted, Tags: TaskTags},
+							{Guid: "lrp-guid-2", State: executor.StateRunning, Tags: LRPTags("process-guid-2", 2)},
+							{Guid: "lrp-guid-3", State: executor.StateRunning, Tags: LRPTags("process-guid-3", 3)},
 						},
 					}
 
@@ -192,28 +219,22 @@ var _ = Describe("Evacuation", func() {
 					process.Signal(syscall.SIGUSR1)
 				})
 
-				It("stops the container for all reserved LRPs", func() {
-					Eventually(executorClient.StopContainerCallCount).Should(Equal(1))
-					Ω(executorClient.StopContainerArgsForCall(0)).Should(Equal("guid-1"))
-				})
+				It("puts an operation for each lrp container onto the operation queue", func() {
+					Eventually(fakeQueue.PushCallCount).Should(Equal(3))
+					fakeClock.IncrementBySeconds(30)
+					Eventually(fakeQueue.PushCallCount).Should(Equal(5))
 
-				It("demotes the CLAIMED actualLRP to UNCLAIMED", func() {
-					Eventually(bbs.EvacuateActualLRPCallCount).Should(Equal(1))
+					keys := []string{}
+					for i := 0; i < 5; i++ {
+						pushArg := fakeQueue.PushArgsForCall(i)
 
-					expectedActualLRPKey := models.ActualLRPKey{
-						ProcessGuid: "process-guid-1",
-						Index:       1,
-						Domain:      "domain",
+						containerOperation := generator.ContainerOperation{}
+						Ω(pushArg).Should(BeAssignableToTypeOf(&containerOperation))
+
+						keys = append(keys, pushArg.Key())
 					}
 
-					expectedActualLRPContainerKey := models.ActualLRPContainerKey{
-						InstanceGuid: "guid-1",
-						CellID:       cellID,
-					}
-
-					_, actualLRPKey, actualLRPContainerKey := bbs.EvacuateActualLRPArgsForCall(0)
-					Ω(actualLRPKey).Should(Equal(expectedActualLRPKey))
-					Ω(actualLRPContainerKey).Should(Equal(expectedActualLRPContainerKey))
+					Ω(keys).Should(ConsistOf("lrp-guid-1", "lrp-guid-2", "lrp-guid-3", "lrp-guid-2", "lrp-guid-3"))
 				})
 			})
 		})

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/cloudfoundry-incubator/executor"
-	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -33,11 +32,14 @@ type generator struct {
 	containerDelegate internal.ContainerDelegate
 }
 
-func New(cellID string, bbs bbs.RepBBS, executorClient executor.Client, evacuationReporter evacuation_context.EvacuationReporter) Generator {
-	containerDelegate := internal.NewContainerDelegate(executorClient)
-	lrpProcessor := internal.NewLRPProcessor(bbs, containerDelegate, cellID, evacuationReporter)
-	taskProcessor := internal.NewTaskProcessor(bbs, containerDelegate, cellID)
-
+func New(
+	cellID string,
+	bbs bbs.RepBBS,
+	executorClient executor.Client,
+	lrpProcessor internal.LRPProcessor,
+	taskProcessor internal.TaskProcessor,
+	containerDelegate internal.ContainerDelegate,
+) Generator {
 	return &generator{
 		cellID:            cellID,
 		bbs:               bbs,
