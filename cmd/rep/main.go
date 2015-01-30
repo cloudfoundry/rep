@@ -27,7 +27,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep/maintain"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/services_bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	bbsroutes "github.com/cloudfoundry-incubator/runtime-schema/routes"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/cloudfoundry/gunk/workpool"
@@ -167,8 +166,8 @@ func main() {
 	opGenerator := generator.New(*cellID, bbs, executorClient, lrpProcessor, taskProcessor, containerDelegate)
 
 	members := grouper.Members{
-		{"http_server", httpServer},
 		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
+		{"http_server", httpServer},
 		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, clock, opGenerator, queue)},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 		{"evacuator", evacuator},
@@ -203,15 +202,14 @@ func initializeDropsonde(logger lager.Logger) {
 }
 
 func initializeCellHeartbeat(address string, bbs Bbs.RepBBS, executorClient executor.Client, logger lager.Logger) ifrit.Runner {
-	cellPresence := models.CellPresence{
-		CellID:     *cellID,
-		RepAddress: address,
-		Stack:      *stack,
-		Zone:       *zone,
+	config := maintain.Config{
+		CellID:            *cellID,
+		RepAddress:        address,
+		Stack:             *stack,
+		Zone:              *zone,
+		HeartbeatInterval: *heartbeatInterval,
 	}
-
-	heartbeat := bbs.NewCellHeartbeat(cellPresence, *heartbeatInterval)
-	return maintain.New(executorClient, heartbeat, logger, *heartbeatInterval, clock.NewClock())
+	return maintain.New(config, executorClient, bbs, logger, clock.NewClock())
 }
 
 func initializeRepBBS(logger lager.Logger) Bbs.RepBBS {

@@ -1,82 +1,150 @@
 package maintain
 
 import (
+	"errors"
 	"os"
 	"time"
 
 	"github.com/cloudfoundry-incubator/executor"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 )
 
 type Maintainer struct {
-	heartbeater       ifrit.Runner
-	executorClient    executor.Client
-	logger            lager.Logger
-	heartbeatInterval time.Duration
-	clock             clock.Clock
+	Config
+	executorClient executor.Client
+	bbs            bbs.RepBBS
+	logger         lager.Logger
+	clock          clock.Clock
+}
+
+type Config struct {
+	CellID            string
+	RepAddress        string
+	Stack             string
+	Zone              string
+	HeartbeatInterval time.Duration
 }
 
 func New(
+	config Config,
 	executorClient executor.Client,
-	heartbeater ifrit.Runner,
+	bbs bbs.RepBBS,
 	logger lager.Logger,
-	heartbeatInterval time.Duration,
 	clock clock.Clock,
 ) *Maintainer {
 	return &Maintainer{
-		heartbeater:       heartbeater,
-		executorClient:    executorClient,
-		logger:            logger.Session("maintainer"),
-		heartbeatInterval: heartbeatInterval,
-		clock:             clock,
+		Config:         config,
+		executorClient: executorClient,
+		bbs:            bbs,
+		logger:         logger.Session("maintainer"),
+		clock:          clock,
 	}
 }
 
+const ExecutorPollInterval = time.Second
+
+var ErrSignaledWhileWaiting = errors.New("signaled while waiting for executor")
+
 func (m *Maintainer) Run(sigChan <-chan os.Signal, ready chan<- struct{}) error {
+	m.logger.Info("starting-executor-heartbeat")
+	defer m.logger.Info("complete-executor-heartbeat")
 	for {
+		heartbeater, err := m.waitForExecutor(sigChan)
+		if err != nil {
+			m.logger.Error("error-while-waiting-for-executor", err)
+			return err
+		}
+
+		err = m.heartbeat(sigChan, ready, heartbeater)
+		ready = nil
+		if err == nil {
+			return nil
+		}
+
+		m.logger.Error("executor-ping-failed", err)
+	}
+}
+
+func (m *Maintainer) waitForExecutor(sigChan <-chan os.Signal) (ifrit.Runner, error) {
+	m.logger.Info("start-waiting-for-executor")
+	defer m.logger.Info("complete-waiting-for-executor")
+
+	sleeper := m.clock.NewTimer(ExecutorPollInterval)
+	for {
+		m.logger.Debug("waiting-pinging-executor")
 		err := m.executorClient.Ping()
 		if err == nil {
-			break
+			return m.createHeartbeater()
 		}
 
 		m.logger.Error("failed-to-ping-executor-on-start", err)
-		m.clock.Sleep(time.Second)
+
+		sleeper.Reset(ExecutorPollInterval)
+		select {
+		case <-sigChan:
+			m.logger.Info("signaled-while-waiting-for-executor")
+			return nil, ErrSignaledWhileWaiting
+		case <-sleeper.C():
+		}
+	}
+}
+
+func (m *Maintainer) createHeartbeater() (ifrit.Runner, error) {
+	resources, err := m.executorClient.TotalResources()
+	if err != nil {
+		return nil, err
 	}
 
-	heartbeatProcess := ifrit.Invoke(m.heartbeater)
+	cellCapacity := models.NewCellCapacity(resources.MemoryMB, resources.DiskMB, resources.Containers)
+	cellPresence := models.NewCellPresence(m.CellID, m.Stack, m.RepAddress, m.Zone, cellCapacity)
+	return m.bbs.NewCellHeartbeat(cellPresence, m.HeartbeatInterval), nil
+}
+
+func (m *Maintainer) heartbeat(sigChan <-chan os.Signal, ready chan<- struct{}, heartbeater ifrit.Runner) error {
+	m.logger.Info("start-heartbeating")
+	defer m.logger.Info("complete-heartbeating")
+	ticker := m.clock.NewTicker(m.HeartbeatInterval)
+	defer ticker.Stop()
+
+	heartbeatProcess := ifrit.Invoke(heartbeater)
 	heartbeatExitChan := heartbeatProcess.Wait()
 
-	close(ready)
-
-	ticker := m.clock.NewTicker(m.heartbeatInterval)
-	defer ticker.Stop()
+	if ready != nil {
+		close(ready)
+	}
 
 	for {
 		select {
 		case err := <-heartbeatExitChan:
 			m.logger.Error("lost-lock", err)
-			heartbeatExitChan = nil
+			return err
 
 		case <-sigChan:
+			m.logger.Info("signaled-while-heartbeating")
 			heartbeatProcess.Signal(os.Kill)
-			<-heartbeatProcess.Wait()
+			<-heartbeatExitChan
 			return nil
 
 		case <-ticker.C():
+			m.logger.Debug("heartbeat-pinging-executor")
 			err := m.executorClient.Ping()
-			if err != nil {
-				heartbeatProcess.Signal(os.Kill)
-				heartbeatExitChan = nil
-			} else if heartbeatExitChan == nil {
-				heartbeatProcess = ifrit.Invoke(m.heartbeater)
-				heartbeatExitChan = heartbeatProcess.Wait()
+			if err == nil {
+				continue
 			}
 
-			if err != nil {
-				m.logger.Error("failed-to-restart-maintaining-presence", err)
-				continue
+			m.logger.Info("start-signaling-heartbeat-to-stop")
+			heartbeatProcess.Signal(os.Kill)
+			select {
+			case <-heartbeatExitChan:
+				m.logger.Info("heartbeat-stopped")
+				return err
+			case <-sigChan:
+				m.logger.Info("signaled-while-waiting-for-heartbeat-to-stop")
+				return nil
 			}
 		}
 	}

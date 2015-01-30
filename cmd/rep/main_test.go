@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -40,6 +41,15 @@ var _ = Describe("The Rep", func() {
 		// these tests only look for the start of a sequence of requests
 		fakeExecutor.AllowUnhandledRequests = true
 		fakeExecutor.RouteToHandler("GET", "/ping", ghttp.RespondWith(http.StatusOK, nil))
+		fakeExecutor.RouteToHandler("GET", "/resources/total", func(w http.ResponseWriter, r *http.Request) {
+			jsonBytes, err := json.Marshal(executor.ExecutorResources{
+				MemoryMB:   512,
+				DiskMB:     1024,
+				Containers: 128,
+			})
+			Ω(err).ShouldNot(HaveOccurred())
+			w.Write(jsonBytes)
+		})
 		fakeExecutor.RouteToHandler("GET", "/events", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.(http.Flusher).Flush()
