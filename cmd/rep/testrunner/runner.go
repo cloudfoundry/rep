@@ -71,7 +71,7 @@ func (r *Runner) Start() {
 	Ω(err).ShouldNot(HaveOccurred())
 	r.Session = repSession
 
-	Eventually(r.Session.Buffer()).Should(gbytes.Say("rep.started"))
+	Eventually(r.Session.Buffer(), 10).Should(gbytes.Say("rep.started"))
 }
 
 func (r *Runner) Stop() {
