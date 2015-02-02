@@ -244,6 +244,9 @@ func initializeServer(
 	handlers[bbsroutes.StopLRPInstance] = repserver.NewStopLRPInstanceHandler(logger, lrpStopper)
 	routes := append(auctionroutes.Routes, bbsroutes.StopLRPRoutes...)
 
+	handlers["Ping"] = repserver.NewPingHandler()
+	routes = append(routes, rata.Route{Name: "Ping", Method: "GET", Path: "/ping"})
+
 	router, err := rata.NewRouter(routes, handlers)
 	if err != nil {
 		logger.Fatal("failed-to-construct-router", err)

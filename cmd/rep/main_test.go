@@ -387,4 +387,12 @@ var _ = Describe("The Rep", func() {
 			Consistently(bbs.ActualLRPs).Should(HaveLen(1))
 		})
 	})
+
+	Describe("when a Ping request comes in", func() {
+		It("responds with 200 OK", func() {
+			resp, err := http.Get(fmt.Sprintf("http://0.0.0.0:%d/ping", serverPort))
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(resp.StatusCode).Should(Equal(http.StatusOK))
+		})
+	})
 })
