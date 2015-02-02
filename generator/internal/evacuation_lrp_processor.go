@@ -43,7 +43,7 @@ func (p *evacuationLRPProcessor) Process(logger lager.Logger, container executor
 
 	switch lrpContainer.Container.State {
 	case executor.StateReserved, executor.StateInitializing, executor.StateCreated:
-		err := p.bbs.EvacuateActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey)
+		err := p.bbs.EvacuateClaimedActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey)
 		if err != nil {
 			logger.Error("failed-to-unclaim-actual-lrp", err, lager.Data{"lrp-key": lrpContainer.ActualLRPKey})
 		}
