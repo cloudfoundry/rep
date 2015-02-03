@@ -236,7 +236,7 @@ func (a *AuctionCellRep) tasksToContainers(tasks []models.Task) []executor.Conta
 	return containers
 }
 
-func (a *AuctionCellRep) convertPortMappings(containerPorts []uint32) []executor.PortMapping {
+func (a *AuctionCellRep) convertPortMappings(containerPorts []uint16) []executor.PortMapping {
 	out := []executor.PortMapping{}
 	for _, port := range containerPorts {
 		out = append(out, executor.PortMapping{

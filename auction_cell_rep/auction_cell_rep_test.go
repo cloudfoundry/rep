@@ -266,7 +266,7 @@ var _ = Describe("AuctionCellRep", func() {
 							To:   "/something",
 						},
 						LogGuid: "log-guid",
-						Ports: []uint32{
+						Ports: []uint16{
 							8080,
 						},
 						EgressRules: []models.SecurityGroupRule{
@@ -295,7 +295,7 @@ var _ = Describe("AuctionCellRep", func() {
 							To:   "/something",
 						},
 						LogGuid: "log-guid",
-						Ports: []uint32{
+						Ports: []uint16{
 							8080,
 						},
 						EgressRules: []models.SecurityGroupRule{

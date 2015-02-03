@@ -48,7 +48,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 		BeforeEach(func() {
 			expectedLrpKey = models.NewActualLRPKey("process-guid", 2, "domain")
 			expectedContainerKey = models.NewActualLRPContainerKey("instance-guid", "cell-id")
-			expectedNetInfo = models.NewActualLRPNetInfo("1.2.3.4", []models.PortMapping{{ContainerPort: 8080, HostPort: 99999}})
+			expectedNetInfo = models.NewActualLRPNetInfo("1.2.3.4", []models.PortMapping{{ContainerPort: 8080, HostPort: 61999}})
 		})
 
 		Context("when given an LRP container", func() {
@@ -196,7 +196,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						expectedSessionName = sessionPrefix + "process-running-container"
 						container.State = executor.StateRunning
 						container.ExternalIP = "1.2.3.4"
-						container.Ports = []executor.PortMapping{{ContainerPort: 8080, HostPort: 99999}}
+						container.Ports = []executor.PortMapping{{ContainerPort: 8080, HostPort: 61999}}
 					})
 
 					It("starts the lrp in the bbs", func() {
