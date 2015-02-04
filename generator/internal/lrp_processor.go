@@ -39,9 +39,10 @@ func NewLRPProcessor(
 	containerDelegate ContainerDelegate,
 	cellID string,
 	evacuationReporter evacuation_context.EvacuationReporter,
+	evacuationTTLInSeconds uint64,
 ) LRPProcessor {
 	ordinaryProcessor := newOrdinaryLRPProcessor(bbs, containerDelegate, cellID)
-	evacuationProcessor := newEvacuationLRPProcessor(bbs, containerDelegate, cellID, ordinaryProcessor)
+	evacuationProcessor := newEvacuationLRPProcessor(bbs, containerDelegate, cellID, evacuationTTLInSeconds)
 	return &lrpProcessor{
 		evacuationReporter:  evacuationReporter,
 		ordinaryProcessor:   ordinaryProcessor,

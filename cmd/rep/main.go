@@ -144,7 +144,7 @@ func main() {
 	queue := operationq.NewSlidingQueue(1)
 
 	containerDelegate := internal.NewContainerDelegate(executorClient)
-	lrpProcessor := internal.NewLRPProcessor(bbs, containerDelegate, *cellID, evacuationReporter)
+	lrpProcessor := internal.NewLRPProcessor(bbs, containerDelegate, *cellID, evacuationReporter, uint64(evacuationTimeout.Seconds()))
 	taskProcessor := internal.NewTaskProcessor(bbs, containerDelegate, *cellID)
 
 	evacuator := evacuation.NewEvacuator(
