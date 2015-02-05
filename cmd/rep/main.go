@@ -156,7 +156,7 @@ func main() {
 	members := grouper.Members{
 		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
 		{"http_server", httpServer},
-		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, clock, opGenerator, queue)},
+		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, evacuationNotifier, clock, opGenerator, queue)},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 		{"evacuator", evacuator},
 	}

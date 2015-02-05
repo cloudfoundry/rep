@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
 	"github.com/cloudfoundry-incubator/rep/generator/fake_generator"
 	"github.com/cloudfoundry-incubator/rep/harmonizer"
 	"github.com/cloudfoundry/dropsonde/metric_sender/fake"
@@ -24,11 +25,13 @@ var _ = Describe("Bulker", func() {
 	var (
 		sender *fake.FakeMetricSender
 
-		logger        *lagertest.TestLogger
-		pollInterval  time.Duration
-		fakeClock     *fakeclock.FakeClock
-		fakeGenerator *fake_generator.FakeGenerator
-		fakeQueue     *fake_operationq.FakeQueue
+		logger             *lagertest.TestLogger
+		pollInterval       time.Duration
+		fakeClock          *fakeclock.FakeClock
+		fakeGenerator      *fake_generator.FakeGenerator
+		fakeQueue          *fake_operationq.FakeQueue
+		evacuatable        evacuation_context.Evacuatable
+		evacuationNotifier evacuation_context.EvacuationNotifier
 
 		bulker  *harmonizer.Bulker
 		process ifrit.Process
@@ -44,7 +47,9 @@ var _ = Describe("Bulker", func() {
 		fakeGenerator = new(fake_generator.FakeGenerator)
 		fakeQueue = new(fake_operationq.FakeQueue)
 
-		bulker = harmonizer.NewBulker(logger, pollInterval, fakeClock, fakeGenerator, fakeQueue)
+		evacuatable, _, evacuationNotifier = evacuation_context.New()
+
+		bulker = harmonizer.NewBulker(logger, pollInterval, evacuationNotifier, fakeClock, fakeGenerator, fakeQueue)
 	})
 
 	JustBeforeEach(func() {
@@ -129,6 +134,19 @@ var _ = Describe("Bulker", func() {
 
 		It("does not fetch batch operations", func() {
 			Consistently(fakeGenerator.BatchOperationsCallCount).Should(BeZero())
+		})
+
+		Context("when evacuation starts", func() {
+			BeforeEach(func() {
+				evacuatable.Evacuate()
+			})
+
+			itPerformsBatchOperations()
+
+			It("batches operations only once", func() {
+				Eventually(fakeGenerator.BatchOperationsCallCount).Should(Equal(1))
+				Consistently(fakeGenerator.BatchOperationsCallCount).Should(Equal(1))
+			})
 		})
 	})
 })
