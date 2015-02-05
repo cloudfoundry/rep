@@ -220,10 +220,16 @@ func (a *AuctionCellRep) tasksToContainers(tasks []models.Task) []executor.Conta
 			CPUWeight:  task.CPUWeight,
 			RootFSPath: task.RootFSPath,
 			Privileged: task.Privileged,
+
 			LogConfig: executor.LogConfig{
 				Guid:       task.LogGuid,
 				SourceName: task.LogSource,
 			},
+
+			MetricsConfig: executor.MetricsConfig{
+				Guid: task.MetricsGuid,
+			},
+
 			Tags: executor.Tags{
 				rep.LifecycleTag:  rep.TaskLifecycle,
 				rep.DomainTag:     task.Domain,

@@ -445,14 +445,17 @@ var _ = Describe("AuctionCellRep", func() {
 					Ports:        []uint16{80},
 				}
 				task = models.Task{
-					Domain:     "tests",
-					TaskGuid:   "the-task-guid",
-					Stack:      "lucid64",
-					DiskMB:     1024,
-					MemoryMB:   2048,
-					RootFSPath: "the-root-fs-path",
-					Privileged: true,
-					CPUWeight:  10,
+					Domain:      "tests",
+					TaskGuid:    "the-task-guid",
+					Stack:       "lucid64",
+					DiskMB:      1024,
+					MemoryMB:    2048,
+					RootFSPath:  "the-root-fs-path",
+					Privileged:  true,
+					CPUWeight:   10,
+					LogGuid:     "log-guid",
+					LogSource:   "log-source",
+					MetricsGuid: "metrics-guid",
 					Action: &models.RunAction{
 						Path: "date",
 					},
@@ -487,6 +490,15 @@ var _ = Describe("AuctionCellRep", func() {
 						},
 						Env: []executor.EnvironmentVariable{
 							{Name: "FOO", Value: "BAR"},
+						},
+
+						LogConfig: executor.LogConfig{
+							Guid:       "log-guid",
+							SourceName: "log-source",
+						},
+
+						MetricsConfig: executor.MetricsConfig{
+							Guid: "metrics-guid",
 						},
 
 						MemoryMB:   task.MemoryMB,
