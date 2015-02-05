@@ -56,6 +56,11 @@ var _ = Describe("The Rep", func() {
 			// keep event stream from terminating
 			<-flushEvents
 		})
+		fakeExecutor.RouteToHandler(
+			"GET",
+			"/containers",
+			ghttp.RespondWith(http.StatusOK, "[]"),
+		)
 
 		etcdAdapter = etcdRunner.Adapter()
 		logger = lagertest.NewTestLogger("test")
@@ -249,7 +254,6 @@ var _ = Describe("The Rep", func() {
 							},
 						),
 					)
-
 				})
 
 				It("makes a request to executor to allocate the container", func() {
@@ -280,12 +284,6 @@ var _ = Describe("The Rep", func() {
 		var task models.Task
 
 		BeforeEach(func() {
-			fakeExecutor.RouteToHandler(
-				"GET",
-				"/containers",
-				ghttp.RespondWith(http.StatusOK, "[]"),
-			)
-
 			task = models.Task{
 				TaskGuid: "a-new-task-guid",
 				Domain:   "the-domain",
@@ -318,12 +316,6 @@ var _ = Describe("The Rep", func() {
 
 	Describe("polling the BBS for actual LRPs to reap", func() {
 		BeforeEach(func() {
-			fakeExecutor.RouteToHandler(
-				"GET",
-				"/containers",
-				ghttp.RespondWith(http.StatusOK, "[]"),
-			)
-
 			desiredLRP := models.DesiredLRP{
 				ProcessGuid: "process-guid",
 				Domain:      "some-domain",
@@ -359,6 +351,18 @@ var _ = Describe("The Rep", func() {
 				ghttp.RespondWith(http.StatusOK, nil),
 			)
 
+			// ensure the container remains after being stopped
+			fakeExecutor.RouteToHandler(
+				"GET",
+				"/containers",
+				ghttp.RespondWithJSONEncoded(http.StatusOK, []executor.Container{
+					{
+						Guid:  instanceGuid,
+						State: executor.StateCompleted,
+					},
+				}),
+			)
+
 			lrpKey := models.NewActualLRPKey("process-guid", 1, "domain")
 			containerKey := models.NewActualLRPContainerKey(instanceGuid, cellID)
 			netInfo := models.NewActualLRPNetInfo("bogus-ip", []models.PortMapping{})
@@ -384,6 +388,55 @@ var _ = Describe("The Rep", func() {
 
 			Eventually(findStopRequest).Should(BeTrue())
 			Consistently(bbs.ActualLRPs).Should(HaveLen(1))
+		})
+	})
+
+	Describe("cancelling tasks", func() {
+		const taskGuid = "some-task-guid"
+		const expectedDeleteRoute = "/containers/" + taskGuid
+
+		var deletedContainer chan struct{}
+
+		BeforeEach(func() {
+			deletedContainer = make(chan struct{})
+
+			fakeExecutor.RouteToHandler(
+				"DELETE",
+				expectedDeleteRoute,
+				ghttp.CombineHandlers(
+					func(http.ResponseWriter, *http.Request) {
+						close(deletedContainer)
+					},
+					ghttp.RespondWith(http.StatusOK, nil),
+				),
+			)
+
+			task := models.Task{
+				TaskGuid: taskGuid,
+				Stack:    "the-stack",
+				Domain:   "the-domain",
+				Action: &models.RunAction{
+					Path: "date",
+				},
+			}
+
+			err := bbs.DesireTask(logger, task)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			started, err := bbs.StartTask(logger, taskGuid, cellID)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(started).Should(BeTrue())
+		})
+
+		It("deletes the container", func() {
+			err := bbs.CancelTask(logger, taskGuid)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Eventually(deletedContainer).Should(BeClosed())
+
+			Consistently(func() ([]models.Task, error) {
+				return bbs.Tasks(logger)
+			}).Should(HaveLen(1))
 		})
 	})
 

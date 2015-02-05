@@ -241,8 +241,13 @@ func initializeServer(
 	auctionCellRep := auction_cell_rep.New(*cellID, *stack, *zone, generateGuid, bbs, executorClient, evacuationReporter, logger)
 	handlers := auction_http_handlers.New(auctionCellRep, logger)
 
+	routes := auctionroutes.Routes
+
 	handlers[bbsroutes.StopLRPInstance] = repserver.NewStopLRPInstanceHandler(logger, lrpStopper)
-	routes := append(auctionroutes.Routes, bbsroutes.StopLRPRoutes...)
+	routes = append(routes, bbsroutes.StopLRPRoutes...)
+
+	handlers[bbsroutes.CancelTask] = repserver.NewCancelTaskHandler(logger, executorClient)
+	routes = append(routes, bbsroutes.CancelTaskRoutes...)
 
 	handlers["Ping"] = repserver.NewPingHandler()
 	routes = append(routes, rata.Route{Name: "Ping", Method: "GET", Path: "/ping"})
