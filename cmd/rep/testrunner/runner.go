@@ -26,12 +26,13 @@ type Config struct {
 	logLevel          string
 	heartbeatInterval time.Duration
 	pollingInterval   time.Duration
+	evacuationTimeout time.Duration
 }
 
 func New(
 	binPath, cellID, stack, executorURL, etcdCluster, logLevel string,
 	serverPort int,
-	heartbeatInterval, pollingInterval time.Duration) *Runner {
+	heartbeatInterval, pollingInterval, evacuationTimeout time.Duration) *Runner {
 	return &Runner{
 		binPath: binPath,
 		config: Config{
@@ -43,6 +44,7 @@ func New(
 			logLevel:          logLevel,
 			heartbeatInterval: heartbeatInterval,
 			pollingInterval:   pollingInterval,
+			evacuationTimeout: evacuationTimeout,
 		},
 	}
 }
@@ -63,6 +65,7 @@ func (r *Runner) Start() {
 			"-logLevel", r.config.logLevel,
 			"-heartbeatInterval", r.config.heartbeatInterval.String(),
 			"-pollingInterval", r.config.pollingInterval.String(),
+			"-evacuationTimeout", r.config.evacuationTimeout.String(),
 		),
 		gexec.NewPrefixedWriter("\x1b[32m[o]\x1b[32m[rep]\x1b[0m ", ginkgo.GinkgoWriter),
 		gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[32m[rep]\x1b[0m ", ginkgo.GinkgoWriter),

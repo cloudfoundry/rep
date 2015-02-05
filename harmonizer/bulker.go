@@ -55,7 +55,8 @@ func (b *Bulker) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 		case <-ticker.C():
 			b.sync(logger.Session("sync"))
 
-		case <-signals:
+		case signal := <-signals:
+			logger.Info("received-signal", lager.Data{"signal": signal.String()})
 			return nil
 		}
 	}

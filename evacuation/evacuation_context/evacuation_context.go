@@ -1,5 +1,7 @@
 package evacuation_context
 
+import "sync"
+
 //go:generate counterfeiter -o fake_evacuation_context/fake_evacuatable.go . Evacuatable
 type Evacuatable interface {
 	Evacuate()
@@ -10,16 +12,33 @@ type EvacuationReporter interface {
 	Evacuating() bool
 }
 
-type evacuationContext struct {
-	evacuated chan struct{}
+//go:generate counterfeiter -o fake_evacuation_context/fake_evacuation_notifier.go . EvacuationNotifier
+type EvacuationNotifier interface {
+	EvacuateNotify() <-chan struct{}
 }
 
-func New() (Evacuatable, EvacuationReporter) {
+type evacuationContext struct {
+	evacuated chan struct{}
+	mu        sync.Mutex
+}
+
+func New() (Evacuatable, EvacuationReporter, EvacuationNotifier) {
 	evacuationContext := &evacuationContext{
 		evacuated: make(chan struct{}),
 	}
 
-	return evacuationContext, evacuationContext
+	return evacuationContext, evacuationContext, evacuationContext
+}
+
+func (e *evacuationContext) Evacuate() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	select {
+	case <-e.evacuated:
+	default:
+		close(e.evacuated)
+	}
 }
 
 func (e *evacuationContext) Evacuating() bool {
@@ -31,10 +50,6 @@ func (e *evacuationContext) Evacuating() bool {
 	}
 }
 
-func (e *evacuationContext) Evacuate() {
-	select {
-	case <-e.evacuated:
-	default:
-		close(e.evacuated)
-	}
+func (e *evacuationContext) EvacuateNotify() <-chan struct{} {
+	return e.evacuated
 }

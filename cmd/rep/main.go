@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/cloudfoundry-incubator/auction/communication/http/auction_http_handlers"
@@ -103,12 +102,6 @@ var evacuationTimeout = flag.Duration(
 	"Timeout to wait for evacuation to complete",
 )
 
-var evacuationPollingInterval = flag.Duration(
-	"evacuationPollingInterval",
-	30*time.Second,
-	"the interval on which to scan the executor for containers during evacuation",
-)
-
 const (
 	dropsondeDestination = "localhost:3457"
 	dropsondeOrigin      = "rep"
@@ -138,7 +131,7 @@ func main() {
 
 	executorClient := executorclient.New(cf_http.NewClient(), cf_http.NewStreamingClient(), *executorURL)
 
-	evacuatable, evacuationReporter := evacuation_context.New()
+	evacuatable, evacuationReporter, evacuationNotifier := evacuation_context.New()
 
 	// only one outstanding operation per container is necessary
 	queue := operationq.NewSlidingQueue(1)
@@ -149,20 +142,15 @@ func main() {
 
 	evacuator := evacuation.NewEvacuator(
 		logger,
+		clock,
 		executorClient,
-		bbs,
-		evacuatable,
-		lrpProcessor,
-		taskProcessor,
-		containerDelegate,
-		queue,
+		evacuationNotifier,
 		*cellID,
 		*evacuationTimeout,
-		*evacuationPollingInterval,
-		clock,
+		*pollingInterval,
 	)
 
-	httpServer, address := initializeServer(bbs, executorClient, evacuationReporter, logger)
+	httpServer, address := initializeServer(bbs, executorClient, evacuatable, evacuationReporter, logger)
 	opGenerator := generator.New(*cellID, bbs, executorClient, lrpProcessor, taskProcessor, containerDelegate)
 
 	members := grouper.Members{
@@ -181,7 +169,7 @@ func main() {
 
 	group := grouper.NewOrdered(os.Interrupt, members)
 
-	monitor := ifrit.Invoke(sigmon.New(group, syscall.SIGUSR1))
+	monitor := ifrit.Invoke(sigmon.New(group))
 
 	logger.Info("started", lager.Data{"cell-id": *cellID})
 
@@ -233,6 +221,7 @@ func initializeLRPStopper(guid string, executorClient executor.Client, logger la
 func initializeServer(
 	bbs Bbs.RepBBS,
 	executorClient executor.Client,
+	evacuatable evacuation_context.Evacuatable,
 	evacuationReporter evacuation_context.EvacuationReporter,
 	logger lager.Logger,
 ) (ifrit.Runner, string) {
@@ -251,6 +240,9 @@ func initializeServer(
 
 	handlers["Ping"] = repserver.NewPingHandler()
 	routes = append(routes, rata.Route{Name: "Ping", Method: "GET", Path: "/ping"})
+
+	handlers["Evacuate"] = repserver.NewEvacuationHandler(evacuatable)
+	routes = append(routes, rata.Route{Name: "Evacuate", Method: "POST", Path: "/evacuate"})
 
 	router, err := rata.NewRouter(routes, handlers)
 	if err != nil {

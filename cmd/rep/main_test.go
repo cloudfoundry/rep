@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/auction/communication/http/auction_http_client"
 	"github.com/cloudfoundry-incubator/executor"
+	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/cmd/rep/testrunner"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
@@ -16,6 +18,7 @@ import (
 	"github.com/pivotal-golang/lager/lagertest"
 
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -27,10 +30,11 @@ var etcdAdapter storeadapter.StoreAdapter
 
 var _ = Describe("The Rep", func() {
 	var (
-		fakeExecutor    *ghttp.Server
-		bbs             *Bbs.BBS
-		pollingInterval time.Duration
-		logger          *lagertest.TestLogger
+		fakeExecutor      *ghttp.Server
+		bbs               *Bbs.BBS
+		pollingInterval   time.Duration
+		evacuationTimeout time.Duration
+		logger            *lagertest.TestLogger
 
 		flushEvents chan struct{}
 	)
@@ -67,6 +71,7 @@ var _ = Describe("The Rep", func() {
 		bbs = Bbs.NewBBS(etcdAdapter, clock.NewClock(), logger)
 
 		pollingInterval = 50 * time.Millisecond
+		evacuationTimeout = 200 * time.Millisecond
 
 		runner = testrunner.New(
 			representativePath,
@@ -78,6 +83,7 @@ var _ = Describe("The Rep", func() {
 			serverPort,
 			time.Second,
 			pollingInterval,
+			evacuationTimeout,
 		)
 
 		runner.Start()
@@ -437,6 +443,104 @@ var _ = Describe("The Rep", func() {
 			Consistently(func() ([]models.Task, error) {
 				return bbs.Tasks(logger)
 			}).Should(HaveLen(1))
+		})
+	})
+
+	Describe("Evacuation", func() {
+		Context("when it has running LRP containers", func() {
+			var (
+				processGuid  string
+				index        int
+				domain       string
+				instanceGuid string
+				address      string
+
+				lrpKey          models.ActualLRPKey
+				lrpContainerKey models.ActualLRPContainerKey
+				lrpNetInfo      models.ActualLRPNetInfo
+			)
+
+			BeforeEach(func() {
+				processGuid = "some-process-guid"
+				index = 2
+				domain = "some-domain"
+
+				instanceGuid = "some-instance-guid"
+				address = "some-external-ip"
+
+				lrpKey = models.NewActualLRPKey(processGuid, index, domain)
+				lrpContainerKey = models.NewActualLRPContainerKey(instanceGuid, cellID)
+				lrpNetInfo = models.NewActualLRPNetInfo(address, []models.PortMapping{{ContainerPort: 1470, HostPort: 2589}})
+
+				err := bbs.StartActualLRP(lrpKey, lrpContainerKey, lrpNetInfo, logger)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				container := executor.Container{
+					Guid:       instanceGuid,
+					State:      executor.StateRunning,
+					Action:     &models.RunAction{Path: "true"},
+					ExternalIP: address,
+					Ports:      []executor.PortMapping{{ContainerPort: 1470, HostPort: 2589}},
+					Tags: executor.Tags{
+						rep.LifecycleTag:    rep.LRPLifecycle,
+						rep.ProcessGuidTag:  processGuid,
+						rep.ProcessIndexTag: strconv.Itoa(index),
+						rep.DomainTag:       domain,
+					},
+				}
+				containers := []executor.Container{container}
+
+				fakeExecutor.RouteToHandler(
+					"GET",
+					"/containers",
+					ghttp.RespondWithJSONEncoded(http.StatusOK, containers),
+				)
+				fakeExecutor.RouteToHandler(
+					"GET",
+					"/containers/some-instance-guid",
+					ghttp.RespondWithJSONEncoded(http.StatusOK, container),
+				)
+
+				resp, err := http.Post(fmt.Sprintf("http://0.0.0.0:%d/evacuate", serverPort), "text/html", nil)
+				Ω(err).ShouldNot(HaveOccurred())
+				resp.Body.Close()
+				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
+			})
+
+			It("evacuates them", func() {
+				var actualLRP models.ActualLRP
+
+				getEvacuatingLRP := func() *models.ActualLRP {
+					node, err := etcdAdapter.Get(shared.EvacuatingActualLRPSchemaPath(processGuid, index))
+					if err != nil {
+						return nil
+					}
+					err = json.Unmarshal([]byte(node.Value), &actualLRP)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					return &actualLRP
+				}
+
+				Eventually(getEvacuatingLRP, 1).ShouldNot(BeNil())
+				Ω(actualLRP.ProcessGuid).Should(Equal(processGuid))
+			})
+
+			Context("when exceeding the evacuation timeout", func() {
+				It("shuts down gracefully", func() {
+					// wait longer than expected to let OS and Go runtime reap process
+					Eventually(runner.Session.ExitCode, 2*evacuationTimeout+2*time.Second).Should(Equal(0))
+				})
+			})
+
+			Context("when signaled to stop", func() {
+				BeforeEach(func() {
+					runner.Stop()
+				})
+
+				It("shuts down gracefully", func() {
+					Eventually(runner.Session.ExitCode).Should(Equal(0))
+				})
+			})
 		})
 	})
 

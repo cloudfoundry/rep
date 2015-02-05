@@ -1,6 +1,9 @@
 package evacuation_context_test
 
 import (
+	"runtime"
+	"sync"
+
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
 
 	. "github.com/onsi/ginkgo"
@@ -11,36 +14,53 @@ var _ = Describe("EvacuationContext", func() {
 	var (
 		evacuatable        evacuation_context.Evacuatable
 		evacuationReporter evacuation_context.EvacuationReporter
+		evacuationNotifier evacuation_context.EvacuationNotifier
 	)
 
 	BeforeEach(func() {
-		evacuatable, evacuationReporter = evacuation_context.New()
+		evacuatable, evacuationReporter, evacuationNotifier = evacuation_context.New()
 	})
 
 	Describe("Evacuatable", func() {
 		Context("when Evacuate has not been called", func() {
-			It("does not make the evacuationReporter return true for Evacuating", func() {
+			It("does not make the evacuation reporter return true for Evacuating", func() {
 				Ω(evacuationReporter.Evacuating()).Should(BeFalse())
+			})
+
+			It("does not close the channel provided by the evacuation notifier", func() {
+				evacuateNotify := evacuationNotifier.EvacuateNotify()
+				Consistently(evacuateNotify).ShouldNot(BeClosed())
 			})
 		})
 
 		Context("when Evacuate has been called", func() {
-			BeforeEach(func() {
+			It("makes the evacuation reporter return true for Evacuating", func() {
 				evacuatable.Evacuate()
-			})
-
-			It("makes the evacuationReporter return true for Evacuating", func() {
 				Ω(evacuationReporter.Evacuating()).Should(BeTrue())
 			})
 
-			Context("when Evacuate is called again", func() {
-				BeforeEach(func() {
-					evacuatable.Evacuate()
-				})
+			It("closes the channel provided by the evacuation notifier", func() {
+				evacuateNotify := evacuationNotifier.EvacuateNotify()
+				Consistently(evacuateNotify).ShouldNot(BeClosed())
+				evacuatable.Evacuate()
+				Eventually(evacuateNotify).Should(BeClosed())
+			})
+		})
 
-				It("makes the evacuationReporter return true for Evacuating", func() {
-					Ω(evacuationReporter.Evacuating()).Should(BeTrue())
-				})
+		Context("when Evacuate is called repeatedly", func() {
+			It("does not panic", func() {
+				defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(runtime.NumCPU()))
+
+				wg := sync.WaitGroup{}
+				for i := 0; i < 5; i++ {
+					wg.Add(1)
+					go func() {
+						defer GinkgoRecover()
+						defer wg.Done()
+						Ω(evacuatable.Evacuate).ShouldNot(Panic())
+					}()
+				}
+				wg.Wait()
 			})
 		})
 	})
