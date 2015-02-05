@@ -336,7 +336,7 @@ var _ = Describe("AuctionCellRep", func() {
 						Privileged: lrpAuctionOne.DesiredLRP.Privileged,
 						Ports:      []executor.PortMapping{{ContainerPort: 8080}},
 
-						Log: executor.LogConfig{
+						LogConfig: executor.LogConfig{
 							Guid:       "log-guid",
 							SourceName: "log-source",
 							Index:      &expectedIndexOne,
@@ -378,7 +378,7 @@ var _ = Describe("AuctionCellRep", func() {
 						Privileged: lrpAuctionTwo.DesiredLRP.Privileged,
 						Ports:      []executor.PortMapping{{ContainerPort: 8080}},
 
-						Log: executor.LogConfig{
+						LogConfig: executor.LogConfig{
 							Guid:       "log-guid",
 							SourceName: "log-source",
 							Index:      &expectedIndexTwo,

@@ -181,7 +181,7 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 			Ports:        a.convertPortMappings(lrpStart.DesiredLRP.Ports),
 			StartTimeout: lrpStart.DesiredLRP.StartTimeout,
 
-			Log: executor.LogConfig{
+			LogConfig: executor.LogConfig{
 				Guid:       lrpStart.DesiredLRP.LogGuid,
 				Index:      &lrpStart.Index,
 				SourceName: lrpStart.DesiredLRP.LogSource,
@@ -220,7 +220,7 @@ func (a *AuctionCellRep) tasksToContainers(tasks []models.Task) []executor.Conta
 			CPUWeight:  task.CPUWeight,
 			RootFSPath: task.RootFSPath,
 			Privileged: task.Privileged,
-			Log: executor.LogConfig{
+			LogConfig: executor.LogConfig{
 				Guid:       task.LogGuid,
 				SourceName: task.LogSource,
 			},
