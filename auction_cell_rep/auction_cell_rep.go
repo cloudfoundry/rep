@@ -183,8 +183,13 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 
 			Log: executor.LogConfig{
 				Guid:       lrpStart.DesiredLRP.LogGuid,
-				SourceName: lrpStart.DesiredLRP.LogSource,
 				Index:      &lrpStart.Index,
+				SourceName: lrpStart.DesiredLRP.LogSource,
+			},
+
+			MetricsConfig: executor.MetricsConfig{
+				Guid:  lrpStart.DesiredLRP.MetricsGuid,
+				Index: &lrpStart.Index,
 			},
 
 			Setup:   lrpStart.DesiredLRP.Setup,

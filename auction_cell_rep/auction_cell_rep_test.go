@@ -265,7 +265,9 @@ var _ = Describe("AuctionCellRep", func() {
 							From: "http://example.com/something",
 							To:   "/something",
 						},
-						LogGuid: "log-guid",
+						LogGuid:     "log-guid",
+						LogSource:   "log-source",
+						MetricsGuid: "metrics-guid",
 						Ports: []uint16{
 							8080,
 						},
@@ -294,7 +296,9 @@ var _ = Describe("AuctionCellRep", func() {
 							From: "http://example.com/something",
 							To:   "/something",
 						},
-						LogGuid: "log-guid",
+						LogGuid:     "log-guid",
+						LogSource:   "log-source",
+						MetricsGuid: "metrics-guid",
 						Ports: []uint16{
 							8080,
 						},
@@ -331,7 +335,17 @@ var _ = Describe("AuctionCellRep", func() {
 						RootFSPath: "some-root-fs",
 						Privileged: lrpAuctionOne.DesiredLRP.Privileged,
 						Ports:      []executor.PortMapping{{ContainerPort: 8080}},
-						Log:        executor.LogConfig{Guid: "log-guid", Index: &expectedIndexOne},
+
+						Log: executor.LogConfig{
+							Guid:       "log-guid",
+							SourceName: "log-source",
+							Index:      &expectedIndexOne,
+						},
+
+						MetricsConfig: executor.MetricsConfig{
+							Guid:  "metrics-guid",
+							Index: &expectedIndexOne,
+						},
 
 						Setup:   lrpAuctionOne.DesiredLRP.Setup,
 						Action:  lrpAuctionOne.DesiredLRP.Action,
@@ -363,7 +377,17 @@ var _ = Describe("AuctionCellRep", func() {
 						RootFSPath: "some-root-fs",
 						Privileged: lrpAuctionTwo.DesiredLRP.Privileged,
 						Ports:      []executor.PortMapping{{ContainerPort: 8080}},
-						Log:        executor.LogConfig{Guid: "log-guid", Index: &expectedIndexTwo},
+
+						Log: executor.LogConfig{
+							Guid:       "log-guid",
+							SourceName: "log-source",
+							Index:      &expectedIndexTwo,
+						},
+
+						MetricsConfig: executor.MetricsConfig{
+							Guid:  "metrics-guid",
+							Index: &expectedIndexTwo,
+						},
 
 						Setup:   lrpAuctionTwo.DesiredLRP.Setup,
 						Action:  lrpAuctionTwo.DesiredLRP.Action,
