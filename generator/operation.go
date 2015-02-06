@@ -52,7 +52,7 @@ func (o *MissingLRPOperation) Execute() {
 		return
 	}
 
-	o.bbs.RemoveActualLRP(o.ActualLRPKey, o.ActualLRPContainerKey, logger)
+	o.bbs.RemoveActualLRP(logger, o.ActualLRPKey, o.ActualLRPContainerKey)
 }
 
 // MissingTaskOperation processes a Task with no matching container.

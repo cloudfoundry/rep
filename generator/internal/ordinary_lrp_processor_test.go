@@ -81,7 +81,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 				It("claims the actualLRP in the bbs", func() {
 					Ω(bbs.ClaimActualLRPCallCount()).Should(Equal(1))
-					lrpKey, containerKey, bbsLogger := bbs.ClaimActualLRPArgsForCall(0)
+					bbsLogger, lrpKey, containerKey := bbs.ClaimActualLRPArgsForCall(0)
 					Ω(lrpKey).Should(Equal(expectedLrpKey))
 					Ω(containerKey).Should(Equal(expectedContainerKey))
 					Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
@@ -133,7 +133,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 						It("removes the actual LRP", func() {
 							Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
-							lrpKey, containerKey, bbsLogger := bbs.RemoveActualLRPArgsForCall(0)
+							bbsLogger, lrpKey, containerKey := bbs.RemoveActualLRPArgsForCall(0)
 							Ω(lrpKey).Should(Equal(expectedLrpKey))
 							Ω(containerKey).Should(Equal(expectedContainerKey))
 							Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
@@ -144,7 +144,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 				var itClaimsTheLRPOrDeletesTheContainer = func(expectedSessionName string) {
 					It("claims the lrp", func() {
 						Ω(bbs.ClaimActualLRPCallCount()).Should(Equal(1))
-						lrpKey, containerKey, bbsLogger := bbs.ClaimActualLRPArgsForCall(0)
+						bbsLogger, lrpKey, containerKey := bbs.ClaimActualLRPArgsForCall(0)
 						Ω(lrpKey).Should(Equal(expectedLrpKey))
 						Ω(containerKey).Should(Equal(expectedContainerKey))
 						Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
@@ -201,7 +201,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 					It("starts the lrp in the bbs", func() {
 						Ω(bbs.StartActualLRPCallCount()).Should(Equal(1))
-						lrpKey, containerKey, netInfo, bbsLogger := bbs.StartActualLRPArgsForCall(0)
+						bbsLogger, lrpKey, containerKey, netInfo := bbs.StartActualLRPArgsForCall(0)
 						Ω(lrpKey).Should(Equal(expectedLrpKey))
 						Ω(containerKey).Should(Equal(expectedContainerKey))
 						Ω(netInfo).Should(Equal(expectedNetInfo))
@@ -246,7 +246,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 						It("removes the actual LRP", func() {
 							Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
-							lrpKey, containerKey, bbsLogger := bbs.RemoveActualLRPArgsForCall(0)
+							bbsLogger, lrpKey, containerKey := bbs.RemoveActualLRPArgsForCall(0)
 							Ω(lrpKey).Should(Equal(expectedLrpKey))
 							Ω(containerKey).Should(Equal(expectedContainerKey))
 							Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
@@ -282,7 +282,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 						It("crashes the actual LRP", func() {
 							Ω(bbs.CrashActualLRPCallCount()).Should(Equal(1))
-							lrpKey, containerKey, bbsLogger := bbs.CrashActualLRPArgsForCall(0)
+							bbsLogger, lrpKey, containerKey := bbs.CrashActualLRPArgsForCall(0)
 							Ω(lrpKey).Should(Equal(expectedLrpKey))
 							Ω(containerKey).Should(Equal(expectedContainerKey))
 							Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))

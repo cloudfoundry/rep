@@ -195,7 +195,7 @@ var _ = Describe("The Rep", func() {
 
 					gotReservation = make(chan struct{})
 
-					err := bbs.CreateActualLRP(desiredLRP, index, logger)
+					err := bbs.CreateActualLRP(logger, desiredLRP, index)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					fakeExecutor.RouteToHandler("POST", "/containers",
@@ -329,14 +329,14 @@ var _ = Describe("The Rep", func() {
 			}
 			index := 0
 
-			err := bbs.CreateActualLRP(desiredLRP, index, logger)
+			err := bbs.CreateActualLRP(logger, desiredLRP, index)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			actualLRP, err := bbs.ActualLRPByProcessGuidAndIndex(desiredLRP.ProcessGuid, index)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			containerKey := models.NewActualLRPContainerKey("some-instance-guid", cellID)
-			err = bbs.ClaimActualLRP(actualLRP.ActualLRPKey, containerKey, logger)
+			err = bbs.ClaimActualLRP(logger, actualLRP.ActualLRPKey, containerKey)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -373,7 +373,7 @@ var _ = Describe("The Rep", func() {
 			containerKey := models.NewActualLRPContainerKey(instanceGuid, cellID)
 			netInfo := models.NewActualLRPNetInfo("bogus-ip", []models.PortMapping{})
 
-			err := bbs.StartActualLRP(lrpKey, containerKey, netInfo, logger)
+			err := bbs.StartActualLRP(logger, lrpKey, containerKey, netInfo)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			runningLRP, err = bbs.ActualLRPByProcessGuidAndIndex(lrpKey.ProcessGuid, lrpKey.Index)
@@ -381,7 +381,7 @@ var _ = Describe("The Rep", func() {
 		})
 
 		It("should stop the container", func() {
-			bbs.RetireActualLRPs([]models.ActualLRP{runningLRP}, logger)
+			bbs.RetireActualLRPs(logger, []models.ActualLRP{runningLRP})
 
 			findStopRequest := func() bool {
 				for _, req := range fakeExecutor.ReceivedRequests() {
@@ -472,7 +472,7 @@ var _ = Describe("The Rep", func() {
 				lrpContainerKey = models.NewActualLRPContainerKey(instanceGuid, cellID)
 				lrpNetInfo = models.NewActualLRPNetInfo(address, []models.PortMapping{{ContainerPort: 1470, HostPort: 2589}})
 
-				err := bbs.StartActualLRP(lrpKey, lrpContainerKey, lrpNetInfo, logger)
+				err := bbs.StartActualLRP(logger, lrpKey, lrpContainerKey, lrpNetInfo)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				container := executor.Container{

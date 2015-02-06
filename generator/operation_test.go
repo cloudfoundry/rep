@@ -62,7 +62,7 @@ var _ = Describe("Operation", func() {
 
 				It("removes the actualLRP", func() {
 					Ω(fakeBBS.RemoveActualLRPCallCount()).Should(Equal(1))
-					actualLRPKey, actualLRPContainerKey, bbsLogger := fakeBBS.RemoveActualLRPArgsForCall(0)
+					bbsLogger, actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveActualLRPArgsForCall(0)
 					Ω(actualLRPKey).Should(Equal(lrpKey))
 					Ω(actualLRPContainerKey).Should(Equal(containerKey))
 					Ω(bbsLogger.SessionName()).Should(Equal(sessionName))
