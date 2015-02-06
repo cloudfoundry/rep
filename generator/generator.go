@@ -123,7 +123,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	for guid, lrp := range lrps {
 		_, found := batch[guid]
 		if !found {
-			batch[guid] = NewMissingLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPContainerKey)
+			batch[guid] = NewResidualInstanceLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPContainerKey)
 		}
 	}
 
@@ -131,7 +131,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	for guid, _ := range tasks {
 		_, found := batch[guid]
 		if !found {
-			batch[guid] = NewMissingTaskOperation(logger, g.bbs, g.containerDelegate, guid)
+			batch[guid] = NewResidualTaskOperation(logger, g.bbs, g.containerDelegate, guid)
 		}
 	}
 

@@ -10,8 +10,8 @@ import (
 	"github.com/pivotal-golang/lager"
 )
 
-// MissingLRPOperation processes an ActualLRP with no matching container.
-type MissingLRPOperation struct {
+// ResidualInstanceLRPOperation processes an instance ActualLRP with no matching container.
+type ResidualInstanceLRPOperation struct {
 	logger            lager.Logger
 	bbs               bbs.RepBBS
 	containerDelegate internal.ContainerDelegate
@@ -19,13 +19,13 @@ type MissingLRPOperation struct {
 	models.ActualLRPContainerKey
 }
 
-func NewMissingLRPOperation(logger lager.Logger,
+func NewResidualInstanceLRPOperation(logger lager.Logger,
 	bbs bbs.RepBBS,
 	containerDelegate internal.ContainerDelegate,
 	lrpKey models.ActualLRPKey,
 	containerKey models.ActualLRPContainerKey,
-) *MissingLRPOperation {
-	return &MissingLRPOperation{
+) *ResidualInstanceLRPOperation {
+	return &ResidualInstanceLRPOperation{
 		logger:                logger,
 		bbs:                   bbs,
 		containerDelegate:     containerDelegate,
@@ -34,12 +34,12 @@ func NewMissingLRPOperation(logger lager.Logger,
 	}
 }
 
-func (o *MissingLRPOperation) Key() string {
+func (o *ResidualInstanceLRPOperation) Key() string {
 	return o.InstanceGuid
 }
 
-func (o *MissingLRPOperation) Execute() {
-	logger := o.logger.Session("executing-missing-lrp-operation", lager.Data{
+func (o *ResidualInstanceLRPOperation) Execute() {
+	logger := o.logger.Session("executing-residual-instance-lrp-operation", lager.Data{
 		"lrp-key":       o.ActualLRPKey,
 		"container-key": o.ActualLRPContainerKey,
 	})
@@ -55,28 +55,79 @@ func (o *MissingLRPOperation) Execute() {
 	o.bbs.RemoveActualLRP(logger, o.ActualLRPKey, o.ActualLRPContainerKey)
 }
 
-// MissingTaskOperation processes a Task with no matching container.
-type MissingTaskOperation struct {
+// ResidualEvacuatingLRPOperation processes an evacuating ActualLRP with no matching container.
+type ResidualEvacuatingLRPOperation struct {
+	logger            lager.Logger
+	bbs               bbs.RepBBS
+	containerDelegate internal.ContainerDelegate
+	models.ActualLRPKey
+	models.ActualLRPContainerKey
+}
+
+func NewResidualEvacuatingLRPOperation(logger lager.Logger,
+	bbs bbs.RepBBS,
+	containerDelegate internal.ContainerDelegate,
+	lrpKey models.ActualLRPKey,
+	containerKey models.ActualLRPContainerKey,
+) *ResidualEvacuatingLRPOperation {
+	return &ResidualEvacuatingLRPOperation{
+		logger:                logger,
+		bbs:                   bbs,
+		containerDelegate:     containerDelegate,
+		ActualLRPKey:          lrpKey,
+		ActualLRPContainerKey: containerKey,
+	}
+}
+
+func (o *ResidualEvacuatingLRPOperation) Key() string {
+	return o.InstanceGuid
+}
+
+func (o *ResidualEvacuatingLRPOperation) Execute() {
+	logger := o.logger.Session("executing-residual-evacuating-lrp-operation", lager.Data{
+		"lrp-key":       o.ActualLRPKey,
+		"container-key": o.ActualLRPContainerKey,
+	})
+	logger.Info("starting")
+	defer logger.Info("finished")
+
+	_, exists := o.containerDelegate.GetContainer(logger, o.InstanceGuid)
+	if exists {
+		logger.Info("skipped-because-container-exists")
+		return
+	}
+
+	o.bbs.RemoveEvacuatingActualLRP(logger, o.ActualLRPKey, o.ActualLRPContainerKey)
+}
+
+// ResidualTaskOperation processes a Task with no matching container.
+type ResidualTaskOperation struct {
 	logger            lager.Logger
 	bbs               bbs.RepBBS
 	containerDelegate internal.ContainerDelegate
 	TaskGuid          string
 }
 
-func NewMissingTaskOperation(logger lager.Logger, bbs bbs.RepBBS, containerDelegate internal.ContainerDelegate, taskGuid string) *MissingTaskOperation {
-	return &MissingTaskOperation{
+func NewResidualTaskOperation(
+	logger lager.Logger,
+	bbs bbs.RepBBS,
+	containerDelegate internal.ContainerDelegate,
+	taskGuid string,
+) *ResidualTaskOperation {
+	return &ResidualTaskOperation{
 		logger:            logger,
 		bbs:               bbs,
 		TaskGuid:          taskGuid,
 		containerDelegate: containerDelegate,
 	}
 }
-func (o *MissingTaskOperation) Key() string {
+
+func (o *ResidualTaskOperation) Key() string {
 	return o.TaskGuid
 }
 
-func (o *MissingTaskOperation) Execute() {
-	logger := o.logger.Session("executing-missing-task-operation", lager.Data{
+func (o *ResidualTaskOperation) Execute() {
+	logger := o.logger.Session("executing-residual-task-operation", lager.Data{
 		"task-guid": o.TaskGuid,
 	})
 	logger.Info("starting")
@@ -140,6 +191,7 @@ func (o *ContainerOperation) Execute() {
 	logger = logger.WithData(lager.Data{
 		"container-state": container.State,
 	})
+
 	lifecycle := container.Tags[rep.LifecycleTag]
 
 	switch lifecycle {

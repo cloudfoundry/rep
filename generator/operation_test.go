@@ -15,32 +15,32 @@ import (
 )
 
 var _ = Describe("Operation", func() {
-	Describe("MissingLRPOperation", func() {
+	Describe("ResidualInstanceLRPOperation", func() {
 		var (
-			containerDelegate   *fake_internal.FakeContainerDelegate
-			missingLRPOperation *generator.MissingLRPOperation
-			lrpKey              models.ActualLRPKey
-			containerKey        models.ActualLRPContainerKey
+			containerDelegate    *fake_internal.FakeContainerDelegate
+			residualLRPOperation *generator.ResidualInstanceLRPOperation
+			lrpKey               models.ActualLRPKey
+			containerKey         models.ActualLRPContainerKey
 		)
 
 		BeforeEach(func() {
 			lrpKey = models.NewActualLRPKey("the-process-guid", 0, "the-domain")
 			containerKey = models.NewActualLRPContainerKey("the-instance-guid", "the-cell-id")
 			containerDelegate = new(fake_internal.FakeContainerDelegate)
-			missingLRPOperation = generator.NewMissingLRPOperation(logger, fakeBBS, containerDelegate, lrpKey, containerKey)
+			residualLRPOperation = generator.NewResidualInstanceLRPOperation(logger, fakeBBS, containerDelegate, lrpKey, containerKey)
 		})
 
 		Describe("Key", func() {
 			It("returns the InstanceGuid", func() {
-				Ω(missingLRPOperation.Key()).Should(Equal("the-instance-guid"))
+				Ω(residualLRPOperation.Key()).Should(Equal("the-instance-guid"))
 			})
 		})
 
 		Describe("Execute", func() {
-			const sessionName = "test.executing-missing-lrp-operation"
+			const sessionName = "test.executing-residual-instance-lrp-operation"
 
 			JustBeforeEach(func() {
-				missingLRPOperation.Execute()
+				residualLRPOperation.Execute()
 			})
 
 			It("checks whether the container exists", func() {
@@ -85,30 +85,102 @@ var _ = Describe("Operation", func() {
 		})
 	})
 
-	Describe("MissingTaskOperation", func() {
+	Describe("ResidualEvacuatingLRPOperation", func() {
 		var (
-			containerDelegate    *fake_internal.FakeContainerDelegate
-			missingTaskOperation *generator.MissingTaskOperation
-			taskGuid             string
+			containerDelegate              *fake_internal.FakeContainerDelegate
+			residualEvacuatingLRPOperation *generator.ResidualEvacuatingLRPOperation
+			instanceGuid                   string
+			lrpKey                         models.ActualLRPKey
+			containerKey                   models.ActualLRPContainerKey
+		)
+
+		BeforeEach(func() {
+			instanceGuid = "the-instance-guid"
+			lrpKey = models.NewActualLRPKey("the-process-guid", 0, "the-domain")
+			containerKey = models.NewActualLRPContainerKey(instanceGuid, "the-cell-id")
+			containerDelegate = new(fake_internal.FakeContainerDelegate)
+			residualEvacuatingLRPOperation = generator.NewResidualEvacuatingLRPOperation(logger, fakeBBS, containerDelegate, lrpKey, containerKey)
+		})
+
+		Describe("Key", func() {
+			It("returns the InstanceGuid", func() {
+				Ω(residualEvacuatingLRPOperation.Key()).Should(Equal(instanceGuid))
+			})
+		})
+
+		Describe("Execute", func() {
+			const sessionName = "test.executing-residual-evacuating-lrp-operation"
+
+			JustBeforeEach(func() {
+				residualEvacuatingLRPOperation.Execute()
+			})
+
+			It("checks whether the container exists", func() {
+				Ω(containerDelegate.GetContainerCallCount()).Should(Equal(1))
+				containerDelegateLogger, containerGuid := containerDelegate.GetContainerArgsForCall(0)
+				Ω(containerGuid).Should(Equal(containerKey.InstanceGuid))
+				Ω(containerDelegateLogger.SessionName()).Should(Equal(sessionName))
+			})
+
+			It("logs its execution lifecycle", func() {
+				Ω(logger).Should(Say(sessionName + ".starting"))
+				Ω(logger).Should(Say(sessionName + ".finished"))
+			})
+
+			Context("when the container does not exist", func() {
+				BeforeEach(func() {
+					containerDelegate.GetContainerReturns(executor.Container{}, false)
+				})
+
+				It("removes the actualLRP", func() {
+					Ω(fakeBBS.RemoveEvacuatingActualLRPCallCount()).Should(Equal(1))
+					bbsLogger, actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveEvacuatingActualLRPArgsForCall(0)
+					Ω(actualLRPKey).Should(Equal(lrpKey))
+					Ω(actualLRPContainerKey).Should(Equal(containerKey))
+					Ω(bbsLogger.SessionName()).Should(Equal(sessionName))
+				})
+			})
+
+			Context("when the container exists", func() {
+				BeforeEach(func() {
+					containerDelegate.GetContainerReturns(executor.Container{}, true)
+				})
+
+				It("does not remove the actualLRP", func() {
+					Ω(fakeBBS.RemoveEvacuatingActualLRPCallCount()).Should(Equal(0))
+				})
+
+				It("logs that it skipped the operation because the container was found", func() {
+					Ω(logger).Should(Say(sessionName + ".skipped-because-container-exists"))
+				})
+			})
+		})
+	})
+
+	Describe("ResidualTaskOperation", func() {
+		var (
+			containerDelegate     *fake_internal.FakeContainerDelegate
+			residualTaskOperation *generator.ResidualTaskOperation
+			taskGuid              string
 		)
 
 		BeforeEach(func() {
 			taskGuid = "the-task-guid"
 			containerDelegate = new(fake_internal.FakeContainerDelegate)
-			missingTaskOperation = generator.NewMissingTaskOperation(logger, fakeBBS, containerDelegate, taskGuid)
+			residualTaskOperation = generator.NewResidualTaskOperation(logger, fakeBBS, containerDelegate, taskGuid)
 		})
 
 		Describe("Key", func() {
 			It("returns the TaskGuid", func() {
-				Ω(missingTaskOperation.Key()).Should(Equal("the-task-guid"))
+				Ω(residualTaskOperation.Key()).Should(Equal("the-task-guid"))
 			})
 		})
 
 		Describe("Execute", func() {
-			const sessionName = "test.executing-missing-task-operation"
+			const sessionName = "test.executing-residual-task-operation"
 
 			JustBeforeEach(func() {
-				missingTaskOperation.Execute()
+				residualTaskOperation.Execute()
 			})
 
 			It("checks whether the container exists", func() {

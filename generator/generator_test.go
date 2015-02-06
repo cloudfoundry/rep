@@ -146,20 +146,20 @@ var _ = Describe("Generator", func() {
 				assertBatchHasAContainerOperationForGuid(instanceGuid3, batch)
 			})
 
-			It("returns a missing lrp operation for an lrp with no container", func() {
+			It("returns a residual lrp operation for an lrp with no container", func() {
 				guid := instanceGuid4
 				operation, found := batch[guid]
 				Ω(found).Should(BeTrue(), "no operation for '"+guid+"'")
-				_, ok := operation.(*generator.MissingLRPOperation)
-				Ω(ok).Should(BeTrue(), "operation for '"+guid+"' was not a missing lrp operation")
+				_, ok := operation.(*generator.ResidualInstanceLRPOperation)
+				Ω(ok).Should(BeTrue(), "operation for '"+guid+"' was not a residual lrp operation")
 			})
 
-			It("returns a missing task operation for a task with no container", func() {
+			It("returns a residual task operation for a task with no container", func() {
 				guid := instanceGuid5
 				operation, found := batch[guid]
 				Ω(found).Should(BeTrue(), "no operation for '"+guid+"'")
-				_, ok := operation.(*generator.MissingTaskOperation)
-				Ω(ok).Should(BeTrue(), "operation for '"+guid+"' was not a missing task operation")
+				_, ok := operation.(*generator.ResidualTaskOperation)
+				Ω(ok).Should(BeTrue(), "operation for '"+guid+"' was not a residual task operation")
 			})
 
 		})
