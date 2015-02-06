@@ -55,7 +55,8 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	logger.Info("started")
 
 	containers := make(map[string]executor.Container)
-	lrps := make(map[string]models.ActualLRP)
+	instanceLRPs := make(map[string]models.ActualLRP)
+	evacuatingLRPs := make(map[string]models.ActualLRP)
 	tasks := make(map[string]models.Task)
 
 	errChan := make(chan error, 3)
@@ -77,12 +78,25 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	go func() {
 		foundLRPS, err := g.bbs.ActualLRPsByCellID(g.cellID)
 		if err != nil {
-			logger.Error("failed-to-retrieve-lrps", err)
+			logger.Error("failed-to-retrieve-instance-lrps", err)
 			err = fmt.Errorf("failed to retrieve lrps: %s", err.Error())
 		}
 
 		for _, lrp := range foundLRPS {
-			lrps[lrp.InstanceGuid] = lrp
+			instanceLRPs[lrp.InstanceGuid] = lrp
+		}
+		errChan <- err
+	}()
+
+	go func() {
+		foundLRPS, err := g.bbs.EvacuatingActualLRPsByCellID(g.cellID)
+		if err != nil {
+			logger.Error("failed-to-retrieve-evacuating-lrps", err)
+			err = fmt.Errorf("failed to retrieve lrps: %s", err.Error())
+		}
+
+		for _, lrp := range foundLRPS {
+			evacuatingLRPs[lrp.InstanceGuid] = lrp
 		}
 		errChan <- err
 	}()
@@ -101,7 +115,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	}()
 
 	var err error
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 4; i++ {
 		e := <-errChan
 		if err == nil && e != nil {
 			err = e
@@ -119,11 +133,19 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 		batch[guid] = g.operationFromContainer(logger, guid)
 	}
 
-	// create operations for lrps with no containers
-	for guid, lrp := range lrps {
+	// create operations for instance lrps with no containers
+	for guid, lrp := range instanceLRPs {
 		_, found := batch[guid]
 		if !found {
 			batch[guid] = NewResidualInstanceLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPContainerKey)
+		}
+	}
+
+	// create operations for evacuating lrps with no containers
+	for guid, lrp := range evacuatingLRPs {
+		_, found := batch[guid]
+		if !found {
+			batch[guid] = NewResidualEvacuatingLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPContainerKey)
 		}
 	}
 

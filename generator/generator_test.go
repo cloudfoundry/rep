@@ -78,40 +78,43 @@ var _ = Describe("Generator", func() {
 		})
 
 		Context("when retrieving container and BBS data succeeds", func() {
-			var (
-				instanceGuid1 string
-				instanceGuid2 string
-				instanceGuid3 string
-				instanceGuid4 string
-				instanceGuid5 string
+			const (
+				guidContainerOnly             = "guid-container-only"
+				guidContainerForInstanceLRP   = "guid-container-for-instance-lrp"
+				guidContainerForEvacuatingLRP = "guid-container-for-evacuating-lrp"
+				guidContainerForTask          = "guid-container-for-task"
+				guidInstanceLRPOnly           = "guid-instance-lrp-only"
+				guidEvacuatingLRPOnly         = "guid-evacuating-lrp-only"
+				guidTaskOnly                  = "guid-task-only"
 			)
 
 			BeforeEach(func() {
-				instanceGuid1 = "instance-guid-1"
-				instanceGuid2 = "instance-guid-2"
-				instanceGuid3 = "instance-guid-3"
-				instanceGuid4 = "instance-guid-4"
-				instanceGuid5 = "instance-guid-5"
-
 				containers := []executor.Container{
-					{Guid: instanceGuid1},
-					{Guid: instanceGuid2},
-					{Guid: instanceGuid3},
+					{Guid: guidContainerOnly},
+					{Guid: guidContainerForInstanceLRP},
+					{Guid: guidContainerForEvacuatingLRP},
+					{Guid: guidContainerForTask},
 				}
 
-				lrps := []models.ActualLRP{
-					{ActualLRPContainerKey: models.NewActualLRPContainerKey(instanceGuid1, cellID)},
-					{ActualLRPContainerKey: models.NewActualLRPContainerKey(instanceGuid4, cellID)},
+				instanceLRPs := []models.ActualLRP{
+					{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidContainerForInstanceLRP, cellID)},
+					{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidInstanceLRPOnly, cellID)},
+				}
+
+				evacuatingLRPs := []models.ActualLRP{
+					{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidContainerForEvacuatingLRP, cellID)},
+					{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidEvacuatingLRPOnly, cellID)},
 				}
 
 				tasks := []models.Task{
-					{TaskGuid: instanceGuid2},
-					{TaskGuid: instanceGuid5},
+					{TaskGuid: guidContainerForTask},
+					{TaskGuid: guidTaskOnly},
 				}
 
 				fakeExecutorClient.ListContainersReturns(containers, nil)
 
-				fakeBBS.ActualLRPsByCellIDReturns(lrps, nil)
+				fakeBBS.ActualLRPsByCellIDReturns(instanceLRPs, nil)
+				fakeBBS.EvacuatingActualLRPsByCellIDReturns(evacuatingLRPs, nil)
 				fakeBBS.TasksByCellIDReturns(tasks, nil)
 			})
 
@@ -124,42 +127,46 @@ var _ = Describe("Generator", func() {
 			})
 
 			It("returns a batch of the correct size", func() {
-				Ω(batch).Should(HaveLen(5))
+				Ω(batch).Should(HaveLen(7))
 			})
 
-			assertBatchHasAContainerOperationForGuid := func(guid string, batch map[string]operationq.Operation) {
-				operation, found := batch[guid]
-				Ω(found).Should(BeTrue(), "no operation for '"+guid+"'")
-				_, ok := operation.(*generator.ContainerOperation)
-				Ω(ok).Should(BeTrue(), "operation for '"+guid+"' was not a container operation")
+			batchHasAContainerOperationForGuid := func(guid string, batch map[string]operationq.Operation) {
+				Ω(batch).Should(HaveKey(guid))
+				Ω(batch[guid]).Should(BeAssignableToTypeOf(new(generator.ContainerOperation)))
 			}
 
-			It("returns a container operation for a container with an lrp", func() {
-				assertBatchHasAContainerOperationForGuid(instanceGuid1, batch)
+			It("returns a container operation for a container with an instance lrp", func() {
+				batchHasAContainerOperationForGuid(guidContainerForInstanceLRP, batch)
+			})
+
+			It("returns a container operation for a container with an evacuating lrp", func() {
+				batchHasAContainerOperationForGuid(guidContainerForEvacuatingLRP, batch)
 			})
 
 			It("returns a container operation for a container with a task", func() {
-				assertBatchHasAContainerOperationForGuid(instanceGuid2, batch)
+				batchHasAContainerOperationForGuid(guidContainerForTask, batch)
 			})
 
 			It("returns a container operation for a container with nothing in bbs", func() {
-				assertBatchHasAContainerOperationForGuid(instanceGuid3, batch)
+				batchHasAContainerOperationForGuid(guidContainerOnly, batch)
 			})
 
-			It("returns a residual lrp operation for an lrp with no container", func() {
-				guid := instanceGuid4
-				operation, found := batch[guid]
-				Ω(found).Should(BeTrue(), "no operation for '"+guid+"'")
-				_, ok := operation.(*generator.ResidualInstanceLRPOperation)
-				Ω(ok).Should(BeTrue(), "operation for '"+guid+"' was not a residual lrp operation")
+			It("returns a residual lrp operation for an instance lrp with no container", func() {
+				guid := guidInstanceLRPOnly
+				Ω(batch).Should(HaveKey(guid))
+				Ω(batch[guid]).Should(BeAssignableToTypeOf(new(generator.ResidualInstanceLRPOperation)))
+			})
+
+			It("returns a residual evacuating lrp operation for an evacuating lrp with no container", func() {
+				guid := guidEvacuatingLRPOnly
+				Ω(batch).Should(HaveKey(guid))
+				Ω(batch[guid]).Should(BeAssignableToTypeOf(new(generator.ResidualEvacuatingLRPOperation)))
 			})
 
 			It("returns a residual task operation for a task with no container", func() {
-				guid := instanceGuid5
-				operation, found := batch[guid]
-				Ω(found).Should(BeTrue(), "no operation for '"+guid+"'")
-				_, ok := operation.(*generator.ResidualTaskOperation)
-				Ω(ok).Should(BeTrue(), "operation for '"+guid+"' was not a residual task operation")
+				guid := guidTaskOnly
+				Ω(batch).Should(HaveKey(guid))
+				Ω(batch[guid]).Should(BeAssignableToTypeOf(new(generator.ResidualTaskOperation)))
 			})
 
 		})
@@ -195,7 +202,7 @@ var _ = Describe("Generator", func() {
 				})
 			})
 
-			Context("when retrieving the LRPs fails", func() {
+			Context("when retrieving the instance LRPs fails", func() {
 				BeforeEach(func() {
 					fakeBBS.ActualLRPsByCellIDReturns(nil, errors.New("oh no, no lrp!"))
 				})
@@ -206,7 +213,22 @@ var _ = Describe("Generator", func() {
 				})
 
 				It("logs the failure", func() {
-					Ω(logger).Should(Say(sessionName + ".failed-to-retrieve-lrps"))
+					Ω(logger).Should(Say(sessionName + ".failed-to-retrieve-instance-lrps"))
+				})
+			})
+
+			Context("when retrieving the evacuating LRPs fails", func() {
+				BeforeEach(func() {
+					fakeBBS.EvacuatingActualLRPsByCellIDReturns(nil, errors.New("oh no, no lrp!"))
+				})
+
+				It("returns an error", func() {
+					Ω(batchErr).Should(HaveOccurred())
+					Ω(batchErr).Should(MatchError(ContainSubstring("oh no, no lrp!")))
+				})
+
+				It("logs the failure", func() {
+					Ω(logger).Should(Say(sessionName + ".failed-to-retrieve-evacuating-lrps"))
 				})
 			})
 		})
