@@ -114,7 +114,7 @@ func main() {
 
 	cf_http.Initialize(*communicationTimeout)
 
-	logger := cf_lager.New("rep")
+	logger, reconfigurableSink := cf_lager.New("rep")
 	initializeDropsonde(logger)
 
 	if *cellID == "" {
@@ -163,7 +163,7 @@ func main() {
 
 	if dbgAddr := cf_debug_server.DebugAddress(flag.CommandLine); dbgAddr != "" {
 		members = append(grouper.Members{
-			{"debug-server", cf_debug_server.Runner(dbgAddr)},
+			{"debug-server", cf_debug_server.Runner(dbgAddr, reconfigurableSink)},
 		}, members...)
 	}
 
