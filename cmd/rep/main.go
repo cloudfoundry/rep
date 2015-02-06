@@ -241,7 +241,7 @@ func initializeServer(
 	handlers["Ping"] = repserver.NewPingHandler()
 	routes = append(routes, rata.Route{Name: "Ping", Method: "GET", Path: "/ping"})
 
-	handlers["Evacuate"] = repserver.NewEvacuationHandler(evacuatable)
+	handlers["Evacuate"] = repserver.NewEvacuationHandler(logger, evacuatable)
 	routes = append(routes, rata.Route{Name: "Evacuate", Method: "POST", Path: "/evacuate"})
 
 	router, err := rata.NewRouter(routes, handlers)

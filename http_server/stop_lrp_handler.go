@@ -25,21 +25,21 @@ func (h StopLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	processGuid := r.FormValue(":process_guid")
 	instanceGuid := r.FormValue(":instance_guid")
 
-	hLog := h.logger.Session("stop-lrp-instance", lager.Data{
+	logger := h.logger.Session("handling-stop-lrp-instance", lager.Data{
 		"process-guid":  processGuid,
 		"instance-guid": instanceGuid,
 	})
 
 	if processGuid == "" {
 		err := errors.New("process_guid missing from request")
-		hLog.Error("missing-process-guid", err)
+		logger.Error("missing-process-guid", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	if instanceGuid == "" {
 		err := errors.New("instance_guid missing from request")
-		hLog.Error("missing-instance-guid", err)
+		logger.Error("missing-instance-guid", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

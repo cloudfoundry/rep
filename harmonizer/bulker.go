@@ -47,10 +47,12 @@ func (b *Bulker) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	evacuateNotify := b.evacuationNotifier.EvacuateNotify()
 	close(ready)
 
-	logger := b.logger.Session("bulker")
+	logger := b.logger.Session("running-bulker")
 
-	logger.Info("starting", lager.Data{"interval": b.pollInterval.String()})
-	defer logger.Info("completed")
+	logger.Info("starting", lager.Data{
+		"interval": b.pollInterval.String(),
+	})
+	defer logger.Info("finished")
 
 	ticker := b.clock.NewTicker(b.pollInterval)
 	defer ticker.Stop()
@@ -75,8 +77,8 @@ func (b *Bulker) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 func (b *Bulker) sync(logger lager.Logger) {
 	logger = logger.Session("sync")
 
-	logger.Info("start")
-	defer logger.Info("done")
+	logger.Info("starting")
+	defer logger.Info("finished")
 
 	startTime := b.clock.Now()
 

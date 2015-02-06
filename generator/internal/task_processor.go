@@ -5,7 +5,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -35,26 +34,29 @@ func NewTaskProcessor(bbs bbs.RepBBS, containerDelegate ContainerDelegate, cellI
 }
 
 func (p *taskProcessor) Process(logger lager.Logger, container executor.Container) {
-	logger = logger.Session("task-processor")
+	logger = logger.Session("task-processor", lager.Data{
+		"container-guid":  container.Guid,
+		"container-state": container.State,
+	})
+
+	logger.Debug("starting")
+	defer logger.Debug("finished")
 
 	switch container.State {
 	case executor.StateReserved:
-		p.processActiveContainer(logger.Session("process-reserved-container"), container)
+		p.processActiveContainer(logger, container)
 	case executor.StateInitializing:
-		p.processActiveContainer(logger.Session("process-initializing-container"), container)
+		p.processActiveContainer(logger, container)
 	case executor.StateCreated:
-		p.processActiveContainer(logger.Session("process-created-container"), container)
+		p.processActiveContainer(logger, container)
 	case executor.StateRunning:
-		p.processActiveContainer(logger.Session("process-running-container"), container)
+		p.processActiveContainer(logger, container)
 	case executor.StateCompleted:
-		p.processCompletedContainer(logger.Session("process-completed-container"), container)
+		p.processCompletedContainer(logger, container)
 	}
 }
 
 func (p *taskProcessor) processActiveContainer(logger lager.Logger, container executor.Container) {
-	logger.Debug("start")
-	defer logger.Debug("complete")
-
 	ok := p.startTask(logger, container.Guid)
 	if !ok {
 		return
@@ -67,25 +69,8 @@ func (p *taskProcessor) processActiveContainer(logger lager.Logger, container ex
 }
 
 func (p *taskProcessor) processCompletedContainer(logger lager.Logger, container executor.Container) {
-	logger.Debug("start")
-	defer logger.Debug("complete")
-
 	p.completeTask(logger, container)
 	p.containerDelegate.DeleteContainer(logger, container.Guid)
-}
-
-func (p *taskProcessor) fetchTask(logger lager.Logger, guid string) (models.Task, bool) {
-	logger = logger.Session("fetch-task")
-	logger.Debug("start")
-	defer logger.Debug("complete")
-
-	task, err := p.bbs.TaskByGuid(guid)
-	if err != nil {
-		logger.Error("failed", err)
-		return task, false
-	}
-
-	return task, true
 }
 
 func (p *taskProcessor) startTask(logger lager.Logger, guid string) bool {
@@ -106,13 +91,10 @@ func (p *taskProcessor) startTask(logger lager.Logger, guid string) bool {
 	}
 
 	logger.Info("succeeded-starting-task")
-
 	return changed
 }
 
 func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Container) {
-	logger.Info("completing-task")
-
 	var result string
 	var err error
 	if !container.RunResult.Failed {
@@ -123,6 +105,7 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 		}
 	}
 
+	logger.Info("completing-task")
 	err = p.bbs.CompleteTask(logger, container.Guid, p.cellID, container.RunResult.Failed, container.RunResult.FailureReason, result)
 	if err != nil {
 		logger.Error("failed-completing-task", err)
@@ -137,12 +120,12 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 }
 
 func (p *taskProcessor) failTask(logger lager.Logger, guid string, reason string) {
-	failLog := logger.Session("failing-task")
+	logger.Info("failing-task")
 	err := p.bbs.FailTask(logger, guid, reason)
 	if err != nil {
-		failLog.Error("failed", err)
+		logger.Error("failed-failing-task", err)
 		return
 	}
 
-	failLog.Info("succeeded")
+	logger.Info("succeeded-failing-task")
 }

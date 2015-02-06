@@ -27,8 +27,12 @@ func newOrdinaryLRPProcessor(
 }
 
 func (p *ordinaryLRPProcessor) Process(logger lager.Logger, container executor.Container) {
-	logger = logger.Session("ordinary-lrp-processor")
-	logger.Debug("start")
+	logger = logger.Session("ordinary-lrp-processor", lager.Data{
+		"container-guid":  container.Guid,
+		"container-state": container.State,
+	})
+	logger.Debug("starting")
+	defer logger.Debug("finished")
 
 	lrpKey, err := rep.ActualLRPKeyFromContainer(container)
 	if err != nil {

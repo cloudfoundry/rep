@@ -41,7 +41,7 @@ func (o *ResidualInstanceLRPOperation) Key() string {
 func (o *ResidualInstanceLRPOperation) Execute() {
 	logger := o.logger.Session("executing-residual-instance-lrp-operation", lager.Data{
 		"lrp-key":       o.ActualLRPKey,
-		"container-key": o.ActualLRPContainerKey,
+		"lrp-container-key": o.ActualLRPContainerKey,
 	})
 	logger.Info("starting")
 	defer logger.Info("finished")
@@ -86,7 +86,7 @@ func (o *ResidualEvacuatingLRPOperation) Key() string {
 func (o *ResidualEvacuatingLRPOperation) Execute() {
 	logger := o.logger.Session("executing-residual-evacuating-lrp-operation", lager.Data{
 		"lrp-key":       o.ActualLRPKey,
-		"container-key": o.ActualLRPContainerKey,
+		"lrp-container-key": o.ActualLRPContainerKey,
 	})
 	logger.Info("starting")
 	defer logger.Info("finished")

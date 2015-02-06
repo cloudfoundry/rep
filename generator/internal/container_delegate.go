@@ -81,8 +81,10 @@ func (d *containerDelegate) DeleteContainer(logger lager.Logger, guid string) bo
 }
 
 func (d *containerDelegate) FetchContainerResult(logger lager.Logger, guid string, filename string) (string, error) {
+	logger.Info("fetching-container-result")
 	stream, err := d.client.GetFiles(guid, filename)
 	if err != nil {
+		logger.Error("failed-fetching-container-result-stream-from-executor", err)
 		return "", err
 	}
 
@@ -98,8 +100,10 @@ func (d *containerDelegate) FetchContainerResult(logger lager.Logger, guid strin
 	buf := make([]byte, MAX_RESULT_SIZE+1)
 	n, err := tarReader.Read(buf)
 	if n > MAX_RESULT_SIZE {
+		logger.Error("failed-fetching-container-result-too-large", err)
 		return "", ErrResultFileTooLarge
 	}
 
+	logger.Info("succeeded-fetching-container-result")
 	return string(buf[:n]), nil
 }

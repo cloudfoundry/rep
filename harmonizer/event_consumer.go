@@ -30,13 +30,19 @@ func NewEventConsumer(
 
 func (consumer *EventConsumer) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	logger := consumer.logger.Session("event-consumer")
+	logger.Info("starting")
+	defer logger.Info("finished")
 
+	logger.Info("subscribing-to-operation-stream")
 	stream, err := consumer.generator.OperationStream(logger)
 	if err != nil {
+		logger.Error("failed-subscribing-to-operation-stream", err)
 		return err
 	}
+	logger.Info("succeeded-subscribing-to-operation-stream")
 
 	close(ready)
+	logger.Info("started")
 
 	for {
 		select {
@@ -48,8 +54,8 @@ func (consumer *EventConsumer) Run(signals <-chan os.Signal, ready chan<- struct
 
 			consumer.queue.Push(op)
 
-		case <-signals:
-			logger.Info("stopped")
+		case signal := <-signals:
+			logger.Info("received-signal", lager.Data{"signal": signal.String()})
 			return nil
 		}
 	}

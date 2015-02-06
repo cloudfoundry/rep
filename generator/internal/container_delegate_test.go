@@ -212,6 +212,11 @@ var _ = Describe("ContainerDelegate", func() {
 				It("closes the result stream", func() {
 					Ω(fileStream.Closed()).Should(BeTrue())
 				})
+
+				It("logs the fetching", func() {
+					Ω(logger).Should(gbytes.Say(sessionPrefix + ".fetching-container-result"))
+					Ω(logger).Should(gbytes.Say(sessionPrefix + ".succeeded-fetching-container-result"))
+				})
 			})
 
 			Context("but the payload is too large", func() {
@@ -232,6 +237,10 @@ var _ = Describe("ContainerDelegate", func() {
 
 				It("closes the result stream", func() {
 					Ω(fileStream.Closed()).Should(BeTrue())
+				})
+
+				It("logs the failure", func() {
+					Ω(logger).Should(gbytes.Say(sessionPrefix + ".failed-fetching-container-result-too-large"))
 				})
 			})
 
@@ -255,6 +264,10 @@ var _ = Describe("ContainerDelegate", func() {
 
 			It("returns the error", func() {
 				Ω(fetchErr).Should(Equal(disaster))
+			})
+
+			It("logs the failure", func() {
+				Ω(logger).Should(gbytes.Say(sessionPrefix + ".failed-fetching-container-result-stream-from-executor"))
 			})
 		})
 	})
