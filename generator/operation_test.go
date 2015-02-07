@@ -157,6 +157,87 @@ var _ = Describe("Operation", func() {
 		})
 	})
 
+	Describe("ResidualJointLRPOperation", func() {
+		var (
+			containerDelegate         *fake_internal.FakeContainerDelegate
+			residualJointLRPOperation *generator.ResidualJointLRPOperation
+			instanceGuid              string
+			lrpKey                    models.ActualLRPKey
+			containerKey              models.ActualLRPContainerKey
+		)
+
+		BeforeEach(func() {
+			instanceGuid = "the-instance-guid"
+			lrpKey = models.NewActualLRPKey("the-process-guid", 0, "the-domain")
+			containerKey = models.NewActualLRPContainerKey(instanceGuid, "the-cell-id")
+			containerDelegate = new(fake_internal.FakeContainerDelegate)
+			residualJointLRPOperation = generator.NewResidualJointLRPOperation(logger, fakeBBS, containerDelegate, lrpKey, containerKey)
+		})
+
+		Describe("Key", func() {
+			It("returns the InstanceGuid", func() {
+				Ω(residualJointLRPOperation.Key()).Should(Equal(instanceGuid))
+			})
+		})
+
+		Describe("Execute", func() {
+			const sessionName = "test.executing-residual-joint-lrp-operation"
+
+			JustBeforeEach(func() {
+				residualJointLRPOperation.Execute()
+			})
+
+			It("checks whether the container exists", func() {
+				Ω(containerDelegate.GetContainerCallCount()).Should(Equal(1))
+				containerDelegateLogger, containerGuid := containerDelegate.GetContainerArgsForCall(0)
+				Ω(containerGuid).Should(Equal(containerKey.InstanceGuid))
+				Ω(containerDelegateLogger.SessionName()).Should(Equal(sessionName))
+			})
+
+			It("logs its execution lifecycle", func() {
+				Ω(logger).Should(Say(sessionName + ".starting"))
+				Ω(logger).Should(Say(sessionName + ".finished"))
+			})
+
+			Context("when the container does not exist", func() {
+				BeforeEach(func() {
+					containerDelegate.GetContainerReturns(executor.Container{}, false)
+				})
+
+				It("removes the instance actualLRP", func() {
+					Ω(fakeBBS.RemoveActualLRPCallCount()).Should(Equal(1))
+					bbsLogger, actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveActualLRPArgsForCall(0)
+					Ω(actualLRPKey).Should(Equal(lrpKey))
+					Ω(actualLRPContainerKey).Should(Equal(containerKey))
+					Ω(bbsLogger.SessionName()).Should(Equal(sessionName))
+				})
+
+				It("removes the evacuating actualLRP", func() {
+					Ω(fakeBBS.RemoveEvacuatingActualLRPCallCount()).Should(Equal(1))
+					bbsLogger, actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveEvacuatingActualLRPArgsForCall(0)
+					Ω(actualLRPKey).Should(Equal(lrpKey))
+					Ω(actualLRPContainerKey).Should(Equal(containerKey))
+					Ω(bbsLogger.SessionName()).Should(Equal(sessionName))
+				})
+			})
+
+			Context("when the container exists", func() {
+				BeforeEach(func() {
+					containerDelegate.GetContainerReturns(executor.Container{}, true)
+				})
+
+				It("does not remove either actualLRP", func() {
+					Ω(fakeBBS.RemoveActualLRPCallCount()).Should(Equal(0))
+					Ω(fakeBBS.RemoveEvacuatingActualLRPCallCount()).Should(Equal(0))
+				})
+
+				It("logs that it skipped the operation because the container was found", func() {
+					Ω(logger).Should(Say(sessionName + ".skipped-because-container-exists"))
+				})
+			})
+		})
+	})
+
 	Describe("ResidualTaskOperation", func() {
 		var (
 			containerDelegate     *fake_internal.FakeContainerDelegate

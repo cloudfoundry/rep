@@ -135,8 +135,12 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 
 	// create operations for instance lrps with no containers
 	for guid, lrp := range instanceLRPs {
-		_, found := batch[guid]
-		if !found {
+		if _, foundContainer := batch[guid]; foundContainer {
+			continue
+		}
+		if _, foundEvacuatingLRP := evacuatingLRPs[guid]; foundEvacuatingLRP {
+			batch[guid] = NewResidualJointLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPContainerKey)
+		} else {
 			batch[guid] = NewResidualInstanceLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPContainerKey)
 		}
 	}

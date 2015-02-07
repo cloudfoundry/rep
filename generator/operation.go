@@ -40,7 +40,7 @@ func (o *ResidualInstanceLRPOperation) Key() string {
 
 func (o *ResidualInstanceLRPOperation) Execute() {
 	logger := o.logger.Session("executing-residual-instance-lrp-operation", lager.Data{
-		"lrp-key":       o.ActualLRPKey,
+		"lrp-key":           o.ActualLRPKey,
 		"lrp-container-key": o.ActualLRPContainerKey,
 	})
 	logger.Info("starting")
@@ -85,7 +85,7 @@ func (o *ResidualEvacuatingLRPOperation) Key() string {
 
 func (o *ResidualEvacuatingLRPOperation) Execute() {
 	logger := o.logger.Session("executing-residual-evacuating-lrp-operation", lager.Data{
-		"lrp-key":       o.ActualLRPKey,
+		"lrp-key":           o.ActualLRPKey,
 		"lrp-container-key": o.ActualLRPContainerKey,
 	})
 	logger.Info("starting")
@@ -97,6 +97,52 @@ func (o *ResidualEvacuatingLRPOperation) Execute() {
 		return
 	}
 
+	o.bbs.RemoveEvacuatingActualLRP(logger, o.ActualLRPKey, o.ActualLRPContainerKey)
+}
+
+// ResidualJointLRPOperation processes an evacuating ActualLRP with no matching container.
+type ResidualJointLRPOperation struct {
+	logger            lager.Logger
+	bbs               bbs.RepBBS
+	containerDelegate internal.ContainerDelegate
+	models.ActualLRPKey
+	models.ActualLRPContainerKey
+}
+
+func NewResidualJointLRPOperation(logger lager.Logger,
+	bbs bbs.RepBBS,
+	containerDelegate internal.ContainerDelegate,
+	lrpKey models.ActualLRPKey,
+	containerKey models.ActualLRPContainerKey,
+) *ResidualJointLRPOperation {
+	return &ResidualJointLRPOperation{
+		logger:                logger,
+		bbs:                   bbs,
+		containerDelegate:     containerDelegate,
+		ActualLRPKey:          lrpKey,
+		ActualLRPContainerKey: containerKey,
+	}
+}
+
+func (o *ResidualJointLRPOperation) Key() string {
+	return o.InstanceGuid
+}
+
+func (o *ResidualJointLRPOperation) Execute() {
+	logger := o.logger.Session("executing-residual-joint-lrp-operation", lager.Data{
+		"lrp-key":           o.ActualLRPKey,
+		"lrp-container-key": o.ActualLRPContainerKey,
+	})
+	logger.Info("starting")
+	defer logger.Info("finished")
+
+	_, exists := o.containerDelegate.GetContainer(logger, o.InstanceGuid)
+	if exists {
+		logger.Info("skipped-because-container-exists")
+		return
+	}
+
+	o.bbs.RemoveActualLRP(logger, o.ActualLRPKey, o.ActualLRPContainerKey)
 	o.bbs.RemoveEvacuatingActualLRP(logger, o.ActualLRPKey, o.ActualLRPContainerKey)
 }
 
