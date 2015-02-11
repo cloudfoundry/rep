@@ -17,16 +17,18 @@ const repBulkSyncDuration = metric.Duration("RepBulkSyncDuration")
 type Bulker struct {
 	logger lager.Logger
 
-	pollInterval       time.Duration
-	evacuationNotifier evacuation_context.EvacuationNotifier
-	clock              clock.Clock
-	generator          generator.Generator
-	queue              operationq.Queue
+	pollInterval           time.Duration
+	evacuationPollInterval time.Duration
+	evacuationNotifier     evacuation_context.EvacuationNotifier
+	clock                  clock.Clock
+	generator              generator.Generator
+	queue                  operationq.Queue
 }
 
 func NewBulker(
 	logger lager.Logger,
 	pollInterval time.Duration,
+	evacuationPollInterval time.Duration,
 	evacuationNotifier evacuation_context.EvacuationNotifier,
 	clock clock.Clock,
 	generator generator.Generator,
@@ -35,11 +37,12 @@ func NewBulker(
 	return &Bulker{
 		logger: logger,
 
-		pollInterval:       pollInterval,
-		evacuationNotifier: evacuationNotifier,
-		clock:              clock,
-		generator:          generator,
-		queue:              queue,
+		pollInterval:           pollInterval,
+		evacuationPollInterval: evacuationPollInterval,
+		evacuationNotifier:     evacuationNotifier,
+		clock:                  clock,
+		generator:              generator,
+		queue:                  queue,
 	}
 }
 
@@ -54,23 +57,29 @@ func (b *Bulker) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	})
 	defer logger.Info("finished")
 
-	ticker := b.clock.NewTicker(b.pollInterval)
-	defer ticker.Stop()
+	interval := b.pollInterval
+
+	timer := b.clock.NewTimer(interval)
+	defer timer.Stop()
 
 	for {
 		select {
-		case <-ticker.C():
-			b.sync(logger)
+		case <-timer.C():
 
 		case <-evacuateNotify:
 			evacuateNotify = nil
+
 			logger.Info("notified-of-evacuation")
-			b.sync(logger)
+			interval = b.evacuationPollInterval
 
 		case signal := <-signals:
 			logger.Info("received-signal", lager.Data{"signal": signal.String()})
 			return nil
 		}
+
+		b.sync(logger)
+
+		timer.Reset(interval)
 	}
 }
 

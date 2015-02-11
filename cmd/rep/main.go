@@ -98,8 +98,14 @@ var communicationTimeout = flag.Duration(
 
 var evacuationTimeout = flag.Duration(
 	"evacuationTimeout",
-	3*time.Minute,
+	10*time.Minute,
 	"Timeout to wait for evacuation to complete",
+)
+
+var evacuationPollingInterval = flag.Duration(
+	"evacuationPollingInterval",
+	10*time.Second,
+	"the interval on which to scan the executor during evacuation",
 )
 
 const (
@@ -147,7 +153,7 @@ func main() {
 		evacuationNotifier,
 		*cellID,
 		*evacuationTimeout,
-		*pollingInterval,
+		*evacuationPollingInterval,
 	)
 
 	httpServer, address := initializeServer(bbs, executorClient, evacuatable, evacuationReporter, logger)
@@ -156,7 +162,7 @@ func main() {
 	members := grouper.Members{
 		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
 		{"http_server", httpServer},
-		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, evacuationNotifier, clock, opGenerator, queue)},
+		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, *evacuationPollingInterval, evacuationNotifier, clock, opGenerator, queue)},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 		{"evacuator", evacuator},
 	}
