@@ -191,11 +191,15 @@ var _ = Describe("The Rep", func() {
 						Stack:       "the-stack",
 						Domain:      "the-domain",
 						Instances:   index + 1,
+						Action: &models.RunAction{
+							Path: "the-path",
+							Args: []string{},
+						},
 					}
 
 					gotReservation = make(chan struct{})
 
-					err := bbs.CreateActualLRP(logger, desiredLRP, index)
+					err := bbs.DesireLRP(logger, desiredLRP)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					fakeExecutor.RouteToHandler("POST", "/containers",
@@ -324,12 +328,17 @@ var _ = Describe("The Rep", func() {
 		BeforeEach(func() {
 			desiredLRP := models.DesiredLRP{
 				ProcessGuid: "process-guid",
+				Stack:       "some-stack",
 				Domain:      "some-domain",
 				Instances:   1,
+				Action: &models.RunAction{
+					Path: "the-path",
+					Args: []string{},
+				},
 			}
 			index := 0
 
-			err := bbs.CreateActualLRP(logger, desiredLRP, index)
+			err := bbs.DesireLRP(logger, desiredLRP)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			actualLRP, err := bbs.ActualLRPByProcessGuidAndIndex(desiredLRP.ProcessGuid, index)
