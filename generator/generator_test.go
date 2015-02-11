@@ -60,8 +60,8 @@ var _ = Describe("Generator", func() {
 		})
 
 		It("retrieves all actual lrps for its cell id", func() {
-			Ω(fakeBBS.ActualLRPsByCellIDCallCount()).Should(Equal(1))
-			Ω(fakeBBS.ActualLRPsByCellIDArgsForCall(0)).Should(Equal(cellID))
+			Ω(fakeBBS.ActualLRPGroupsByCellIDCallCount()).Should(Equal(1))
+			Ω(fakeBBS.ActualLRPGroupsByCellIDArgsForCall(0)).Should(Equal(cellID))
 		})
 
 		It("retrieves all tasks for its cell id", func() {
@@ -97,16 +97,20 @@ var _ = Describe("Generator", func() {
 					{Guid: guidContainerForTask},
 				}
 
-				instanceLRPs := []models.ActualLRP{
-					{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidContainerForInstanceLRP, cellID)},
-					{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidInstanceLRPOnly, cellID)},
-					{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidInstanceAndEvacuatingLRPsOnly, cellID)},
-				}
+				containerOnlyLRP := models.ActualLRP{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidContainerForInstanceLRP, cellID)}
+				instanceOnlyLRP := models.ActualLRP{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidInstanceLRPOnly, cellID)}
 
-				evacuatingLRPs := []models.ActualLRP{
-					{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidContainerForEvacuatingLRP, cellID)},
-					{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidEvacuatingLRPOnly, cellID)},
-					{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidInstanceAndEvacuatingLRPsOnly, cellID)},
+				containerForEvacuatingLRP := models.ActualLRP{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidContainerForEvacuatingLRP, cellID)}
+				evacuatingOnlyLRP := models.ActualLRP{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidEvacuatingLRPOnly, cellID)}
+
+				instanceAndEvacuatingLRP := models.ActualLRP{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidInstanceAndEvacuatingLRPsOnly, cellID)}
+
+				lrpGroups := []models.ActualLRPGroup{
+					{Instance: &containerOnlyLRP, Evacuating: nil},
+					{Instance: &instanceOnlyLRP, Evacuating: nil},
+					{Instance: &instanceAndEvacuatingLRP, Evacuating: &instanceAndEvacuatingLRP},
+					{Instance: nil, Evacuating: &containerForEvacuatingLRP},
+					{Instance: nil, Evacuating: &evacuatingOnlyLRP},
 				}
 
 				tasks := []models.Task{
@@ -116,8 +120,7 @@ var _ = Describe("Generator", func() {
 
 				fakeExecutorClient.ListContainersReturns(containers, nil)
 
-				fakeBBS.ActualLRPsByCellIDReturns(instanceLRPs, nil)
-				fakeBBS.EvacuatingActualLRPsByCellIDReturns(evacuatingLRPs, nil)
+				fakeBBS.ActualLRPGroupsByCellIDReturns(lrpGroups, nil)
 				fakeBBS.TasksByCellIDReturns(tasks, nil)
 			})
 
@@ -211,9 +214,9 @@ var _ = Describe("Generator", func() {
 				})
 			})
 
-			Context("when retrieving the instance LRPs fails", func() {
+			Context("when retrieving the LRP groups fails", func() {
 				BeforeEach(func() {
-					fakeBBS.ActualLRPsByCellIDReturns(nil, errors.New("oh no, no lrp!"))
+					fakeBBS.ActualLRPGroupsByCellIDReturns(nil, errors.New("oh no, no lrp!"))
 				})
 
 				It("returns an error", func() {
@@ -222,22 +225,7 @@ var _ = Describe("Generator", func() {
 				})
 
 				It("logs the failure", func() {
-					Ω(logger).Should(Say(sessionName + ".failed-to-retrieve-instance-lrps"))
-				})
-			})
-
-			Context("when retrieving the evacuating LRPs fails", func() {
-				BeforeEach(func() {
-					fakeBBS.EvacuatingActualLRPsByCellIDReturns(nil, errors.New("oh no, no lrp!"))
-				})
-
-				It("returns an error", func() {
-					Ω(batchErr).Should(HaveOccurred())
-					Ω(batchErr).Should(MatchError(ContainSubstring("oh no, no lrp!")))
-				})
-
-				It("logs the failure", func() {
-					Ω(logger).Should(Say(sessionName + ".failed-to-retrieve-evacuating-lrps"))
+					Ω(logger).Should(Say(sessionName + ".failed-to-retrieve-lrp-groups"))
 				})
 			})
 		})

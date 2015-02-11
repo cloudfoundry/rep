@@ -76,27 +76,19 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	}()
 
 	go func() {
-		foundLRPS, err := g.bbs.ActualLRPsByCellID(g.cellID)
+		groups, err := g.bbs.ActualLRPGroupsByCellID(g.cellID)
 		if err != nil {
-			logger.Error("failed-to-retrieve-instance-lrps", err)
+			logger.Error("failed-to-retrieve-lrp-groups", err)
 			err = fmt.Errorf("failed to retrieve lrps: %s", err.Error())
 		}
 
-		for _, lrp := range foundLRPS {
-			instanceLRPs[lrp.InstanceGuid] = lrp
-		}
-		errChan <- err
-	}()
-
-	go func() {
-		foundLRPS, err := g.bbs.EvacuatingActualLRPsByCellID(g.cellID)
-		if err != nil {
-			logger.Error("failed-to-retrieve-evacuating-lrps", err)
-			err = fmt.Errorf("failed to retrieve lrps: %s", err.Error())
-		}
-
-		for _, lrp := range foundLRPS {
-			evacuatingLRPs[lrp.InstanceGuid] = lrp
+		for _, group := range groups {
+			if group.Instance != nil {
+				instanceLRPs[group.Instance.InstanceGuid] = *group.Instance
+			}
+			if group.Evacuating != nil {
+				evacuatingLRPs[group.Evacuating.InstanceGuid] = *group.Evacuating
+			}
 		}
 		errChan <- err
 	}()
@@ -115,7 +107,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	}()
 
 	var err error
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 3; i++ {
 		e := <-errChan
 		if err == nil && e != nil {
 			err = e
