@@ -39,7 +39,7 @@ func (d *containerDelegate) GetContainer(logger lager.Logger, guid string) (exec
 	logger.Info("fetch-container")
 	container, err := d.client.GetContainer(guid)
 	if err != nil {
-		logger.Error("failed-fetch-container", err)
+		logInfoOrError(logger, "failed-fetch-container", err)
 		return container, false
 	}
 	logger.Info("succeeded-fetch-container")
@@ -50,7 +50,7 @@ func (d *containerDelegate) RunContainer(logger lager.Logger, guid string) bool 
 	logger.Info("running-container")
 	err := d.client.RunContainer(guid)
 	if err != nil {
-		logger.Error("failed-running-container", err)
+		logInfoOrError(logger, "failed-running-container", err)
 		d.DeleteContainer(logger, guid)
 		return false
 	}
@@ -62,7 +62,7 @@ func (d *containerDelegate) StopContainer(logger lager.Logger, guid string) bool
 	logger.Info("stopping-container")
 	err := d.client.StopContainer(guid)
 	if err != nil {
-		logger.Error("failed-stopping-container", err)
+		logInfoOrError(logger, "failed-stopping-container", err)
 		return false
 	}
 	logger.Info("succeeded-stopping-container")
@@ -73,7 +73,7 @@ func (d *containerDelegate) DeleteContainer(logger lager.Logger, guid string) bo
 	logger.Info("deleting-container")
 	err := d.client.DeleteContainer(guid)
 	if err != nil {
-		logger.Error("failed-deleting-container", err)
+		logInfoOrError(logger, "failed-deleting-container", err)
 		return false
 	}
 	logger.Info("succeeded-deleting-container")
@@ -84,7 +84,7 @@ func (d *containerDelegate) FetchContainerResult(logger lager.Logger, guid strin
 	logger.Info("fetching-container-result")
 	stream, err := d.client.GetFiles(guid, filename)
 	if err != nil {
-		logger.Error("failed-fetching-container-result-stream-from-executor", err)
+		logInfoOrError(logger, "failed-fetching-container-result-stream-from-executor", err)
 		return "", err
 	}
 
@@ -100,10 +100,18 @@ func (d *containerDelegate) FetchContainerResult(logger lager.Logger, guid strin
 	buf := make([]byte, MAX_RESULT_SIZE+1)
 	n, err := tarReader.Read(buf)
 	if n > MAX_RESULT_SIZE {
-		logger.Error("failed-fetching-container-result-too-large", err)
+		logInfoOrError(logger, "failed-fetching-container-result-too-large", err)
 		return "", ErrResultFileTooLarge
 	}
 
 	logger.Info("succeeded-fetching-container-result")
 	return string(buf[:n]), nil
+}
+
+func logInfoOrError(logger lager.Logger, msg string, err error) {
+	if err == executor.ErrContainerNotFound {
+		logger.Info(msg, lager.Data{"error": err.Error()})
+	} else {
+		logger.Error(msg, err)
+	}
 }
