@@ -88,11 +88,10 @@ func (p *evacuationLRPProcessor) processRunningContainer(logger lager.Logger, lr
 	logger.Debug("succeeded-extracting-net-info-from-container")
 
 	err = p.bbs.EvacuateRunningActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey, netInfo, p.evacuationTTLInSeconds)
-	if err != nil {
-		logger.Error("failed-to-evacuate-running-actual-lrp", err, lager.Data{"lrp-key": lrpContainer.ActualLRPKey})
-	}
 	if err == bbserrors.ErrActualLRPCannotBeEvacuated {
 		p.containerDelegate.DeleteContainer(logger, lrpContainer.Container.Guid)
+	} else if err != nil {
+		logger.Error("failed-to-evacuate-running-actual-lrp", err, lager.Data{"lrp-key": lrpContainer.ActualLRPKey})
 	}
 }
 
