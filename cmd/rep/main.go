@@ -209,7 +209,7 @@ func initializeCellHeartbeat(address string, bbs Bbs.RepBBS, executorClient exec
 func initializeRepBBS(logger lager.Logger) Bbs.RepBBS {
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
 		strings.Split(*etcdCluster, ","),
-		workpool.NewWorkPool(10),
+		workpool.NewWorkPool(100),
 	)
 
 	err := etcdAdapter.Connect()
