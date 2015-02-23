@@ -135,6 +135,7 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 		taskLogger := logger.Session("task-allocate-instances")
 		taskLogger.Info("allocating")
 		containers := a.tasksToContainers(work.Tasks)
+
 		errMessageMap, err := a.client.AllocateContainers(containers)
 		if err != nil {
 			failedWork.Tasks = work.Tasks

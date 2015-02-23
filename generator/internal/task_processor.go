@@ -44,14 +44,19 @@ func (p *taskProcessor) Process(logger lager.Logger, container executor.Containe
 
 	switch container.State {
 	case executor.StateReserved:
+		logger.Debug("processing-reserved-container")
 		p.processActiveContainer(logger, container)
 	case executor.StateInitializing:
+		logger.Debug("processing-initializing-container")
 		p.processActiveContainer(logger, container)
 	case executor.StateCreated:
+		logger.Debug("processing-created-container")
 		p.processActiveContainer(logger, container)
 	case executor.StateRunning:
+		logger.Debug("processing-running-container")
 		p.processActiveContainer(logger, container)
 	case executor.StateCompleted:
+		logger.Debug("processing-completed-container")
 		p.processCompletedContainer(logger, container)
 	}
 }
@@ -90,7 +95,12 @@ func (p *taskProcessor) startTask(logger lager.Logger, guid string) bool {
 		return false
 	}
 
-	logger.Info("succeeded-starting-task")
+	if changed {
+		logger.Info("succeeded-starting-task")
+	} else {
+		logger.Info("task-already-started")
+	}
+
 	return changed
 }
 
