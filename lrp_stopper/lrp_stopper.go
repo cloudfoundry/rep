@@ -31,7 +31,7 @@ func (stopper *lrpStopper) StopInstance(processGuid, instanceGuid string) error 
 	})
 
 	stopLog.Info("stopping")
-	defer stopLog.Info("stopped")
+	defer stopLog.Info("finished")
 
 	return stopper.client.StopContainer(instanceGuid)
 }
