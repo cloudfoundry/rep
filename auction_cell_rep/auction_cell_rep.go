@@ -92,7 +92,13 @@ func (a *AuctionCellRep) State() (auctiontypes.CellState, error) {
 		Evacuating:         a.evacuationReporter.Evacuating(),
 	}
 
-	a.logger.Info("provided", lager.Data{"state": state})
+	a.logger.Info("provided", lager.Data{
+		"available-resources": state.AvailableResources,
+		"total-resources":     state.TotalResources,
+		"num-lrps":            len(state.LRPs),
+		"zone":                state.Zone,
+		"evacuating":          state.Evacuating,
+	})
 
 	return state, nil
 }
