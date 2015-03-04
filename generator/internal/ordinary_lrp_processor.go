@@ -39,15 +39,16 @@ func (p *ordinaryLRPProcessor) Process(logger lager.Logger, container executor.C
 		logger.Error("failed-to-generate-lrp-key", err)
 		return
 	}
+	logger.WithData(lager.Data{"lrp-key": lrpKey})
 
 	containerKey, err := rep.ActualLRPContainerKeyFromContainer(container, p.cellID)
 	if err != nil {
 		logger.Error("failed-to-generate-container-key", err)
 		return
 	}
+	logger.WithData(lager.Data{"container-key": containerKey})
 
 	lrpContainer := newLRPContainer(lrpKey, containerKey, container)
-
 	switch lrpContainer.Container.State {
 	case executor.StateReserved:
 		p.processReservedContainer(logger, lrpContainer)
