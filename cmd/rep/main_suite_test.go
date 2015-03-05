@@ -44,7 +44,7 @@ var _ = BeforeEach(func() {
 
 var _ = SynchronizedAfterSuite(func() {
 	if etcdRunner != nil {
-		etcdRunner.Stop()
+		etcdRunner.KillWithFire()
 	}
 	if runner != nil {
 		runner.KillWithFire()

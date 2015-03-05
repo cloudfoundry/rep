@@ -28,5 +28,5 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func() {
 	etcdClient.Disconnect()
-	etcdRunner.Stop()
+	etcdRunner.KillWithFire()
 })
