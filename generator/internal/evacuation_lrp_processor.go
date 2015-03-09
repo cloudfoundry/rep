@@ -4,7 +4,7 @@ import (
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -87,8 +87,8 @@ func (p *evacuationLRPProcessor) processRunningContainer(logger lager.Logger, lr
 	}
 	logger.Debug("succeeded-extracting-net-info-from-container")
 
-	err = p.bbs.EvacuateRunningActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey, netInfo, p.evacuationTTLInSeconds)
-	if err == bbserrors.ErrActualLRPCannotBeEvacuated {
+	retainment, err := p.bbs.EvacuateRunningActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey, netInfo, p.evacuationTTLInSeconds)
+	if retainment == shared.DeleteContainer {
 		p.containerDelegate.DeleteContainer(logger, lrpContainer.Container.Guid)
 	} else if err != nil {
 		logger.Error("failed-to-evacuate-running-actual-lrp", err, lager.Data{"lrp-key": lrpContainer.ActualLRPKey})
@@ -99,12 +99,12 @@ func (p *evacuationLRPProcessor) processCompletedContainer(logger lager.Logger, 
 	logger = logger.Session("process-completed-container")
 
 	if lrpContainer.RunResult.Stopped {
-		err := p.bbs.EvacuateStoppedActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey)
+		_, err := p.bbs.EvacuateStoppedActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey)
 		if err != nil {
 			logger.Error("failed-to-evacuate-stopped-actual-lrp", err, lager.Data{"lrp-key": lrpContainer.ActualLRPKey})
 		}
 	} else {
-		err := p.bbs.EvacuateCrashedActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey)
+		_, err := p.bbs.EvacuateCrashedActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey)
 		if err != nil {
 			logger.Error("failed-to-evacuate-crashed-actual-lrp", err, lager.Data{"lrp-key": lrpContainer.ActualLRPKey})
 		}
@@ -119,7 +119,7 @@ func (p *evacuationLRPProcessor) processInvalidContainer(logger lager.Logger, lr
 }
 
 func (p *evacuationLRPProcessor) evacuateClaimedLRPContainer(logger lager.Logger, lrpContainer *lrpContainer) {
-	err := p.bbs.EvacuateClaimedActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey)
+	_, err := p.bbs.EvacuateClaimedActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey)
 	if err != nil {
 		logger.Error("failed-to-unclaim-actual-lrp", err, lager.Data{"lrp-key": lrpContainer.ActualLRPKey})
 	}

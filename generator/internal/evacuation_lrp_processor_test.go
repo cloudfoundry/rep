@@ -11,6 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager/lagertest"
 
@@ -100,7 +101,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns successfully", func() {
 				BeforeEach(func() {
-					fakeRepBBS.EvacuateClaimedActualLRPReturns(nil)
+					fakeRepBBS.EvacuateClaimedActualLRPReturns(shared.DeleteContainer, nil)
 				})
 
 				It("deletes the container", func() {
@@ -112,7 +113,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns that it failed to unclaim the LRP", func() {
 				BeforeEach(func() {
-					fakeRepBBS.EvacuateClaimedActualLRPReturns(bbserrors.ErrActualLRPCannotBeUnclaimed)
+					fakeRepBBS.EvacuateClaimedActualLRPReturns(shared.DeleteContainer, bbserrors.ErrActualLRPCannotBeUnclaimed)
 				})
 
 				It("deletes the container", func() {
@@ -124,7 +125,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns some other error", func() {
 				BeforeEach(func() {
-					fakeRepBBS.EvacuateClaimedActualLRPReturns(errors.New("whoops"))
+					fakeRepBBS.EvacuateClaimedActualLRPReturns(shared.DeleteContainer, errors.New("whoops"))
 				})
 
 				It("deletes the container", func() {
@@ -149,7 +150,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns successfully", func() {
 				BeforeEach(func() {
-					fakeRepBBS.EvacuateClaimedActualLRPReturns(nil)
+					fakeRepBBS.EvacuateClaimedActualLRPReturns(shared.DeleteContainer, nil)
 				})
 
 				It("deletes the container", func() {
@@ -161,7 +162,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns that it failed to unclaim the LRP", func() {
 				BeforeEach(func() {
-					fakeRepBBS.EvacuateClaimedActualLRPReturns(bbserrors.ErrActualLRPCannotBeUnclaimed)
+					fakeRepBBS.EvacuateClaimedActualLRPReturns(shared.DeleteContainer, bbserrors.ErrActualLRPCannotBeUnclaimed)
 				})
 
 				It("deletes the container", func() {
@@ -173,7 +174,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns some other error", func() {
 				BeforeEach(func() {
-					fakeRepBBS.EvacuateClaimedActualLRPReturns(errors.New("whoops"))
+					fakeRepBBS.EvacuateClaimedActualLRPReturns(shared.DeleteContainer, errors.New("whoops"))
 				})
 
 				It("deletes the container", func() {
@@ -198,7 +199,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns successfully", func() {
 				BeforeEach(func() {
-					fakeRepBBS.EvacuateClaimedActualLRPReturns(nil)
+					fakeRepBBS.EvacuateClaimedActualLRPReturns(shared.DeleteContainer, nil)
 				})
 
 				It("deletes the container", func() {
@@ -210,7 +211,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns that it failed to unclaim the LRP", func() {
 				BeforeEach(func() {
-					fakeRepBBS.EvacuateClaimedActualLRPReturns(bbserrors.ErrActualLRPCannotBeUnclaimed)
+					fakeRepBBS.EvacuateClaimedActualLRPReturns(shared.DeleteContainer, bbserrors.ErrActualLRPCannotBeUnclaimed)
 				})
 
 				It("deletes the container", func() {
@@ -222,7 +223,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns some other error", func() {
 				BeforeEach(func() {
-					fakeRepBBS.EvacuateClaimedActualLRPReturns(errors.New("whoops"))
+					fakeRepBBS.EvacuateClaimedActualLRPReturns(shared.DeleteContainer, errors.New("whoops"))
 				})
 
 				It("deletes the container", func() {
@@ -255,7 +256,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns successfully", func() {
 				BeforeEach(func() {
-					fakeRepBBS.EvacuateRunningActualLRPReturns(nil)
+					fakeRepBBS.EvacuateRunningActualLRPReturns(shared.KeepContainer, nil)
 				})
 
 				It("does not delete the container", func() {
@@ -265,7 +266,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns that it failed to evacuate the LRP", func() {
 				BeforeEach(func() {
-					fakeRepBBS.EvacuateRunningActualLRPReturns(bbserrors.ErrActualLRPCannotBeEvacuated)
+					fakeRepBBS.EvacuateRunningActualLRPReturns(shared.DeleteContainer, bbserrors.ErrActualLRPCannotBeEvacuated)
 				})
 
 				It("deletes the container", func() {
@@ -277,7 +278,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns some other error", func() {
 				BeforeEach(func() {
-					fakeRepBBS.EvacuateRunningActualLRPReturns(errors.New("whoops"))
+					fakeRepBBS.EvacuateRunningActualLRPReturns(shared.KeepContainer, errors.New("whoops"))
 				})
 
 				It("does not delete the container", func() {
@@ -301,7 +302,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns successfully", func() {
 				BeforeEach(func() {
-					fakeRepBBS.EvacuateStoppedActualLRPReturns(nil)
+					fakeRepBBS.EvacuateStoppedActualLRPReturns(shared.DeleteContainer, nil)
 				})
 
 				It("deletes the container", func() {
@@ -313,7 +314,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns that it failed to remove the LRP", func() {
 				BeforeEach(func() {
-					fakeRepBBS.EvacuateStoppedActualLRPReturns(bbserrors.ErrActualLRPCannotBeRemoved)
+					fakeRepBBS.EvacuateStoppedActualLRPReturns(shared.DeleteContainer, bbserrors.ErrActualLRPCannotBeRemoved)
 				})
 
 				It("deletes the container", func() {
@@ -325,7 +326,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns some other error", func() {
 				BeforeEach(func() {
-					fakeRepBBS.EvacuateStoppedActualLRPReturns(errors.New("whoops"))
+					fakeRepBBS.EvacuateStoppedActualLRPReturns(shared.DeleteContainer, errors.New("whoops"))
 				})
 
 				It("deletes the container", func() {
@@ -351,7 +352,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns successfully", func() {
 				BeforeEach(func() {
-					fakeRepBBS.EvacuateCrashedActualLRPReturns(nil)
+					fakeRepBBS.EvacuateCrashedActualLRPReturns(shared.DeleteContainer, nil)
 				})
 
 				It("deletes the container", func() {
@@ -363,7 +364,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns that it failed to remove the LRP", func() {
 				BeforeEach(func() {
-					fakeRepBBS.EvacuateCrashedActualLRPReturns(bbserrors.ErrActualLRPCannotBeCrashed)
+					fakeRepBBS.EvacuateCrashedActualLRPReturns(shared.DeleteContainer, bbserrors.ErrActualLRPCannotBeCrashed)
 				})
 
 				It("deletes the container", func() {
@@ -375,7 +376,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns some other error", func() {
 				BeforeEach(func() {
-					fakeRepBBS.EvacuateCrashedActualLRPReturns(errors.New("whoops"))
+					fakeRepBBS.EvacuateCrashedActualLRPReturns(shared.DeleteContainer, errors.New("whoops"))
 				})
 
 				It("deletes the container", func() {
