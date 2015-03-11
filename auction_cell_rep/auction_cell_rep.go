@@ -1,6 +1,7 @@
 package auction_cell_rep
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
@@ -83,11 +84,29 @@ func (a *AuctionCellRep) State() (auctiontypes.CellState, error) {
 		lrps = append(lrps, lrp)
 	}
 
+	exVols, err := a.client.ListVolumes()
+	if err != nil {
+		logger.Error("failed-to-fetch-volumes", err)
+		return auctiontypes.CellState{}, err
+	}
+
+	volCount := len(exVols)
+	volumes := make([]models.Volume, volCount)
+	for i := 0; i < volCount; i++ {
+		volumes[i].VolumeSetGuid = exVols[i].VolumeSetGuid
+		volumes[i].VolumeGuid = exVols[i].VolumeGuid
+		volumes[i].CellID = a.cellID
+		volumes[i].Index = exVols[i].Index
+		volumes[i].SizeMB = exVols[i].SizeMB
+		volumes[i].ReservedMemoryMB = exVols[i].ReservedMemoryMB
+	}
+
 	state := auctiontypes.CellState{
 		Stack:              a.stack,
 		AvailableResources: availableResources,
 		TotalResources:     totalResources,
 		LRPs:               lrps,
+		Volumes:            volumes,
 		Zone:               a.zone,
 		Evacuating:         a.evacuationReporter.Evacuating(),
 	}
@@ -107,12 +126,37 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 	var failedWork = auctiontypes.Work{}
 
 	logger := a.logger.Session("auction-work", lager.Data{
+		"volumes":    len(work.Volumes),
 		"lrp-starts": len(work.LRPs),
 		"tasks":      len(work.Tasks),
 	})
 
 	if a.evacuationReporter.Evacuating() {
 		return work, nil
+	}
+
+	if len(work.Volumes) > 0 {
+		volLogger := logger.Session("create-volumes")
+		volLogger.Info("creating-volumes")
+		for i := range work.Volumes {
+			volGuid := volumeGuid(work.Volumes[i].VolumeSetGuid, work.Volumes[i].Index)
+
+			err := a.client.CreateVolume(executor.Volume{
+				VolumeSetGuid:    work.Volumes[i].VolumeSetGuid,
+				VolumeGuid:       volGuid,
+				SizeMB:           work.Volumes[i].SizeMB,
+				Index:            work.Volumes[i].Index,
+				ReservedMemoryMB: work.Volumes[i].ReservedMemoryMB,
+			})
+			if err != nil {
+				failedWork.Volumes = append(failedWork.Volumes, work.Volumes[i])
+			}
+			err = a.bbs.RunVolume(logger, work.Volumes[i].VolumeSetGuid, work.Volumes[i].Index, volGuid, a.cellID)
+			if err != nil {
+				failedWork.Volumes = append(failedWork.Volumes, work.Volumes[i])
+				volLogger.Error("run-volume-failed", err)
+			}
+		}
 	}
 
 	if len(work.LRPs) > 0 {
@@ -162,8 +206,8 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 	containers := make([]executor.Container, 0, len(lrps))
 	lrpAuctionMap := map[string]auctiontypes.LRPAuction{}
 
-	for _, lrpStart := range lrps {
-		lrpStart := lrpStart
+	for i := range lrps {
+		lrpStart := lrps[i]
 		containerGuidString, err := a.generateContainerGuid()
 		if err != nil {
 			return nil, nil, err
@@ -209,6 +253,15 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 			}, executor.EnvironmentVariablesFromModel(lrpStart.DesiredLRP.EnvironmentVariables)...),
 			EgressRules: lrpStart.DesiredLRP.EgressRules,
 		}
+
+		if lrpStart.DesiredLRP.VolumeMount != nil {
+			volGuid := volumeGuid(lrpStart.DesiredLRP.VolumeMount.VolumeSetGuid, lrpStart.Index)
+			container.VolumeMount = &executor.VolumeMount{
+				VolumeGuid: volGuid,
+				Path:       lrpStart.DesiredLRP.VolumeMount.Path,
+			}
+		}
+
 		containers = append(containers, container)
 	}
 
@@ -271,8 +324,13 @@ func (a *AuctionCellRep) fetchResourcesVia(fetcher func() (executor.ExecutorReso
 		return auctiontypes.Resources{}, err
 	}
 	return auctiontypes.Resources{
-		MemoryMB:   resources.MemoryMB,
-		DiskMB:     resources.DiskMB,
-		Containers: resources.Containers,
+		MemoryMB:         resources.MemoryMB,
+		DiskMB:           resources.DiskMB,
+		Containers:       resources.Containers,
+		PersistentDiskMB: resources.PersistentDiskMB,
 	}, nil
+}
+
+func volumeGuid(setGuid string, index int) string {
+	return fmt.Sprintf("%s.%d", setGuid, index)
 }
