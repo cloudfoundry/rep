@@ -341,11 +341,11 @@ var _ = Describe("The Rep", func() {
 			err := bbs.DesireLRP(logger, desiredLRP)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			actualLRP, err := bbs.ActualLRPByProcessGuidAndIndex(desiredLRP.ProcessGuid, index)
+			actualLRPGroup, err := bbs.ActualLRPGroupByProcessGuidAndIndex(desiredLRP.ProcessGuid, index)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			containerKey := models.NewActualLRPContainerKey("some-instance-guid", cellID)
-			err = bbs.ClaimActualLRP(logger, actualLRP.ActualLRPKey, containerKey)
+			err = bbs.ClaimActualLRP(logger, actualLRPGroup.Instance.ActualLRPKey, containerKey)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -385,8 +385,9 @@ var _ = Describe("The Rep", func() {
 			err := bbs.StartActualLRP(logger, lrpKey, containerKey, netInfo)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			runningLRP, err = bbs.ActualLRPByProcessGuidAndIndex(lrpKey.ProcessGuid, lrpKey.Index)
+			lrpGroup, err := bbs.ActualLRPGroupByProcessGuidAndIndex(lrpKey.ProcessGuid, lrpKey.Index)
 			Ω(err).ShouldNot(HaveOccurred())
+			runningLRP = *lrpGroup.Instance
 		})
 
 		It("should stop the container", func() {
