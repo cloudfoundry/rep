@@ -260,6 +260,9 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 				VolumeGuid: volGuid,
 				Path:       lrpStart.DesiredLRP.VolumeMount.Path,
 			}
+			a.logger.Info("volume-mount-added", lager.Data{"lrp": lrpStart.DesiredLRP.ProcessGuid, "mount": container.VolumeMount})
+		} else {
+			a.logger.Info("no-volume-mount-found", lager.Data{"lrp": lrpStart.DesiredLRP})
 		}
 
 		containers = append(containers, container)
