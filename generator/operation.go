@@ -16,21 +16,21 @@ type ResidualInstanceLRPOperation struct {
 	bbs               bbs.RepBBS
 	containerDelegate internal.ContainerDelegate
 	models.ActualLRPKey
-	models.ActualLRPContainerKey
+	models.ActualLRPInstanceKey
 }
 
 func NewResidualInstanceLRPOperation(logger lager.Logger,
 	bbs bbs.RepBBS,
 	containerDelegate internal.ContainerDelegate,
 	lrpKey models.ActualLRPKey,
-	containerKey models.ActualLRPContainerKey,
+	instanceKey models.ActualLRPInstanceKey,
 ) *ResidualInstanceLRPOperation {
 	return &ResidualInstanceLRPOperation{
-		logger:                logger,
-		bbs:                   bbs,
-		containerDelegate:     containerDelegate,
-		ActualLRPKey:          lrpKey,
-		ActualLRPContainerKey: containerKey,
+		logger:               logger,
+		bbs:                  bbs,
+		containerDelegate:    containerDelegate,
+		ActualLRPKey:         lrpKey,
+		ActualLRPInstanceKey: instanceKey,
 	}
 }
 
@@ -40,19 +40,19 @@ func (o *ResidualInstanceLRPOperation) Key() string {
 
 func (o *ResidualInstanceLRPOperation) Execute() {
 	logger := o.logger.Session("executing-residual-instance-lrp-operation", lager.Data{
-		"lrp-key":           o.ActualLRPKey,
-		"lrp-container-key": o.ActualLRPContainerKey,
+		"lrp-key":          o.ActualLRPKey,
+		"lrp-instance-key": o.ActualLRPInstanceKey,
 	})
 	logger.Info("starting")
 	defer logger.Info("finished")
 
-	_, exists := o.containerDelegate.GetContainer(logger, o.InstanceGuid)
+	_, exists := o.containerDelegate.GetContainer(logger, rep.LRPContainerGuid(o.ProcessGuid, o.InstanceGuid))
 	if exists {
 		logger.Info("skipped-because-container-exists")
 		return
 	}
 
-	o.bbs.RemoveActualLRP(logger, o.ActualLRPKey, o.ActualLRPContainerKey)
+	o.bbs.RemoveActualLRP(logger, o.ActualLRPKey, o.ActualLRPInstanceKey)
 }
 
 // ResidualEvacuatingLRPOperation processes an evacuating ActualLRP with no matching container.
@@ -61,21 +61,21 @@ type ResidualEvacuatingLRPOperation struct {
 	bbs               bbs.RepBBS
 	containerDelegate internal.ContainerDelegate
 	models.ActualLRPKey
-	models.ActualLRPContainerKey
+	models.ActualLRPInstanceKey
 }
 
 func NewResidualEvacuatingLRPOperation(logger lager.Logger,
 	bbs bbs.RepBBS,
 	containerDelegate internal.ContainerDelegate,
 	lrpKey models.ActualLRPKey,
-	containerKey models.ActualLRPContainerKey,
+	instanceKey models.ActualLRPInstanceKey,
 ) *ResidualEvacuatingLRPOperation {
 	return &ResidualEvacuatingLRPOperation{
-		logger:                logger,
-		bbs:                   bbs,
-		containerDelegate:     containerDelegate,
-		ActualLRPKey:          lrpKey,
-		ActualLRPContainerKey: containerKey,
+		logger:               logger,
+		bbs:                  bbs,
+		containerDelegate:    containerDelegate,
+		ActualLRPKey:         lrpKey,
+		ActualLRPInstanceKey: instanceKey,
 	}
 }
 
@@ -85,19 +85,19 @@ func (o *ResidualEvacuatingLRPOperation) Key() string {
 
 func (o *ResidualEvacuatingLRPOperation) Execute() {
 	logger := o.logger.Session("executing-residual-evacuating-lrp-operation", lager.Data{
-		"lrp-key":           o.ActualLRPKey,
-		"lrp-container-key": o.ActualLRPContainerKey,
+		"lrp-key":          o.ActualLRPKey,
+		"lrp-instance-key": o.ActualLRPInstanceKey,
 	})
 	logger.Info("starting")
 	defer logger.Info("finished")
 
-	_, exists := o.containerDelegate.GetContainer(logger, o.InstanceGuid)
+	_, exists := o.containerDelegate.GetContainer(logger, rep.LRPContainerGuid(o.ProcessGuid, o.InstanceGuid))
 	if exists {
 		logger.Info("skipped-because-container-exists")
 		return
 	}
 
-	o.bbs.RemoveEvacuatingActualLRP(logger, o.ActualLRPKey, o.ActualLRPContainerKey)
+	o.bbs.RemoveEvacuatingActualLRP(logger, o.ActualLRPKey, o.ActualLRPInstanceKey)
 }
 
 // ResidualJointLRPOperation processes an evacuating ActualLRP with no matching container.
@@ -106,21 +106,21 @@ type ResidualJointLRPOperation struct {
 	bbs               bbs.RepBBS
 	containerDelegate internal.ContainerDelegate
 	models.ActualLRPKey
-	models.ActualLRPContainerKey
+	models.ActualLRPInstanceKey
 }
 
 func NewResidualJointLRPOperation(logger lager.Logger,
 	bbs bbs.RepBBS,
 	containerDelegate internal.ContainerDelegate,
 	lrpKey models.ActualLRPKey,
-	containerKey models.ActualLRPContainerKey,
+	instanceKey models.ActualLRPInstanceKey,
 ) *ResidualJointLRPOperation {
 	return &ResidualJointLRPOperation{
-		logger:                logger,
-		bbs:                   bbs,
-		containerDelegate:     containerDelegate,
-		ActualLRPKey:          lrpKey,
-		ActualLRPContainerKey: containerKey,
+		logger:               logger,
+		bbs:                  bbs,
+		containerDelegate:    containerDelegate,
+		ActualLRPKey:         lrpKey,
+		ActualLRPInstanceKey: instanceKey,
 	}
 }
 
@@ -130,20 +130,20 @@ func (o *ResidualJointLRPOperation) Key() string {
 
 func (o *ResidualJointLRPOperation) Execute() {
 	logger := o.logger.Session("executing-residual-joint-lrp-operation", lager.Data{
-		"lrp-key":           o.ActualLRPKey,
-		"lrp-container-key": o.ActualLRPContainerKey,
+		"lrp-key":          o.ActualLRPKey,
+		"lrp-instance-key": o.ActualLRPInstanceKey,
 	})
 	logger.Info("starting")
 	defer logger.Info("finished")
 
-	_, exists := o.containerDelegate.GetContainer(logger, o.InstanceGuid)
+	_, exists := o.containerDelegate.GetContainer(logger, rep.LRPContainerGuid(o.ProcessGuid, o.InstanceGuid))
 	if exists {
 		logger.Info("skipped-because-container-exists")
 		return
 	}
 
-	o.bbs.RemoveActualLRP(logger, o.ActualLRPKey, o.ActualLRPContainerKey)
-	o.bbs.RemoveEvacuatingActualLRP(logger, o.ActualLRPKey, o.ActualLRPContainerKey)
+	o.bbs.RemoveActualLRP(logger, o.ActualLRPKey, o.ActualLRPInstanceKey)
+	o.bbs.RemoveEvacuatingActualLRP(logger, o.ActualLRPKey, o.ActualLRPInstanceKey)
 }
 
 // ResidualTaskOperation processes a Task with no matching container.

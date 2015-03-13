@@ -40,8 +40,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 			container    executor.Container
 			instanceGuid string
 
-			lrpKey          models.ActualLRPKey
-			lrpContainerKey models.ActualLRPContainerKey
+			lrpKey         models.ActualLRPKey
+			lrpInstanceKey models.ActualLRPInstanceKey
 		)
 
 		BeforeEach(func() {
@@ -70,17 +70,18 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 			index = 0
 
 			container = executor.Container{
-				Guid: instanceGuid,
+				Guid: rep.LRPContainerGuid(desiredLRP.ProcessGuid, instanceGuid),
 				Tags: executor.Tags{
 					rep.LifecycleTag:    rep.LRPLifecycle,
 					rep.DomainTag:       desiredLRP.Domain,
 					rep.ProcessGuidTag:  desiredLRP.ProcessGuid,
+					rep.InstanceGuidTag: instanceGuid,
 					rep.ProcessIndexTag: strconv.Itoa(index),
 				},
 			}
 
 			lrpKey = models.NewActualLRPKey(processGuid, index, desiredLRP.Domain)
-			lrpContainerKey = models.NewActualLRPContainerKey(instanceGuid, localCellID)
+			lrpInstanceKey = models.NewActualLRPInstanceKey(instanceGuid, localCellID)
 		})
 
 		JustBeforeEach(func() {
@@ -96,7 +97,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				Ω(fakeRepBBS.EvacuateClaimedActualLRPCallCount()).Should(Equal(1))
 				_, actualLRPKey, actualLRPContainerKey := fakeRepBBS.EvacuateClaimedActualLRPArgsForCall(0)
 				Ω(actualLRPKey).Should(Equal(lrpKey))
-				Ω(actualLRPContainerKey).Should(Equal(lrpContainerKey))
+				Ω(actualLRPContainerKey).Should(Equal(lrpInstanceKey))
 			})
 
 			Context("when the evacuation returns successfully", func() {
@@ -107,7 +108,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				It("deletes the container", func() {
 					Ω(fakeContainerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
-					Ω(actualContainerGuid).Should(Equal(instanceGuid))
+					Ω(actualContainerGuid).Should(Equal(container.Guid))
 				})
 			})
 
@@ -119,7 +120,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				It("deletes the container", func() {
 					Ω(fakeContainerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
-					Ω(actualContainerGuid).Should(Equal(instanceGuid))
+					Ω(actualContainerGuid).Should(Equal(container.Guid))
 				})
 			})
 
@@ -131,7 +132,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				It("deletes the container", func() {
 					Ω(fakeContainerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
-					Ω(actualContainerGuid).Should(Equal(instanceGuid))
+					Ω(actualContainerGuid).Should(Equal(container.Guid))
 				})
 			})
 		})
@@ -145,7 +146,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				Ω(fakeRepBBS.EvacuateClaimedActualLRPCallCount()).Should(Equal(1))
 				_, actualLRPKey, actualLRPContainerKey := fakeRepBBS.EvacuateClaimedActualLRPArgsForCall(0)
 				Ω(actualLRPKey).Should(Equal(lrpKey))
-				Ω(actualLRPContainerKey).Should(Equal(lrpContainerKey))
+				Ω(actualLRPContainerKey).Should(Equal(lrpInstanceKey))
 			})
 
 			Context("when the evacuation returns successfully", func() {
@@ -156,7 +157,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				It("deletes the container", func() {
 					Ω(fakeContainerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
-					Ω(actualContainerGuid).Should(Equal(instanceGuid))
+					Ω(actualContainerGuid).Should(Equal(container.Guid))
 				})
 			})
 
@@ -168,7 +169,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				It("deletes the container", func() {
 					Ω(fakeContainerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
-					Ω(actualContainerGuid).Should(Equal(instanceGuid))
+					Ω(actualContainerGuid).Should(Equal(container.Guid))
 				})
 			})
 
@@ -180,7 +181,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				It("deletes the container", func() {
 					Ω(fakeContainerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
-					Ω(actualContainerGuid).Should(Equal(instanceGuid))
+					Ω(actualContainerGuid).Should(Equal(container.Guid))
 				})
 			})
 		})
@@ -194,7 +195,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				Ω(fakeRepBBS.EvacuateClaimedActualLRPCallCount()).Should(Equal(1))
 				_, actualLRPKey, actualLRPContainerKey := fakeRepBBS.EvacuateClaimedActualLRPArgsForCall(0)
 				Ω(actualLRPKey).Should(Equal(lrpKey))
-				Ω(actualLRPContainerKey).Should(Equal(lrpContainerKey))
+				Ω(actualLRPContainerKey).Should(Equal(lrpInstanceKey))
 			})
 
 			Context("when the evacuation returns successfully", func() {
@@ -205,7 +206,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				It("deletes the container", func() {
 					Ω(fakeContainerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
-					Ω(actualContainerGuid).Should(Equal(instanceGuid))
+					Ω(actualContainerGuid).Should(Equal(container.Guid))
 				})
 			})
 
@@ -217,7 +218,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				It("deletes the container", func() {
 					Ω(fakeContainerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
-					Ω(actualContainerGuid).Should(Equal(instanceGuid))
+					Ω(actualContainerGuid).Should(Equal(container.Guid))
 				})
 			})
 
@@ -229,7 +230,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				It("deletes the container", func() {
 					Ω(fakeContainerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
-					Ω(actualContainerGuid).Should(Equal(instanceGuid))
+					Ω(actualContainerGuid).Should(Equal(container.Guid))
 				})
 			})
 		})
@@ -249,7 +250,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				Ω(fakeRepBBS.EvacuateRunningActualLRPCallCount()).Should(Equal(1))
 				_, actualLRPKey, actualLRPContainerKey, actualLRPNetInfo, actualTTL := fakeRepBBS.EvacuateRunningActualLRPArgsForCall(0)
 				Ω(actualLRPKey).Should(Equal(lrpKey))
-				Ω(actualLRPContainerKey).Should(Equal(lrpContainerKey))
+				Ω(actualLRPContainerKey).Should(Equal(lrpInstanceKey))
 				Ω(actualLRPNetInfo).Should(Equal(lrpNetInfo))
 				Ω(actualTTL).Should(Equal(uint64(evacuationTTL)))
 			})
@@ -272,7 +273,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				It("deletes the container", func() {
 					Ω(fakeContainerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
-					Ω(actualContainerGuid).Should(Equal(instanceGuid))
+					Ω(actualContainerGuid).Should(Equal(container.Guid))
 				})
 			})
 
@@ -297,7 +298,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				Ω(fakeRepBBS.EvacuateStoppedActualLRPCallCount()).Should(Equal(1))
 				_, actualLRPKey, actualLRPContainerKey := fakeRepBBS.EvacuateStoppedActualLRPArgsForCall(0)
 				Ω(actualLRPKey).Should(Equal(lrpKey))
-				Ω(actualLRPContainerKey).Should(Equal(lrpContainerKey))
+				Ω(actualLRPContainerKey).Should(Equal(lrpInstanceKey))
 			})
 
 			Context("when the evacuation returns successfully", func() {
@@ -308,7 +309,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				It("deletes the container", func() {
 					Ω(fakeContainerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
-					Ω(actualContainerGuid).Should(Equal(instanceGuid))
+					Ω(actualContainerGuid).Should(Equal(container.Guid))
 				})
 			})
 
@@ -320,7 +321,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				It("deletes the container", func() {
 					Ω(fakeContainerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
-					Ω(actualContainerGuid).Should(Equal(instanceGuid))
+					Ω(actualContainerGuid).Should(Equal(container.Guid))
 				})
 			})
 
@@ -332,7 +333,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				It("deletes the container", func() {
 					Ω(fakeContainerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
-					Ω(actualContainerGuid).Should(Equal(instanceGuid))
+					Ω(actualContainerGuid).Should(Equal(container.Guid))
 				})
 			})
 		})
@@ -347,7 +348,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				Ω(fakeRepBBS.EvacuateCrashedActualLRPCallCount()).Should(Equal(1))
 				_, actualLRPKey, actualLRPContainerKey := fakeRepBBS.EvacuateCrashedActualLRPArgsForCall(0)
 				Ω(actualLRPKey).Should(Equal(lrpKey))
-				Ω(actualLRPContainerKey).Should(Equal(lrpContainerKey))
+				Ω(actualLRPContainerKey).Should(Equal(lrpInstanceKey))
 			})
 
 			Context("when the evacuation returns successfully", func() {
@@ -358,7 +359,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				It("deletes the container", func() {
 					Ω(fakeContainerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
-					Ω(actualContainerGuid).Should(Equal(instanceGuid))
+					Ω(actualContainerGuid).Should(Equal(container.Guid))
 				})
 			})
 
@@ -370,7 +371,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				It("deletes the container", func() {
 					Ω(fakeContainerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
-					Ω(actualContainerGuid).Should(Equal(instanceGuid))
+					Ω(actualContainerGuid).Should(Equal(container.Guid))
 				})
 			})
 
@@ -382,7 +383,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				It("deletes the container", func() {
 					Ω(fakeContainerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
-					Ω(actualContainerGuid).Should(Equal(instanceGuid))
+					Ω(actualContainerGuid).Should(Equal(container.Guid))
 				})
 			})
 		})

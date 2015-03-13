@@ -344,8 +344,8 @@ var _ = Describe("The Rep", func() {
 			actualLRPGroup, err := bbs.ActualLRPGroupByProcessGuidAndIndex(desiredLRP.ProcessGuid, index)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			containerKey := models.NewActualLRPContainerKey("some-instance-guid", cellID)
-			err = bbs.ClaimActualLRP(logger, actualLRPGroup.Instance.ActualLRPKey, containerKey)
+			instanceKey := models.NewActualLRPInstanceKey("some-instance-guid", cellID)
+			err = bbs.ClaimActualLRP(logger, actualLRPGroup.Instance.ActualLRPKey, instanceKey)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -355,9 +355,11 @@ var _ = Describe("The Rep", func() {
 	})
 
 	Describe("when a StopLRPInstance request comes in", func() {
-		var runningLRP models.ActualLRP
+		const processGuid = "process-guid"
 		const instanceGuid = "some-instance-guid"
-		const expectedStopRoute = "/containers/" + instanceGuid + "/stop"
+		var runningLRP models.ActualLRP
+		var containerGuid = rep.LRPContainerGuid(processGuid, instanceGuid)
+		var expectedStopRoute = "/containers/" + containerGuid + "/stop"
 
 		BeforeEach(func() {
 			fakeExecutor.RouteToHandler(
@@ -372,17 +374,17 @@ var _ = Describe("The Rep", func() {
 				"/containers",
 				ghttp.RespondWithJSONEncoded(http.StatusOK, []executor.Container{
 					{
-						Guid:  instanceGuid,
+						Guid:  containerGuid,
 						State: executor.StateCompleted,
 					},
 				}),
 			)
 
-			lrpKey := models.NewActualLRPKey("process-guid", 1, "domain")
-			containerKey := models.NewActualLRPContainerKey(instanceGuid, cellID)
+			lrpKey := models.NewActualLRPKey(processGuid, 1, "domain")
+			instanceKey := models.NewActualLRPInstanceKey(instanceGuid, cellID)
 			netInfo := models.NewActualLRPNetInfo("bogus-ip", []models.PortMapping{})
 
-			err := bbs.StartActualLRP(logger, lrpKey, containerKey, netInfo)
+			err := bbs.StartActualLRP(logger, lrpKey, instanceKey, netInfo)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			lrpGroup, err := bbs.ActualLRPGroupByProcessGuidAndIndex(lrpKey.ProcessGuid, lrpKey.Index)
@@ -466,7 +468,7 @@ var _ = Describe("The Rep", func() {
 				address      string
 
 				lrpKey          models.ActualLRPKey
-				lrpContainerKey models.ActualLRPContainerKey
+				lrpContainerKey models.ActualLRPInstanceKey
 				lrpNetInfo      models.ActualLRPNetInfo
 			)
 
@@ -479,14 +481,14 @@ var _ = Describe("The Rep", func() {
 				address = "some-external-ip"
 
 				lrpKey = models.NewActualLRPKey(processGuid, index, domain)
-				lrpContainerKey = models.NewActualLRPContainerKey(instanceGuid, cellID)
+				lrpContainerKey = models.NewActualLRPInstanceKey(instanceGuid, cellID)
 				lrpNetInfo = models.NewActualLRPNetInfo(address, []models.PortMapping{{ContainerPort: 1470, HostPort: 2589}})
 
 				err := bbs.StartActualLRP(logger, lrpKey, lrpContainerKey, lrpNetInfo)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				container := executor.Container{
-					Guid:       instanceGuid,
+					Guid:       rep.LRPContainerGuid(processGuid, instanceGuid),
 					State:      executor.StateRunning,
 					Action:     &models.RunAction{Path: "true"},
 					ExternalIP: address,
@@ -494,6 +496,7 @@ var _ = Describe("The Rep", func() {
 					Tags: executor.Tags{
 						rep.LifecycleTag:    rep.LRPLifecycle,
 						rep.ProcessGuidTag:  processGuid,
+						rep.InstanceGuidTag: instanceGuid,
 						rep.ProcessIndexTag: strconv.Itoa(index),
 						rep.DomainTag:       domain,
 					},
@@ -507,7 +510,7 @@ var _ = Describe("The Rep", func() {
 				)
 				fakeExecutor.RouteToHandler(
 					"GET",
-					"/containers/some-instance-guid",
+					"/containers/"+container.Guid,
 					ghttp.RespondWithJSONEncoded(http.StatusOK, container),
 				)
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cloudfoundry-incubator/executor"
+	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -84,10 +85,10 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 
 		for _, group := range groups {
 			if group.Instance != nil {
-				instanceLRPs[group.Instance.InstanceGuid] = *group.Instance
+				instanceLRPs[rep.LRPContainerGuid(group.Instance.ProcessGuid, group.Instance.InstanceGuid)] = *group.Instance
 			}
 			if group.Evacuating != nil {
-				evacuatingLRPs[group.Evacuating.InstanceGuid] = *group.Evacuating
+				evacuatingLRPs[rep.LRPContainerGuid(group.Evacuating.ProcessGuid, group.Evacuating.InstanceGuid)] = *group.Evacuating
 			}
 		}
 		errChan <- err
@@ -131,9 +132,9 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 			continue
 		}
 		if _, foundEvacuatingLRP := evacuatingLRPs[guid]; foundEvacuatingLRP {
-			batch[guid] = NewResidualJointLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPContainerKey)
+			batch[guid] = NewResidualJointLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
 		} else {
-			batch[guid] = NewResidualInstanceLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPContainerKey)
+			batch[guid] = NewResidualInstanceLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
 		}
 	}
 
@@ -141,7 +142,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	for guid, lrp := range evacuatingLRPs {
 		_, found := batch[guid]
 		if !found {
-			batch[guid] = NewResidualEvacuatingLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPContainerKey)
+			batch[guid] = NewResidualEvacuatingLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
 		}
 	}
 

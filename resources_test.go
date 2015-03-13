@@ -89,13 +89,13 @@ var _ = Describe("Resources", func() {
 		})
 	})
 
-	Describe("ActualLRPContainerKeyFromContainer", func() {
+	Describe("ActualLRPInstanceKeyFromContainer", func() {
 
 		var (
-			container                 executor.Container
-			lrpContainerKey           models.ActualLRPContainerKey
-			containerKeyConversionErr error
-			cellID                    string
+			container                executor.Container
+			lrpInstanceKey           models.ActualLRPInstanceKey
+			instanceKeyConversionErr error
+			cellID                   string
 		)
 
 		BeforeEach(func() {
@@ -105,8 +105,9 @@ var _ = Describe("Resources", func() {
 					rep.DomainTag:       "my-domain",
 					rep.ProcessGuidTag:  "process-guid",
 					rep.ProcessIndexTag: "999",
+					rep.InstanceGuidTag: "some-instance-guid",
 				},
-				Guid: "some-instance-guid",
+				Guid: "container-guid",
 				Ports: []executor.PortMapping{
 					{
 						ContainerPort: 1234,
@@ -118,32 +119,42 @@ var _ = Describe("Resources", func() {
 		})
 
 		JustBeforeEach(func() {
-			lrpContainerKey, containerKeyConversionErr = rep.ActualLRPContainerKeyFromContainer(container, cellID)
+			lrpInstanceKey, instanceKeyConversionErr = rep.ActualLRPInstanceKeyFromContainer(container, cellID)
 		})
 
 		Context("when the container and cell id are valid", func() {
 			It("it does not return an error", func() {
-				Ω(containerKeyConversionErr).ShouldNot(HaveOccurred())
+				Ω(instanceKeyConversionErr).ShouldNot(HaveOccurred())
 			})
 
 			It("it creates the correct container key", func() {
-				expectedContainerKey := models.ActualLRPContainerKey{
+				expectedInstanceKey := models.ActualLRPInstanceKey{
 					InstanceGuid: "some-instance-guid",
 					CellID:       cellID,
 				}
 
-				Ω(lrpContainerKey).Should(Equal(expectedContainerKey))
+				Ω(lrpInstanceKey).Should(Equal(expectedInstanceKey))
 			})
 		})
 
 		Context("when the container is invalid", func() {
-			Context("when the container has no guid", func() {
+			Context("when the container has no tags", func() {
 				BeforeEach(func() {
-					container.Guid = ""
+					container.Tags = nil
+				})
+
+				It("reports an error that the tags are missing", func() {
+					Ω(instanceKeyConversionErr).Should(MatchError(rep.ErrContainerMissingTags))
+				})
+			})
+
+			Context("when the container is missing the instance guid tag ", func() {
+				BeforeEach(func() {
+					delete(container.Tags, rep.InstanceGuidTag)
 				})
 
 				It("returns an invalid instance-guid error", func() {
-					Ω(containerKeyConversionErr.Error()).Should(ContainSubstring("instance_guid"))
+					Ω(instanceKeyConversionErr.Error()).Should(ContainSubstring("instance_guid"))
 				})
 			})
 
@@ -153,7 +164,7 @@ var _ = Describe("Resources", func() {
 				})
 
 				It("returns an invalid cell id error", func() {
-					Ω(containerKeyConversionErr.Error()).Should(ContainSubstring("cell_id"))
+					Ω(instanceKeyConversionErr.Error()).Should(ContainSubstring("cell_id"))
 				})
 			})
 		})

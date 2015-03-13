@@ -39,16 +39,16 @@ func (p *ordinaryLRPProcessor) Process(logger lager.Logger, container executor.C
 		logger.Error("failed-to-generate-lrp-key", err)
 		return
 	}
-	logger.WithData(lager.Data{"lrp-key": lrpKey})
+	logger = logger.WithData(lager.Data{"lrp-key": lrpKey})
 
-	containerKey, err := rep.ActualLRPContainerKeyFromContainer(container, p.cellID)
+	instanceKey, err := rep.ActualLRPInstanceKeyFromContainer(container, p.cellID)
 	if err != nil {
-		logger.Error("failed-to-generate-container-key", err)
+		logger.Error("failed-to-generate-instance-key", err)
 		return
 	}
-	logger.WithData(lager.Data{"container-key": containerKey})
+	logger = logger.WithData(lager.Data{"lrp-instance-key": instanceKey})
 
-	lrpContainer := newLRPContainer(lrpKey, containerKey, container)
+	lrpContainer := newLRPContainer(lrpKey, instanceKey, container)
 	switch lrpContainer.Container.State {
 	case executor.StateReserved:
 		p.processReservedContainer(logger, lrpContainer)
@@ -74,7 +74,7 @@ func (p *ordinaryLRPProcessor) processReservedContainer(logger lager.Logger, lrp
 
 	ok = p.containerDelegate.RunContainer(logger, lrpContainer.Guid)
 	if !ok {
-		p.bbs.RemoveActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey)
+		p.bbs.RemoveActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
 		return
 	}
 }
@@ -100,7 +100,7 @@ func (p *ordinaryLRPProcessor) processRunningContainer(logger lager.Logger, lrpC
 	}
 	logger.Debug("succeeded-extracting-net-info-from-container")
 
-	err = p.bbs.StartActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey, netInfo)
+	err = p.bbs.StartActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo)
 	if err == bbserrors.ErrActualLRPCannotBeStarted {
 		p.containerDelegate.StopContainer(logger, lrpContainer.Guid)
 	}
@@ -110,9 +110,9 @@ func (p *ordinaryLRPProcessor) processCompletedContainer(logger lager.Logger, lr
 	logger = logger.Session("process-completed-container")
 
 	if lrpContainer.RunResult.Stopped {
-		p.bbs.RemoveActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey)
+		p.bbs.RemoveActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
 	} else {
-		p.bbs.CrashActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey)
+		p.bbs.CrashActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
 	}
 
 	p.containerDelegate.DeleteContainer(logger, lrpContainer.Guid)
@@ -124,7 +124,7 @@ func (p *ordinaryLRPProcessor) processInvalidContainer(logger lager.Logger, lrpC
 }
 
 func (p *ordinaryLRPProcessor) claimLRPContainer(logger lager.Logger, lrpContainer *lrpContainer) bool {
-	err := p.bbs.ClaimActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPContainerKey)
+	err := p.bbs.ClaimActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
 	switch err {
 	case nil:
 		return true

@@ -320,12 +320,13 @@ var _ = Describe("AuctionCellRep", func() {
 				Ω(client.AllocateContainersCallCount()).Should(Equal(1))
 				Ω(client.AllocateContainersArgsForCall(0)).Should(ConsistOf(
 					executor.Container{
-						Guid: expectedGuidOne,
+						Guid: rep.LRPContainerGuid(lrpAuctionOne.DesiredLRP.ProcessGuid, expectedGuidOne),
 
 						Tags: executor.Tags{
 							rep.LifecycleTag:    rep.LRPLifecycle,
 							rep.DomainTag:       lrpAuctionOne.DesiredLRP.Domain,
 							rep.ProcessGuidTag:  lrpAuctionOne.DesiredLRP.ProcessGuid,
+							rep.InstanceGuidTag: expectedGuidOne,
 							rep.ProcessIndexTag: expectedIndexOneString,
 						},
 
@@ -362,12 +363,13 @@ var _ = Describe("AuctionCellRep", func() {
 						},
 					},
 					executor.Container{
-						Guid: expectedGuidTwo,
+						Guid: rep.LRPContainerGuid(lrpAuctionTwo.DesiredLRP.ProcessGuid, expectedGuidTwo),
 
 						Tags: executor.Tags{
 							rep.LifecycleTag:    rep.LRPLifecycle,
 							rep.DomainTag:       lrpAuctionTwo.DesiredLRP.Domain,
 							rep.ProcessGuidTag:  lrpAuctionTwo.DesiredLRP.ProcessGuid,
+							rep.InstanceGuidTag: expectedGuidTwo,
 							rep.ProcessIndexTag: expectedIndexTwoString,
 						},
 
@@ -421,8 +423,8 @@ var _ = Describe("AuctionCellRep", func() {
 			Context("when allocation fails", func() {
 				BeforeEach(func() {
 					client.AllocateContainersReturns(map[string]string{
-						expectedGuidOne: commonErr.Error(),
-						expectedGuidTwo: commonErr.Error(),
+						rep.LRPContainerGuid(lrpAuctionOne.DesiredLRP.ProcessGuid, expectedGuidOne): commonErr.Error(),
+						rep.LRPContainerGuid(lrpAuctionTwo.DesiredLRP.ProcessGuid, expectedGuidTwo): commonErr.Error(),
 					}, nil)
 				})
 

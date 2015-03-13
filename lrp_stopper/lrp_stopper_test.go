@@ -33,7 +33,7 @@ var _ = Describe("LRP Stopper", func() {
 				1138,
 				"some-domain",
 			),
-			ActualLRPContainerKey: models.NewActualLRPContainerKey(
+			ActualLRPInstanceKey: models.NewActualLRPInstanceKey(
 				"some-instance-guid",
 				"some-cell-id",
 			),

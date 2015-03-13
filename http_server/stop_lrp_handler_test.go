@@ -47,11 +47,11 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 
 		BeforeEach(func() {
 			actualLRP = models.ActualLRP{
-				ActualLRPKey:          models.NewActualLRPKey("process-guid", 1, "domain"),
-				ActualLRPContainerKey: models.NewActualLRPContainerKey("instance-guid", "cell-id"),
-				ActualLRPNetInfo:      models.NewActualLRPNetInfo("1.2.3.4", []models.PortMapping{}),
-				State:                 models.ActualLRPStateRunning,
-				Since:                 5000,
+				ActualLRPKey:         models.NewActualLRPKey("process-guid", 1, "domain"),
+				ActualLRPInstanceKey: models.NewActualLRPInstanceKey("instance-guid", "cell-id"),
+				ActualLRPNetInfo:     models.NewActualLRPNetInfo("1.2.3.4", []models.PortMapping{}),
+				State:                models.ActualLRPStateRunning,
+				Since:                5000,
 			}
 			Ω(actualLRP.Validate()).ShouldNot(HaveOccurred())
 

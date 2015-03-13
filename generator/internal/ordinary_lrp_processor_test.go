@@ -41,13 +41,13 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 		const sessionPrefix = "test.ordinary-lrp-processor."
 
 		var expectedLrpKey models.ActualLRPKey
-		var expectedContainerKey models.ActualLRPContainerKey
+		var expectedInstanceKey models.ActualLRPInstanceKey
 		var expectedNetInfo models.ActualLRPNetInfo
 		var expectedSessionName string
 
 		BeforeEach(func() {
 			expectedLrpKey = models.NewActualLRPKey("process-guid", 2, "domain")
-			expectedContainerKey = models.NewActualLRPContainerKey("instance-guid", "cell-id")
+			expectedInstanceKey = models.NewActualLRPInstanceKey("instance-guid", "cell-id")
 			expectedNetInfo = models.NewActualLRPNetInfo("1.2.3.4", []models.PortMapping{{ContainerPort: 8080, HostPort: 61999}})
 		})
 
@@ -55,7 +55,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 			var container executor.Container
 
 			BeforeEach(func() {
-				container = newLRPContainer(expectedLrpKey, expectedContainerKey, expectedNetInfo)
+				container = newLRPContainer(expectedLrpKey, expectedInstanceKey, expectedNetInfo)
 			})
 
 			JustBeforeEach(func() {
@@ -81,9 +81,9 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 				It("claims the actualLRP in the bbs", func() {
 					Ω(bbs.ClaimActualLRPCallCount()).Should(Equal(1))
-					bbsLogger, lrpKey, containerKey := bbs.ClaimActualLRPArgsForCall(0)
+					bbsLogger, lrpKey, instanceKey := bbs.ClaimActualLRPArgsForCall(0)
 					Ω(lrpKey).Should(Equal(expectedLrpKey))
-					Ω(containerKey).Should(Equal(expectedContainerKey))
+					Ω(instanceKey).Should(Equal(expectedInstanceKey))
 					Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
 				})
 
@@ -95,7 +95,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 					It("deletes the container", func() {
 						Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 						delegateLogger, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
-						Ω(containerGuid).Should(Equal(expectedContainerKey.InstanceGuid))
+						Ω(containerGuid).Should(Equal(container.Guid))
 						Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
 					})
 
@@ -122,7 +122,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 					It("runs the container", func() {
 						Ω(containerDelegate.RunContainerCallCount()).Should(Equal(1))
 						delegateLogger, containerGuid := containerDelegate.RunContainerArgsForCall(0)
-						Ω(containerGuid).Should(Equal(expectedContainerKey.InstanceGuid))
+						Ω(containerGuid).Should(Equal(container.Guid))
 						Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
 					})
 
@@ -133,9 +133,9 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 						It("removes the actual LRP", func() {
 							Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
-							bbsLogger, lrpKey, containerKey := bbs.RemoveActualLRPArgsForCall(0)
+							bbsLogger, lrpKey, instanceKey := bbs.RemoveActualLRPArgsForCall(0)
 							Ω(lrpKey).Should(Equal(expectedLrpKey))
-							Ω(containerKey).Should(Equal(expectedContainerKey))
+							Ω(instanceKey).Should(Equal(expectedInstanceKey))
 							Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
 						})
 					})
@@ -144,9 +144,9 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 				var itClaimsTheLRPOrDeletesTheContainer = func(expectedSessionName string) {
 					It("claims the lrp", func() {
 						Ω(bbs.ClaimActualLRPCallCount()).Should(Equal(1))
-						bbsLogger, lrpKey, containerKey := bbs.ClaimActualLRPArgsForCall(0)
+						bbsLogger, lrpKey, instanceKey := bbs.ClaimActualLRPArgsForCall(0)
 						Ω(lrpKey).Should(Equal(expectedLrpKey))
-						Ω(containerKey).Should(Equal(expectedContainerKey))
+						Ω(instanceKey).Should(Equal(expectedInstanceKey))
 						Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
 					})
 
@@ -158,7 +158,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						It("deletes the container", func() {
 							Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 							delegateLogger, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
-							Ω(containerGuid).Should(Equal(expectedContainerKey.InstanceGuid))
+							Ω(containerGuid).Should(Equal(container.Guid))
 							Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
 						})
 					})
@@ -201,9 +201,9 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 					It("starts the lrp in the bbs", func() {
 						Ω(bbs.StartActualLRPCallCount()).Should(Equal(1))
-						bbsLogger, lrpKey, containerKey, netInfo := bbs.StartActualLRPArgsForCall(0)
+						bbsLogger, lrpKey, instanceKey, netInfo := bbs.StartActualLRPArgsForCall(0)
 						Ω(lrpKey).Should(Equal(expectedLrpKey))
-						Ω(containerKey).Should(Equal(expectedContainerKey))
+						Ω(instanceKey).Should(Equal(expectedInstanceKey))
 						Ω(netInfo).Should(Equal(expectedNetInfo))
 						Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
 					})
@@ -216,7 +216,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						It("stops the container", func() {
 							Ω(containerDelegate.StopContainerCallCount()).Should(Equal(1))
 							delegateLogger, containerGuid := containerDelegate.StopContainerArgsForCall(0)
-							Ω(containerGuid).Should(Equal(expectedContainerKey.InstanceGuid))
+							Ω(containerGuid).Should(Equal(container.Guid))
 							Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
 						})
 					})
@@ -246,9 +246,9 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 						It("removes the actual LRP", func() {
 							Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
-							bbsLogger, lrpKey, containerKey := bbs.RemoveActualLRPArgsForCall(0)
+							bbsLogger, lrpKey, instanceKey := bbs.RemoveActualLRPArgsForCall(0)
 							Ω(lrpKey).Should(Equal(expectedLrpKey))
-							Ω(containerKey).Should(Equal(expectedContainerKey))
+							Ω(instanceKey).Should(Equal(expectedInstanceKey))
 							Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
 						})
 
@@ -256,7 +256,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 							It("deletes the container", func() {
 								Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 								delegateLogger, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
-								Ω(containerGuid).Should(Equal(expectedContainerKey.InstanceGuid))
+								Ω(containerGuid).Should(Equal(container.Guid))
 								Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
 							})
 						})
@@ -269,7 +269,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 							It("deletes the container", func() {
 								Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 								delegateLogger, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
-								Ω(containerGuid).Should(Equal(expectedContainerKey.InstanceGuid))
+								Ω(containerGuid).Should(Equal(container.Guid))
 								Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
 							})
 						})
@@ -282,16 +282,16 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 						It("crashes the actual LRP", func() {
 							Ω(bbs.CrashActualLRPCallCount()).Should(Equal(1))
-							bbsLogger, lrpKey, containerKey := bbs.CrashActualLRPArgsForCall(0)
+							bbsLogger, lrpKey, instanceKey := bbs.CrashActualLRPArgsForCall(0)
 							Ω(lrpKey).Should(Equal(expectedLrpKey))
-							Ω(containerKey).Should(Equal(expectedContainerKey))
+							Ω(instanceKey).Should(Equal(expectedInstanceKey))
 							Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
 						})
 
 						It("deletes the container", func() {
 							Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(1))
 							delegateLogger, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
-							Ω(containerGuid).Should(Equal(expectedContainerKey.InstanceGuid))
+							Ω(containerGuid).Should(Equal(container.Guid))
 							Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
 						})
 					})
@@ -311,7 +311,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 	})
 })
 
-func newLRPContainer(lrpKey models.ActualLRPKey, containerKey models.ActualLRPContainerKey, netInfo models.ActualLRPNetInfo) executor.Container {
+func newLRPContainer(lrpKey models.ActualLRPKey, instanceKey models.ActualLRPInstanceKey, netInfo models.ActualLRPNetInfo) executor.Container {
 	ports := []executor.PortMapping{}
 	for _, portMap := range netInfo.Ports {
 		ports = append(ports, executor.PortMapping{
@@ -321,12 +321,13 @@ func newLRPContainer(lrpKey models.ActualLRPKey, containerKey models.ActualLRPCo
 	}
 
 	return executor.Container{
-		Guid:       containerKey.InstanceGuid,
+		Guid:       rep.LRPContainerGuid(lrpKey.ProcessGuid, instanceKey.InstanceGuid),
 		Action:     &models.RunAction{Path: "true"},
 		ExternalIP: netInfo.Address,
 		Ports:      ports,
 		Tags: executor.Tags{
 			rep.ProcessGuidTag:  lrpKey.ProcessGuid,
+			rep.InstanceGuidTag: instanceKey.InstanceGuid,
 			rep.ProcessIndexTag: strconv.Itoa(lrpKey.Index),
 			rep.DomainTag:       lrpKey.Domain,
 		},

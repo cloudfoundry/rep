@@ -2,6 +2,7 @@ package lrp_stopper
 
 import (
 	"github.com/cloudfoundry-incubator/executor"
+	"github.com/cloudfoundry-incubator/rep"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -33,5 +34,5 @@ func (stopper *lrpStopper) StopInstance(processGuid, instanceGuid string) error 
 	stopLog.Info("stopping")
 	defer stopLog.Info("finished")
 
-	return stopper.client.StopContainer(instanceGuid)
+	return stopper.client.StopContainer(rep.LRPContainerGuid(processGuid, instanceGuid))
 }

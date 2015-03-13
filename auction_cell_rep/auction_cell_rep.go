@@ -13,35 +13,35 @@ import (
 )
 
 type AuctionCellRep struct {
-	cellID                string
-	stack                 string
-	zone                  string
-	generateContainerGuid func() (string, error)
-	bbs                   Bbs.RepBBS
-	client                executor.Client
-	evacuationReporter    evacuation_context.EvacuationReporter
-	logger                lager.Logger
+	cellID               string
+	stack                string
+	zone                 string
+	generateInstanceGuid func() (string, error)
+	bbs                  Bbs.RepBBS
+	client               executor.Client
+	evacuationReporter   evacuation_context.EvacuationReporter
+	logger               lager.Logger
 }
 
 func New(
 	cellID string,
 	stack string,
 	zone string,
-	generateContainerGuid func() (string, error),
+	generateInstanceGuid func() (string, error),
 	bbs Bbs.RepBBS,
 	client executor.Client,
 	evacuationReporter evacuation_context.EvacuationReporter,
 	logger lager.Logger,
 ) *AuctionCellRep {
 	return &AuctionCellRep{
-		cellID: cellID,
-		stack:  stack,
-		zone:   zone,
-		generateContainerGuid: generateContainerGuid,
-		bbs:                bbs,
-		client:             client,
-		evacuationReporter: evacuationReporter,
-		logger:             logger.Session("auction-delegate"),
+		cellID:               cellID,
+		stack:                stack,
+		zone:                 zone,
+		generateInstanceGuid: generateInstanceGuid,
+		bbs:                  bbs,
+		client:               client,
+		evacuationReporter:   evacuationReporter,
+		logger:               logger.Session("auction-delegate"),
 	}
 }
 
@@ -164,19 +164,21 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 
 	for _, lrpStart := range lrps {
 		lrpStart := lrpStart
-		containerGuidString, err := a.generateContainerGuid()
+		instanceGuid, err := a.generateInstanceGuid()
 		if err != nil {
 			return nil, nil, err
 		}
-		lrpAuctionMap[containerGuidString] = lrpStart
+		containerGuid := rep.LRPContainerGuid(lrpStart.DesiredLRP.ProcessGuid, instanceGuid)
+		lrpAuctionMap[containerGuid] = lrpStart
 
 		container := executor.Container{
-			Guid: containerGuidString,
+			Guid: containerGuid,
 
 			Tags: executor.Tags{
 				rep.LifecycleTag:    rep.LRPLifecycle,
 				rep.DomainTag:       lrpStart.DesiredLRP.Domain,
 				rep.ProcessGuidTag:  lrpStart.DesiredLRP.ProcessGuid,
+				rep.InstanceGuidTag: instanceGuid,
 				rep.ProcessIndexTag: strconv.Itoa(lrpStart.Index),
 			},
 
@@ -204,7 +206,7 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 			Monitor: lrpStart.DesiredLRP.Monitor,
 
 			Env: append([]executor.EnvironmentVariable{
-				{Name: "INSTANCE_GUID", Value: containerGuidString},
+				{Name: "INSTANCE_GUID", Value: instanceGuid},
 				{Name: "INSTANCE_INDEX", Value: strconv.Itoa(lrpStart.Index)},
 			}, executor.EnvironmentVariablesFromModel(lrpStart.DesiredLRP.EnvironmentVariables)...),
 			EgressRules: lrpStart.DesiredLRP.EgressRules,

@@ -10,15 +10,15 @@ import (
 
 type lrpContainer struct {
 	models.ActualLRPKey
-	models.ActualLRPContainerKey
+	models.ActualLRPInstanceKey
 	executor.Container
 }
 
-func newLRPContainer(lrpKey models.ActualLRPKey, containerKey models.ActualLRPContainerKey, container executor.Container) *lrpContainer {
+func newLRPContainer(lrpKey models.ActualLRPKey, instanceKey models.ActualLRPInstanceKey, container executor.Container) *lrpContainer {
 	return &lrpContainer{
-		ActualLRPKey:          lrpKey,
-		ActualLRPContainerKey: containerKey,
-		Container:             container,
+		ActualLRPKey:         lrpKey,
+		ActualLRPInstanceKey: instanceKey,
+		Container:            container,
 	}
 }
 

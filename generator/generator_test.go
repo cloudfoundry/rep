@@ -79,31 +79,35 @@ var _ = Describe("Generator", func() {
 
 		Context("when retrieving container and BBS data succeeds", func() {
 			const (
-				guidContainerOnly                 = "guid-container-only"
-				guidContainerForInstanceLRP       = "guid-container-for-instance-lrp"
-				guidContainerForEvacuatingLRP     = "guid-container-for-evacuating-lrp"
-				guidContainerForTask              = "guid-container-for-task"
-				guidInstanceLRPOnly               = "guid-instance-lrp-only"
-				guidEvacuatingLRPOnly             = "guid-evacuating-lrp-only"
-				guidInstanceAndEvacuatingLRPsOnly = "guid-instance-and-evacuating-lrps-only"
-				guidTaskOnly                      = "guid-task-only"
+				instanceGuidContainerOnly                 = "guid-container-only"
+				instanceGuidContainerForInstanceLRP       = "guid-container-for-instance-lrp"
+				instanceGuidContainerForEvacuatingLRP     = "guid-container-for-evacuating-lrp"
+				guidContainerForTask                      = "guid-container-for-task"
+				instanceGuidInstanceLRPOnly               = "guid-instance-lrp-only"
+				instanceGuidEvacuatingLRPOnly             = "guid-evacuating-lrp-only"
+				instanceGuidInstanceAndEvacuatingLRPsOnly = "guid-instance-and-evacuating-lrps-only"
+				guidTaskOnly                              = "guid-task-only"
+
+				processGuid = "process-guid"
 			)
 
 			BeforeEach(func() {
 				containers := []executor.Container{
-					{Guid: guidContainerOnly},
-					{Guid: guidContainerForInstanceLRP},
-					{Guid: guidContainerForEvacuatingLRP},
+					{Guid: rep.LRPContainerGuid(processGuid, instanceGuidContainerOnly)},
+					{Guid: rep.LRPContainerGuid(processGuid, instanceGuidContainerForInstanceLRP)},
+					{Guid: rep.LRPContainerGuid(processGuid, instanceGuidContainerForEvacuatingLRP)},
 					{Guid: guidContainerForTask},
 				}
 
-				containerOnlyLRP := models.ActualLRP{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidContainerForInstanceLRP, cellID)}
-				instanceOnlyLRP := models.ActualLRP{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidInstanceLRPOnly, cellID)}
+				actualLRPKey := models.ActualLRPKey{ProcessGuid: processGuid}
 
-				containerForEvacuatingLRP := models.ActualLRP{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidContainerForEvacuatingLRP, cellID)}
-				evacuatingOnlyLRP := models.ActualLRP{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidEvacuatingLRPOnly, cellID)}
+				containerOnlyLRP := models.ActualLRP{ActualLRPKey: actualLRPKey, ActualLRPInstanceKey: models.NewActualLRPInstanceKey(instanceGuidContainerForInstanceLRP, cellID)}
+				instanceOnlyLRP := models.ActualLRP{ActualLRPKey: actualLRPKey, ActualLRPInstanceKey: models.NewActualLRPInstanceKey(instanceGuidInstanceLRPOnly, cellID)}
 
-				instanceAndEvacuatingLRP := models.ActualLRP{ActualLRPContainerKey: models.NewActualLRPContainerKey(guidInstanceAndEvacuatingLRPsOnly, cellID)}
+				containerForEvacuatingLRP := models.ActualLRP{ActualLRPKey: actualLRPKey, ActualLRPInstanceKey: models.NewActualLRPInstanceKey(instanceGuidContainerForEvacuatingLRP, cellID)}
+				evacuatingOnlyLRP := models.ActualLRP{ActualLRPKey: actualLRPKey, ActualLRPInstanceKey: models.NewActualLRPInstanceKey(instanceGuidEvacuatingLRPOnly, cellID)}
+
+				instanceAndEvacuatingLRP := models.ActualLRP{ActualLRPKey: actualLRPKey, ActualLRPInstanceKey: models.NewActualLRPInstanceKey(instanceGuidInstanceAndEvacuatingLRPsOnly, cellID)}
 
 				lrpGroups := []models.ActualLRPGroup{
 					{Instance: &containerOnlyLRP, Evacuating: nil},
@@ -142,11 +146,11 @@ var _ = Describe("Generator", func() {
 			}
 
 			It("returns a container operation for a container with an instance lrp", func() {
-				batchHasAContainerOperationForGuid(guidContainerForInstanceLRP, batch)
+				batchHasAContainerOperationForGuid(rep.LRPContainerGuid(processGuid, instanceGuidContainerForInstanceLRP), batch)
 			})
 
 			It("returns a container operation for a container with an evacuating lrp", func() {
-				batchHasAContainerOperationForGuid(guidContainerForEvacuatingLRP, batch)
+				batchHasAContainerOperationForGuid(rep.LRPContainerGuid(processGuid, instanceGuidContainerForEvacuatingLRP), batch)
 			})
 
 			It("returns a container operation for a container with a task", func() {
@@ -154,23 +158,23 @@ var _ = Describe("Generator", func() {
 			})
 
 			It("returns a container operation for a container with nothing in bbs", func() {
-				batchHasAContainerOperationForGuid(guidContainerOnly, batch)
+				batchHasAContainerOperationForGuid(rep.LRPContainerGuid(processGuid, instanceGuidContainerOnly), batch)
 			})
 
 			It("returns a residual instance lrp operation for a guid with an instance lrp but no container", func() {
-				guid := guidInstanceLRPOnly
+				guid := rep.LRPContainerGuid(processGuid, instanceGuidInstanceLRPOnly)
 				Ω(batch).Should(HaveKey(guid))
 				Ω(batch[guid]).Should(BeAssignableToTypeOf(new(generator.ResidualInstanceLRPOperation)))
 			})
 
 			It("returns a residual evacuating lrp operation for a guid with an evacuating lrp but no container", func() {
-				guid := guidEvacuatingLRPOnly
+				guid := rep.LRPContainerGuid(processGuid, instanceGuidEvacuatingLRPOnly)
 				Ω(batch).Should(HaveKey(guid))
 				Ω(batch[guid]).Should(BeAssignableToTypeOf(new(generator.ResidualEvacuatingLRPOperation)))
 			})
 
 			It("returns a residual joint lrp operation for a guid with both an instance and an evacuating lrp but no container", func() {
-				guid := guidInstanceAndEvacuatingLRPsOnly
+				guid := rep.LRPContainerGuid(processGuid, instanceGuidInstanceAndEvacuatingLRPsOnly)
 				Ω(batch).Should(HaveKey(guid))
 				Ω(batch[guid]).Should(BeAssignableToTypeOf(new(generator.ResidualJointLRPOperation)))
 			})

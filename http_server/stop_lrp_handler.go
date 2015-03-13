@@ -53,10 +53,10 @@ func (h StopLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		}
 
 		if err != nil {
-			h.logger.Error("failed-to-stop", err)
+			logger.Error("failed-to-stop", err)
 			return
 		}
 
-		h.logger.Info("stopped")
+		logger.Info("stopped")
 	}()
 }

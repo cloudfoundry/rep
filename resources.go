@@ -17,6 +17,7 @@ const (
 	LRPLifecycle  = "lrp"
 
 	ProcessGuidTag  = "process-guid"
+	InstanceGuidTag = "instance-guid"
 	ProcessIndexTag = "process-index"
 )
 
@@ -49,18 +50,22 @@ func ActualLRPKeyFromContainer(container executor.Container) (models.ActualLRPKe
 	return actualLRPKey, nil
 }
 
-func ActualLRPContainerKeyFromContainer(container executor.Container, cellID string) (models.ActualLRPContainerKey, error) {
-	actualLRPContainerKey := models.NewActualLRPContainerKey(
-		container.Guid,
+func ActualLRPInstanceKeyFromContainer(container executor.Container, cellID string) (models.ActualLRPInstanceKey, error) {
+	if container.Tags == nil {
+		return models.ActualLRPInstanceKey{}, ErrContainerMissingTags
+	}
+
+	actualLRPInstanceKey := models.NewActualLRPInstanceKey(
+		container.Tags[InstanceGuidTag],
 		cellID,
 	)
 
-	err := actualLRPContainerKey.Validate()
+	err := actualLRPInstanceKey.Validate()
 	if err != nil {
-		return models.ActualLRPContainerKey{}, err
+		return models.ActualLRPInstanceKey{}, err
 	}
 
-	return actualLRPContainerKey, nil
+	return actualLRPInstanceKey, nil
 }
 
 func ActualLRPNetInfoFromContainer(container executor.Container) (models.ActualLRPNetInfo, error) {
@@ -80,4 +85,8 @@ func ActualLRPNetInfoFromContainer(container executor.Container) (models.ActualL
 	}
 
 	return actualLRPNetInfo, nil
+}
+
+func LRPContainerGuid(processGuid, instanceGuid string) string {
+	return processGuid + "-" + instanceGuid
 }

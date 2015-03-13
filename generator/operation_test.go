@@ -20,14 +20,18 @@ var _ = Describe("Operation", func() {
 			containerDelegate    *fake_internal.FakeContainerDelegate
 			residualLRPOperation *generator.ResidualInstanceLRPOperation
 			lrpKey               models.ActualLRPKey
-			containerKey         models.ActualLRPContainerKey
+			instanceKey          models.ActualLRPInstanceKey
+
+			expectedContainerGuid string
 		)
 
 		BeforeEach(func() {
 			lrpKey = models.NewActualLRPKey("the-process-guid", 0, "the-domain")
-			containerKey = models.NewActualLRPContainerKey("the-instance-guid", "the-cell-id")
+			instanceKey = models.NewActualLRPInstanceKey("the-instance-guid", "the-cell-id")
 			containerDelegate = new(fake_internal.FakeContainerDelegate)
-			residualLRPOperation = generator.NewResidualInstanceLRPOperation(logger, fakeBBS, containerDelegate, lrpKey, containerKey)
+			residualLRPOperation = generator.NewResidualInstanceLRPOperation(logger, fakeBBS, containerDelegate, lrpKey, instanceKey)
+
+			expectedContainerGuid = rep.LRPContainerGuid(lrpKey.ProcessGuid, instanceKey.InstanceGuid)
 		})
 
 		Describe("Key", func() {
@@ -46,7 +50,7 @@ var _ = Describe("Operation", func() {
 			It("checks whether the container exists", func() {
 				Ω(containerDelegate.GetContainerCallCount()).Should(Equal(1))
 				containerDelegateLogger, containerGuid := containerDelegate.GetContainerArgsForCall(0)
-				Ω(containerGuid).Should(Equal(containerKey.InstanceGuid))
+				Ω(containerGuid).Should(Equal(expectedContainerGuid))
 				Ω(containerDelegateLogger.SessionName()).Should(Equal(sessionName))
 			})
 
@@ -64,7 +68,7 @@ var _ = Describe("Operation", func() {
 					Ω(fakeBBS.RemoveActualLRPCallCount()).Should(Equal(1))
 					bbsLogger, actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveActualLRPArgsForCall(0)
 					Ω(actualLRPKey).Should(Equal(lrpKey))
-					Ω(actualLRPContainerKey).Should(Equal(containerKey))
+					Ω(actualLRPContainerKey).Should(Equal(instanceKey))
 					Ω(bbsLogger.SessionName()).Should(Equal(sessionName))
 				})
 			})
@@ -91,15 +95,19 @@ var _ = Describe("Operation", func() {
 			residualEvacuatingLRPOperation *generator.ResidualEvacuatingLRPOperation
 			instanceGuid                   string
 			lrpKey                         models.ActualLRPKey
-			containerKey                   models.ActualLRPContainerKey
+			instanceKey                    models.ActualLRPInstanceKey
+
+			expectedContainerGuid string
 		)
 
 		BeforeEach(func() {
 			instanceGuid = "the-instance-guid"
 			lrpKey = models.NewActualLRPKey("the-process-guid", 0, "the-domain")
-			containerKey = models.NewActualLRPContainerKey(instanceGuid, "the-cell-id")
+			instanceKey = models.NewActualLRPInstanceKey(instanceGuid, "the-cell-id")
 			containerDelegate = new(fake_internal.FakeContainerDelegate)
-			residualEvacuatingLRPOperation = generator.NewResidualEvacuatingLRPOperation(logger, fakeBBS, containerDelegate, lrpKey, containerKey)
+			residualEvacuatingLRPOperation = generator.NewResidualEvacuatingLRPOperation(logger, fakeBBS, containerDelegate, lrpKey, instanceKey)
+
+			expectedContainerGuid = rep.LRPContainerGuid(lrpKey.ProcessGuid, instanceKey.InstanceGuid)
 		})
 
 		Describe("Key", func() {
@@ -118,7 +126,7 @@ var _ = Describe("Operation", func() {
 			It("checks whether the container exists", func() {
 				Ω(containerDelegate.GetContainerCallCount()).Should(Equal(1))
 				containerDelegateLogger, containerGuid := containerDelegate.GetContainerArgsForCall(0)
-				Ω(containerGuid).Should(Equal(containerKey.InstanceGuid))
+				Ω(containerGuid).Should(Equal(expectedContainerGuid))
 				Ω(containerDelegateLogger.SessionName()).Should(Equal(sessionName))
 			})
 
@@ -136,7 +144,7 @@ var _ = Describe("Operation", func() {
 					Ω(fakeBBS.RemoveEvacuatingActualLRPCallCount()).Should(Equal(1))
 					bbsLogger, actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveEvacuatingActualLRPArgsForCall(0)
 					Ω(actualLRPKey).Should(Equal(lrpKey))
-					Ω(actualLRPContainerKey).Should(Equal(containerKey))
+					Ω(actualLRPContainerKey).Should(Equal(instanceKey))
 					Ω(bbsLogger.SessionName()).Should(Equal(sessionName))
 				})
 			})
@@ -163,15 +171,19 @@ var _ = Describe("Operation", func() {
 			residualJointLRPOperation *generator.ResidualJointLRPOperation
 			instanceGuid              string
 			lrpKey                    models.ActualLRPKey
-			containerKey              models.ActualLRPContainerKey
+			instanceKey               models.ActualLRPInstanceKey
+
+			expectedContainerGuid string
 		)
 
 		BeforeEach(func() {
 			instanceGuid = "the-instance-guid"
 			lrpKey = models.NewActualLRPKey("the-process-guid", 0, "the-domain")
-			containerKey = models.NewActualLRPContainerKey(instanceGuid, "the-cell-id")
+			instanceKey = models.NewActualLRPInstanceKey(instanceGuid, "the-cell-id")
 			containerDelegate = new(fake_internal.FakeContainerDelegate)
-			residualJointLRPOperation = generator.NewResidualJointLRPOperation(logger, fakeBBS, containerDelegate, lrpKey, containerKey)
+			residualJointLRPOperation = generator.NewResidualJointLRPOperation(logger, fakeBBS, containerDelegate, lrpKey, instanceKey)
+
+			expectedContainerGuid = rep.LRPContainerGuid(lrpKey.ProcessGuid, instanceKey.InstanceGuid)
 		})
 
 		Describe("Key", func() {
@@ -190,7 +202,7 @@ var _ = Describe("Operation", func() {
 			It("checks whether the container exists", func() {
 				Ω(containerDelegate.GetContainerCallCount()).Should(Equal(1))
 				containerDelegateLogger, containerGuid := containerDelegate.GetContainerArgsForCall(0)
-				Ω(containerGuid).Should(Equal(containerKey.InstanceGuid))
+				Ω(containerGuid).Should(Equal(expectedContainerGuid))
 				Ω(containerDelegateLogger.SessionName()).Should(Equal(sessionName))
 			})
 
@@ -208,7 +220,7 @@ var _ = Describe("Operation", func() {
 					Ω(fakeBBS.RemoveActualLRPCallCount()).Should(Equal(1))
 					bbsLogger, actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveActualLRPArgsForCall(0)
 					Ω(actualLRPKey).Should(Equal(lrpKey))
-					Ω(actualLRPContainerKey).Should(Equal(containerKey))
+					Ω(actualLRPContainerKey).Should(Equal(instanceKey))
 					Ω(bbsLogger.SessionName()).Should(Equal(sessionName))
 				})
 
@@ -216,7 +228,7 @@ var _ = Describe("Operation", func() {
 					Ω(fakeBBS.RemoveEvacuatingActualLRPCallCount()).Should(Equal(1))
 					bbsLogger, actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveEvacuatingActualLRPArgsForCall(0)
 					Ω(actualLRPKey).Should(Equal(lrpKey))
-					Ω(actualLRPContainerKey).Should(Equal(containerKey))
+					Ω(actualLRPContainerKey).Should(Equal(instanceKey))
 					Ω(bbsLogger.SessionName()).Should(Equal(sessionName))
 				})
 			})
