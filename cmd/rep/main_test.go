@@ -393,7 +393,7 @@ var _ = Describe("The Rep", func() {
 		})
 
 		It("should stop the container", func() {
-			bbs.RetireActualLRPs(logger, []models.ActualLRP{runningLRP})
+			bbs.RetireActualLRPs(logger, []models.ActualLRPKey{runningLRP.ActualLRPKey})
 
 			findStopRequest := func() bool {
 				for _, req := range fakeExecutor.ReceivedRequests() {
