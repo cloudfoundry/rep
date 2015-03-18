@@ -165,7 +165,7 @@ var _ = Describe("ContainerDelegate", func() {
 		})
 	})
 
-	Describe("FetchContainerResult", func() {
+	Describe("FetchContainerResultFile", func() {
 		var (
 			filename string
 
@@ -178,7 +178,7 @@ var _ = Describe("ContainerDelegate", func() {
 		})
 
 		JustBeforeEach(func() {
-			result, fetchErr = containerDelegate.FetchContainerResult(logger, expectedGuid, filename)
+			result, fetchErr = containerDelegate.FetchContainerResultFile(logger, expectedGuid, filename)
 		})
 
 		Context("when fetching the file stream from the container succeeds", func() {

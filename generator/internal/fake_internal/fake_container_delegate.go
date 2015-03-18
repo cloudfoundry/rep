@@ -47,14 +47,14 @@ type FakeContainerDelegate struct {
 	deleteContainerReturns struct {
 		result1 bool
 	}
-	FetchContainerResultStub        func(logger lager.Logger, guid string, filename string) (string, error)
-	fetchContainerResultMutex       sync.RWMutex
-	fetchContainerResultArgsForCall []struct {
+	FetchContainerResultFileStub        func(logger lager.Logger, guid string, filename string) (string, error)
+	fetchContainerResultFileMutex       sync.RWMutex
+	fetchContainerResultFileArgsForCall []struct {
 		logger   lager.Logger
 		guid     string
 		filename string
 	}
-	fetchContainerResultReturns struct {
+	fetchContainerResultFileReturns struct {
 		result1 string
 		result2 error
 	}
@@ -193,36 +193,36 @@ func (fake *FakeContainerDelegate) DeleteContainerReturns(result1 bool) {
 	}{result1}
 }
 
-func (fake *FakeContainerDelegate) FetchContainerResult(logger lager.Logger, guid string, filename string) (string, error) {
-	fake.fetchContainerResultMutex.Lock()
-	fake.fetchContainerResultArgsForCall = append(fake.fetchContainerResultArgsForCall, struct {
+func (fake *FakeContainerDelegate) FetchContainerResultFile(logger lager.Logger, guid string, filename string) (string, error) {
+	fake.fetchContainerResultFileMutex.Lock()
+	fake.fetchContainerResultFileArgsForCall = append(fake.fetchContainerResultFileArgsForCall, struct {
 		logger   lager.Logger
 		guid     string
 		filename string
 	}{logger, guid, filename})
-	fake.fetchContainerResultMutex.Unlock()
-	if fake.FetchContainerResultStub != nil {
-		return fake.FetchContainerResultStub(logger, guid, filename)
+	fake.fetchContainerResultFileMutex.Unlock()
+	if fake.FetchContainerResultFileStub != nil {
+		return fake.FetchContainerResultFileStub(logger, guid, filename)
 	} else {
-		return fake.fetchContainerResultReturns.result1, fake.fetchContainerResultReturns.result2
+		return fake.fetchContainerResultFileReturns.result1, fake.fetchContainerResultFileReturns.result2
 	}
 }
 
-func (fake *FakeContainerDelegate) FetchContainerResultCallCount() int {
-	fake.fetchContainerResultMutex.RLock()
-	defer fake.fetchContainerResultMutex.RUnlock()
-	return len(fake.fetchContainerResultArgsForCall)
+func (fake *FakeContainerDelegate) FetchContainerResultFileCallCount() int {
+	fake.fetchContainerResultFileMutex.RLock()
+	defer fake.fetchContainerResultFileMutex.RUnlock()
+	return len(fake.fetchContainerResultFileArgsForCall)
 }
 
-func (fake *FakeContainerDelegate) FetchContainerResultArgsForCall(i int) (lager.Logger, string, string) {
-	fake.fetchContainerResultMutex.RLock()
-	defer fake.fetchContainerResultMutex.RUnlock()
-	return fake.fetchContainerResultArgsForCall[i].logger, fake.fetchContainerResultArgsForCall[i].guid, fake.fetchContainerResultArgsForCall[i].filename
+func (fake *FakeContainerDelegate) FetchContainerResultFileArgsForCall(i int) (lager.Logger, string, string) {
+	fake.fetchContainerResultFileMutex.RLock()
+	defer fake.fetchContainerResultFileMutex.RUnlock()
+	return fake.fetchContainerResultFileArgsForCall[i].logger, fake.fetchContainerResultFileArgsForCall[i].guid, fake.fetchContainerResultFileArgsForCall[i].filename
 }
 
-func (fake *FakeContainerDelegate) FetchContainerResultReturns(result1 string, result2 error) {
-	fake.FetchContainerResultStub = nil
-	fake.fetchContainerResultReturns = struct {
+func (fake *FakeContainerDelegate) FetchContainerResultFileReturns(result1 string, result2 error) {
+	fake.FetchContainerResultFileStub = nil
+	fake.fetchContainerResultFileReturns = struct {
 		result1 string
 		result2 error
 	}{result1, result2}

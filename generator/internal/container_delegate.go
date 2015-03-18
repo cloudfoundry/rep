@@ -22,7 +22,7 @@ type ContainerDelegate interface {
 	RunContainer(logger lager.Logger, guid string) bool
 	StopContainer(logger lager.Logger, guid string) bool
 	DeleteContainer(logger lager.Logger, guid string) bool
-	FetchContainerResult(logger lager.Logger, guid string, filename string) (string, error)
+	FetchContainerResultFile(logger lager.Logger, guid string, filename string) (string, error)
 }
 
 type containerDelegate struct {
@@ -80,7 +80,7 @@ func (d *containerDelegate) DeleteContainer(logger lager.Logger, guid string) bo
 	return true
 }
 
-func (d *containerDelegate) FetchContainerResult(logger lager.Logger, guid string, filename string) (string, error) {
+func (d *containerDelegate) FetchContainerResultFile(logger lager.Logger, guid string, filename string) (string, error) {
 	logger.Info("fetching-container-result")
 	stream, err := d.client.GetFiles(guid, filename)
 	if err != nil {

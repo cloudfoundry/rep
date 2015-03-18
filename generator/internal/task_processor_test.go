@@ -70,7 +70,7 @@ var _ = Describe("Task <-> Container table", func() {
 	itCompletesTheSuccessfulTaskAndDeletesTheContainer := func(logger *lagertest.TestLogger) {
 		Context("when fetching the result succeeds", func() {
 			BeforeEach(func() {
-				containerDelegate.FetchContainerResultReturns("some-result", nil)
+				containerDelegate.FetchContainerResultFileReturns("some-result", nil)
 
 				containerDelegate.DeleteContainerStub = func(logger lager.Logger, guid string) bool {
 					task, err := BBS.TaskByGuid(taskGuid)
@@ -88,7 +88,7 @@ var _ = Describe("Task <-> Container table", func() {
 
 				Ω(task.Failed).Should(BeFalse())
 
-				_, guid, filename := containerDelegate.FetchContainerResultArgsForCall(0)
+				_, guid, filename := containerDelegate.FetchContainerResultFileArgsForCall(0)
 				Ω(guid).Should(Equal(taskGuid))
 				Ω(filename).Should(Equal("some-result-filename"))
 				Ω(task.Result).Should(Equal("some-result"))
@@ -101,7 +101,7 @@ var _ = Describe("Task <-> Container table", func() {
 			disaster := errors.New("nope")
 
 			BeforeEach(func() {
-				containerDelegate.FetchContainerResultReturns("", disaster)
+				containerDelegate.FetchContainerResultFileReturns("", disaster)
 			})
 
 			itCompletesTheTaskWithFailure("failed to fetch result")(logger)
@@ -117,7 +117,7 @@ var _ = Describe("Task <-> Container table", func() {
 
 	itCompletesTheFailedTaskAndDeletesTheContainer := func(logger *lagertest.TestLogger) {
 		It("does not attempt to fetch the result", func() {
-			Ω(containerDelegate.FetchContainerResultCallCount()).Should(BeZero())
+			Ω(containerDelegate.FetchContainerResultFileCallCount()).Should(BeZero())
 		})
 
 		itCompletesTheTaskWithFailure("because")(logger)
