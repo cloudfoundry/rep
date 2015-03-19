@@ -112,7 +112,7 @@ func (p *ordinaryLRPProcessor) processCompletedContainer(logger lager.Logger, lr
 	if lrpContainer.RunResult.Stopped {
 		p.bbs.RemoveActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
 	} else {
-		p.bbs.CrashActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
+		p.bbs.CrashActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, lrpContainer.RunResult.FailureReason)
 	}
 
 	p.containerDelegate.DeleteContainer(logger, lrpContainer.Guid)

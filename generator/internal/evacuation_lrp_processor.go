@@ -104,7 +104,7 @@ func (p *evacuationLRPProcessor) processCompletedContainer(logger lager.Logger, 
 			logger.Error("failed-to-evacuate-stopped-actual-lrp", err, lager.Data{"lrp-key": lrpContainer.ActualLRPKey})
 		}
 	} else {
-		_, err := p.bbs.EvacuateCrashedActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
+		_, err := p.bbs.EvacuateCrashedActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, lrpContainer.RunResult.FailureReason)
 		if err != nil {
 			logger.Error("failed-to-evacuate-crashed-actual-lrp", err, lager.Data{"lrp-key": lrpContainer.ActualLRPKey})
 		}

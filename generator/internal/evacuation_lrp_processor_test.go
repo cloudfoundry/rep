@@ -342,13 +342,15 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 			BeforeEach(func() {
 				container.State = executor.StateCompleted
 				container.RunResult.Stopped = false
+				container.RunResult.FailureReason = "crashed"
 			})
 
 			It("evacuates the lrp", func() {
 				Ω(fakeRepBBS.EvacuateCrashedActualLRPCallCount()).Should(Equal(1))
-				_, actualLRPKey, actualLRPContainerKey := fakeRepBBS.EvacuateCrashedActualLRPArgsForCall(0)
+				_, actualLRPKey, actualLRPContainerKey, reason := fakeRepBBS.EvacuateCrashedActualLRPArgsForCall(0)
 				Ω(actualLRPKey).Should(Equal(lrpKey))
 				Ω(actualLRPContainerKey).Should(Equal(lrpInstanceKey))
+				Ω(reason).Should(Equal("crashed"))
 			})
 
 			Context("when the evacuation returns successfully", func() {

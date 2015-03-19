@@ -278,13 +278,15 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 					Context("and the container was not requested to stop", func() {
 						BeforeEach(func() {
 							container.RunResult.Stopped = false
+							container.RunResult.FailureReason = "crashed"
 						})
 
 						It("crashes the actual LRP", func() {
 							Ω(bbs.CrashActualLRPCallCount()).Should(Equal(1))
-							bbsLogger, lrpKey, instanceKey := bbs.CrashActualLRPArgsForCall(0)
+							bbsLogger, lrpKey, instanceKey, reason := bbs.CrashActualLRPArgsForCall(0)
 							Ω(lrpKey).Should(Equal(expectedLrpKey))
 							Ω(instanceKey).Should(Equal(expectedInstanceKey))
+							Ω(reason).Should(Equal("crashed"))
 							Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
 						})
 
