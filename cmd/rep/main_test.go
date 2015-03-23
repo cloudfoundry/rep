@@ -118,7 +118,6 @@ var _ = Describe("The Rep", func() {
 		})
 
 		It("should maintain presence", func() {
-			Ω(cellPresence.Stack).Should(Equal("the-stack"))
 			Ω(cellPresence.CellID).Should(Equal(cellID))
 		})
 

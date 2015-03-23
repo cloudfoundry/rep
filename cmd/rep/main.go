@@ -199,7 +199,6 @@ func initializeCellHeartbeat(address string, bbs Bbs.RepBBS, executorClient exec
 	config := maintain.Config{
 		CellID:            *cellID,
 		RepAddress:        address,
-		Stack:             *stack,
 		Zone:              *zone,
 		HeartbeatInterval: *heartbeatInterval,
 	}

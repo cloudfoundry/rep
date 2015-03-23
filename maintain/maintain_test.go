@@ -76,7 +76,6 @@ var _ = Describe("Maintain Presence", func() {
 		config = maintain.Config{
 			CellID:            "cell-id",
 			RepAddress:        "1.2.3.4",
-			Stack:             "stack",
 			Zone:              "az1",
 			HeartbeatInterval: 1 * time.Second,
 		}
