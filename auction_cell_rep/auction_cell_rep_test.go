@@ -30,6 +30,10 @@ var _ = Describe("AuctionCellRep", func() {
 	var expectedGuidError error
 	var fakeGenerateContainerGuid func() (string, error)
 
+	const lucidStack = "lucid64"
+	const lucidPath = "/data/rootfs/lucid64"
+	var lucidRootFSURL string
+
 	BeforeEach(func() {
 		client = new(fake_client.FakeClient)
 		bbs = &fake_bbs.FakeRepBBS{}
@@ -41,12 +45,13 @@ var _ = Describe("AuctionCellRep", func() {
 		fakeGenerateContainerGuid = func() (string, error) {
 			return expectedGuid, expectedGuidError
 		}
+		lucidRootFSURL = models.PreloadedRootFS(lucidStack)
 
 		commonErr = errors.New("Failed to fetch")
 	})
 
 	JustBeforeEach(func() {
-		cellRep = New(expectedCellID, "lucid64", "the-zone", fakeGenerateContainerGuid, bbs, client, evacuationReporter, logger)
+		cellRep = New(expectedCellID, rep.StackPathMap{lucidStack: lucidPath}, []string{"docker"}, "the-zone", fakeGenerateContainerGuid, bbs, client, evacuationReporter, logger)
 	})
 
 	Describe("State", func() {
@@ -106,7 +111,10 @@ var _ = Describe("AuctionCellRep", func() {
 			}))
 
 			Ω(state.Evacuating).Should(BeTrue())
-			Ω(state.Stack).Should(Equal("lucid64"))
+			Ω(state.RootFSProviders).Should(Equal(auctiontypes.RootFSProviders{
+				models.PreloadedRootFSScheme: auctiontypes.NewFixedSetRootFSProvider("lucid64"),
+				"docker":                     auctiontypes.ArbitraryRootFSProvider{},
+			}))
 			Ω(state.AvailableResources).Should(Equal(auctiontypes.Resources{
 				MemoryMB:   availableResources.MemoryMB,
 				DiskMB:     availableResources.DiskMB,
@@ -186,7 +194,7 @@ var _ = Describe("AuctionCellRep", func() {
 				lrpAuction = auctiontypes.LRPAuction{
 					DesiredLRP: models.DesiredLRP{
 						Domain:      "tests",
-						RootFS:      "some-root-fs",
+						RootFS:      lucidRootFSURL,
 						ProcessGuid: "process-guid",
 						DiskMB:      1024,
 						MemoryMB:    2048,
@@ -201,7 +209,7 @@ var _ = Describe("AuctionCellRep", func() {
 				task = models.Task{
 					Domain:     "tests",
 					TaskGuid:   "the-task-guid",
-					RootFS:     "some-root-fs",
+					RootFS:     lucidRootFSURL,
 					DiskMB:     1024,
 					MemoryMB:   2048,
 					Privileged: true,
@@ -250,7 +258,7 @@ var _ = Describe("AuctionCellRep", func() {
 				lrpAuctionOne = auctiontypes.LRPAuction{
 					DesiredLRP: models.DesiredLRP{
 						Domain:      "tests",
-						RootFS:      "some-root-fs",
+						RootFS:      lucidRootFSURL,
 						ProcessGuid: "process-guid",
 						DiskMB:      1024,
 						MemoryMB:    2048,
@@ -281,7 +289,7 @@ var _ = Describe("AuctionCellRep", func() {
 				lrpAuctionTwo = auctiontypes.LRPAuction{
 					DesiredLRP: models.DesiredLRP{
 						Domain:      "tests",
-						RootFS:      "some-root-fs",
+						RootFS:      lucidRootFSURL,
 						ProcessGuid: "process-guid",
 						DiskMB:      1024,
 						MemoryMB:    2048,
@@ -332,7 +340,7 @@ var _ = Describe("AuctionCellRep", func() {
 						MemoryMB:   lrpAuctionOne.DesiredLRP.MemoryMB,
 						DiskMB:     lrpAuctionOne.DesiredLRP.DiskMB,
 						CPUWeight:  lrpAuctionOne.DesiredLRP.CPUWeight,
-						RootFSPath: "some-root-fs",
+						RootFSPath: lucidPath,
 						Privileged: lrpAuctionOne.DesiredLRP.Privileged,
 						Ports:      []executor.PortMapping{{ContainerPort: 8080}},
 
@@ -375,7 +383,7 @@ var _ = Describe("AuctionCellRep", func() {
 						MemoryMB:   lrpAuctionTwo.DesiredLRP.MemoryMB,
 						DiskMB:     lrpAuctionTwo.DesiredLRP.DiskMB,
 						CPUWeight:  lrpAuctionTwo.DesiredLRP.CPUWeight,
-						RootFSPath: "some-root-fs",
+						RootFSPath: lucidPath,
 						Privileged: lrpAuctionTwo.DesiredLRP.Privileged,
 						Ports:      []executor.PortMapping{{ContainerPort: 8080}},
 
@@ -450,7 +458,7 @@ var _ = Describe("AuctionCellRep", func() {
 					TaskGuid:    "the-task-guid",
 					DiskMB:      1024,
 					MemoryMB:    2048,
-					RootFS:      "the-root-fs",
+					RootFS:      lucidRootFSURL,
 					Privileged:  true,
 					CPUWeight:   10,
 					LogGuid:     "log-guid",
@@ -504,7 +512,7 @@ var _ = Describe("AuctionCellRep", func() {
 						MemoryMB:   task.MemoryMB,
 						DiskMB:     task.DiskMB,
 						CPUWeight:  task.CPUWeight,
-						RootFSPath: task.RootFS,
+						RootFSPath: lucidPath,
 						Privileged: task.Privileged,
 						EgressRules: []models.SecurityGroupRule{
 							securityRule,

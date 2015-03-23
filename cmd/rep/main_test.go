@@ -34,6 +34,8 @@ var _ = Describe("The Rep", func() {
 		bbs               *Bbs.BBS
 		pollingInterval   time.Duration
 		evacuationTimeout time.Duration
+		rootFSName        string
+		rootFSPath        string
 		logger            *lagertest.TestLogger
 
 		flushEvents chan struct{}
@@ -73,10 +75,16 @@ var _ = Describe("The Rep", func() {
 		pollingInterval = 50 * time.Millisecond
 		evacuationTimeout = 200 * time.Millisecond
 
+		rootFSName = "the-rootfs"
+		rootFSPath = "/path/to/rootfs"
+		rootFSes, err := json.Marshal(map[string]string{rootFSName: rootFSPath})
+		Ω(err).ShouldNot(HaveOccurred())
+
 		runner = testrunner.New(
 			representativePath,
 			cellID,
-			"the-stack",
+			string(rootFSes),
+			"docker",
 			fakeExecutor.URL(),
 			fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
 			"info",
@@ -171,7 +179,6 @@ var _ = Describe("The Rep", func() {
 					DiskMB:     1024,
 					Containers: 2,
 				}))
-				Ω(state.Stack).Should(Equal("the-stack"))
 			})
 		})
 

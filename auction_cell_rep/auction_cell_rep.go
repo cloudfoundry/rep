@@ -1,6 +1,8 @@
 package auction_cell_rep
 
 import (
+	"errors"
+	"net/url"
 	"strconv"
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
@@ -12,8 +14,12 @@ import (
 	"github.com/pivotal-golang/lager"
 )
 
+var ErrPreloadedRootFSNotFound = errors.New("preloaded rootfs path not found")
+
 type AuctionCellRep struct {
 	cellID               string
+	stackPathMap         rep.StackPathMap
+	rootFSProviders      auctiontypes.RootFSProviders
 	stack                string
 	zone                 string
 	generateInstanceGuid func() (string, error)
@@ -25,7 +31,8 @@ type AuctionCellRep struct {
 
 func New(
 	cellID string,
-	stack string,
+	preloadedStackPathMap rep.StackPathMap,
+	arbitraryRootFSes []string,
 	zone string,
 	generateInstanceGuid func() (string, error),
 	bbs Bbs.RepBBS,
@@ -35,7 +42,8 @@ func New(
 ) *AuctionCellRep {
 	return &AuctionCellRep{
 		cellID:               cellID,
-		stack:                stack,
+		stackPathMap:         preloadedStackPathMap,
+		rootFSProviders:      rootFSProviders(preloadedStackPathMap, arbitraryRootFSes),
 		zone:                 zone,
 		generateInstanceGuid: generateInstanceGuid,
 		bbs:                  bbs,
@@ -43,6 +51,38 @@ func New(
 		evacuationReporter:   evacuationReporter,
 		logger:               logger.Session("auction-delegate"),
 	}
+}
+
+func rootFSProviders(preloaded rep.StackPathMap, arbitrary []string) auctiontypes.RootFSProviders {
+	rootFSProviders := auctiontypes.RootFSProviders{}
+	for _, scheme := range arbitrary {
+		rootFSProviders[scheme] = auctiontypes.ArbitraryRootFSProvider{}
+	}
+
+	stacks := make([]string, 0, len(preloaded))
+	for stack, _ := range preloaded {
+		stacks = append(stacks, stack)
+	}
+	rootFSProviders["preloaded"] = auctiontypes.NewFixedSetRootFSProvider(stacks...)
+
+	return rootFSProviders
+}
+
+func (a *AuctionCellRep) pathForRootFS(rootFS string) (string, error) {
+	url, err := url.Parse(rootFS)
+	if err != nil {
+		return "", err
+	}
+
+	if url.Scheme == models.PreloadedRootFSScheme {
+		path, ok := a.stackPathMap[url.Opaque]
+		if !ok {
+			return "", ErrPreloadedRootFSNotFound
+		}
+		return path, nil
+	}
+
+	return rootFS, nil
 }
 
 func (a *AuctionCellRep) State() (auctiontypes.CellState, error) {
@@ -84,7 +124,7 @@ func (a *AuctionCellRep) State() (auctiontypes.CellState, error) {
 	}
 
 	state := auctiontypes.CellState{
-		Stack:              a.stack,
+		RootFSProviders:    a.rootFSProviders,
 		AvailableResources: availableResources,
 		TotalResources:     totalResources,
 		LRPs:               lrps,
@@ -171,6 +211,11 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 		containerGuid := rep.LRPContainerGuid(lrpStart.DesiredLRP.ProcessGuid, instanceGuid)
 		lrpAuctionMap[containerGuid] = lrpStart
 
+		rootFSPath, err := a.pathForRootFS(lrpStart.DesiredLRP.RootFS)
+		if err != nil {
+			return nil, nil, err
+		}
+
 		container := executor.Container{
 			Guid: containerGuid,
 
@@ -185,7 +230,7 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 			MemoryMB:     lrpStart.DesiredLRP.MemoryMB,
 			DiskMB:       lrpStart.DesiredLRP.DiskMB,
 			CPUWeight:    lrpStart.DesiredLRP.CPUWeight,
-			RootFSPath:   lrpStart.DesiredLRP.RootFS,
+			RootFSPath:   rootFSPath,
 			Privileged:   lrpStart.DesiredLRP.Privileged,
 			Ports:        a.convertPortMappings(lrpStart.DesiredLRP.Ports),
 			StartTimeout: lrpStart.DesiredLRP.StartTimeout,
@@ -221,13 +266,17 @@ func (a *AuctionCellRep) tasksToContainers(tasks []models.Task) []executor.Conta
 	containers := make([]executor.Container, 0, len(tasks))
 
 	for _, task := range tasks {
+		rootFSPath, err := a.pathForRootFS(task.RootFS)
+		if err != nil {
+			continue
+		}
 		container := executor.Container{
 			Guid: task.TaskGuid,
 
 			DiskMB:     task.DiskMB,
 			MemoryMB:   task.MemoryMB,
 			CPUWeight:  task.CPUWeight,
-			RootFSPath: task.RootFS,
+			RootFSPath: rootFSPath,
 			Privileged: task.Privileged,
 
 			LogConfig: executor.LogConfig{

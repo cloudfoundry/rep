@@ -15,6 +15,7 @@ import (
 	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry-incubator/executor"
 	executorclient "github.com/cloudfoundry-incubator/executor/http/client"
+	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/auction_cell_rep"
 	"github.com/cloudfoundry-incubator/rep/evacuation"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
@@ -66,10 +67,16 @@ var listenAddr = flag.String(
 	"host:port to serve auction and LRP stop requests on",
 )
 
-var stack = flag.String(
-	"stack",
+var preloadedRootFSes = flag.String(
+	"preloadedRootFSes",
 	"",
-	"the rep stack - must be specified",
+	"the preloaded rootfses for the represented cell; required",
+)
+
+var rootFSProviders = flag.String(
+	"rootFSProviders",
+	"",
+	"comma-separated list of other rootfs providers",
 )
 
 var cellID = flag.String(
@@ -127,9 +134,16 @@ func main() {
 		log.Fatalf("-cellID must be specified")
 	}
 
-	if *stack == "" {
-		log.Fatalf("-stack must be specified")
+	if *preloadedRootFSes == "" {
+		log.Fatalf("-preloadedRootFSes must be specified")
 	}
+
+	stackMap, err := rep.UnmarshalStackPathMap([]byte(*preloadedRootFSes))
+	if err != nil {
+		logger.Fatal("failed to unmarshal 'preloadedRootFSes' flag", err, lager.Data{"flag-value": *preloadedRootFSes})
+	}
+
+	supportedProviders := strings.Split(*rootFSProviders, ",")
 
 	bbs := initializeRepBBS(logger)
 
@@ -156,7 +170,7 @@ func main() {
 		*evacuationPollingInterval,
 	)
 
-	httpServer, address := initializeServer(bbs, executorClient, evacuatable, evacuationReporter, logger)
+	httpServer, address := initializeServer(bbs, executorClient, evacuatable, evacuationReporter, logger, stackMap, supportedProviders)
 	opGenerator := generator.New(*cellID, bbs, executorClient, lrpProcessor, taskProcessor, containerDelegate)
 
 	members := grouper.Members{
@@ -179,7 +193,7 @@ func main() {
 
 	logger.Info("started", lager.Data{"cell-id": *cellID})
 
-	err := <-monitor.Wait()
+	err = <-monitor.Wait()
 	if err != nil {
 		logger.Error("exited-with-failure", err)
 		os.Exit(1)
@@ -229,10 +243,12 @@ func initializeServer(
 	evacuatable evacuation_context.Evacuatable,
 	evacuationReporter evacuation_context.EvacuationReporter,
 	logger lager.Logger,
+	stackMap rep.StackPathMap,
+	supportedProviders []string,
 ) (ifrit.Runner, string) {
 	lrpStopper := initializeLRPStopper(*cellID, executorClient, logger)
 
-	auctionCellRep := auction_cell_rep.New(*cellID, *stack, *zone, generateGuid, bbs, executorClient, evacuationReporter, logger)
+	auctionCellRep := auction_cell_rep.New(*cellID, stackMap, supportedProviders, *zone, generateGuid, bbs, executorClient, evacuationReporter, logger)
 	handlers := auction_http_handlers.New(auctionCellRep, logger)
 
 	routes := auctionroutes.Routes

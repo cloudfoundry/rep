@@ -1,6 +1,7 @@
 package rep
 
 import (
+	"encoding/json"
 	"errors"
 	"strconv"
 
@@ -89,4 +90,12 @@ func ActualLRPNetInfoFromContainer(container executor.Container) (models.ActualL
 
 func LRPContainerGuid(processGuid, instanceGuid string) string {
 	return processGuid + "-" + instanceGuid
+}
+
+type StackPathMap map[string]string
+
+func UnmarshalStackPathMap(payload []byte) (StackPathMap, error) {
+	stackPathMap := StackPathMap{}
+	err := json.Unmarshal(payload, &stackPathMap)
+	return stackPathMap, err
 }

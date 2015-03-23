@@ -240,4 +240,26 @@ var _ = Describe("Resources", func() {
 			})
 		})
 	})
+
+	Describe("StackPathMap", func() {
+		It("deserializes a valid input", func() {
+			stackMapPayload := []byte(`{
+				"pancakes": "/path/to/lingonberries",
+				"waffles": "/where/is/the/syrup"
+			}`)
+
+			stackMap, err := rep.UnmarshalStackPathMap(stackMapPayload)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(stackMap).Should(Equal(rep.StackPathMap{
+				"waffles":  "/where/is/the/syrup",
+				"pancakes": "/path/to/lingonberries",
+			}))
+		})
+
+		It("errors when passed malformed input", func() {
+			_, err := rep.UnmarshalStackPathMap([]byte(`{"foo": ["bar"]}`))
+			Ω(err).Should(MatchError(ContainSubstring("unmarshal")))
+		})
+	})
 })

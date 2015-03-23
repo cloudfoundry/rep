@@ -18,7 +18,8 @@ type Runner struct {
 }
 
 type Config struct {
-	stack             string
+	preloadedRootFSes string
+	rootFSProviders   string
 	cellID            string
 	executorURL       string
 	etcdCluster       string
@@ -30,14 +31,15 @@ type Config struct {
 }
 
 func New(
-	binPath, cellID, stack, executorURL, etcdCluster, logLevel string,
+	binPath, cellID, preloadedRootFSes, rootFSProviders, executorURL, etcdCluster, logLevel string,
 	serverPort int,
 	heartbeatInterval, pollingInterval, evacuationTimeout time.Duration) *Runner {
 	return &Runner{
 		binPath: binPath,
 		config: Config{
 			cellID:            cellID,
-			stack:             stack,
+			preloadedRootFSes: preloadedRootFSes,
+			rootFSProviders:   rootFSProviders,
 			executorURL:       executorURL,
 			serverPort:        serverPort,
 			etcdCluster:       etcdCluster,
@@ -58,7 +60,8 @@ func (r *Runner) Start() {
 		exec.Command(
 			r.binPath,
 			"-cellID", r.config.cellID,
-			"-stack", r.config.stack,
+			"-preloadedRootFSes", r.config.preloadedRootFSes,
+			"-rootFSProviders", r.config.rootFSProviders,
 			"-executorURL", r.config.executorURL,
 			"-listenAddr", fmt.Sprintf("0.0.0.0:%d", r.config.serverPort),
 			"-etcdCluster", r.config.etcdCluster,
