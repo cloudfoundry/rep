@@ -186,7 +186,7 @@ var _ = Describe("AuctionCellRep", func() {
 				lrpAuction = auctiontypes.LRPAuction{
 					DesiredLRP: models.DesiredLRP{
 						Domain:      "tests",
-						RootFSPath:  "some-root-fs",
+						RootFS:      "some-root-fs",
 						ProcessGuid: "process-guid",
 						DiskMB:      1024,
 						MemoryMB:    2048,
@@ -251,7 +251,7 @@ var _ = Describe("AuctionCellRep", func() {
 				lrpAuctionOne = auctiontypes.LRPAuction{
 					DesiredLRP: models.DesiredLRP{
 						Domain:      "tests",
-						RootFSPath:  "some-root-fs",
+						RootFS:      "some-root-fs",
 						ProcessGuid: "process-guid",
 						DiskMB:      1024,
 						MemoryMB:    2048,
@@ -282,7 +282,7 @@ var _ = Describe("AuctionCellRep", func() {
 				lrpAuctionTwo = auctiontypes.LRPAuction{
 					DesiredLRP: models.DesiredLRP{
 						Domain:      "tests",
-						RootFSPath:  "some-root-fs",
+						RootFS:      "some-root-fs",
 						ProcessGuid: "process-guid",
 						DiskMB:      1024,
 						MemoryMB:    2048,

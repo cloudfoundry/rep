@@ -185,7 +185,7 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 			MemoryMB:     lrpStart.DesiredLRP.MemoryMB,
 			DiskMB:       lrpStart.DesiredLRP.DiskMB,
 			CPUWeight:    lrpStart.DesiredLRP.CPUWeight,
-			RootFSPath:   lrpStart.DesiredLRP.RootFSPath,
+			RootFSPath:   lrpStart.DesiredLRP.RootFS,
 			Privileged:   lrpStart.DesiredLRP.Privileged,
 			Ports:        a.convertPortMappings(lrpStart.DesiredLRP.Ports),
 			StartTimeout: lrpStart.DesiredLRP.StartTimeout,

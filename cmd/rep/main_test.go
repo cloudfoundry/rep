@@ -187,7 +187,7 @@ var _ = Describe("The Rep", func() {
 						ProcessGuid: "the-process-guid",
 						MemoryMB:    2,
 						DiskMB:      2,
-						Stack:       "the-stack",
+						RootFS:      "the:rootfs",
 						Domain:      "the-domain",
 						Instances:   index + 1,
 						Action: &models.RunAction{
@@ -327,7 +327,7 @@ var _ = Describe("The Rep", func() {
 		BeforeEach(func() {
 			desiredLRP := models.DesiredLRP{
 				ProcessGuid: "process-guid",
-				Stack:       "some-stack",
+				RootFS:      "some:rootfs",
 				Domain:      "some-domain",
 				Instances:   1,
 				Action: &models.RunAction{

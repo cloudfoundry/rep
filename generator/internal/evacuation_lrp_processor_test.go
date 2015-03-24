@@ -60,7 +60,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				Domain:      "domain",
 				ProcessGuid: processGuid,
 				Instances:   1,
-				Stack:       "some-stack",
+				RootFS:      "some-rootfs",
 				Action: &models.RunAction{
 					Path: "/bin/true",
 				},
