@@ -201,10 +201,9 @@ var _ = Describe("AuctionCellRep", func() {
 				task = models.Task{
 					Domain:     "tests",
 					TaskGuid:   "the-task-guid",
-					Stack:      "lucid64",
+					RootFS:     "some-root-fs",
 					DiskMB:     1024,
 					MemoryMB:   2048,
-					RootFSPath: "the-root-fs-path",
 					Privileged: true,
 					CPUWeight:  10,
 				}
@@ -449,10 +448,9 @@ var _ = Describe("AuctionCellRep", func() {
 				task = models.Task{
 					Domain:      "tests",
 					TaskGuid:    "the-task-guid",
-					Stack:       "lucid64",
 					DiskMB:      1024,
 					MemoryMB:    2048,
-					RootFSPath:  "the-root-fs-path",
+					RootFS:      "the-root-fs",
 					Privileged:  true,
 					CPUWeight:   10,
 					LogGuid:     "log-guid",
@@ -506,7 +504,7 @@ var _ = Describe("AuctionCellRep", func() {
 						MemoryMB:   task.MemoryMB,
 						DiskMB:     task.DiskMB,
 						CPUWeight:  task.CPUWeight,
-						RootFSPath: task.RootFSPath,
+						RootFSPath: task.RootFS,
 						Privileged: task.Privileged,
 						EgressRules: []models.SecurityGroupRule{
 							securityRule,

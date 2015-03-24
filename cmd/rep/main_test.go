@@ -243,7 +243,7 @@ var _ = Describe("The Rep", func() {
 						TaskGuid: "the-task-guid",
 						MemoryMB: 2,
 						DiskMB:   2,
-						Stack:    "the-stack",
+						RootFS:   "the:rootfs",
 						Domain:   "the-domain",
 						Action: &models.RunAction{
 							Path: "date",
@@ -296,11 +296,11 @@ var _ = Describe("The Rep", func() {
 			task = models.Task{
 				TaskGuid: "a-new-task-guid",
 				Domain:   "the-domain",
+				RootFS:   "some:rootfs",
 				Action: &models.RunAction{
 					Path: "the-path",
 					Args: []string{},
 				},
-				Stack: "the-stack",
 			}
 
 			err := bbs.DesireTask(logger, task)
@@ -430,8 +430,8 @@ var _ = Describe("The Rep", func() {
 
 			task := models.Task{
 				TaskGuid: taskGuid,
-				Stack:    "the-stack",
 				Domain:   "the-domain",
+				RootFS:   "some:rootfs",
 				Action: &models.RunAction{
 					Path: "date",
 				},

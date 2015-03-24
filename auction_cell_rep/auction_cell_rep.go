@@ -227,7 +227,7 @@ func (a *AuctionCellRep) tasksToContainers(tasks []models.Task) []executor.Conta
 			DiskMB:     task.DiskMB,
 			MemoryMB:   task.MemoryMB,
 			CPUWeight:  task.CPUWeight,
-			RootFSPath: task.RootFSPath,
+			RootFSPath: task.RootFS,
 			Privileged: task.Privileged,
 
 			LogConfig: executor.LogConfig{
