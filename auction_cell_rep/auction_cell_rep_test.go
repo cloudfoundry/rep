@@ -340,12 +340,12 @@ var _ = Describe("AuctionCellRep", func() {
 						LogConfig: executor.LogConfig{
 							Guid:       "log-guid",
 							SourceName: "log-source",
-							Index:      &expectedIndexOne,
+							Index:      expectedIndexOne,
 						},
 
 						MetricsConfig: executor.MetricsConfig{
 							Guid:  "metrics-guid",
-							Index: &expectedIndexOne,
+							Index: expectedIndexOne,
 						},
 
 						Setup:   lrpAuctionOne.DesiredLRP.Setup,
@@ -383,12 +383,12 @@ var _ = Describe("AuctionCellRep", func() {
 						LogConfig: executor.LogConfig{
 							Guid:       "log-guid",
 							SourceName: "log-source",
-							Index:      &expectedIndexTwo,
+							Index:      expectedIndexTwo,
 						},
 
 						MetricsConfig: executor.MetricsConfig{
 							Guid:  "metrics-guid",
-							Index: &expectedIndexTwo,
+							Index: expectedIndexTwo,
 						},
 
 						Setup:   lrpAuctionTwo.DesiredLRP.Setup,
