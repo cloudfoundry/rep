@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -67,18 +68,6 @@ var listenAddr = flag.String(
 	"host:port to serve auction and LRP stop requests on",
 )
 
-var preloadedRootFSes = flag.String(
-	"preloadedRootFSes",
-	"",
-	"the preloaded rootfses for the represented cell; required",
-)
-
-var rootFSProviders = flag.String(
-	"rootFSProviders",
-	"",
-	"comma-separated list of other rootfs providers",
-)
-
 var cellID = flag.String(
 	"cellID",
 	"",
@@ -115,6 +104,45 @@ var evacuationPollingInterval = flag.Duration(
 	"the interval on which to scan the executor during evacuation",
 )
 
+type stackPathMap rep.StackPathMap
+
+func (s *stackPathMap) String() string {
+	return fmt.Sprintf("%v", *s)
+}
+
+func (s *stackPathMap) Set(value string) error {
+	parts := strings.SplitN(value, ":", 2)
+	if len(parts) != 2 {
+		return errors.New("Invalid preloaded RootFS value: not of the form 'stack-name:path'")
+	}
+
+	if parts[0] == "" {
+		return errors.New("Invalid preloaded RootFS value: blank stack")
+	}
+
+	if parts[1] == "" {
+		return errors.New("Invalid preloaded RootFS value: blank path")
+	}
+
+	(*s)[parts[0]] = parts[1]
+	return nil
+}
+
+type providers []string
+
+func (p *providers) String() string {
+	return fmt.Sprintf("%v", *p)
+}
+
+func (p *providers) Set(value string) error {
+	if value == "" {
+		return errors.New("Cannot set blank value for RootFS provider")
+	}
+
+	*p = append(*p, value)
+	return nil
+}
+
 const (
 	dropsondeDestination = "localhost:3457"
 	dropsondeOrigin      = "rep"
@@ -123,6 +151,11 @@ const (
 func main() {
 	cf_debug_server.AddFlags(flag.CommandLine)
 	cf_lager.AddFlags(flag.CommandLine)
+
+	stackMap := stackPathMap{}
+	supportedProviders := providers{}
+	flag.Var(&stackMap, "preloadedRootFS", "List of preloaded RootFSes")
+	flag.Var(&supportedProviders, "rootFSProvider", "List of RootFS providers")
 	flag.Parse()
 
 	cf_http.Initialize(*communicationTimeout)
@@ -133,17 +166,6 @@ func main() {
 	if *cellID == "" {
 		log.Fatalf("-cellID must be specified")
 	}
-
-	if *preloadedRootFSes == "" {
-		log.Fatalf("-preloadedRootFSes must be specified")
-	}
-
-	stackMap, err := rep.UnmarshalStackPathMap([]byte(*preloadedRootFSes))
-	if err != nil {
-		logger.Fatal("failed to unmarshal 'preloadedRootFSes' flag", err, lager.Data{"flag-value": *preloadedRootFSes})
-	}
-
-	supportedProviders := strings.Split(*rootFSProviders, ",")
 
 	bbs := initializeRepBBS(logger)
 
@@ -170,7 +192,7 @@ func main() {
 		*evacuationPollingInterval,
 	)
 
-	httpServer, address := initializeServer(bbs, executorClient, evacuatable, evacuationReporter, logger, stackMap, supportedProviders)
+	httpServer, address := initializeServer(bbs, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders)
 	opGenerator := generator.New(*cellID, bbs, executorClient, lrpProcessor, taskProcessor, containerDelegate)
 
 	members := grouper.Members{
@@ -193,7 +215,7 @@ func main() {
 
 	logger.Info("started", lager.Data{"cell-id": *cellID})
 
-	err = <-monitor.Wait()
+	err := <-monitor.Wait()
 	if err != nil {
 		logger.Error("exited-with-failure", err)
 		os.Exit(1)

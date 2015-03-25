@@ -77,17 +77,16 @@ var _ = Describe("The Rep", func() {
 
 		rootFSName = "the-rootfs"
 		rootFSPath = "/path/to/rootfs"
-		rootFSes, err := json.Marshal(map[string]string{rootFSName: rootFSPath})
-		Ω(err).ShouldNot(HaveOccurred())
+		rootFSArg := fmt.Sprintf("%s:%s", rootFSName, rootFSPath)
 
 		runner = testrunner.New(
 			representativePath,
 			cellID,
-			string(rootFSes),
-			"docker",
 			fakeExecutor.URL(),
 			fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
 			"info",
+			[]string{rootFSArg},
+			[]string{"docker"},
 			serverPort,
 			time.Second,
 			pollingInterval,

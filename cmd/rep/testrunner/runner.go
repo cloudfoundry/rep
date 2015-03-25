@@ -18,8 +18,8 @@ type Runner struct {
 }
 
 type Config struct {
-	preloadedRootFSes string
-	rootFSProviders   string
+	preloadedRootFSes []string
+	rootFSProviders   []string
 	cellID            string
 	executorURL       string
 	etcdCluster       string
@@ -31,7 +31,8 @@ type Config struct {
 }
 
 func New(
-	binPath, cellID, preloadedRootFSes, rootFSProviders, executorURL, etcdCluster, logLevel string,
+	binPath, cellID, executorURL, etcdCluster, logLevel string,
+	preloadedRootFSes, rootFSProviders []string,
 	serverPort int,
 	heartbeatInterval, pollingInterval, evacuationTimeout time.Duration) *Runner {
 	return &Runner{
@@ -56,19 +57,27 @@ func (r *Runner) Start() {
 		panic("starting more than one rep!!!")
 	}
 
+	args := []string{
+		"-cellID", r.config.cellID,
+		"-executorURL", r.config.executorURL,
+		"-listenAddr", fmt.Sprintf("0.0.0.0:%d", r.config.serverPort),
+		"-etcdCluster", r.config.etcdCluster,
+		"-logLevel", r.config.logLevel,
+		"-heartbeatInterval", r.config.heartbeatInterval.String(),
+		"-pollingInterval", r.config.pollingInterval.String(),
+		"-evacuationTimeout", r.config.evacuationTimeout.String(),
+	}
+	for _, rootfs := range r.config.preloadedRootFSes {
+		args = append(args, "-preloadedRootFS", rootfs)
+	}
+	for _, provider := range r.config.rootFSProviders {
+		args = append(args, "-rootFSProvider", provider)
+	}
+
 	repSession, err := gexec.Start(
 		exec.Command(
 			r.binPath,
-			"-cellID", r.config.cellID,
-			"-preloadedRootFSes", r.config.preloadedRootFSes,
-			"-rootFSProviders", r.config.rootFSProviders,
-			"-executorURL", r.config.executorURL,
-			"-listenAddr", fmt.Sprintf("0.0.0.0:%d", r.config.serverPort),
-			"-etcdCluster", r.config.etcdCluster,
-			"-logLevel", r.config.logLevel,
-			"-heartbeatInterval", r.config.heartbeatInterval.String(),
-			"-pollingInterval", r.config.pollingInterval.String(),
-			"-evacuationTimeout", r.config.evacuationTimeout.String(),
+			args...,
 		),
 		gexec.NewPrefixedWriter("\x1b[32m[o]\x1b[32m[rep]\x1b[0m ", ginkgo.GinkgoWriter),
 		gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[32m[rep]\x1b[0m ", ginkgo.GinkgoWriter),
