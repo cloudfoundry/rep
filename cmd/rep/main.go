@@ -14,6 +14,7 @@ import (
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf_http"
+	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/executor"
 	executorclient "github.com/cloudfoundry-incubator/executor/http/client"
 	"github.com/cloudfoundry-incubator/rep"
@@ -27,7 +28,7 @@ import (
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/services_bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
 	bbsroutes "github.com/cloudfoundry-incubator/runtime-schema/routes"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/cloudfoundry/gunk/workpool"
@@ -50,10 +51,28 @@ var etcdCluster = flag.String(
 	"comma-separated list of etcd addresses (http://ip:port)",
 )
 
-var heartbeatInterval = flag.Duration(
-	"heartbeatInterval",
-	services_bbs.CELL_HEARTBEAT_INTERVAL,
-	"the interval between heartbeats for maintaining presence",
+var consulCluster = flag.String(
+	"consulCluster",
+	"",
+	"comma-separated list of consul server addresses (ip:port)",
+)
+
+var consulScheme = flag.String(
+	"consulScheme",
+	"http",
+	"protocol scheme for communication with consul servers",
+)
+
+var lockTTL = flag.Duration(
+	"lockTTL",
+	lock_bbs.LockTTL,
+	"TTL for service lock",
+)
+
+var heartbeatRetryInterval = flag.Duration(
+	"heartbeatRetryInterval",
+	lock_bbs.RetryInterval,
+	"interval to wait before retrying a failed lock acquisition",
 )
 
 var executorURL = flag.String(
@@ -233,10 +252,11 @@ func initializeDropsonde(logger lager.Logger) {
 
 func initializeCellHeartbeat(address string, bbs Bbs.RepBBS, executorClient executor.Client, logger lager.Logger) ifrit.Runner {
 	config := maintain.Config{
-		CellID:            *cellID,
-		RepAddress:        address,
-		Zone:              *zone,
-		HeartbeatInterval: *heartbeatInterval,
+		CellID:     *cellID,
+		RepAddress: address,
+		Zone:       *zone,
+		TTL:        *lockTTL,
+		HeartbeatRetryInterval: *heartbeatRetryInterval,
 	}
 	return maintain.New(config, executorClient, bbs, logger, clock.NewClock())
 }
@@ -252,7 +272,15 @@ func initializeRepBBS(logger lager.Logger) Bbs.RepBBS {
 		logger.Fatal("failed-to-connect-to-etcd", err)
 	}
 
-	return Bbs.NewRepBBS(etcdAdapter, clock.NewClock(), logger)
+	consulAdapter, err := consuladapter.NewAdapter(
+		strings.Split(*consulCluster, ","),
+		*consulScheme,
+	)
+	if err != nil {
+		logger.Fatal("failed-building-consul-adapter", err)
+	}
+
+	return Bbs.NewRepBBS(etcdAdapter, consulAdapter, clock.NewClock(), logger)
 }
 
 func initializeLRPStopper(guid string, executorClient executor.Client, logger lager.Logger) lrp_stopper.LRPStopper {

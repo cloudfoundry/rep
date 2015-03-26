@@ -74,10 +74,11 @@ var _ = Describe("Maintain Presence", func() {
 		fakeBBS.NewCellHeartbeatReturns(fakeHeartbeater)
 
 		config = maintain.Config{
-			CellID:            "cell-id",
-			RepAddress:        "1.2.3.4",
-			Zone:              "az1",
-			HeartbeatInterval: 1 * time.Second,
+			CellID:     "cell-id",
+			RepAddress: "1.2.3.4",
+			Zone:       "az1",
+			HeartbeatRetryInterval: 1 * time.Second,
+			TTL: 10 * time.Second,
 		}
 		maintainer = maintain.New(config, fakeClient, fakeBBS, logger, clock)
 	})
@@ -163,7 +164,7 @@ var _ = Describe("Maintain Presence", func() {
 				})
 
 				It("begins heartbeating the executor's presence again", func() {
-					Eventually(fakeHeartbeater.RunCallCount, 10*config.HeartbeatInterval).Should(Equal(2))
+					Eventually(fakeHeartbeater.RunCallCount, 10*config.HeartbeatRetryInterval).Should(Equal(2))
 				})
 
 				It("continues to ping the executor", func() {

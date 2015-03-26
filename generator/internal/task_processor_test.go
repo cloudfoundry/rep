@@ -33,7 +33,7 @@ var _ = Describe("Task <-> Container table", func() {
 
 	BeforeEach(func() {
 		etcdRunner.Reset()
-		BBS = bbs.NewBBS(etcdClient, clock.NewClock(), lagertest.NewTestLogger("test-bbs"))
+		BBS = bbs.NewBBS(etcdClient, consulAdapter, clock.NewClock(), lagertest.NewTestLogger("test-bbs"))
 		containerDelegate = new(fake_internal.FakeContainerDelegate)
 		processor = internal.NewTaskProcessor(BBS, containerDelegate, localCellID)
 

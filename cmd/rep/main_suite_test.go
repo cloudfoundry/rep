@@ -4,8 +4,10 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 )
@@ -15,6 +17,9 @@ var representativePath string
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
 var etcdPort, natsPort int
 var serverPort int
+var consulPort int
+var consulRunner consuladapter.ClusterRunner
+var consulAdapter consuladapter.Adapter
 
 func TestRep(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -35,16 +40,30 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1)
 
+	consulPort = 9001 + config.GinkgoConfig.ParallelNode*consuladapter.PortOffsetLength
+	consulRunner = consuladapter.NewClusterRunner(
+		consulPort,
+		1,
+		"http",
+	)
+
 	etcdRunner.Start()
+	consulRunner.Start()
 })
 
 var _ = BeforeEach(func() {
+	consulRunner.Reset()
 	etcdRunner.Reset()
+
+	consulAdapter = consulRunner.NewAdapter()
 })
 
 var _ = SynchronizedAfterSuite(func() {
 	if etcdRunner != nil {
 		etcdRunner.KillWithFire()
+	}
+	if consulRunner != nil {
+		consulRunner.Stop()
 	}
 	if runner != nil {
 		runner.KillWithFire()

@@ -70,7 +70,7 @@ var _ = Describe("The Rep", func() {
 
 		etcdAdapter = etcdRunner.Adapter()
 		logger = lagertest.NewTestLogger("test")
-		bbs = Bbs.NewBBS(etcdAdapter, clock.NewClock(), logger)
+		bbs = Bbs.NewBBS(etcdAdapter, consulAdapter, clock.NewClock(), logger)
 
 		pollingInterval = 50 * time.Millisecond
 		evacuationTimeout = 200 * time.Millisecond
@@ -88,7 +88,7 @@ var _ = Describe("The Rep", func() {
 			[]string{rootFSArg},
 			[]string{"docker"},
 			serverPort,
-			time.Second,
+			consulPort,
 			pollingInterval,
 			evacuationTimeout,
 		)
@@ -130,8 +130,7 @@ var _ = Describe("The Rep", func() {
 
 		Context("when the presence fails to be maintained", func() {
 			It("should not exit, but keep trying to maintain presence at the same ID", func() {
-				etcdRunner.Stop()
-				etcdRunner.Start()
+				consulRunner.Reset()
 
 				Eventually(bbs.Cells, 5).Should(HaveLen(1))
 				cells, err := bbs.Cells()

@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -25,7 +26,7 @@ type Config struct {
 	etcdCluster       string
 	serverPort        int
 	logLevel          string
-	heartbeatInterval time.Duration
+	consulPort        int
 	pollingInterval   time.Duration
 	evacuationTimeout time.Duration
 }
@@ -33,8 +34,8 @@ type Config struct {
 func New(
 	binPath, cellID, executorURL, etcdCluster, logLevel string,
 	preloadedRootFSes, rootFSProviders []string,
-	serverPort int,
-	heartbeatInterval, pollingInterval, evacuationTimeout time.Duration) *Runner {
+	serverPort, consulPort int,
+	pollingInterval, evacuationTimeout time.Duration) *Runner {
 	return &Runner{
 		binPath: binPath,
 		config: Config{
@@ -45,7 +46,7 @@ func New(
 			serverPort:        serverPort,
 			etcdCluster:       etcdCluster,
 			logLevel:          logLevel,
-			heartbeatInterval: heartbeatInterval,
+			consulPort:        consulPort,
 			pollingInterval:   pollingInterval,
 			evacuationTimeout: evacuationTimeout,
 		},
@@ -63,9 +64,11 @@ func (r *Runner) Start() {
 		"-listenAddr", fmt.Sprintf("0.0.0.0:%d", r.config.serverPort),
 		"-etcdCluster", r.config.etcdCluster,
 		"-logLevel", r.config.logLevel,
-		"-heartbeatInterval", r.config.heartbeatInterval.String(),
 		"-pollingInterval", r.config.pollingInterval.String(),
 		"-evacuationTimeout", r.config.evacuationTimeout.String(),
+		"-heartbeatRetryInterval", "1s",
+		"-consulCluster", fmt.Sprintf("127.0.0.1:%d", r.config.consulPort+consuladapter.PortOffsetHTTP),
+		"-consulScheme", "http",
 	}
 	for _, rootfs := range r.config.preloadedRootFSes {
 		args = append(args, "-preloadedRootFS", rootfs)
