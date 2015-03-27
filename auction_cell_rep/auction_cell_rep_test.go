@@ -7,7 +7,7 @@ import (
 	executor "github.com/cloudfoundry-incubator/executor"
 	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
-	. "github.com/cloudfoundry-incubator/rep/auction_cell_rep"
+	"github.com/cloudfoundry-incubator/rep/auction_cell_rep"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -51,7 +51,7 @@ var _ = Describe("AuctionCellRep", func() {
 	})
 
 	JustBeforeEach(func() {
-		cellRep = New(expectedCellID, rep.StackPathMap{lucidStack: lucidPath}, []string{"docker"}, "the-zone", fakeGenerateContainerGuid, bbs, client, evacuationReporter, logger)
+		cellRep = auction_cell_rep.New(expectedCellID, rep.StackPathMap{lucidStack: lucidPath}, []string{"docker"}, "the-zone", fakeGenerateContainerGuid, bbs, client, evacuationReporter, logger)
 	})
 
 	Describe("State", func() {

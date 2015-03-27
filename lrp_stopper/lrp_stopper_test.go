@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
-	. "github.com/cloudfoundry-incubator/rep/lrp_stopper"
+	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 
@@ -18,7 +18,7 @@ import (
 var _ = Describe("LRP Stopper", func() {
 	var (
 		cellID    string
-		stopper   LRPStopper
+		stopper   lrp_stopper.LRPStopper
 		bbs       *fake_bbs.FakeRepBBS
 		client    *fake_client.FakeClient
 		logger    lager.Logger
@@ -43,7 +43,7 @@ var _ = Describe("LRP Stopper", func() {
 		client = new(fake_client.FakeClient)
 		logger = lagertest.NewTestLogger("test")
 
-		stopper = New(cellID, client, logger)
+		stopper = lrp_stopper.New(cellID, client, logger)
 	})
 
 	Describe("StopInstance", func() {

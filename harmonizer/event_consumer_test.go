@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/cloudfoundry-incubator/rep/generator/fake_generator"
-	. "github.com/cloudfoundry-incubator/rep/harmonizer"
+	"github.com/cloudfoundry-incubator/rep/harmonizer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -20,7 +20,7 @@ var _ = Describe("EventConsumer", func() {
 		fakeGenerator *fake_generator.FakeGenerator
 		fakeQueue     *fake_operationq.FakeQueue
 
-		consumer *EventConsumer
+		consumer *harmonizer.EventConsumer
 		process  ifrit.Process
 	)
 
@@ -29,7 +29,7 @@ var _ = Describe("EventConsumer", func() {
 		fakeGenerator = new(fake_generator.FakeGenerator)
 		fakeQueue = new(fake_operationq.FakeQueue)
 
-		consumer = NewEventConsumer(logger, fakeGenerator, fakeQueue)
+		consumer = harmonizer.NewEventConsumer(logger, fakeGenerator, fakeQueue)
 	})
 
 	JustBeforeEach(func() {
