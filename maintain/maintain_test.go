@@ -117,98 +117,150 @@ var _ = Describe("Maintain Presence", func() {
 	})
 
 	Context("when pinging the executor succeeds", func() {
-		BeforeEach(func() {
-			pingErrors <- nil
-			maintainProcess = ginkgomon.Invoke(maintainer)
-		})
-
-		It("starts maintaining presence", func() {
-			Ω(fakeBBS.NewCellHeartbeatCallCount()).Should(Equal(1))
-			Eventually(fakeHeartbeater.RunCallCount).Should(Equal(1))
-		})
-
-		It("continues pings the executor on an interval", func() {
-			for i := 1; i < 5; i++ {
-				pingErrors <- nil
-				clock.Increment(1 * time.Second)
-				Eventually(fakeClient.PingCallCount).Should(Equal(i))
-			}
-		})
-
-		Context("when the executor ping fails", func() {
+		Context("when the heartbeater is not ready", func() {
 			BeforeEach(func() {
-				pingErrors <- errors.New("failed to ping")
-				clock.Increment(1 * time.Second)
+				fakeHeartbeater = &maintain_fakes.FakeRunner{
+					RunStub: func(sigChan <-chan os.Signal, ready chan<- struct{}) error {
+						defer GinkgoRecover()
+						for {
+							select {
+							case sig := <-sigChan:
+								logger.Info("never-ready-fake-heartbeat-received-signal")
+								Eventually(observedSignals, time.Millisecond).Should(BeSent(sig))
+								return nil
+							case err := <-heartbeaterErrors:
+								logger.Info("never-ready-fake-heartbeat-received-error")
+								return err
+							}
+						}
+					},
+				}
+
+				fakeBBS.NewCellHeartbeatReturns(fakeHeartbeater)
+
+				pingErrors <- nil
+				maintainProcess = ifrit.Background(maintainer)
 			})
 
-			It("stops heartbeating the executor's presence", func() {
-				Eventually(observedSignals).Should(Receive(Equal(os.Kill)))
+			It("exits when signaled", func() {
+				maintainProcess.Signal(os.Interrupt)
+				var err error
+				Eventually(maintainProcess.Wait()).Should(Receive(&err))
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(maintainProcess.Ready()).ShouldNot(BeClosed())
 			})
 
-			It("continues pinging the executor", func() {
-				for i := 2; i < 6; i++ {
-					pingErrors <- errors.New("failed again")
+			Context("when the heartbeat errors", func() {
+				BeforeEach(func() {
+					heartbeaterErrors <- errors.New("oh no")
+					pingErrors <- nil
+				})
+
+				It("does not shut down", func() {
+					Consistently(maintainProcess.Wait()).ShouldNot(Receive(), "should not shut down")
+				})
+
+				It("retries to heartbeat", func() {
+					Eventually(fakeBBS.NewCellHeartbeatCallCount).Should(Equal(2))
+					Eventually(fakeHeartbeater.RunCallCount).Should(Equal(2))
+				})
+			})
+		})
+
+		Context("when the heartbeater is ready", func() {
+			BeforeEach(func() {
+				pingErrors <- nil
+				maintainProcess = ginkgomon.Invoke(maintainer)
+				Ω(maintainProcess.Ready()).Should(BeClosed())
+			})
+
+			It("starts maintaining presence", func() {
+				Ω(fakeBBS.NewCellHeartbeatCallCount()).Should(Equal(1))
+				Eventually(fakeHeartbeater.RunCallCount).Should(Equal(1))
+			})
+
+			It("continues pings the executor on an interval", func() {
+				for i := 1; i < 5; i++ {
+					pingErrors <- nil
 					clock.Increment(1 * time.Second)
 					Eventually(fakeClient.PingCallCount).Should(Equal(i))
 				}
 			})
 
-			Context("when the executor ping succeeds again", func() {
+			Context("when the executor ping fails", func() {
 				BeforeEach(func() {
-					pingErrors <- nil
-					Eventually(fakeClient.PingCallCount).Should(Equal(3))
-					//Eventually(pingErrors).Should(BeSent(Equal(nil)))
-					pingErrors <- nil
+					pingErrors <- errors.New("failed to ping")
 					clock.Increment(1 * time.Second)
-					Eventually(fakeClient.PingCallCount).Should(Equal(4))
 				})
 
-				It("begins heartbeating the executor's presence again", func() {
-					Eventually(fakeHeartbeater.RunCallCount, 10*config.HeartbeatRetryInterval).Should(Equal(2))
+				It("stops heartbeating the executor's presence", func() {
+					Eventually(observedSignals).Should(Receive(Equal(os.Kill)))
 				})
 
-				It("continues to ping the executor", func() {
-					for i := 4; i < 6; i++ {
-						pingErrors <- nil
+				It("continues pinging the executor", func() {
+					for i := 2; i < 6; i++ {
+						pingErrors <- errors.New("failed again")
 						clock.Increment(1 * time.Second)
 						Eventually(fakeClient.PingCallCount).Should(Equal(i))
 					}
 				})
-			})
-		})
 
-		Context("when heartbeating fails", func() {
-			BeforeEach(func() {
-				heartbeaterErrors <- errors.New("heartbeating failed")
+				Context("when the executor ping succeeds again", func() {
+					BeforeEach(func() {
+						pingErrors <- nil
+						Eventually(fakeClient.PingCallCount).Should(Equal(3))
+						//Eventually(pingErrors).Should(BeSent(Equal(nil)))
+						pingErrors <- nil
+						clock.Increment(1 * time.Second)
+						Eventually(fakeClient.PingCallCount).Should(Equal(4))
+					})
+
+					It("begins heartbeating the executor's presence again", func() {
+						Eventually(fakeHeartbeater.RunCallCount, 10*config.HeartbeatRetryInterval).Should(Equal(2))
+					})
+
+					It("continues to ping the executor", func() {
+						for i := 4; i < 6; i++ {
+							pingErrors <- nil
+							clock.Increment(1 * time.Second)
+							Eventually(fakeClient.PingCallCount).Should(Equal(i))
+						}
+					})
+				})
 			})
 
-			It("does not shut down", func() {
-				Consistently(maintainProcess.Wait()).ShouldNot(Receive(), "should not shut down")
-			})
+			Context("when heartbeating fails", func() {
+				BeforeEach(func() {
+					heartbeaterErrors <- errors.New("heartbeating failed")
+				})
 
-			It("continues pinging the executor", func() {
-				for i := 2; i < 6; i++ {
+				It("does not shut down", func() {
+					Consistently(maintainProcess.Wait()).ShouldNot(Receive(), "should not shut down")
+				})
+
+				It("continues pinging the executor", func() {
+					for i := 2; i < 6; i++ {
+						pingErrors <- nil
+						Eventually(fakeClient.PingCallCount).Should(Equal(i))
+						clock.Increment(1 * time.Second)
+					}
+				})
+
+				It("logs an error message", func() {
+					Eventually(logger.TestSink.Buffer).Should(gbytes.Say("lost-lock"))
+				})
+
+				It("tries to restart heartbeating each time the ping succeeds", func() {
+					Ω(fakeHeartbeater.RunCallCount()).Should(Equal(1))
+
+					Eventually(logger.TestSink.Buffer).Should(gbytes.Say("lost-lock"))
+
 					pingErrors <- nil
-					Eventually(fakeClient.PingCallCount).Should(Equal(i))
 					clock.Increment(1 * time.Second)
-				}
+
+					Eventually(fakeHeartbeater.RunCallCount).Should(Equal(2))
+				})
 			})
-
-			It("logs an error message", func() {
-				Eventually(logger.TestSink.Buffer).Should(gbytes.Say("lost-lock"))
-			})
-
-			It("tries to restart heartbeating each time the ping succeeds", func() {
-				Ω(fakeHeartbeater.RunCallCount()).Should(Equal(1))
-
-				Eventually(logger.TestSink.Buffer).Should(gbytes.Say("lost-lock"))
-
-				pingErrors <- nil
-				clock.Increment(1 * time.Second)
-
-				Eventually(fakeHeartbeater.RunCallCount).Should(Equal(2))
-			})
-
 		})
 	})
 })

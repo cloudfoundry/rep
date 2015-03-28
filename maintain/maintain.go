@@ -110,8 +110,22 @@ func (m *Maintainer) heartbeat(sigChan <-chan os.Signal, ready chan<- struct{}, 
 	ticker := m.clock.NewTicker(m.HeartbeatRetryInterval)
 	defer ticker.Stop()
 
-	heartbeatProcess := ifrit.Invoke(heartbeater)
+	heartbeatProcess := ifrit.Background(heartbeater)
 	heartbeatExitChan := heartbeatProcess.Wait()
+	select {
+	case <-heartbeatProcess.Ready():
+		m.logger.Info("ready")
+	case err := <-heartbeatExitChan:
+		if err != nil {
+			m.logger.Error("heartbeat-exited", err)
+		}
+		return err
+	case <-sigChan:
+		m.logger.Info("signaled-while-starting-heatbeater")
+		heartbeatProcess.Signal(os.Kill)
+		<-heartbeatExitChan
+		return nil
+	}
 
 	if ready != nil {
 		close(ready)
@@ -120,7 +134,7 @@ func (m *Maintainer) heartbeat(sigChan <-chan os.Signal, ready chan<- struct{}, 
 	for {
 		select {
 		case err := <-heartbeatExitChan:
-			m.logger.Error("lost-lock", err)
+			m.logger.Error("heartbeat-lost-lock", err)
 			return err
 
 		case <-sigChan:
