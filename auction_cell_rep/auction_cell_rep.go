@@ -157,64 +157,76 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 
 	if len(work.LRPs) > 0 {
 		lrpLogger := logger.Session("lrp-allocate-instances")
-		lrpLogger.Info("allocating")
-		containers, lrpAuctionMap, err := a.lrpsToContainers(work.LRPs)
+
+		containers, lrpAuctionMap, untranslatedLRPs := a.lrpsToContainers(work.LRPs)
+		if len(untranslatedLRPs) > 0 {
+			lrpLogger.Info("failed-to-translate-lrps-to-containers", lager.Data{"num-failed-to-translate": len(untranslatedLRPs)})
+			failedWork.LRPs = untranslatedLRPs
+		}
+
+		lrpLogger.Info("requesting-container-allocation", lager.Data{"num-requesting-allocation": len(containers)})
+		errMessageMap, err := a.client.AllocateContainers(containers)
 		if err != nil {
+			lrpLogger.Error("failed-requesting-container-allocation", err)
 			failedWork.LRPs = work.LRPs
-			lrpLogger.Info("failed-to-allocate")
 		} else {
-			errMessageMap, err := a.client.AllocateContainers(containers)
-			if err != nil {
-				failedWork.LRPs = work.LRPs
-			} else {
-				for guid, lrpStart := range lrpAuctionMap {
-					if _, found := errMessageMap[guid]; found {
-						failedWork.LRPs = append(failedWork.LRPs, lrpStart)
-					}
+			lrpLogger.Info("succeeded-requesting-container-allocation", lager.Data{"num-failed-to-allocate": len(errMessageMap)})
+			for guid, lrpStart := range lrpAuctionMap {
+				if _, found := errMessageMap[guid]; found {
+					failedWork.LRPs = append(failedWork.LRPs, lrpStart)
 				}
-				lrpLogger.Info("allocated")
 			}
 		}
 	}
 
 	if len(work.Tasks) > 0 {
 		taskLogger := logger.Session("task-allocate-instances")
-		taskLogger.Info("allocating")
-		containers := a.tasksToContainers(work.Tasks)
 
+		containers, untranslatedTasks := a.tasksToContainers(work.Tasks)
+		if len(untranslatedTasks) > 0 {
+			taskLogger.Info("failed-to-translate-tasks-to-containers", lager.Data{"num-failed-to-translate": len(untranslatedTasks)})
+			failedWork.Tasks = untranslatedTasks
+		}
+
+		taskLogger.Info("requesting-container-allocation", lager.Data{"num-requesting-allocation": len(containers)})
 		errMessageMap, err := a.client.AllocateContainers(containers)
 		if err != nil {
+			taskLogger.Error("failed-requesting-container-allocation", err)
 			failedWork.Tasks = work.Tasks
-			taskLogger.Info("failed-to-allocate")
 		} else {
+			taskLogger.Info("succeeded-requesting-container-allocation", lager.Data{"num-failed-to-allocate": len(errMessageMap)})
 			for _, task := range work.Tasks {
 				if _, found := errMessageMap[task.TaskGuid]; found {
 					failedWork.Tasks = append(failedWork.Tasks, task)
 				}
 			}
-			taskLogger.Info("allocated")
 		}
 	}
+
 	return failedWork, nil
 }
 
-func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]executor.Container, map[string]auctiontypes.LRPAuction, error) {
+func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]executor.Container, map[string]auctiontypes.LRPAuction, []auctiontypes.LRPAuction) {
 	containers := make([]executor.Container, 0, len(lrps))
 	lrpAuctionMap := map[string]auctiontypes.LRPAuction{}
+	untranslatedLRPs := make([]auctiontypes.LRPAuction, 0, len(lrps))
 
 	for _, lrpStart := range lrps {
 		lrpStart := lrpStart
 		instanceGuid, err := a.generateInstanceGuid()
 		if err != nil {
-			return nil, nil, err
+			untranslatedLRPs = append(untranslatedLRPs, lrpStart)
+			continue
 		}
-		containerGuid := rep.LRPContainerGuid(lrpStart.DesiredLRP.ProcessGuid, instanceGuid)
-		lrpAuctionMap[containerGuid] = lrpStart
 
 		rootFSPath, err := a.pathForRootFS(lrpStart.DesiredLRP.RootFS)
 		if err != nil {
-			return nil, nil, err
+			untranslatedLRPs = append(untranslatedLRPs, lrpStart)
+			continue
 		}
+
+		containerGuid := rep.LRPContainerGuid(lrpStart.DesiredLRP.ProcessGuid, instanceGuid)
+		lrpAuctionMap[containerGuid] = lrpStart
 
 		container := executor.Container{
 			Guid: containerGuid,
@@ -259,17 +271,20 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 		containers = append(containers, container)
 	}
 
-	return containers, lrpAuctionMap, nil
+	return containers, lrpAuctionMap, untranslatedLRPs
 }
 
-func (a *AuctionCellRep) tasksToContainers(tasks []models.Task) []executor.Container {
+func (a *AuctionCellRep) tasksToContainers(tasks []models.Task) ([]executor.Container, []models.Task) {
 	containers := make([]executor.Container, 0, len(tasks))
+	untranslatedTasks := make([]models.Task, 0, len(tasks))
 
 	for _, task := range tasks {
 		rootFSPath, err := a.pathForRootFS(task.RootFS)
 		if err != nil {
+			untranslatedTasks = append(untranslatedTasks, task)
 			continue
 		}
+
 		container := executor.Container{
 			Guid: task.TaskGuid,
 
@@ -302,7 +317,7 @@ func (a *AuctionCellRep) tasksToContainers(tasks []models.Task) []executor.Conta
 		containers = append(containers, container)
 	}
 
-	return containers
+	return containers, untranslatedTasks
 }
 
 func (a *AuctionCellRep) convertPortMappings(containerPorts []uint16) []executor.PortMapping {

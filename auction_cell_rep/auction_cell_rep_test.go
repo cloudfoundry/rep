@@ -258,7 +258,6 @@ var _ = Describe("AuctionCellRep", func() {
 				lrpAuctionOne = auctiontypes.LRPAuction{
 					DesiredLRP: models.DesiredLRP{
 						Domain:      "tests",
-						RootFS:      lucidRootFSURL,
 						ProcessGuid: "process-guid",
 						DiskMB:      1024,
 						MemoryMB:    2048,
@@ -289,7 +288,6 @@ var _ = Describe("AuctionCellRep", func() {
 				lrpAuctionTwo = auctiontypes.LRPAuction{
 					DesiredLRP: models.DesiredLRP{
 						Domain:      "tests",
-						RootFS:      lucidRootFSURL,
 						ProcessGuid: "process-guid",
 						DiskMB:      1024,
 						MemoryMB:    2048,
@@ -316,135 +314,379 @@ var _ = Describe("AuctionCellRep", func() {
 
 					Index: expectedIndexTwo,
 				}
-
-				work = auctiontypes.Work{LRPs: []auctiontypes.LRPAuction{lrpAuctionOne, lrpAuctionTwo}}
 			})
 
-			It("should allocate the batch of containers", func() {
-				_, err := cellRep.Perform(work)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Ω(client.AllocateContainersCallCount()).Should(Equal(1))
-				Ω(client.AllocateContainersArgsForCall(0)).Should(ConsistOf(
-					executor.Container{
-						Guid: rep.LRPContainerGuid(lrpAuctionOne.DesiredLRP.ProcessGuid, expectedGuidOne),
-
-						Tags: executor.Tags{
-							rep.LifecycleTag:    rep.LRPLifecycle,
-							rep.DomainTag:       lrpAuctionOne.DesiredLRP.Domain,
-							rep.ProcessGuidTag:  lrpAuctionOne.DesiredLRP.ProcessGuid,
-							rep.InstanceGuidTag: expectedGuidOne,
-							rep.ProcessIndexTag: expectedIndexOneString,
-						},
-
-						MemoryMB:   lrpAuctionOne.DesiredLRP.MemoryMB,
-						DiskMB:     lrpAuctionOne.DesiredLRP.DiskMB,
-						CPUWeight:  lrpAuctionOne.DesiredLRP.CPUWeight,
-						RootFSPath: lucidPath,
-						Privileged: lrpAuctionOne.DesiredLRP.Privileged,
-						Ports:      []executor.PortMapping{{ContainerPort: 8080}},
-
-						LogConfig: executor.LogConfig{
-							Guid:       "log-guid",
-							SourceName: "log-source",
-							Index:      expectedIndexOne,
-						},
-
-						MetricsConfig: executor.MetricsConfig{
-							Guid:  "metrics-guid",
-							Index: expectedIndexOne,
-						},
-
-						Setup:   lrpAuctionOne.DesiredLRP.Setup,
-						Action:  lrpAuctionOne.DesiredLRP.Action,
-						Monitor: lrpAuctionOne.DesiredLRP.Monitor,
-
-						Env: []executor.EnvironmentVariable{
-							{Name: "INSTANCE_GUID", Value: expectedGuidOne},
-							{Name: "INSTANCE_INDEX", Value: expectedIndexOneString},
-							{Name: "var1", Value: "val1"},
-							{Name: "var2", Value: "val2"},
-						},
-						EgressRules: []models.SecurityGroupRule{
-							securityRule,
-						},
-					},
-					executor.Container{
-						Guid: rep.LRPContainerGuid(lrpAuctionTwo.DesiredLRP.ProcessGuid, expectedGuidTwo),
-
-						Tags: executor.Tags{
-							rep.LifecycleTag:    rep.LRPLifecycle,
-							rep.DomainTag:       lrpAuctionTwo.DesiredLRP.Domain,
-							rep.ProcessGuidTag:  lrpAuctionTwo.DesiredLRP.ProcessGuid,
-							rep.InstanceGuidTag: expectedGuidTwo,
-							rep.ProcessIndexTag: expectedIndexTwoString,
-						},
-
-						MemoryMB:   lrpAuctionTwo.DesiredLRP.MemoryMB,
-						DiskMB:     lrpAuctionTwo.DesiredLRP.DiskMB,
-						CPUWeight:  lrpAuctionTwo.DesiredLRP.CPUWeight,
-						RootFSPath: lucidPath,
-						Privileged: lrpAuctionTwo.DesiredLRP.Privileged,
-						Ports:      []executor.PortMapping{{ContainerPort: 8080}},
-
-						LogConfig: executor.LogConfig{
-							Guid:       "log-guid",
-							SourceName: "log-source",
-							Index:      expectedIndexTwo,
-						},
-
-						MetricsConfig: executor.MetricsConfig{
-							Guid:  "metrics-guid",
-							Index: expectedIndexTwo,
-						},
-
-						Setup:   lrpAuctionTwo.DesiredLRP.Setup,
-						Action:  lrpAuctionTwo.DesiredLRP.Action,
-						Monitor: lrpAuctionTwo.DesiredLRP.Monitor,
-
-						Env: []executor.EnvironmentVariable{
-							{Name: "INSTANCE_GUID", Value: expectedGuidTwo},
-							{Name: "INSTANCE_INDEX", Value: expectedIndexTwoString},
-							{Name: "var1", Value: "val1"},
-							{Name: "var2", Value: "val2"},
-						},
-						EgressRules: []models.SecurityGroupRule{
-							securityRule,
-						},
-					},
-				))
-			})
-
-			Context("when allocation succeeds", func() {
+			Context("when all LRP Auctions can be successfully translated to container specs", func() {
 				BeforeEach(func() {
-					client.AllocateContainersReturns(map[string]string{}, nil)
+					lrpAuctionOne.DesiredLRP.RootFS = lucidRootFSURL
+					lrpAuctionTwo.DesiredLRP.RootFS = "unsupported-arbitrary://still-goes-through"
 				})
 
-				It("responds successfully", func() {
-					failedWork, err := cellRep.Perform(work)
+				It("makes the correct allocation requests for all LRP Auctions", func() {
+					_, err := cellRep.Perform(auctiontypes.Work{LRPs: []auctiontypes.LRPAuction{lrpAuctionOne, lrpAuctionTwo}})
 					Ω(err).ShouldNot(HaveOccurred())
-					Ω(failedWork).Should(BeZero())
+
+					Ω(client.AllocateContainersCallCount()).Should(Equal(1))
+					Ω(client.AllocateContainersArgsForCall(0)).Should(ConsistOf(
+						executor.Container{
+							Guid: rep.LRPContainerGuid(lrpAuctionOne.DesiredLRP.ProcessGuid, expectedGuidOne),
+
+							Tags: executor.Tags{
+								rep.LifecycleTag:    rep.LRPLifecycle,
+								rep.DomainTag:       lrpAuctionOne.DesiredLRP.Domain,
+								rep.ProcessGuidTag:  lrpAuctionOne.DesiredLRP.ProcessGuid,
+								rep.InstanceGuidTag: expectedGuidOne,
+								rep.ProcessIndexTag: expectedIndexOneString,
+							},
+
+							MemoryMB:   lrpAuctionOne.DesiredLRP.MemoryMB,
+							DiskMB:     lrpAuctionOne.DesiredLRP.DiskMB,
+							CPUWeight:  lrpAuctionOne.DesiredLRP.CPUWeight,
+							RootFSPath: lucidPath,
+							Privileged: lrpAuctionOne.DesiredLRP.Privileged,
+							Ports:      []executor.PortMapping{{ContainerPort: 8080}},
+
+							LogConfig: executor.LogConfig{
+								Guid:       "log-guid",
+								SourceName: "log-source",
+								Index:      expectedIndexOne,
+							},
+
+							MetricsConfig: executor.MetricsConfig{
+								Guid:  "metrics-guid",
+								Index: expectedIndexOne,
+							},
+
+							Setup:   lrpAuctionOne.DesiredLRP.Setup,
+							Action:  lrpAuctionOne.DesiredLRP.Action,
+							Monitor: lrpAuctionOne.DesiredLRP.Monitor,
+
+							Env: []executor.EnvironmentVariable{
+								{Name: "INSTANCE_GUID", Value: expectedGuidOne},
+								{Name: "INSTANCE_INDEX", Value: expectedIndexOneString},
+								{Name: "var1", Value: "val1"},
+								{Name: "var2", Value: "val2"},
+							},
+							EgressRules: []models.SecurityGroupRule{
+								securityRule,
+							},
+						},
+						executor.Container{
+							Guid: rep.LRPContainerGuid(lrpAuctionTwo.DesiredLRP.ProcessGuid, expectedGuidTwo),
+
+							Tags: executor.Tags{
+								rep.LifecycleTag:    rep.LRPLifecycle,
+								rep.DomainTag:       lrpAuctionTwo.DesiredLRP.Domain,
+								rep.ProcessGuidTag:  lrpAuctionTwo.DesiredLRP.ProcessGuid,
+								rep.InstanceGuidTag: expectedGuidTwo,
+								rep.ProcessIndexTag: expectedIndexTwoString,
+							},
+
+							MemoryMB:   lrpAuctionTwo.DesiredLRP.MemoryMB,
+							DiskMB:     lrpAuctionTwo.DesiredLRP.DiskMB,
+							CPUWeight:  lrpAuctionTwo.DesiredLRP.CPUWeight,
+							RootFSPath: "unsupported-arbitrary://still-goes-through",
+							Privileged: lrpAuctionTwo.DesiredLRP.Privileged,
+							Ports:      []executor.PortMapping{{ContainerPort: 8080}},
+
+							LogConfig: executor.LogConfig{
+								Guid:       "log-guid",
+								SourceName: "log-source",
+								Index:      expectedIndexTwo,
+							},
+
+							MetricsConfig: executor.MetricsConfig{
+								Guid:  "metrics-guid",
+								Index: expectedIndexTwo,
+							},
+
+							Setup:   lrpAuctionTwo.DesiredLRP.Setup,
+							Action:  lrpAuctionTwo.DesiredLRP.Action,
+							Monitor: lrpAuctionTwo.DesiredLRP.Monitor,
+
+							Env: []executor.EnvironmentVariable{
+								{Name: "INSTANCE_GUID", Value: expectedGuidTwo},
+								{Name: "INSTANCE_INDEX", Value: expectedIndexTwoString},
+								{Name: "var1", Value: "val1"},
+								{Name: "var2", Value: "val2"},
+							},
+							EgressRules: []models.SecurityGroupRule{
+								securityRule,
+							},
+						},
+					))
+				})
+
+				Context("when all containers can be successfully allocated", func() {
+					BeforeEach(func() {
+						client.AllocateContainersReturns(map[string]string{}, nil)
+					})
+
+					It("does not mark any LRP Auctions as failed", func() {
+						failedWork, err := cellRep.Perform(auctiontypes.Work{LRPs: []auctiontypes.LRPAuction{lrpAuctionOne, lrpAuctionTwo}})
+						Ω(err).ShouldNot(HaveOccurred())
+						Ω(failedWork).Should(BeZero())
+					})
+				})
+
+				Context("when a container fails to be allocated", func() {
+					BeforeEach(func() {
+						client.AllocateContainersReturns(map[string]string{
+							rep.LRPContainerGuid(lrpAuctionOne.DesiredLRP.ProcessGuid, expectedGuidOne): commonErr.Error(),
+						}, nil)
+					})
+
+					It("marks the corresponding LRP Auctions as failed", func() {
+						failedWork, err := cellRep.Perform(auctiontypes.Work{LRPs: []auctiontypes.LRPAuction{lrpAuctionOne, lrpAuctionTwo}})
+						Ω(err).ShouldNot(HaveOccurred())
+						Ω(failedWork.LRPs).Should(ConsistOf(lrpAuctionOne))
+					})
 				})
 			})
 
-			Context("when allocation fails", func() {
+			Context("when an LRP Auction specifies a preloaded RootFSes for which it cannot determine a RootFS path", func() {
 				BeforeEach(func() {
-					client.AllocateContainersReturns(map[string]string{
-						rep.LRPContainerGuid(lrpAuctionOne.DesiredLRP.ProcessGuid, expectedGuidOne): commonErr.Error(),
-						rep.LRPContainerGuid(lrpAuctionTwo.DesiredLRP.ProcessGuid, expectedGuidTwo): commonErr.Error(),
-					}, nil)
+					lrpAuctionOne.DesiredLRP.RootFS = lucidRootFSURL
+					lrpAuctionTwo.DesiredLRP.RootFS = "preloaded:not-on-cell"
 				})
 
-				It("adds to the failed work", func() {
-					failedWork, err := cellRep.Perform(work)
+				It("only makes container allocation requests for the remaining LRP Auctions", func() {
+					_, err := cellRep.Perform(auctiontypes.Work{LRPs: []auctiontypes.LRPAuction{lrpAuctionOne, lrpAuctionTwo}})
 					Ω(err).ShouldNot(HaveOccurred())
-					Ω(failedWork.LRPs).Should(ConsistOf(lrpAuctionOne, lrpAuctionTwo))
+
+					Ω(client.AllocateContainersCallCount()).Should(Equal(1))
+					Ω(client.AllocateContainersArgsForCall(0)).Should(ConsistOf(
+						executor.Container{
+							Guid: rep.LRPContainerGuid(lrpAuctionOne.DesiredLRP.ProcessGuid, expectedGuidOne),
+
+							Tags: executor.Tags{
+								rep.LifecycleTag:    rep.LRPLifecycle,
+								rep.DomainTag:       lrpAuctionOne.DesiredLRP.Domain,
+								rep.ProcessGuidTag:  lrpAuctionOne.DesiredLRP.ProcessGuid,
+								rep.InstanceGuidTag: expectedGuidOne,
+								rep.ProcessIndexTag: expectedIndexOneString,
+							},
+
+							MemoryMB:   lrpAuctionOne.DesiredLRP.MemoryMB,
+							DiskMB:     lrpAuctionOne.DesiredLRP.DiskMB,
+							CPUWeight:  lrpAuctionOne.DesiredLRP.CPUWeight,
+							RootFSPath: lucidPath,
+							Privileged: lrpAuctionOne.DesiredLRP.Privileged,
+							Ports:      []executor.PortMapping{{ContainerPort: 8080}},
+
+							LogConfig: executor.LogConfig{
+								Guid:       "log-guid",
+								SourceName: "log-source",
+								Index:      expectedIndexOne,
+							},
+
+							MetricsConfig: executor.MetricsConfig{
+								Guid:  "metrics-guid",
+								Index: expectedIndexOne,
+							},
+
+							Setup:   lrpAuctionOne.DesiredLRP.Setup,
+							Action:  lrpAuctionOne.DesiredLRP.Action,
+							Monitor: lrpAuctionOne.DesiredLRP.Monitor,
+
+							Env: []executor.EnvironmentVariable{
+								{Name: "INSTANCE_GUID", Value: expectedGuidOne},
+								{Name: "INSTANCE_INDEX", Value: expectedIndexOneString},
+								{Name: "var1", Value: "val1"},
+								{Name: "var2", Value: "val2"},
+							},
+							EgressRules: []models.SecurityGroupRule{
+								securityRule,
+							},
+						},
+					))
+				})
+
+				It("marks the LRP Auction as failed", func() {
+					failedWork, err := cellRep.Perform(auctiontypes.Work{LRPs: []auctiontypes.LRPAuction{lrpAuctionOne, lrpAuctionTwo}})
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(failedWork.LRPs).Should(ContainElement(lrpAuctionTwo))
+				})
+
+				Context("when all remaining containers can be successfully allocated", func() {
+					BeforeEach(func() {
+						client.AllocateContainersReturns(map[string]string{}, nil)
+					})
+
+					It("does not mark any additional LRP Auctions as failed", func() {
+						failedWork, err := cellRep.Perform(auctiontypes.Work{LRPs: []auctiontypes.LRPAuction{lrpAuctionOne, lrpAuctionTwo}})
+						Ω(err).ShouldNot(HaveOccurred())
+						Ω(failedWork.LRPs).Should(ConsistOf(lrpAuctionTwo))
+					})
+				})
+
+				Context("when a remaining container fails to be allocated", func() {
+					BeforeEach(func() {
+						client.AllocateContainersReturns(map[string]string{
+							rep.LRPContainerGuid(lrpAuctionOne.DesiredLRP.ProcessGuid, expectedGuidOne): commonErr.Error(),
+						}, nil)
+					})
+
+					It("marks the corresponding LRP Auctions as failed", func() {
+						failedWork, err := cellRep.Perform(auctiontypes.Work{LRPs: []auctiontypes.LRPAuction{lrpAuctionOne, lrpAuctionTwo}})
+						Ω(err).ShouldNot(HaveOccurred())
+						Ω(failedWork.LRPs).Should(ConsistOf(lrpAuctionOne, lrpAuctionTwo))
+					})
+				})
+			})
+
+			Context("when an LRP Auction specifies a blank RootFS URL", func() {
+				BeforeEach(func() {
+					lrpAuctionOne.DesiredLRP.RootFS = ""
+				})
+
+				It("makes the correct allocation request for it, passing along the blank path to the executor client", func() {
+					_, err := cellRep.Perform(auctiontypes.Work{LRPs: []auctiontypes.LRPAuction{lrpAuctionOne}})
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Ω(client.AllocateContainersCallCount()).Should(Equal(1))
+					Ω(client.AllocateContainersArgsForCall(0)).Should(ConsistOf(
+						executor.Container{
+							Guid: rep.LRPContainerGuid(lrpAuctionOne.DesiredLRP.ProcessGuid, expectedGuidOne),
+
+							Tags: executor.Tags{
+								rep.LifecycleTag:    rep.LRPLifecycle,
+								rep.DomainTag:       lrpAuctionOne.DesiredLRP.Domain,
+								rep.ProcessGuidTag:  lrpAuctionOne.DesiredLRP.ProcessGuid,
+								rep.InstanceGuidTag: expectedGuidOne,
+								rep.ProcessIndexTag: expectedIndexOneString,
+							},
+
+							MemoryMB:   lrpAuctionOne.DesiredLRP.MemoryMB,
+							DiskMB:     lrpAuctionOne.DesiredLRP.DiskMB,
+							CPUWeight:  lrpAuctionOne.DesiredLRP.CPUWeight,
+							RootFSPath: "",
+							Privileged: lrpAuctionOne.DesiredLRP.Privileged,
+							Ports:      []executor.PortMapping{{ContainerPort: 8080}},
+
+							LogConfig: executor.LogConfig{
+								Guid:       "log-guid",
+								SourceName: "log-source",
+								Index:      expectedIndexOne,
+							},
+
+							MetricsConfig: executor.MetricsConfig{
+								Guid:  "metrics-guid",
+								Index: expectedIndexOne,
+							},
+
+							Setup:   lrpAuctionOne.DesiredLRP.Setup,
+							Action:  lrpAuctionOne.DesiredLRP.Action,
+							Monitor: lrpAuctionOne.DesiredLRP.Monitor,
+
+							Env: []executor.EnvironmentVariable{
+								{Name: "INSTANCE_GUID", Value: expectedGuidOne},
+								{Name: "INSTANCE_INDEX", Value: expectedIndexOneString},
+								{Name: "var1", Value: "val1"},
+								{Name: "var2", Value: "val2"},
+							},
+							EgressRules: []models.SecurityGroupRule{
+								securityRule,
+							},
+						},
+					))
+				})
+			})
+
+			Context("when an LRP Auction specifies an invalid RootFS URL", func() {
+				BeforeEach(func() {
+					lrpAuctionOne.DesiredLRP.RootFS = lucidRootFSURL
+					lrpAuctionTwo.DesiredLRP.RootFS = "%x"
+				})
+
+				It("only makes container allocation requests for the remaining LRP Auctions", func() {
+					_, err := cellRep.Perform(auctiontypes.Work{LRPs: []auctiontypes.LRPAuction{lrpAuctionOne, lrpAuctionTwo}})
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Ω(client.AllocateContainersCallCount()).Should(Equal(1))
+					Ω(client.AllocateContainersArgsForCall(0)).Should(ConsistOf(
+						executor.Container{
+							Guid: rep.LRPContainerGuid(lrpAuctionOne.DesiredLRP.ProcessGuid, expectedGuidOne),
+
+							Tags: executor.Tags{
+								rep.LifecycleTag:    rep.LRPLifecycle,
+								rep.DomainTag:       lrpAuctionOne.DesiredLRP.Domain,
+								rep.ProcessGuidTag:  lrpAuctionOne.DesiredLRP.ProcessGuid,
+								rep.InstanceGuidTag: expectedGuidOne,
+								rep.ProcessIndexTag: expectedIndexOneString,
+							},
+
+							MemoryMB:   lrpAuctionOne.DesiredLRP.MemoryMB,
+							DiskMB:     lrpAuctionOne.DesiredLRP.DiskMB,
+							CPUWeight:  lrpAuctionOne.DesiredLRP.CPUWeight,
+							RootFSPath: lucidPath,
+							Privileged: lrpAuctionOne.DesiredLRP.Privileged,
+							Ports:      []executor.PortMapping{{ContainerPort: 8080}},
+
+							LogConfig: executor.LogConfig{
+								Guid:       "log-guid",
+								SourceName: "log-source",
+								Index:      expectedIndexOne,
+							},
+
+							MetricsConfig: executor.MetricsConfig{
+								Guid:  "metrics-guid",
+								Index: expectedIndexOne,
+							},
+
+							Setup:   lrpAuctionOne.DesiredLRP.Setup,
+							Action:  lrpAuctionOne.DesiredLRP.Action,
+							Monitor: lrpAuctionOne.DesiredLRP.Monitor,
+
+							Env: []executor.EnvironmentVariable{
+								{Name: "INSTANCE_GUID", Value: expectedGuidOne},
+								{Name: "INSTANCE_INDEX", Value: expectedIndexOneString},
+								{Name: "var1", Value: "val1"},
+								{Name: "var2", Value: "val2"},
+							},
+							EgressRules: []models.SecurityGroupRule{
+								securityRule,
+							},
+						},
+					))
+				})
+
+				It("marks the LRP Auction as failed", func() {
+					failedWork, err := cellRep.Perform(auctiontypes.Work{LRPs: []auctiontypes.LRPAuction{lrpAuctionOne, lrpAuctionTwo}})
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(failedWork.LRPs).Should(ContainElement(lrpAuctionTwo))
+				})
+
+				Context("when all remaining containers can be successfully allocated", func() {
+					BeforeEach(func() {
+						client.AllocateContainersReturns(map[string]string{}, nil)
+					})
+
+					It("does not mark any additional LRP Auctions as failed", func() {
+						failedWork, err := cellRep.Perform(auctiontypes.Work{LRPs: []auctiontypes.LRPAuction{lrpAuctionOne, lrpAuctionTwo}})
+						Ω(err).ShouldNot(HaveOccurred())
+						Ω(failedWork.LRPs).Should(ConsistOf(lrpAuctionTwo))
+					})
+				})
+
+				Context("when a remaining container fails to be allocated", func() {
+					BeforeEach(func() {
+						client.AllocateContainersReturns(map[string]string{
+							rep.LRPContainerGuid(lrpAuctionOne.DesiredLRP.ProcessGuid, expectedGuidOne): commonErr.Error(),
+						}, nil)
+					})
+
+					It("marks the corresponding LRP Auctions as failed", func() {
+						failedWork, err := cellRep.Perform(auctiontypes.Work{LRPs: []auctiontypes.LRPAuction{lrpAuctionOne, lrpAuctionTwo}})
+						Ω(err).ShouldNot(HaveOccurred())
+						Ω(failedWork.LRPs).Should(ConsistOf(lrpAuctionOne, lrpAuctionTwo))
+					})
 				})
 			})
 		})
 
 		Describe("starting tasks", func() {
-			var task models.Task
+			var task1, task2 models.Task
 			var securityRule models.SecurityGroupRule
 
 			BeforeEach(func() {
@@ -453,12 +695,11 @@ var _ = Describe("AuctionCellRep", func() {
 					Destinations: []string{"0.0.0.0/0"},
 					Ports:        []uint16{80},
 				}
-				task = models.Task{
+				task1 = models.Task{
 					Domain:      "tests",
-					TaskGuid:    "the-task-guid",
+					TaskGuid:    "the-task-guid-1",
 					DiskMB:      1024,
 					MemoryMB:    2048,
-					RootFS:      lucidRootFSURL,
 					Privileged:  true,
 					CPUWeight:   10,
 					LogGuid:     "log-guid",
@@ -474,86 +715,349 @@ var _ = Describe("AuctionCellRep", func() {
 						securityRule,
 					},
 				}
-
+				task2 = models.Task{
+					Domain:      "tests",
+					TaskGuid:    "the-task-guid-2",
+					DiskMB:      1024,
+					MemoryMB:    2048,
+					Privileged:  true,
+					CPUWeight:   10,
+					LogGuid:     "log-guid",
+					LogSource:   "log-source",
+					MetricsGuid: "metrics-guid",
+					Action: &models.RunAction{
+						Path: "date",
+					},
+					EnvironmentVariables: []models.EnvironmentVariable{
+						{Name: "FOO", Value: "BAR"},
+					},
+					EgressRules: []models.SecurityGroupRule{
+						securityRule,
+					},
+				}
 				work = auctiontypes.Work{Tasks: []models.Task{task}}
 			})
 
-			It("should allocate a container", func() {
-				_, err := cellRep.Perform(work)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Ω(client.AllocateContainersCallCount()).Should(Equal(1))
-				Ω(client.AllocateContainersArgsForCall(0)).Should(Equal([]executor.Container{
-					{
-						Guid: task.TaskGuid,
-
-						Tags: executor.Tags{
-							rep.LifecycleTag:  rep.TaskLifecycle,
-							rep.DomainTag:     task.Domain,
-							rep.ResultFileTag: task.ResultFile,
-						},
-
-						Action: &models.RunAction{
-							Path: "date",
-						},
-						Env: []executor.EnvironmentVariable{
-							{Name: "FOO", Value: "BAR"},
-						},
-
-						LogConfig: executor.LogConfig{
-							Guid:       "log-guid",
-							SourceName: "log-source",
-						},
-
-						MetricsConfig: executor.MetricsConfig{
-							Guid: "metrics-guid",
-						},
-
-						MemoryMB:   task.MemoryMB,
-						DiskMB:     task.DiskMB,
-						CPUWeight:  task.CPUWeight,
-						RootFSPath: lucidPath,
-						Privileged: task.Privileged,
-						EgressRules: []models.SecurityGroupRule{
-							securityRule,
-						},
-					},
-				}))
-			})
-
-			Context("when allocation succeeds", func() {
+			Context("when all Tasks can be successfully translated to container specs", func() {
 				BeforeEach(func() {
-					client.AllocateContainersReturns(map[string]string{}, nil)
+					task1.RootFS = lucidRootFSURL
+					task2.RootFS = "unsupported-arbitrary://still-goes-through"
 				})
 
-				It("responds successfully before starting the task in the BBS", func() {
-					failedWork, err := cellRep.Perform(work)
+				It("makes the correct allocation requests for all Tasks", func() {
+					_, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
 					Ω(err).ShouldNot(HaveOccurred())
-					Ω(failedWork).Should(BeZero())
+
+					Ω(client.AllocateContainersCallCount()).Should(Equal(1))
+					Ω(client.AllocateContainersArgsForCall(0)).Should(ConsistOf(
+						executor.Container{
+							Guid: "the-task-guid-1",
+
+							Tags: executor.Tags{
+								rep.LifecycleTag:  rep.TaskLifecycle,
+								rep.DomainTag:     task1.Domain,
+								rep.ResultFileTag: task1.ResultFile,
+							},
+
+							Action: &models.RunAction{
+								Path: "date",
+							},
+							Env: []executor.EnvironmentVariable{
+								{Name: "FOO", Value: "BAR"},
+							},
+
+							LogConfig: executor.LogConfig{
+								Guid:       "log-guid",
+								SourceName: "log-source",
+							},
+
+							MetricsConfig: executor.MetricsConfig{
+								Guid: "metrics-guid",
+							},
+
+							MemoryMB:   task1.MemoryMB,
+							DiskMB:     task1.DiskMB,
+							CPUWeight:  task1.CPUWeight,
+							RootFSPath: lucidPath,
+							Privileged: task1.Privileged,
+							EgressRules: []models.SecurityGroupRule{
+								securityRule,
+							},
+						},
+						executor.Container{
+							Guid: "the-task-guid-2",
+
+							Tags: executor.Tags{
+								rep.LifecycleTag:  rep.TaskLifecycle,
+								rep.DomainTag:     task2.Domain,
+								rep.ResultFileTag: task2.ResultFile,
+							},
+
+							Action: &models.RunAction{
+								Path: "date",
+							},
+							Env: []executor.EnvironmentVariable{
+								{Name: "FOO", Value: "BAR"},
+							},
+
+							LogConfig: executor.LogConfig{
+								Guid:       "log-guid",
+								SourceName: "log-source",
+							},
+
+							MetricsConfig: executor.MetricsConfig{
+								Guid: "metrics-guid",
+							},
+
+							MemoryMB:   task2.MemoryMB,
+							DiskMB:     task2.DiskMB,
+							CPUWeight:  task2.CPUWeight,
+							RootFSPath: "unsupported-arbitrary://still-goes-through",
+							Privileged: task2.Privileged,
+							EgressRules: []models.SecurityGroupRule{
+								securityRule,
+							},
+						},
+					))
+				})
+
+				Context("when all containers can be successfully allocated", func() {
+					BeforeEach(func() {
+						client.AllocateContainersReturns(map[string]string{}, nil)
+					})
+
+					It("does not mark any Tasks as failed", func() {
+						failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+						Ω(err).ShouldNot(HaveOccurred())
+						Ω(failedWork).Should(BeZero())
+					})
+				})
+
+				Context("when a container fails to be allocated", func() {
+					BeforeEach(func() {
+						client.AllocateContainersReturns(map[string]string{
+							"the-task-guid-1": commonErr.Error(),
+						}, nil)
+					})
+
+					It("marks the corresponding Tasks as failed", func() {
+						failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+						Ω(err).ShouldNot(HaveOccurred())
+						Ω(failedWork.Tasks).Should(ConsistOf(task1))
+					})
 				})
 			})
 
-			Context("when the container fails to allocate", func() {
+			Context("when a Task specifies a preloaded RootFSes for which it cannot determine a RootFS path", func() {
 				BeforeEach(func() {
-					client.AllocateContainersReturns(map[string]string{
-						task.TaskGuid: commonErr.Error(),
-					}, nil)
+					task1.RootFS = lucidRootFSURL
+					task2.RootFS = "preloaded:not-on-cell"
 				})
 
-				It("adds to the failed work", func() {
-					failedWork, err := cellRep.Perform(work)
-					Ω(err).ShouldNot(HaveOccurred(), "note: we don't error")
-					Ω(failedWork.Tasks).Should(ConsistOf(task))
+				It("only makes container allocation requests for the remaining Tasks", func() {
+					_, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Ω(client.AllocateContainersCallCount()).Should(Equal(1))
+					Ω(client.AllocateContainersArgsForCall(0)).Should(ConsistOf(
+						executor.Container{
+							Guid: "the-task-guid-1",
+
+							Tags: executor.Tags{
+								rep.LifecycleTag:  rep.TaskLifecycle,
+								rep.DomainTag:     task1.Domain,
+								rep.ResultFileTag: task1.ResultFile,
+							},
+
+							Action: &models.RunAction{
+								Path: "date",
+							},
+							Env: []executor.EnvironmentVariable{
+								{Name: "FOO", Value: "BAR"},
+							},
+
+							LogConfig: executor.LogConfig{
+								Guid:       "log-guid",
+								SourceName: "log-source",
+							},
+
+							MetricsConfig: executor.MetricsConfig{
+								Guid: "metrics-guid",
+							},
+
+							MemoryMB:   task1.MemoryMB,
+							DiskMB:     task1.DiskMB,
+							CPUWeight:  task1.CPUWeight,
+							RootFSPath: lucidPath,
+							Privileged: task1.Privileged,
+							EgressRules: []models.SecurityGroupRule{
+								securityRule,
+							},
+						},
+					))
 				})
 
-				It("doesn't start the task in the BBS", func() {
-					cellRep.Perform(work)
-					Consistently(bbs.StartTaskCallCount).Should(Equal(0))
+				It("marks the Task as failed", func() {
+					failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(failedWork.Tasks).Should(ContainElement(task2))
 				})
 
-				It("doesn't run the container", func() {
-					cellRep.Perform(work)
-					Consistently(client.RunContainerCallCount).Should(Equal(0))
+				Context("when all remaining containers can be successfully allocated", func() {
+					BeforeEach(func() {
+						client.AllocateContainersReturns(map[string]string{}, nil)
+					})
+
+					It("does not mark any additional Tasks as failed", func() {
+						failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+						Ω(err).ShouldNot(HaveOccurred())
+						Ω(failedWork.Tasks).Should(ConsistOf(task2))
+					})
+				})
+
+				Context("when a remaining container fails to be allocated", func() {
+					BeforeEach(func() {
+						client.AllocateContainersReturns(map[string]string{
+							"the-task-guid-1": commonErr.Error(),
+						}, nil)
+					})
+
+					It("marks the corresponding Tasks as failed", func() {
+						failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+						Ω(err).ShouldNot(HaveOccurred())
+						Ω(failedWork.Tasks).Should(ConsistOf(task1, task2))
+					})
+				})
+			})
+
+			Context("when a Task specifies a blank RootFS URL", func() {
+				BeforeEach(func() {
+					task1.RootFS = ""
+				})
+
+				It("makes the correct allocation request for it, passing along the blank path to the executor client", func() {
+					_, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1}})
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Ω(client.AllocateContainersCallCount()).Should(Equal(1))
+					Ω(client.AllocateContainersArgsForCall(0)).Should(ConsistOf(
+						executor.Container{
+							Guid: "the-task-guid-1",
+
+							Tags: executor.Tags{
+								rep.LifecycleTag:  rep.TaskLifecycle,
+								rep.DomainTag:     task1.Domain,
+								rep.ResultFileTag: task1.ResultFile,
+							},
+
+							Action: &models.RunAction{
+								Path: "date",
+							},
+							Env: []executor.EnvironmentVariable{
+								{Name: "FOO", Value: "BAR"},
+							},
+
+							LogConfig: executor.LogConfig{
+								Guid:       "log-guid",
+								SourceName: "log-source",
+							},
+
+							MetricsConfig: executor.MetricsConfig{
+								Guid: "metrics-guid",
+							},
+
+							MemoryMB:   task1.MemoryMB,
+							DiskMB:     task1.DiskMB,
+							CPUWeight:  task1.CPUWeight,
+							RootFSPath: "",
+							Privileged: task1.Privileged,
+							EgressRules: []models.SecurityGroupRule{
+								securityRule,
+							},
+						},
+					))
+				})
+			})
+
+			Context("when a Task specifies an invalid RootFS URL", func() {
+				BeforeEach(func() {
+					task1.RootFS = lucidRootFSURL
+					task2.RootFS = "%x"
+				})
+
+				It("only makes container allocation requests for the remaining Tasks", func() {
+					_, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Ω(client.AllocateContainersCallCount()).Should(Equal(1))
+					Ω(client.AllocateContainersArgsForCall(0)).Should(ConsistOf(
+						executor.Container{
+							Guid: "the-task-guid-1",
+
+							Tags: executor.Tags{
+								rep.LifecycleTag:  rep.TaskLifecycle,
+								rep.DomainTag:     task1.Domain,
+								rep.ResultFileTag: task1.ResultFile,
+							},
+
+							Action: &models.RunAction{
+								Path: "date",
+							},
+							Env: []executor.EnvironmentVariable{
+								{Name: "FOO", Value: "BAR"},
+							},
+
+							LogConfig: executor.LogConfig{
+								Guid:       "log-guid",
+								SourceName: "log-source",
+							},
+
+							MetricsConfig: executor.MetricsConfig{
+								Guid: "metrics-guid",
+							},
+
+							MemoryMB:   task1.MemoryMB,
+							DiskMB:     task1.DiskMB,
+							CPUWeight:  task1.CPUWeight,
+							RootFSPath: lucidPath,
+							Privileged: task1.Privileged,
+							EgressRules: []models.SecurityGroupRule{
+								securityRule,
+							},
+						},
+					))
+				})
+
+				It("marks the Task as failed", func() {
+					failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(failedWork.Tasks).Should(ContainElement(task2))
+				})
+
+				Context("when all remaining containers can be successfully allocated", func() {
+					BeforeEach(func() {
+						client.AllocateContainersReturns(map[string]string{}, nil)
+					})
+
+					It("does not mark any additional LRP Auctions as failed", func() {
+						failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+						Ω(err).ShouldNot(HaveOccurred())
+						Ω(failedWork.Tasks).Should(ConsistOf(task2))
+					})
+				})
+
+				Context("when a remaining container fails to be allocated", func() {
+					BeforeEach(func() {
+						client.AllocateContainersReturns(map[string]string{
+							"the-task-guid-1": commonErr.Error(),
+						}, nil)
+					})
+
+					It("marks the corresponding Tasks as failed", func() {
+						failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+						Ω(err).ShouldNot(HaveOccurred())
+						Ω(failedWork.Tasks).Should(ConsistOf(task1, task2))
+					})
 				})
 			})
 		})
