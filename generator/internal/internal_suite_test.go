@@ -15,8 +15,7 @@ import (
 var BBS *bbs.BBS
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
 var etcdClient storeadapter.StoreAdapter
-var consulPort int
-var consulRunner consuladapter.ClusterRunner
+var consulRunner *consuladapter.ClusterRunner
 var consulAdapter consuladapter.Adapter
 
 func TestInternal(t *testing.T) {
@@ -28,9 +27,8 @@ var _ = BeforeSuite(func() {
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(5001+config.GinkgoConfig.ParallelNode, 1)
 	etcdClient = etcdRunner.Adapter()
 
-	consulPort = 9001 + config.GinkgoConfig.ParallelNode*consuladapter.PortOffsetLength
 	consulRunner = consuladapter.NewClusterRunner(
-		consulPort,
+		9001+config.GinkgoConfig.ParallelNode*consuladapter.PortOffsetLength,
 		1,
 		"http",
 	)

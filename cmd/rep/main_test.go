@@ -84,11 +84,11 @@ var _ = Describe("The Rep", func() {
 			cellID,
 			fakeExecutor.URL(),
 			fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
+			consulRunner.ConsulCluster(),
 			"info",
 			[]string{rootFSArg},
 			[]string{"docker"},
 			serverPort,
-			consulPort,
 			pollingInterval,
 			evacuationTimeout,
 		)

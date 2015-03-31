@@ -48,19 +48,13 @@ import (
 var etcdCluster = flag.String(
 	"etcdCluster",
 	"http://127.0.0.1:4001",
-	"comma-separated list of etcd addresses (http://ip:port)",
+	"comma-separated list of etcd URLs (scheme://ip:port)",
 )
 
 var consulCluster = flag.String(
 	"consulCluster",
 	"",
-	"comma-separated list of consul server addresses (ip:port)",
-)
-
-var consulScheme = flag.String(
-	"consulScheme",
-	"http",
-	"protocol scheme for communication with consul servers",
+	"comma-separated list of consul server URLs (scheme://ip:port)",
 )
 
 var lockTTL = flag.Duration(
@@ -272,10 +266,12 @@ func initializeRepBBS(logger lager.Logger) Bbs.RepBBS {
 		logger.Fatal("failed-to-connect-to-etcd", err)
 	}
 
-	consulAdapter, err := consuladapter.NewAdapter(
-		strings.Split(*consulCluster, ","),
-		*consulScheme,
-	)
+	consulScheme, consulAddresses, err := consuladapter.Parse(*consulCluster)
+	if err != nil {
+		logger.Fatal("failed-parsing-consul-cluster", err)
+	}
+
+	consulAdapter, err := consuladapter.NewAdapter(consulAddresses, consulScheme)
 	if err != nil {
 		logger.Fatal("failed-building-consul-adapter", err)
 	}
