@@ -209,8 +209,8 @@ func main() {
 	opGenerator := generator.New(*cellID, bbs, executorClient, lrpProcessor, taskProcessor, containerDelegate)
 
 	members := grouper.Members{
-		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
 		{"http_server", httpServer},
+		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
 		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, *evacuationPollingInterval, evacuationNotifier, clock, opGenerator, queue)},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 		{"evacuator", evacuator},
