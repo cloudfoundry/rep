@@ -70,7 +70,8 @@ var _ = Describe("The Rep", func() {
 
 		etcdAdapter = etcdRunner.Adapter()
 		logger = lagertest.NewTestLogger("test")
-		bbs = Bbs.NewBBS(etcdAdapter, consulAdapter, clock.NewClock(), logger)
+		receptorTaskHandlerURL := "http://receptor.bogus.com"
+		bbs = Bbs.NewBBS(etcdAdapter, consulAdapter, receptorTaskHandlerURL, clock.NewClock(), logger)
 
 		pollingInterval = 50 * time.Millisecond
 		evacuationTimeout = 200 * time.Millisecond
@@ -85,6 +86,7 @@ var _ = Describe("The Rep", func() {
 			fakeExecutor.URL(),
 			fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
 			consulRunner.ConsulCluster(),
+			receptorTaskHandlerURL,
 			"info",
 			[]string{rootFSArg},
 			[]string{"docker"},

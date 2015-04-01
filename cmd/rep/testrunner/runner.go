@@ -18,36 +18,38 @@ type Runner struct {
 }
 
 type Config struct {
-	preloadedRootFSes []string
-	rootFSProviders   []string
-	cellID            string
-	executorURL       string
-	etcdCluster       string
-	serverPort        int
-	logLevel          string
-	consulCluster     string
-	pollingInterval   time.Duration
-	evacuationTimeout time.Duration
+	preloadedRootFSes      []string
+	rootFSProviders        []string
+	cellID                 string
+	executorURL            string
+	etcdCluster            string
+	serverPort             int
+	logLevel               string
+	consulCluster          string
+	receptorTaskHandlerURL string
+	pollingInterval        time.Duration
+	evacuationTimeout      time.Duration
 }
 
 func New(
-	binPath, cellID, executorURL, etcdCluster, consulCluster, logLevel string,
+	binPath, cellID, executorURL, etcdCluster, consulCluster, receptorTaskHandlerURL, logLevel string,
 	preloadedRootFSes, rootFSProviders []string,
 	serverPort int,
 	pollingInterval, evacuationTimeout time.Duration) *Runner {
 	return &Runner{
 		binPath: binPath,
 		config: Config{
-			cellID:            cellID,
-			preloadedRootFSes: preloadedRootFSes,
-			rootFSProviders:   rootFSProviders,
-			executorURL:       executorURL,
-			serverPort:        serverPort,
-			etcdCluster:       etcdCluster,
-			consulCluster:     consulCluster,
-			logLevel:          logLevel,
-			pollingInterval:   pollingInterval,
-			evacuationTimeout: evacuationTimeout,
+			cellID:                 cellID,
+			preloadedRootFSes:      preloadedRootFSes,
+			rootFSProviders:        rootFSProviders,
+			executorURL:            executorURL,
+			serverPort:             serverPort,
+			etcdCluster:            etcdCluster,
+			consulCluster:          consulCluster,
+			receptorTaskHandlerURL: receptorTaskHandlerURL,
+			logLevel:               logLevel,
+			pollingInterval:        pollingInterval,
+			evacuationTimeout:      evacuationTimeout,
 		},
 	}
 }
@@ -67,6 +69,7 @@ func (r *Runner) Start() {
 		"-evacuationTimeout", r.config.evacuationTimeout.String(),
 		"-heartbeatRetryInterval", "1s",
 		"-consulCluster", r.config.consulCluster,
+		"-receptorTaskHandlerURL", r.config.receptorTaskHandlerURL,
 	}
 	for _, rootfs := range r.config.preloadedRootFSes {
 		args = append(args, "-preloadedRootFS", rootfs)

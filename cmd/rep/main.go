@@ -69,6 +69,12 @@ var heartbeatRetryInterval = flag.Duration(
 	"interval to wait before retrying a failed lock acquisition",
 )
 
+var receptorTaskHandlerURL = flag.String(
+	"receptorTaskHandlerURL",
+	"http://127.0.0.1:1169",
+	"location of receptor task handler",
+)
+
 var executorURL = flag.String(
 	"executorURL",
 	"http://127.0.0.1:1700",
@@ -276,7 +282,7 @@ func initializeRepBBS(logger lager.Logger) Bbs.RepBBS {
 		logger.Fatal("failed-building-consul-adapter", err)
 	}
 
-	return Bbs.NewRepBBS(etcdAdapter, consulAdapter, clock.NewClock(), logger)
+	return Bbs.NewRepBBS(etcdAdapter, consulAdapter, *receptorTaskHandlerURL, clock.NewClock(), logger)
 }
 
 func initializeLRPStopper(guid string, executorClient executor.Client, logger lager.Logger) lrp_stopper.LRPStopper {
