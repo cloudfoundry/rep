@@ -39,6 +39,7 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = BeforeEach(func() {
+	consulRunner.WaitUntilReady()
 	consulRunner.Reset()
 })
 
