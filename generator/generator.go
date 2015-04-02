@@ -62,6 +62,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 
 	errChan := make(chan error, 3)
 
+	logger.Info("getting-containers-lrps-and-tasks")
 	go func() {
 		foundContainers, err := g.executorClient.ListContainers(nil)
 		if err != nil {
@@ -116,8 +117,10 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	}
 
 	if err != nil {
+		logger.Error("failed-getting-containers-lrps-and-tasks", err)
 		return nil, err
 	}
+	logger.Info("succeeded-getting-containers-lrps-and-tasks")
 
 	batch := make(map[string]operationq.Operation)
 
