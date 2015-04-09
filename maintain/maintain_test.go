@@ -71,14 +71,13 @@ var _ = Describe("Maintain Presence", func() {
 		}
 
 		fakeBBS = &fake_bbs.FakeRepBBS{}
-		fakeBBS.NewCellHeartbeatReturns(fakeHeartbeater)
+		fakeBBS.NewCellPresenceReturns(fakeHeartbeater)
 
 		config = maintain.Config{
-			CellID:     "cell-id",
-			RepAddress: "1.2.3.4",
-			Zone:       "az1",
-			HeartbeatRetryInterval: 1 * time.Second,
-			TTL: 10 * time.Second,
+			CellID:        "cell-id",
+			RepAddress:    "1.2.3.4",
+			Zone:          "az1",
+			RetryInterval: 1 * time.Second,
 		}
 		maintainer = maintain.New(config, fakeClient, fakeBBS, logger, clock)
 	})
@@ -136,7 +135,7 @@ var _ = Describe("Maintain Presence", func() {
 					},
 				}
 
-				fakeBBS.NewCellHeartbeatReturns(fakeHeartbeater)
+				fakeBBS.NewCellPresenceReturns(fakeHeartbeater)
 
 				pingErrors <- nil
 				maintainProcess = ifrit.Background(maintainer)
@@ -161,7 +160,7 @@ var _ = Describe("Maintain Presence", func() {
 				})
 
 				It("retries to heartbeat", func() {
-					Eventually(fakeBBS.NewCellHeartbeatCallCount).Should(Equal(2))
+					Eventually(fakeBBS.NewCellPresenceCallCount).Should(Equal(2))
 					Eventually(fakeHeartbeater.RunCallCount).Should(Equal(2))
 				})
 			})
@@ -175,7 +174,7 @@ var _ = Describe("Maintain Presence", func() {
 			})
 
 			It("starts maintaining presence", func() {
-				Ω(fakeBBS.NewCellHeartbeatCallCount()).Should(Equal(1))
+				Ω(fakeBBS.NewCellPresenceCallCount()).Should(Equal(1))
 				Eventually(fakeHeartbeater.RunCallCount).Should(Equal(1))
 			})
 
@@ -216,7 +215,7 @@ var _ = Describe("Maintain Presence", func() {
 					})
 
 					It("begins heartbeating the executor's presence again", func() {
-						Eventually(fakeHeartbeater.RunCallCount, 10*config.HeartbeatRetryInterval).Should(Equal(2))
+						Eventually(fakeHeartbeater.RunCallCount, 10*config.RetryInterval).Should(Equal(2))
 					})
 
 					It("continues to ping the executor", func() {

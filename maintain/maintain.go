@@ -22,11 +22,10 @@ type Maintainer struct {
 }
 
 type Config struct {
-	CellID                 string
-	RepAddress             string
-	Zone                   string
-	TTL                    time.Duration
-	HeartbeatRetryInterval time.Duration
+	CellID        string
+	RepAddress    string
+	Zone          string
+	RetryInterval time.Duration
 }
 
 func New(
@@ -101,13 +100,13 @@ func (m *Maintainer) createHeartbeater() (ifrit.Runner, error) {
 
 	cellCapacity := models.NewCellCapacity(resources.MemoryMB, resources.DiskMB, resources.Containers)
 	cellPresence := models.NewCellPresence(m.CellID, m.RepAddress, m.Zone, cellCapacity)
-	return m.bbs.NewCellHeartbeat(cellPresence, m.TTL, m.HeartbeatRetryInterval), nil
+	return m.bbs.NewCellPresence(cellPresence, m.RetryInterval), nil
 }
 
 func (m *Maintainer) heartbeat(sigChan <-chan os.Signal, ready chan<- struct{}, heartbeater ifrit.Runner) error {
 	m.logger.Info("start-heartbeating")
 	defer m.logger.Info("complete-heartbeating")
-	ticker := m.clock.NewTicker(m.HeartbeatRetryInterval)
+	ticker := m.clock.NewTicker(m.RetryInterval)
 	defer ticker.Stop()
 
 	heartbeatProcess := ifrit.Background(heartbeater)

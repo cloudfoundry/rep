@@ -18,7 +18,7 @@ var etcdRunner *etcdstorerunner.ETCDClusterRunner
 var etcdPort, natsPort int
 var serverPort int
 var consulRunner *consuladapter.ClusterRunner
-var consulAdapter *consuladapter.Adapter
+var consulSession *consuladapter.Session
 
 func TestRep(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -55,7 +55,7 @@ var _ = BeforeEach(func() {
 
 	etcdRunner.Reset()
 
-	consulAdapter = consulRunner.NewAdapter()
+	consulSession = consulRunner.NewSession("a-session")
 })
 
 var _ = SynchronizedAfterSuite(func() {

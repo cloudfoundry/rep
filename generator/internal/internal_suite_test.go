@@ -16,7 +16,7 @@ var BBS *bbs.BBS
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
 var etcdClient storeadapter.StoreAdapter
 var consulRunner *consuladapter.ClusterRunner
-var consulAdapter *consuladapter.Adapter
+var consulSession *consuladapter.Session
 
 func TestInternal(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -32,15 +32,15 @@ var _ = BeforeSuite(func() {
 		1,
 		"http",
 	)
-	consulAdapter = consulRunner.NewAdapter()
 
 	etcdRunner.Start()
 	consulRunner.Start()
+	consulRunner.WaitUntilReady()
 })
 
 var _ = BeforeEach(func() {
-	consulRunner.WaitUntilReady()
 	consulRunner.Reset()
+	consulSession = consulRunner.NewSession("a-session")
 })
 
 var _ = AfterSuite(func() {

@@ -51,6 +51,12 @@ var etcdCluster = flag.String(
 	"comma-separated list of etcd URLs (scheme://ip:port)",
 )
 
+var sessionName = flag.String(
+	"sessionName",
+	"rep",
+	"consul session name",
+)
+
 var consulCluster = flag.String(
 	"consulCluster",
 	"",
@@ -179,7 +185,7 @@ func main() {
 
 	cf_http.Initialize(*communicationTimeout)
 
-	logger, reconfigurableSink := cf_lager.New("rep")
+	logger, reconfigurableSink := cf_lager.New(*sessionName)
 	initializeDropsonde(logger)
 
 	if *cellID == "" {
@@ -216,7 +222,7 @@ func main() {
 
 	members := grouper.Members{
 		{"http_server", httpServer},
-		{"heartbeater", initializeCellHeartbeat(address, bbs, executorClient, logger)},
+		{"presence", initializeCellPresence(address, bbs, executorClient, logger)},
 		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, *evacuationPollingInterval, evacuationNotifier, clock, opGenerator, queue)},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 		{"evacuator", evacuator},
@@ -250,13 +256,12 @@ func initializeDropsonde(logger lager.Logger) {
 	}
 }
 
-func initializeCellHeartbeat(address string, bbs Bbs.RepBBS, executorClient executor.Client, logger lager.Logger) ifrit.Runner {
+func initializeCellPresence(address string, bbs Bbs.RepBBS, executorClient executor.Client, logger lager.Logger) ifrit.Runner {
 	config := maintain.Config{
-		CellID:     *cellID,
-		RepAddress: address,
-		Zone:       *zone,
-		TTL:        *lockTTL,
-		HeartbeatRetryInterval: *heartbeatRetryInterval,
+		CellID:        *cellID,
+		RepAddress:    address,
+		Zone:          *zone,
+		RetryInterval: *heartbeatRetryInterval,
 	}
 	return maintain.New(config, executorClient, bbs, logger, clock.NewClock())
 }
@@ -272,17 +277,18 @@ func initializeRepBBS(logger lager.Logger) Bbs.RepBBS {
 		logger.Fatal("failed-to-connect-to-etcd", err)
 	}
 
-	consulScheme, consulAddresses, err := consuladapter.Parse(*consulCluster)
+	client, err := consuladapter.NewClient(*consulCluster)
 	if err != nil {
-		logger.Fatal("failed-parsing-consul-cluster", err)
+		logger.Fatal("new-client-failed", err)
 	}
 
-	consulAdapter, err := consuladapter.NewAdapter(consulAddresses, consulScheme)
+	sessionMgr := consuladapter.NewSessionManager(client)
+	consulSession, err := consuladapter.NewSession(*sessionName, *lockTTL, client, sessionMgr)
 	if err != nil {
-		logger.Fatal("failed-building-consul-adapter", err)
+		logger.Fatal("consul-session-failed", err)
 	}
 
-	return Bbs.NewRepBBS(etcdAdapter, consulAdapter, *receptorTaskHandlerURL, clock.NewClock(), logger)
+	return Bbs.NewRepBBS(etcdAdapter, consulSession, *receptorTaskHandlerURL, clock.NewClock(), logger)
 }
 
 func initializeLRPStopper(guid string, executorClient executor.Client, logger lager.Logger) lrp_stopper.LRPStopper {

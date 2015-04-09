@@ -71,7 +71,7 @@ var _ = Describe("The Rep", func() {
 		etcdAdapter = etcdRunner.Adapter()
 		logger = lagertest.NewTestLogger("test")
 		receptorTaskHandlerURL := "http://receptor.bogus.com"
-		bbs = Bbs.NewBBS(etcdAdapter, consulAdapter, receptorTaskHandlerURL, clock.NewClock(), logger)
+		bbs = Bbs.NewBBS(etcdAdapter, consulSession, receptorTaskHandlerURL, clock.NewClock(), logger)
 
 		pollingInterval = 50 * time.Millisecond
 		evacuationTimeout = 200 * time.Millisecond
