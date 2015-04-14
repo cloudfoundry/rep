@@ -69,8 +69,8 @@ var lockTTL = flag.Duration(
 	"TTL for service lock",
 )
 
-var heartbeatRetryInterval = flag.Duration(
-	"heartbeatRetryInterval",
+var lockRetryInterval = flag.Duration(
+	"lockRetryInterval",
 	lock_bbs.RetryInterval,
 	"interval to wait before retrying a failed lock acquisition",
 )
@@ -261,7 +261,7 @@ func initializeCellPresence(address string, bbs Bbs.RepBBS, executorClient execu
 		CellID:        *cellID,
 		RepAddress:    address,
 		Zone:          *zone,
-		RetryInterval: *heartbeatRetryInterval,
+		RetryInterval: *lockRetryInterval,
 	}
 	return maintain.New(config, executorClient, bbs, logger, clock.NewClock())
 }

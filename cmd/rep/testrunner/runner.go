@@ -67,7 +67,7 @@ func (r *Runner) Start() {
 		"-logLevel", r.config.logLevel,
 		"-pollingInterval", r.config.pollingInterval.String(),
 		"-evacuationTimeout", r.config.evacuationTimeout.String(),
-		"-heartbeatRetryInterval", "1s",
+		"-lockRetryInterval", "1s",
 		"-consulCluster", r.config.consulCluster,
 		"-receptorTaskHandlerURL", r.config.receptorTaskHandlerURL,
 	}
