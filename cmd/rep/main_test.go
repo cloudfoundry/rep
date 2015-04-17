@@ -21,7 +21,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gexec"
+	. "github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/ghttp"
 )
 
@@ -94,7 +94,9 @@ var _ = Describe("The Rep", func() {
 			pollingInterval,
 			evacuationTimeout,
 		)
+	})
 
+	JustBeforeEach(func() {
 		runner.Start()
 	})
 
@@ -107,7 +109,7 @@ var _ = Describe("The Rep", func() {
 	})
 
 	Describe("when an interrupt signal is sent to the representative", func() {
-		BeforeEach(func() {
+		JustBeforeEach(func() {
 			runner.Stop()
 		})
 
@@ -116,10 +118,24 @@ var _ = Describe("The Rep", func() {
 		})
 	})
 
+	Context("when etcd is down", func() {
+		BeforeEach(func() {
+			etcdRunner.Stop()
+		})
+
+		AfterEach(func() {
+			etcdRunner.Start()
+		})
+
+		It("starts", func() {
+			Consistently(runner.Session).ShouldNot(Exit())
+		})
+	})
+
 	Describe("maintaining presence", func() {
 		var cellPresence models.CellPresence
 
-		BeforeEach(func() {
+		JustBeforeEach(func() {
 			Eventually(bbs.Cells).Should(HaveLen(1))
 			cells, err := bbs.Cells()
 			Ω(err).ShouldNot(HaveOccurred())
@@ -139,14 +155,14 @@ var _ = Describe("The Rep", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(cells[0]).Should(Equal(cellPresence))
 
-				Ω(runner.Session).ShouldNot(gexec.Exit())
+				Ω(runner.Session).ShouldNot(Exit())
 			})
 		})
 	})
 
 	Describe("acting as an auction representative", func() {
 		Describe("reporting the state of its resources", func() {
-			BeforeEach(func() {
+			JustBeforeEach(func() {
 				fakeExecutor.RouteToHandler("GET", "/resources/total", ghttp.RespondWithJSONEncoded(http.StatusOK, executor.ExecutorResources{
 					MemoryMB:   1024,
 					DiskMB:     2048,
@@ -188,7 +204,7 @@ var _ = Describe("The Rep", func() {
 				var index int
 				var gotReservation chan struct{}
 
-				BeforeEach(func() {
+				JustBeforeEach(func() {
 					index = 1
 					desiredLRP = models.DesiredLRP{
 						ProcessGuid: "the-process-guid",
@@ -245,7 +261,7 @@ var _ = Describe("The Rep", func() {
 				var task models.Task
 				var gotReservation chan struct{}
 
-				BeforeEach(func() {
+				JustBeforeEach(func() {
 					task = models.Task{
 						TaskGuid: "the-task-guid",
 						MemoryMB: 2,
@@ -299,7 +315,7 @@ var _ = Describe("The Rep", func() {
 	Describe("polling the BBS for tasks to reap", func() {
 		var task models.Task
 
-		BeforeEach(func() {
+		JustBeforeEach(func() {
 			task = models.Task{
 				TaskGuid: "a-new-task-guid",
 				Domain:   "the-domain",
@@ -331,7 +347,7 @@ var _ = Describe("The Rep", func() {
 	})
 
 	Describe("polling the BBS for actual LRPs to reap", func() {
-		BeforeEach(func() {
+		JustBeforeEach(func() {
 			desiredLRP := models.DesiredLRP{
 				ProcessGuid: "process-guid",
 				RootFS:      "some:rootfs",
@@ -367,7 +383,7 @@ var _ = Describe("The Rep", func() {
 		var containerGuid = rep.LRPContainerGuid(processGuid, instanceGuid)
 		var expectedStopRoute = "/containers/" + containerGuid + "/stop"
 
-		BeforeEach(func() {
+		JustBeforeEach(func() {
 			fakeExecutor.RouteToHandler(
 				"POST",
 				expectedStopRoute,
@@ -421,7 +437,7 @@ var _ = Describe("The Rep", func() {
 
 		var deletedContainer chan struct{}
 
-		BeforeEach(func() {
+		JustBeforeEach(func() {
 			deletedContainer = make(chan struct{})
 
 			fakeExecutor.RouteToHandler(
@@ -478,7 +494,7 @@ var _ = Describe("The Rep", func() {
 				lrpNetInfo      models.ActualLRPNetInfo
 			)
 
-			BeforeEach(func() {
+			JustBeforeEach(func() {
 				processGuid = "some-process-guid"
 				index = 2
 				domain = "some-domain"
@@ -552,7 +568,7 @@ var _ = Describe("The Rep", func() {
 			})
 
 			Context("when signaled to stop", func() {
-				BeforeEach(func() {
+				JustBeforeEach(func() {
 					runner.Stop()
 				})
 
