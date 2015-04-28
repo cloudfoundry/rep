@@ -56,25 +56,25 @@ var _ = Describe("Generator", func() {
 		})
 
 		It("logs its lifecycle", func() {
-			Ω(logger).Should(Say(sessionName + ".started"))
+			Expect(logger).To(Say(sessionName + ".started"))
 		})
 
 		It("retrieves all actual lrps for its cell id", func() {
-			Ω(fakeBBS.ActualLRPGroupsByCellIDCallCount()).Should(Equal(1))
-			Ω(fakeBBS.ActualLRPGroupsByCellIDArgsForCall(0)).Should(Equal(cellID))
+			Expect(fakeBBS.ActualLRPGroupsByCellIDCallCount()).To(Equal(1))
+			Expect(fakeBBS.ActualLRPGroupsByCellIDArgsForCall(0)).To(Equal(cellID))
 		})
 
 		It("retrieves all tasks for its cell id", func() {
-			Ω(fakeBBS.TasksByCellIDCallCount()).Should(Equal(1))
+			Expect(fakeBBS.TasksByCellIDCallCount()).To(Equal(1))
 			actualLogger, actualCellID := fakeBBS.TasksByCellIDArgsForCall(0)
-			Ω(actualLogger.SessionName()).Should(Equal(sessionName))
-			Ω(actualCellID).Should(Equal(cellID))
+			Expect(actualLogger.SessionName()).To(Equal(sessionName))
+			Expect(actualCellID).To(Equal(cellID))
 		})
 
 		It("lists all containers from the executor", func() {
-			Ω(fakeExecutorClient.ListContainersCallCount()).Should(Equal(1))
+			Expect(fakeExecutorClient.ListContainersCallCount()).To(Equal(1))
 			tags := fakeExecutorClient.ListContainersArgsForCall(0)
-			Ω(tags).Should(BeNil())
+			Expect(tags).To(BeNil())
 		})
 
 		Context("when retrieving container and BBS data succeeds", func() {
@@ -129,20 +129,20 @@ var _ = Describe("Generator", func() {
 			})
 
 			It("does not return an error", func() {
-				Ω(batchErr).ShouldNot(HaveOccurred())
+				Expect(batchErr).NotTo(HaveOccurred())
 			})
 
 			It("logs success", func() {
-				Ω(logger).Should(Say(sessionName + ".succeeded"))
+				Expect(logger).To(Say(sessionName + ".succeeded"))
 			})
 
 			It("returns a batch of the correct size", func() {
-				Ω(batch).Should(HaveLen(8))
+				Expect(batch).To(HaveLen(8))
 			})
 
 			batchHasAContainerOperationForGuid := func(guid string, batch map[string]operationq.Operation) {
-				Ω(batch).Should(HaveKey(guid))
-				Ω(batch[guid]).Should(BeAssignableToTypeOf(new(generator.ContainerOperation)))
+				Expect(batch).To(HaveKey(guid))
+				Expect(batch[guid]).To(BeAssignableToTypeOf(new(generator.ContainerOperation)))
 			}
 
 			It("returns a container operation for a container with an instance lrp", func() {
@@ -163,26 +163,26 @@ var _ = Describe("Generator", func() {
 
 			It("returns a residual instance lrp operation for a guid with an instance lrp but no container", func() {
 				guid := rep.LRPContainerGuid(processGuid, instanceGuidInstanceLRPOnly)
-				Ω(batch).Should(HaveKey(guid))
-				Ω(batch[guid]).Should(BeAssignableToTypeOf(new(generator.ResidualInstanceLRPOperation)))
+				Expect(batch).To(HaveKey(guid))
+				Expect(batch[guid]).To(BeAssignableToTypeOf(new(generator.ResidualInstanceLRPOperation)))
 			})
 
 			It("returns a residual evacuating lrp operation for a guid with an evacuating lrp but no container", func() {
 				guid := rep.LRPContainerGuid(processGuid, instanceGuidEvacuatingLRPOnly)
-				Ω(batch).Should(HaveKey(guid))
-				Ω(batch[guid]).Should(BeAssignableToTypeOf(new(generator.ResidualEvacuatingLRPOperation)))
+				Expect(batch).To(HaveKey(guid))
+				Expect(batch[guid]).To(BeAssignableToTypeOf(new(generator.ResidualEvacuatingLRPOperation)))
 			})
 
 			It("returns a residual joint lrp operation for a guid with both an instance and an evacuating lrp but no container", func() {
 				guid := rep.LRPContainerGuid(processGuid, instanceGuidInstanceAndEvacuatingLRPsOnly)
-				Ω(batch).Should(HaveKey(guid))
-				Ω(batch[guid]).Should(BeAssignableToTypeOf(new(generator.ResidualJointLRPOperation)))
+				Expect(batch).To(HaveKey(guid))
+				Expect(batch[guid]).To(BeAssignableToTypeOf(new(generator.ResidualJointLRPOperation)))
 			})
 
 			It("returns a residual task operation for a task with no container", func() {
 				guid := guidTaskOnly
-				Ω(batch).Should(HaveKey(guid))
-				Ω(batch[guid]).Should(BeAssignableToTypeOf(new(generator.ResidualTaskOperation)))
+				Expect(batch).To(HaveKey(guid))
+				Expect(batch[guid]).To(BeAssignableToTypeOf(new(generator.ResidualTaskOperation)))
 			})
 
 		})
@@ -194,12 +194,12 @@ var _ = Describe("Generator", func() {
 				})
 
 				It("returns an error", func() {
-					Ω(batchErr).Should(HaveOccurred())
-					Ω(batchErr).Should(MatchError(ContainSubstring("oh no, no container!")))
+					Expect(batchErr).To(HaveOccurred())
+					Expect(batchErr).To(MatchError(ContainSubstring("oh no, no container!")))
 				})
 
 				It("logs the failure", func() {
-					Ω(logger).Should(Say(sessionName + ".failed-to-list-containers"))
+					Expect(logger).To(Say(sessionName + ".failed-to-list-containers"))
 				})
 			})
 
@@ -209,12 +209,12 @@ var _ = Describe("Generator", func() {
 				})
 
 				It("returns an error", func() {
-					Ω(batchErr).Should(HaveOccurred())
-					Ω(batchErr).Should(MatchError(ContainSubstring("oh no, no task!")))
+					Expect(batchErr).To(HaveOccurred())
+					Expect(batchErr).To(MatchError(ContainSubstring("oh no, no task!")))
 				})
 
 				It("logs the failure", func() {
-					Ω(logger).Should(Say(sessionName + ".failed-to-retrieve-tasks"))
+					Expect(logger).To(Say(sessionName + ".failed-to-retrieve-tasks"))
 				})
 			})
 
@@ -224,12 +224,12 @@ var _ = Describe("Generator", func() {
 				})
 
 				It("returns an error", func() {
-					Ω(batchErr).Should(HaveOccurred())
-					Ω(batchErr).Should(MatchError(ContainSubstring("oh no, no lrp!")))
+					Expect(batchErr).To(HaveOccurred())
+					Expect(batchErr).To(MatchError(ContainSubstring("oh no, no lrp!")))
 				})
 
 				It("logs the failure", func() {
-					Ω(logger).Should(Say(sessionName + ".failed-to-retrieve-lrp-groups"))
+					Expect(logger).To(Say(sessionName + ".failed-to-retrieve-lrp-groups"))
 				})
 			})
 		})
@@ -268,8 +268,8 @@ var _ = Describe("Generator", func() {
 			})
 
 			It("logs that it succeeded", func() {
-				Ω(logger).Should(Say(sessionPrefix + "subscribing"))
-				Ω(logger).Should(Say(sessionPrefix + "succeeded-subscribing"))
+				Expect(logger).To(Say(sessionPrefix + "subscribing"))
+				Expect(logger).To(Say(sessionPrefix + "succeeded-subscribing"))
 			})
 
 			Context("when the event stream closes", func() {
@@ -320,7 +320,7 @@ var _ = Describe("Generator", func() {
 						It("yields an operation for that container", func() {
 							var operation operationq.Operation
 							Eventually(stream).Should(Receive(&operation))
-							Ω(operation.Key()).Should(Equal(container.Guid))
+							Expect(operation.Key()).To(Equal(container.Guid))
 						})
 					})
 
@@ -342,7 +342,7 @@ var _ = Describe("Generator", func() {
 						It("yields an operation for that container", func() {
 							var operation operationq.Operation
 							Eventually(stream).Should(Receive(&operation))
-							Ω(operation.Key()).Should(Equal(container.Guid))
+							Expect(operation.Key()).To(Equal(container.Guid))
 						})
 					})
 				})
@@ -371,11 +371,11 @@ var _ = Describe("Generator", func() {
 			})
 
 			It("returns the error", func() {
-				Ω(streamErr).Should(Equal(disaster))
+				Expect(streamErr).To(Equal(disaster))
 			})
 
 			It("logs the failure", func() {
-				Ω(logger).Should(Say(sessionPrefix + "failed-subscribing"))
+				Expect(logger).To(Say(sessionPrefix + "failed-subscribing"))
 			})
 		})
 	})

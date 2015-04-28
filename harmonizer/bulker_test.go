@@ -87,15 +87,15 @@ var _ = Describe("Bulker", func() {
 				enqueuedOperations = append(enqueuedOperations, fakeQueue.PushArgsForCall(0))
 				enqueuedOperations = append(enqueuedOperations, fakeQueue.PushArgsForCall(1))
 
-				Ω(enqueuedOperations).Should(ConsistOf(operation1, operation2))
+				Expect(enqueuedOperations).To(ConsistOf(operation1, operation2))
 			})
 
 			It("emits the duration it took to generate the batch operations", func() {
 				Eventually(fakeQueue.PushCallCount).Should(Equal(2))
 
 				reportedDuration := sender.GetValue("RepBulkSyncDuration")
-				Ω(reportedDuration.Unit).Should(Equal("nanos"))
-				Ω(reportedDuration.Value).Should(BeNumerically("==", 10*time.Second))
+				Expect(reportedDuration.Unit).To(Equal("nanos"))
+				Expect(reportedDuration.Value).To(BeNumerically("==", 10*time.Second))
 			})
 		})
 

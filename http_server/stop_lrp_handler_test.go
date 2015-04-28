@@ -35,7 +35,7 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 		resp = httptest.NewRecorder()
 
 		req, err = http.NewRequest("POST", "", nil)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	JustBeforeEach(func() {
@@ -53,7 +53,7 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 				State:                models.ActualLRPStateRunning,
 				Since:                5000,
 			}
-			Ω(actualLRP.Validate()).ShouldNot(HaveOccurred())
+			Expect(actualLRP.Validate()).NotTo(HaveOccurred())
 
 			values := make(url.Values)
 			values.Set(":process_guid", actualLRP.ProcessGuid)
@@ -62,15 +62,15 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 		})
 
 		It("responds with 202 Accepted", func() {
-			Ω(resp.Code).Should(Equal(http.StatusAccepted))
+			Expect(resp.Code).To(Equal(http.StatusAccepted))
 		})
 
 		It("eventually stops the instance", func() {
 			Eventually(fakeStopper.StopInstanceCallCount).Should(Equal(1))
 
 			processGuid, instanceGuid := fakeStopper.StopInstanceArgsForCall(0)
-			Ω(processGuid).Should(Equal(actualLRP.ProcessGuid))
-			Ω(instanceGuid).Should(Equal(actualLRP.InstanceGuid))
+			Expect(processGuid).To(Equal(actualLRP.ProcessGuid))
+			Expect(instanceGuid).To(Equal(actualLRP.InstanceGuid))
 		})
 	})
 
@@ -80,11 +80,11 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 		})
 
 		It("responds with 400 Bad Request", func() {
-			Ω(resp.Code).Should(Equal(http.StatusBadRequest))
+			Expect(resp.Code).To(Equal(http.StatusBadRequest))
 		})
 
 		It("does not attempt to stop the instance", func() {
-			Ω(fakeStopper.StopInstanceCallCount()).Should(Equal(0))
+			Expect(fakeStopper.StopInstanceCallCount()).To(Equal(0))
 		})
 	})
 })

@@ -23,12 +23,12 @@ var _ = Describe("PingHandler", func() {
 
 		var err error
 		req, err = http.NewRequest("GET", "/ping", nil)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		pingHandler.ServeHTTP(resp, req)
 	})
 
 	It("responds with 200 OK", func() {
-		Ω(resp.Code).Should(Equal(http.StatusOK))
+		Expect(resp.Code).To(Equal(http.StatusOK))
 	})
 })

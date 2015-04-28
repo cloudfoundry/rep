@@ -36,7 +36,7 @@ var _ = Describe("Operation", func() {
 
 		Describe("Key", func() {
 			It("returns the InstanceGuid", func() {
-				Ω(residualLRPOperation.Key()).Should(Equal("the-instance-guid"))
+				Expect(residualLRPOperation.Key()).To(Equal("the-instance-guid"))
 			})
 		})
 
@@ -48,15 +48,15 @@ var _ = Describe("Operation", func() {
 			})
 
 			It("checks whether the container exists", func() {
-				Ω(containerDelegate.GetContainerCallCount()).Should(Equal(1))
+				Expect(containerDelegate.GetContainerCallCount()).To(Equal(1))
 				containerDelegateLogger, containerGuid := containerDelegate.GetContainerArgsForCall(0)
-				Ω(containerGuid).Should(Equal(expectedContainerGuid))
-				Ω(containerDelegateLogger.SessionName()).Should(Equal(sessionName))
+				Expect(containerGuid).To(Equal(expectedContainerGuid))
+				Expect(containerDelegateLogger.SessionName()).To(Equal(sessionName))
 			})
 
 			It("logs its execution lifecycle", func() {
-				Ω(logger).Should(Say(sessionName + ".starting"))
-				Ω(logger).Should(Say(sessionName + ".finished"))
+				Expect(logger).To(Say(sessionName + ".starting"))
+				Expect(logger).To(Say(sessionName + ".finished"))
 			})
 
 			Context("when the container does not exist", func() {
@@ -65,11 +65,11 @@ var _ = Describe("Operation", func() {
 				})
 
 				It("removes the actualLRP", func() {
-					Ω(fakeBBS.RemoveActualLRPCallCount()).Should(Equal(1))
+					Expect(fakeBBS.RemoveActualLRPCallCount()).To(Equal(1))
 					bbsLogger, actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveActualLRPArgsForCall(0)
-					Ω(actualLRPKey).Should(Equal(lrpKey))
-					Ω(actualLRPContainerKey).Should(Equal(instanceKey))
-					Ω(bbsLogger.SessionName()).Should(Equal(sessionName))
+					Expect(actualLRPKey).To(Equal(lrpKey))
+					Expect(actualLRPContainerKey).To(Equal(instanceKey))
+					Expect(bbsLogger.SessionName()).To(Equal(sessionName))
 				})
 			})
 
@@ -79,11 +79,11 @@ var _ = Describe("Operation", func() {
 				})
 
 				It("does not remove the actualLRP", func() {
-					Ω(fakeBBS.RemoveActualLRPCallCount()).Should(Equal(0))
+					Expect(fakeBBS.RemoveActualLRPCallCount()).To(Equal(0))
 				})
 
 				It("logs that it skipped the operation because the container was found", func() {
-					Ω(logger).Should(Say(sessionName + ".skipped-because-container-exists"))
+					Expect(logger).To(Say(sessionName + ".skipped-because-container-exists"))
 				})
 			})
 		})
@@ -112,7 +112,7 @@ var _ = Describe("Operation", func() {
 
 		Describe("Key", func() {
 			It("returns the InstanceGuid", func() {
-				Ω(residualEvacuatingLRPOperation.Key()).Should(Equal(instanceGuid))
+				Expect(residualEvacuatingLRPOperation.Key()).To(Equal(instanceGuid))
 			})
 		})
 
@@ -124,15 +124,15 @@ var _ = Describe("Operation", func() {
 			})
 
 			It("checks whether the container exists", func() {
-				Ω(containerDelegate.GetContainerCallCount()).Should(Equal(1))
+				Expect(containerDelegate.GetContainerCallCount()).To(Equal(1))
 				containerDelegateLogger, containerGuid := containerDelegate.GetContainerArgsForCall(0)
-				Ω(containerGuid).Should(Equal(expectedContainerGuid))
-				Ω(containerDelegateLogger.SessionName()).Should(Equal(sessionName))
+				Expect(containerGuid).To(Equal(expectedContainerGuid))
+				Expect(containerDelegateLogger.SessionName()).To(Equal(sessionName))
 			})
 
 			It("logs its execution lifecycle", func() {
-				Ω(logger).Should(Say(sessionName + ".starting"))
-				Ω(logger).Should(Say(sessionName + ".finished"))
+				Expect(logger).To(Say(sessionName + ".starting"))
+				Expect(logger).To(Say(sessionName + ".finished"))
 			})
 
 			Context("when the container does not exist", func() {
@@ -141,11 +141,11 @@ var _ = Describe("Operation", func() {
 				})
 
 				It("removes the actualLRP", func() {
-					Ω(fakeBBS.RemoveEvacuatingActualLRPCallCount()).Should(Equal(1))
+					Expect(fakeBBS.RemoveEvacuatingActualLRPCallCount()).To(Equal(1))
 					bbsLogger, actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveEvacuatingActualLRPArgsForCall(0)
-					Ω(actualLRPKey).Should(Equal(lrpKey))
-					Ω(actualLRPContainerKey).Should(Equal(instanceKey))
-					Ω(bbsLogger.SessionName()).Should(Equal(sessionName))
+					Expect(actualLRPKey).To(Equal(lrpKey))
+					Expect(actualLRPContainerKey).To(Equal(instanceKey))
+					Expect(bbsLogger.SessionName()).To(Equal(sessionName))
 				})
 			})
 
@@ -155,11 +155,11 @@ var _ = Describe("Operation", func() {
 				})
 
 				It("does not remove the actualLRP", func() {
-					Ω(fakeBBS.RemoveEvacuatingActualLRPCallCount()).Should(Equal(0))
+					Expect(fakeBBS.RemoveEvacuatingActualLRPCallCount()).To(Equal(0))
 				})
 
 				It("logs that it skipped the operation because the container was found", func() {
-					Ω(logger).Should(Say(sessionName + ".skipped-because-container-exists"))
+					Expect(logger).To(Say(sessionName + ".skipped-because-container-exists"))
 				})
 			})
 		})
@@ -188,7 +188,7 @@ var _ = Describe("Operation", func() {
 
 		Describe("Key", func() {
 			It("returns the InstanceGuid", func() {
-				Ω(residualJointLRPOperation.Key()).Should(Equal(instanceGuid))
+				Expect(residualJointLRPOperation.Key()).To(Equal(instanceGuid))
 			})
 		})
 
@@ -200,15 +200,15 @@ var _ = Describe("Operation", func() {
 			})
 
 			It("checks whether the container exists", func() {
-				Ω(containerDelegate.GetContainerCallCount()).Should(Equal(1))
+				Expect(containerDelegate.GetContainerCallCount()).To(Equal(1))
 				containerDelegateLogger, containerGuid := containerDelegate.GetContainerArgsForCall(0)
-				Ω(containerGuid).Should(Equal(expectedContainerGuid))
-				Ω(containerDelegateLogger.SessionName()).Should(Equal(sessionName))
+				Expect(containerGuid).To(Equal(expectedContainerGuid))
+				Expect(containerDelegateLogger.SessionName()).To(Equal(sessionName))
 			})
 
 			It("logs its execution lifecycle", func() {
-				Ω(logger).Should(Say(sessionName + ".starting"))
-				Ω(logger).Should(Say(sessionName + ".finished"))
+				Expect(logger).To(Say(sessionName + ".starting"))
+				Expect(logger).To(Say(sessionName + ".finished"))
 			})
 
 			Context("when the container does not exist", func() {
@@ -217,19 +217,19 @@ var _ = Describe("Operation", func() {
 				})
 
 				It("removes the instance actualLRP", func() {
-					Ω(fakeBBS.RemoveActualLRPCallCount()).Should(Equal(1))
+					Expect(fakeBBS.RemoveActualLRPCallCount()).To(Equal(1))
 					bbsLogger, actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveActualLRPArgsForCall(0)
-					Ω(actualLRPKey).Should(Equal(lrpKey))
-					Ω(actualLRPContainerKey).Should(Equal(instanceKey))
-					Ω(bbsLogger.SessionName()).Should(Equal(sessionName))
+					Expect(actualLRPKey).To(Equal(lrpKey))
+					Expect(actualLRPContainerKey).To(Equal(instanceKey))
+					Expect(bbsLogger.SessionName()).To(Equal(sessionName))
 				})
 
 				It("removes the evacuating actualLRP", func() {
-					Ω(fakeBBS.RemoveEvacuatingActualLRPCallCount()).Should(Equal(1))
+					Expect(fakeBBS.RemoveEvacuatingActualLRPCallCount()).To(Equal(1))
 					bbsLogger, actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveEvacuatingActualLRPArgsForCall(0)
-					Ω(actualLRPKey).Should(Equal(lrpKey))
-					Ω(actualLRPContainerKey).Should(Equal(instanceKey))
-					Ω(bbsLogger.SessionName()).Should(Equal(sessionName))
+					Expect(actualLRPKey).To(Equal(lrpKey))
+					Expect(actualLRPContainerKey).To(Equal(instanceKey))
+					Expect(bbsLogger.SessionName()).To(Equal(sessionName))
 				})
 			})
 
@@ -239,12 +239,12 @@ var _ = Describe("Operation", func() {
 				})
 
 				It("does not remove either actualLRP", func() {
-					Ω(fakeBBS.RemoveActualLRPCallCount()).Should(Equal(0))
-					Ω(fakeBBS.RemoveEvacuatingActualLRPCallCount()).Should(Equal(0))
+					Expect(fakeBBS.RemoveActualLRPCallCount()).To(Equal(0))
+					Expect(fakeBBS.RemoveEvacuatingActualLRPCallCount()).To(Equal(0))
 				})
 
 				It("logs that it skipped the operation because the container was found", func() {
-					Ω(logger).Should(Say(sessionName + ".skipped-because-container-exists"))
+					Expect(logger).To(Say(sessionName + ".skipped-because-container-exists"))
 				})
 			})
 		})
@@ -265,7 +265,7 @@ var _ = Describe("Operation", func() {
 
 		Describe("Key", func() {
 			It("returns the TaskGuid", func() {
-				Ω(residualTaskOperation.Key()).Should(Equal("the-task-guid"))
+				Expect(residualTaskOperation.Key()).To(Equal("the-task-guid"))
 			})
 		})
 
@@ -277,15 +277,15 @@ var _ = Describe("Operation", func() {
 			})
 
 			It("checks whether the container exists", func() {
-				Ω(containerDelegate.GetContainerCallCount()).Should(Equal(1))
+				Expect(containerDelegate.GetContainerCallCount()).To(Equal(1))
 				containerDelegateLogger, containerGuid := containerDelegate.GetContainerArgsForCall(0)
-				Ω(containerGuid).Should(Equal("the-task-guid"))
-				Ω(containerDelegateLogger.SessionName()).Should(Equal(sessionName))
+				Expect(containerGuid).To(Equal("the-task-guid"))
+				Expect(containerDelegateLogger.SessionName()).To(Equal(sessionName))
 			})
 
 			It("logs its execution lifecycle", func() {
-				Ω(logger).Should(Say(sessionName + ".starting"))
-				Ω(logger).Should(Say(sessionName + ".finished"))
+				Expect(logger).To(Say(sessionName + ".starting"))
+				Expect(logger).To(Say(sessionName + ".finished"))
 			})
 
 			Context("when the container does not exist", func() {
@@ -294,11 +294,11 @@ var _ = Describe("Operation", func() {
 				})
 
 				It("fails the task", func() {
-					Ω(fakeBBS.FailTaskCallCount()).Should(Equal(1))
+					Expect(fakeBBS.FailTaskCallCount()).To(Equal(1))
 					actualLogger, actualTaskGuid, actualFailureReason := fakeBBS.FailTaskArgsForCall(0)
-					Ω(actualLogger.SessionName()).Should(Equal(sessionName))
-					Ω(actualTaskGuid).Should(Equal(taskGuid))
-					Ω(actualFailureReason).Should(Equal(internal.TaskCompletionReasonMissingContainer))
+					Expect(actualLogger.SessionName()).To(Equal(sessionName))
+					Expect(actualTaskGuid).To(Equal(taskGuid))
+					Expect(actualFailureReason).To(Equal(internal.TaskCompletionReasonMissingContainer))
 				})
 
 				Context("when failing the task fails", func() {
@@ -307,7 +307,7 @@ var _ = Describe("Operation", func() {
 					})
 
 					It("logs the failure", func() {
-						Ω(logger).Should(Say(sessionName + ".failed-to-fail-task"))
+						Expect(logger).To(Say(sessionName + ".failed-to-fail-task"))
 					})
 				})
 			})
@@ -318,11 +318,11 @@ var _ = Describe("Operation", func() {
 				})
 
 				It("does not fail the task", func() {
-					Ω(fakeBBS.FailTaskCallCount()).Should(Equal(0))
+					Expect(fakeBBS.FailTaskCallCount()).To(Equal(0))
 				})
 
 				It("logs that it skipped the operation because the container was found", func() {
-					Ω(logger).Should(Say(sessionName + ".skipped-because-container-exists"))
+					Expect(logger).To(Say(sessionName + ".skipped-because-container-exists"))
 				})
 			})
 		})
@@ -347,7 +347,7 @@ var _ = Describe("Operation", func() {
 
 		Describe("Key", func() {
 			It("returns the Guid", func() {
-				Ω(containerOperation.Key()).Should(Equal("the-guid"))
+				Expect(containerOperation.Key()).To(Equal("the-guid"))
 			})
 		})
 
@@ -359,15 +359,15 @@ var _ = Describe("Operation", func() {
 			})
 
 			It("checks whether the container exists", func() {
-				Ω(containerDelegate.GetContainerCallCount()).Should(Equal(1))
+				Expect(containerDelegate.GetContainerCallCount()).To(Equal(1))
 				containerDelegateLogger, containerGuid := containerDelegate.GetContainerArgsForCall(0)
-				Ω(containerGuid).Should(Equal(guid))
-				Ω(containerDelegateLogger.SessionName()).Should(Equal(sessionName))
+				Expect(containerGuid).To(Equal(guid))
+				Expect(containerDelegateLogger.SessionName()).To(Equal(sessionName))
 			})
 
 			It("logs its execution lifecycle", func() {
-				Ω(logger).Should(Say(sessionName + ".starting"))
-				Ω(logger).Should(Say(sessionName + ".finished"))
+				Expect(logger).To(Say(sessionName + ".starting"))
+				Expect(logger).To(Say(sessionName + ".finished"))
 			})
 
 			Context("when the container does not exist", func() {
@@ -376,12 +376,12 @@ var _ = Describe("Operation", func() {
 				})
 
 				It("logs that it skipped the operation because the container was found", func() {
-					Ω(logger).Should(Say(sessionName + ".skipped-because-container-does-not-exist"))
+					Expect(logger).To(Say(sessionName + ".skipped-because-container-does-not-exist"))
 				})
 
 				It("does not farm the container out to any processor", func() {
-					Ω(lrpProcessor.ProcessCallCount()).Should(Equal(0))
-					Ω(taskProcessor.ProcessCallCount()).Should(Equal(0))
+					Expect(lrpProcessor.ProcessCallCount()).To(Equal(0))
+					Expect(taskProcessor.ProcessCallCount()).To(Equal(0))
 				})
 			})
 
@@ -405,11 +405,11 @@ var _ = Describe("Operation", func() {
 					})
 
 					It("farms the container out to only the lrp processor", func() {
-						Ω(lrpProcessor.ProcessCallCount()).Should(Equal(1))
-						Ω(taskProcessor.ProcessCallCount()).Should(Equal(0))
+						Expect(lrpProcessor.ProcessCallCount()).To(Equal(1))
+						Expect(taskProcessor.ProcessCallCount()).To(Equal(0))
 						actualLogger, actualContainer := lrpProcessor.ProcessArgsForCall(0)
-						Ω(actualLogger.SessionName()).Should(Equal(sessionName))
-						Ω(actualContainer).Should(Equal(container))
+						Expect(actualLogger.SessionName()).To(Equal(sessionName))
+						Expect(actualContainer).To(Equal(container))
 					})
 				})
 
@@ -424,11 +424,11 @@ var _ = Describe("Operation", func() {
 					})
 
 					It("farms the container out to only the task processor", func() {
-						Ω(taskProcessor.ProcessCallCount()).Should(Equal(1))
-						Ω(lrpProcessor.ProcessCallCount()).Should(Equal(0))
+						Expect(taskProcessor.ProcessCallCount()).To(Equal(1))
+						Expect(lrpProcessor.ProcessCallCount()).To(Equal(0))
 						actualLogger, actualContainer := taskProcessor.ProcessArgsForCall(0)
-						Ω(actualLogger.SessionName()).Should(Equal(sessionName))
-						Ω(actualContainer).Should(Equal(container))
+						Expect(actualLogger.SessionName()).To(Equal(sessionName))
+						Expect(actualContainer).To(Equal(container))
 					})
 				})
 
@@ -443,12 +443,12 @@ var _ = Describe("Operation", func() {
 					})
 
 					It("does not farm the container out to any processor", func() {
-						Ω(lrpProcessor.ProcessCallCount()).Should(Equal(0))
-						Ω(taskProcessor.ProcessCallCount()).Should(Equal(0))
+						Expect(lrpProcessor.ProcessCallCount()).To(Equal(0))
+						Expect(taskProcessor.ProcessCallCount()).To(Equal(0))
 					})
 
 					It("logs the unknown lifecycle", func() {
-						Ω(logger).Should(Say(sessionName + ".failed-to-process-container-with-unknown-lifecycle"))
+						Expect(logger).To(Say(sessionName + ".failed-to-process-container-with-unknown-lifecycle"))
 					})
 				})
 			})

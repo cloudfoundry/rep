@@ -54,7 +54,7 @@ var _ = Describe("LRP Stopper", func() {
 		})
 
 		It("succeeds", func() {
-			Ω(returnedError).ShouldNot(HaveOccurred())
+			Expect(returnedError).NotTo(HaveOccurred())
 		})
 
 		Context("when the executor returns an unexpected error", func() {
@@ -63,8 +63,8 @@ var _ = Describe("LRP Stopper", func() {
 			})
 
 			It("returns an error", func() {
-				Ω(returnedError).Should(HaveOccurred())
-				Ω(returnedError.Error()).Should(ContainSubstring("use of closed network connection"))
+				Expect(returnedError).To(HaveOccurred())
+				Expect(returnedError.Error()).To(ContainSubstring("use of closed network connection"))
 			})
 		})
 	})

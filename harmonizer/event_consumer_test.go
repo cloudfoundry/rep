@@ -64,7 +64,7 @@ var _ = Describe("EventConsumer", func() {
 				receivedOperations <- fakeOperation
 
 				Eventually(fakeQueue.PushCallCount).Should(Equal(1))
-				Ω(fakeQueue.PushArgsForCall(0)).Should(Equal(fakeOperation))
+				Expect(fakeQueue.PushArgsForCall(0)).To(Equal(fakeOperation))
 			})
 		})
 

@@ -24,7 +24,7 @@ var _ = Describe("EvacuationContext", func() {
 	Describe("Evacuatable", func() {
 		Context("when Evacuate has not been called", func() {
 			It("does not make the evacuation reporter return true for Evacuating", func() {
-				Ω(evacuationReporter.Evacuating()).Should(BeFalse())
+				Expect(evacuationReporter.Evacuating()).To(BeFalse())
 			})
 
 			It("does not close the channel provided by the evacuation notifier", func() {
@@ -36,7 +36,7 @@ var _ = Describe("EvacuationContext", func() {
 		Context("when Evacuate has been called", func() {
 			It("makes the evacuation reporter return true for Evacuating", func() {
 				evacuatable.Evacuate()
-				Ω(evacuationReporter.Evacuating()).Should(BeTrue())
+				Expect(evacuationReporter.Evacuating()).To(BeTrue())
 			})
 
 			It("closes the channel provided by the evacuation notifier", func() {
@@ -57,7 +57,7 @@ var _ = Describe("EvacuationContext", func() {
 					go func() {
 						defer GinkgoRecover()
 						defer wg.Done()
-						Ω(evacuatable.Evacuate).ShouldNot(Panic())
+						Expect(evacuatable.Evacuate).NotTo(Panic())
 					}()
 				}
 				wg.Wait()

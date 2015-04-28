@@ -44,9 +44,9 @@ var _ = Describe("Task <-> Container table", func() {
 
 	itDeletesTheContainer := func(logger *lagertest.TestLogger) {
 		It("deletes the container", func() {
-			Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(1))
+			Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(1))
 			_, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
-			Ω(containerGuid).Should(Equal(taskGuid))
+			Expect(containerGuid).To(Equal(taskGuid))
 		})
 	}
 
@@ -54,11 +54,11 @@ var _ = Describe("Task <-> Container table", func() {
 		return func(logger *lagertest.TestLogger) {
 			It("completes the task with failure", func() {
 				task, err := BBS.TaskByGuid(taskGuid)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
-				Ω(task.State).Should(Equal(models.TaskStateCompleted))
-				Ω(task.Failed).Should(BeTrue())
-				Ω(task.FailureReason).Should(Equal(reason))
+				Expect(task.State).To(Equal(models.TaskStateCompleted))
+				Expect(task.Failed).To(BeTrue())
+				Expect(task.FailureReason).To(Equal(reason))
 			})
 		}
 	}
@@ -74,9 +74,9 @@ var _ = Describe("Task <-> Container table", func() {
 
 				containerDelegate.DeleteContainerStub = func(logger lager.Logger, guid string) bool {
 					task, err := BBS.TaskByGuid(taskGuid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
-					Ω(task.State).Should(Equal(models.TaskStateCompleted))
+					Expect(task.State).To(Equal(models.TaskStateCompleted))
 
 					return true
 				}
@@ -84,14 +84,14 @@ var _ = Describe("Task <-> Container table", func() {
 
 			It("completes the task with the result", func() {
 				task, err := BBS.TaskByGuid(taskGuid)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
-				Ω(task.Failed).Should(BeFalse())
+				Expect(task.Failed).To(BeFalse())
 
 				_, guid, filename := containerDelegate.FetchContainerResultFileArgsForCall(0)
-				Ω(guid).Should(Equal(taskGuid))
-				Ω(filename).Should(Equal("some-result-filename"))
-				Ω(task.Result).Should(Equal("some-result"))
+				Expect(guid).To(Equal(taskGuid))
+				Expect(filename).To(Equal("some-result-filename"))
+				Expect(task.Result).To(Equal("some-result"))
 			})
 
 			itDeletesTheContainer(logger)
@@ -117,7 +117,7 @@ var _ = Describe("Task <-> Container table", func() {
 
 	itCompletesTheFailedTaskAndDeletesTheContainer := func(logger *lagertest.TestLogger) {
 		It("does not attempt to fetch the result", func() {
-			Ω(containerDelegate.FetchContainerResultFileCallCount()).Should(BeZero())
+			Expect(containerDelegate.FetchContainerResultFileCallCount()).To(BeZero())
 		})
 
 		itCompletesTheTaskWithFailure("because")(logger)
@@ -128,9 +128,9 @@ var _ = Describe("Task <-> Container table", func() {
 	itSetsTheTaskToRunning := func(logger *lagertest.TestLogger) {
 		It("transitions the task to the running state", func() {
 			task, err := BBS.TaskByGuid(taskGuid)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
-			Ω(task.State).Should(Equal(models.TaskStateRunning))
+			Expect(task.State).To(Equal(models.TaskStateRunning))
 		})
 	}
 
@@ -138,9 +138,9 @@ var _ = Describe("Task <-> Container table", func() {
 		itSetsTheTaskToRunning(logger)
 
 		It("runs the container", func() {
-			Ω(containerDelegate.RunContainerCallCount()).Should(Equal(1))
+			Expect(containerDelegate.RunContainerCallCount()).To(Equal(1))
 			_, containerGuid := containerDelegate.RunContainerArgsForCall(0)
-			Ω(containerGuid).Should(Equal(taskGuid))
+			Expect(containerGuid).To(Equal(taskGuid))
 		})
 
 		Context("when running the container fails", func() {
@@ -154,15 +154,15 @@ var _ = Describe("Task <-> Container table", func() {
 
 	itDoesNothing := func(logger *lagertest.TestLogger) {
 		It("does not run the container", func() {
-			Ω(containerDelegate.RunContainerCallCount()).Should(Equal(0))
+			Expect(containerDelegate.RunContainerCallCount()).To(Equal(0))
 		})
 
 		It("does not stop the container", func() {
-			Ω(containerDelegate.StopContainerCallCount()).Should(Equal(0))
+			Expect(containerDelegate.StopContainerCallCount()).To(Equal(0))
 		})
 
 		It("does not delete the container", func() {
-			Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(0))
+			Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(0))
 		})
 	}
 
@@ -519,23 +519,23 @@ func advanceState(logger lager.Logger, BBS *bbs.BBS, task models.Task, currentSt
 	switch currentState {
 	case models.TaskStateInvalid:
 		err := BBS.DesireTask(logger, task)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 		return models.TaskStatePending
 
 	case models.TaskStatePending:
 		changed, err := BBS.StartTask(logger, task.TaskGuid, task.CellID)
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(changed).Should(BeTrue())
+		Expect(err).NotTo(HaveOccurred())
+		Expect(changed).To(BeTrue())
 		return models.TaskStateRunning
 
 	case models.TaskStateRunning:
 		err := BBS.CompleteTask(logger, task.TaskGuid, task.CellID, true, "reason", "result")
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 		return models.TaskStateCompleted
 
 	case models.TaskStateCompleted:
 		err := BBS.ResolvingTask(logger, task.TaskGuid)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 		return models.TaskStateResolving
 
 	default:

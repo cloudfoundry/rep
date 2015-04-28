@@ -36,25 +36,25 @@ var _ = Describe("EvacuationHandler", func() {
 
 				var err error
 				request, err = http.NewRequest("POST", "/evacuate", nil)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				handler.ServeHTTP(responseRecorder, request)
 			})
 
 			It("starts evacuation", func() {
-				Ω(fakeEvacuatable.EvacuateCallCount()).Should(Equal(1))
+				Expect(fakeEvacuatable.EvacuateCallCount()).To(Equal(1))
 			})
 
 			It("responds with 202 ACCEPTED", func() {
-				Ω(responseRecorder.Code).Should(Equal(http.StatusAccepted))
+				Expect(responseRecorder.Code).To(Equal(http.StatusAccepted))
 			})
 
 			It("returns the location of the Ping endpoint", func() {
 				var responseValues map[string]string
 				err := json.Unmarshal(responseRecorder.Body.Bytes(), &responseValues)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(responseValues).Should(HaveKey("ping_path"))
-				Ω(responseValues["ping_path"]).Should(Equal("/ping"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(responseValues).To(HaveKey("ping_path"))
+				Expect(responseValues["ping_path"]).To(Equal("/ping"))
 			})
 		})
 	})

@@ -27,7 +27,7 @@ func TestRep(t *testing.T) {
 
 var _ = SynchronizedBeforeSuite(func() []byte {
 	representative, err := gexec.Build("github.com/cloudfoundry-incubator/rep/cmd/rep", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	return []byte(representative)
 }, func(representative []byte) {
 	representativePath = string(representative)

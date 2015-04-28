@@ -91,7 +91,7 @@ var _ = Describe("Maintain Presence", func() {
 	It("pings the executor", func() {
 		pingErrors <- nil
 		maintainProcess = ginkgomon.Invoke(maintainer)
-		Ω(fakeClient.PingCallCount()).Should(Equal(1))
+		Expect(fakeClient.PingCallCount()).To(Equal(1))
 	})
 
 	Context("when pinging the executor fails", func() {
@@ -103,7 +103,7 @@ var _ = Describe("Maintain Presence", func() {
 				clock.Increment(1 * time.Second)
 				pingErrors <- errors.New("ping failed")
 				Eventually(fakeClient.PingCallCount).Should(Equal(i))
-				Ω(ready).ShouldNot(BeClosed())
+				Expect(ready).NotTo(BeClosed())
 			}
 
 			pingErrors <- nil
@@ -111,7 +111,7 @@ var _ = Describe("Maintain Presence", func() {
 			Eventually(fakeClient.PingCallCount).Should(Equal(5))
 
 			Eventually(ready).Should(BeClosed())
-			Ω(fakeHeartbeater.RunCallCount()).Should(Equal(1))
+			Expect(fakeHeartbeater.RunCallCount()).To(Equal(1))
 		})
 	})
 
@@ -145,8 +145,8 @@ var _ = Describe("Maintain Presence", func() {
 				maintainProcess.Signal(os.Interrupt)
 				var err error
 				Eventually(maintainProcess.Wait()).Should(Receive(&err))
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(maintainProcess.Ready()).ShouldNot(BeClosed())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(maintainProcess.Ready()).NotTo(BeClosed())
 			})
 
 			Context("when the heartbeat errors", func() {
@@ -170,11 +170,11 @@ var _ = Describe("Maintain Presence", func() {
 			BeforeEach(func() {
 				pingErrors <- nil
 				maintainProcess = ginkgomon.Invoke(maintainer)
-				Ω(maintainProcess.Ready()).Should(BeClosed())
+				Expect(maintainProcess.Ready()).To(BeClosed())
 			})
 
 			It("starts maintaining presence", func() {
-				Ω(fakeBBS.NewCellPresenceCallCount()).Should(Equal(1))
+				Expect(fakeBBS.NewCellPresenceCallCount()).To(Equal(1))
 				Eventually(fakeHeartbeater.RunCallCount).Should(Equal(1))
 			})
 
@@ -250,7 +250,7 @@ var _ = Describe("Maintain Presence", func() {
 				})
 
 				It("tries to restart heartbeating each time the ping succeeds", func() {
-					Ω(fakeHeartbeater.RunCallCount()).Should(Equal(1))
+					Expect(fakeHeartbeater.RunCallCount()).To(Equal(1))
 
 					Eventually(logger.TestSink.Buffer).Should(gbytes.Say("lost-lock"))
 

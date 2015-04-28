@@ -69,7 +69,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 				})
 
 				It("logs an error", func() {
-					Ω(logger).Should(Say(expectedSessionName))
+					Expect(logger).To(Say(expectedSessionName))
 				})
 			})
 
@@ -80,11 +80,11 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 				})
 
 				It("claims the actualLRP in the bbs", func() {
-					Ω(bbs.ClaimActualLRPCallCount()).Should(Equal(1))
+					Expect(bbs.ClaimActualLRPCallCount()).To(Equal(1))
 					bbsLogger, lrpKey, instanceKey := bbs.ClaimActualLRPArgsForCall(0)
-					Ω(lrpKey).Should(Equal(expectedLrpKey))
-					Ω(instanceKey).Should(Equal(expectedInstanceKey))
-					Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
+					Expect(lrpKey).To(Equal(expectedLrpKey))
+					Expect(instanceKey).To(Equal(expectedInstanceKey))
+					Expect(bbsLogger.SessionName()).To(Equal(expectedSessionName))
 				})
 
 				Context("when claiming fails because ErrActualLRPCannotBeClaimed", func() {
@@ -93,14 +93,14 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 					})
 
 					It("deletes the container", func() {
-						Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(1))
+						Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(1))
 						delegateLogger, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
-						Ω(containerGuid).Should(Equal(container.Guid))
-						Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
+						Expect(containerGuid).To(Equal(container.Guid))
+						Expect(delegateLogger.SessionName()).To(Equal(expectedSessionName))
 					})
 
 					It("does not try to run the container", func() {
-						Ω(containerDelegate.RunContainerCallCount()).Should(Equal(0))
+						Expect(containerDelegate.RunContainerCallCount()).To(Equal(0))
 					})
 				})
 
@@ -110,20 +110,20 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 					})
 
 					It("does not delete the container", func() {
-						Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(0))
+						Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(0))
 					})
 
 					It("does not try to run the container", func() {
-						Ω(containerDelegate.RunContainerCallCount()).Should(Equal(0))
+						Expect(containerDelegate.RunContainerCallCount()).To(Equal(0))
 					})
 				})
 
 				Context("when claiming succeeds", func() {
 					It("runs the container", func() {
-						Ω(containerDelegate.RunContainerCallCount()).Should(Equal(1))
+						Expect(containerDelegate.RunContainerCallCount()).To(Equal(1))
 						delegateLogger, containerGuid := containerDelegate.RunContainerArgsForCall(0)
-						Ω(containerGuid).Should(Equal(container.Guid))
-						Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
+						Expect(containerGuid).To(Equal(container.Guid))
+						Expect(delegateLogger.SessionName()).To(Equal(expectedSessionName))
 					})
 
 					Context("when running fails", func() {
@@ -132,22 +132,22 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						})
 
 						It("removes the actual LRP", func() {
-							Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
+							Expect(bbs.RemoveActualLRPCallCount()).To(Equal(1))
 							bbsLogger, lrpKey, instanceKey := bbs.RemoveActualLRPArgsForCall(0)
-							Ω(lrpKey).Should(Equal(expectedLrpKey))
-							Ω(instanceKey).Should(Equal(expectedInstanceKey))
-							Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
+							Expect(lrpKey).To(Equal(expectedLrpKey))
+							Expect(instanceKey).To(Equal(expectedInstanceKey))
+							Expect(bbsLogger.SessionName()).To(Equal(expectedSessionName))
 						})
 					})
 				})
 
 				var itClaimsTheLRPOrDeletesTheContainer = func(expectedSessionName string) {
 					It("claims the lrp", func() {
-						Ω(bbs.ClaimActualLRPCallCount()).Should(Equal(1))
+						Expect(bbs.ClaimActualLRPCallCount()).To(Equal(1))
 						bbsLogger, lrpKey, instanceKey := bbs.ClaimActualLRPArgsForCall(0)
-						Ω(lrpKey).Should(Equal(expectedLrpKey))
-						Ω(instanceKey).Should(Equal(expectedInstanceKey))
-						Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
+						Expect(lrpKey).To(Equal(expectedLrpKey))
+						Expect(instanceKey).To(Equal(expectedInstanceKey))
+						Expect(bbsLogger.SessionName()).To(Equal(expectedSessionName))
 					})
 
 					Context("when the claim fails because ErrActualLRPCannotBeClaimed", func() {
@@ -156,10 +156,10 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						})
 
 						It("deletes the container", func() {
-							Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(1))
+							Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(1))
 							delegateLogger, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
-							Ω(containerGuid).Should(Equal(container.Guid))
-							Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
+							Expect(containerGuid).To(Equal(container.Guid))
+							Expect(delegateLogger.SessionName()).To(Equal(expectedSessionName))
 						})
 					})
 
@@ -169,8 +169,8 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						})
 
 						It("does not stop or delete the container", func() {
-							Ω(containerDelegate.StopContainerCallCount()).Should(Equal(0))
-							Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(0))
+							Expect(containerDelegate.StopContainerCallCount()).To(Equal(0))
+							Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(0))
 						})
 					})
 				}
@@ -200,12 +200,12 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 					})
 
 					It("starts the lrp in the bbs", func() {
-						Ω(bbs.StartActualLRPCallCount()).Should(Equal(1))
+						Expect(bbs.StartActualLRPCallCount()).To(Equal(1))
 						bbsLogger, lrpKey, instanceKey, netInfo := bbs.StartActualLRPArgsForCall(0)
-						Ω(lrpKey).Should(Equal(expectedLrpKey))
-						Ω(instanceKey).Should(Equal(expectedInstanceKey))
-						Ω(netInfo).Should(Equal(expectedNetInfo))
-						Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
+						Expect(lrpKey).To(Equal(expectedLrpKey))
+						Expect(instanceKey).To(Equal(expectedInstanceKey))
+						Expect(netInfo).To(Equal(expectedNetInfo))
+						Expect(bbsLogger.SessionName()).To(Equal(expectedSessionName))
 					})
 
 					Context("when starting fails because ErrActualLRPCannotBeStarted", func() {
@@ -214,10 +214,10 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						})
 
 						It("stops the container", func() {
-							Ω(containerDelegate.StopContainerCallCount()).Should(Equal(1))
+							Expect(containerDelegate.StopContainerCallCount()).To(Equal(1))
 							delegateLogger, containerGuid := containerDelegate.StopContainerArgsForCall(0)
-							Ω(containerGuid).Should(Equal(container.Guid))
-							Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
+							Expect(containerGuid).To(Equal(container.Guid))
+							Expect(delegateLogger.SessionName()).To(Equal(expectedSessionName))
 						})
 					})
 
@@ -227,8 +227,8 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						})
 
 						It("does not stop or delete the container", func() {
-							Ω(containerDelegate.StopContainerCallCount()).Should(Equal(0))
-							Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(0))
+							Expect(containerDelegate.StopContainerCallCount()).To(Equal(0))
+							Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(0))
 						})
 					})
 				})
@@ -245,19 +245,19 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						})
 
 						It("removes the actual LRP", func() {
-							Ω(bbs.RemoveActualLRPCallCount()).Should(Equal(1))
+							Expect(bbs.RemoveActualLRPCallCount()).To(Equal(1))
 							bbsLogger, lrpKey, instanceKey := bbs.RemoveActualLRPArgsForCall(0)
-							Ω(lrpKey).Should(Equal(expectedLrpKey))
-							Ω(instanceKey).Should(Equal(expectedInstanceKey))
-							Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
+							Expect(lrpKey).To(Equal(expectedLrpKey))
+							Expect(instanceKey).To(Equal(expectedInstanceKey))
+							Expect(bbsLogger.SessionName()).To(Equal(expectedSessionName))
 						})
 
 						Context("when the removal succeeds", func() {
 							It("deletes the container", func() {
-								Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(1))
+								Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(1))
 								delegateLogger, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
-								Ω(containerGuid).Should(Equal(container.Guid))
-								Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
+								Expect(containerGuid).To(Equal(container.Guid))
+								Expect(delegateLogger.SessionName()).To(Equal(expectedSessionName))
 							})
 						})
 
@@ -267,10 +267,10 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 							})
 
 							It("deletes the container", func() {
-								Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(1))
+								Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(1))
 								delegateLogger, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
-								Ω(containerGuid).Should(Equal(container.Guid))
-								Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
+								Expect(containerGuid).To(Equal(container.Guid))
+								Expect(delegateLogger.SessionName()).To(Equal(expectedSessionName))
 							})
 						})
 					})
@@ -282,19 +282,19 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						})
 
 						It("crashes the actual LRP", func() {
-							Ω(bbs.CrashActualLRPCallCount()).Should(Equal(1))
+							Expect(bbs.CrashActualLRPCallCount()).To(Equal(1))
 							bbsLogger, lrpKey, instanceKey, reason := bbs.CrashActualLRPArgsForCall(0)
-							Ω(lrpKey).Should(Equal(expectedLrpKey))
-							Ω(instanceKey).Should(Equal(expectedInstanceKey))
-							Ω(reason).Should(Equal("crashed"))
-							Ω(bbsLogger.SessionName()).Should(Equal(expectedSessionName))
+							Expect(lrpKey).To(Equal(expectedLrpKey))
+							Expect(instanceKey).To(Equal(expectedInstanceKey))
+							Expect(reason).To(Equal("crashed"))
+							Expect(bbsLogger.SessionName()).To(Equal(expectedSessionName))
 						})
 
 						It("deletes the container", func() {
-							Ω(containerDelegate.DeleteContainerCallCount()).Should(Equal(1))
+							Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(1))
 							delegateLogger, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
-							Ω(containerGuid).Should(Equal(container.Guid))
-							Ω(delegateLogger.SessionName()).Should(Equal(expectedSessionName))
+							Expect(containerGuid).To(Equal(container.Guid))
+							Expect(delegateLogger.SessionName()).To(Equal(expectedSessionName))
 						})
 					})
 				})
@@ -305,7 +305,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 					})
 
 					It("logs the container as a warning", func() {
-						Ω(logger).Should(Say(sessionPrefix + "process-invalid-container.not-processing-container-in-invalid-state"))
+						Expect(logger).To(Say(sessionPrefix + "process-invalid-container.not-processing-container-in-invalid-state"))
 					})
 				})
 			})

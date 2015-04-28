@@ -53,7 +53,7 @@ var _ = Describe("The Rep", func() {
 				DiskMB:     1024,
 				Containers: 128,
 			})
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			w.Write(jsonBytes)
 		})
 		fakeExecutor.RouteToHandler("GET", "/events", func(w http.ResponseWriter, r *http.Request) {
@@ -138,12 +138,12 @@ var _ = Describe("The Rep", func() {
 		JustBeforeEach(func() {
 			Eventually(bbs.Cells).Should(HaveLen(1))
 			cells, err := bbs.Cells()
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			cellPresence = cells[0]
 		})
 
 		It("should maintain presence", func() {
-			Ω(cellPresence.CellID).Should(Equal(cellID))
+			Expect(cellPresence.CellID).To(Equal(cellID))
 		})
 
 		Context("when the presence fails to be maintained", func() {
@@ -152,10 +152,10 @@ var _ = Describe("The Rep", func() {
 
 				Eventually(bbs.Cells, 5).Should(HaveLen(1))
 				cells, err := bbs.Cells()
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(cells[0]).Should(Equal(cellPresence))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cells[0]).To(Equal(cellPresence))
 
-				Ω(runner.Session).ShouldNot(Exit())
+				Expect(runner.Session).NotTo(Exit())
 			})
 		})
 	})
@@ -179,22 +179,24 @@ var _ = Describe("The Rep", func() {
 			It("makes a request to the executor", func() {
 				Eventually(bbs.Cells).Should(HaveLen(1))
 				cells, err := bbs.Cells()
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				client := auction_http_client.New(http.DefaultClient, cells[0].CellID, cells[0].RepAddress, lagertest.NewTestLogger("auction-client"))
 
 				state, err := client.State()
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(state.TotalResources).Should(Equal(auctiontypes.Resources{
+				Expect(err).NotTo(HaveOccurred())
+				Expect(state.TotalResources).To(Equal(auctiontypes.Resources{
 					MemoryMB:   1024,
 					DiskMB:     2048,
 					Containers: 4,
 				}))
-				Ω(state.AvailableResources).Should(Equal(auctiontypes.Resources{
+
+				Expect(state.AvailableResources).To(Equal(auctiontypes.Resources{
 					MemoryMB:   512,
 					DiskMB:     1024,
 					Containers: 2,
 				}))
+
 			})
 		})
 
@@ -222,7 +224,7 @@ var _ = Describe("The Rep", func() {
 					gotReservation = make(chan struct{})
 
 					err := bbs.DesireLRP(logger, desiredLRP)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					fakeExecutor.RouteToHandler("POST", "/containers",
 						ghttp.CombineHandlers(
@@ -238,7 +240,7 @@ var _ = Describe("The Rep", func() {
 				It("makes a request to executor to allocate the container", func() {
 					Eventually(bbs.Cells).Should(HaveLen(1))
 					cells, err := bbs.Cells()
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					client := auction_http_client.New(http.DefaultClient, cells[0].CellID, cells[0].RepAddress, lagertest.NewTestLogger("auction-client"))
 
@@ -250,8 +252,8 @@ var _ = Describe("The Rep", func() {
 					}
 
 					failedWorks, err := client.Perform(works)
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(failedWorks.LRPs).Should(BeEmpty())
+					Expect(err).NotTo(HaveOccurred())
+					Expect(failedWorks.LRPs).To(BeEmpty())
 
 					Eventually(gotReservation).Should(BeClosed())
 				})
@@ -276,7 +278,7 @@ var _ = Describe("The Rep", func() {
 					gotReservation = make(chan struct{})
 
 					err := bbs.DesireTask(logger, task)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					fakeExecutor.RouteToHandler("POST", "/containers",
 						ghttp.CombineHandlers(
@@ -291,20 +293,20 @@ var _ = Describe("The Rep", func() {
 				It("makes a request to executor to allocate the container", func() {
 					Eventually(bbs.Cells).Should(HaveLen(1))
 					cells, err := bbs.Cells()
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					client := auction_http_client.New(http.DefaultClient, cells[0].CellID, cells[0].RepAddress, lagertest.NewTestLogger("auction-client"))
 
-					Ω(bbs.PendingTasks(logger)).Should(HaveLen(1))
-					Ω(bbs.RunningTasks(logger)).Should(BeEmpty())
+					Expect(bbs.PendingTasks(logger)).To(HaveLen(1))
+					Expect(bbs.RunningTasks(logger)).To(BeEmpty())
 
 					works := auctiontypes.Work{
 						Tasks: []models.Task{task},
 					}
 
 					failedWorks, err := client.Perform(works)
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(failedWorks.Tasks).Should(BeEmpty())
+					Expect(err).NotTo(HaveOccurred())
+					Expect(failedWorks.Tasks).To(BeEmpty())
 
 					Eventually(gotReservation).Should(BeClosed())
 				})
@@ -327,10 +329,10 @@ var _ = Describe("The Rep", func() {
 			}
 
 			err := bbs.DesireTask(logger, task)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			_, err = bbs.StartTask(logger, task.TaskGuid, cellID)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("eventually marks tasks with no corresponding container as failed", func() {
@@ -339,10 +341,10 @@ var _ = Describe("The Rep", func() {
 			}, 5*pollingInterval).Should(HaveLen(1))
 
 			completedTasks, err := bbs.CompletedTasks(logger)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
-			Ω(completedTasks[0].TaskGuid).Should(Equal(task.TaskGuid))
-			Ω(completedTasks[0].Failed).Should(BeTrue())
+			Expect(completedTasks[0].TaskGuid).To(Equal(task.TaskGuid))
+			Expect(completedTasks[0].Failed).To(BeTrue())
 		})
 	})
 
@@ -361,14 +363,14 @@ var _ = Describe("The Rep", func() {
 			index := 0
 
 			err := bbs.DesireLRP(logger, desiredLRP)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			actualLRPGroup, err := bbs.ActualLRPGroupByProcessGuidAndIndex(desiredLRP.ProcessGuid, index)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			instanceKey := models.NewActualLRPInstanceKey("some-instance-guid", cellID)
 			err = bbs.ClaimActualLRP(logger, actualLRPGroup.Instance.ActualLRPKey, instanceKey)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("eventually reaps actual LRPs with no corresponding container", func() {
@@ -407,10 +409,10 @@ var _ = Describe("The Rep", func() {
 			netInfo := models.NewActualLRPNetInfo("bogus-ip", []models.PortMapping{})
 
 			err := bbs.StartActualLRP(logger, lrpKey, instanceKey, netInfo)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			lrpGroup, err := bbs.ActualLRPGroupByProcessGuidAndIndex(lrpKey.ProcessGuid, lrpKey.Index)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			runningLRP = *lrpGroup.Instance
 		})
 
@@ -461,16 +463,16 @@ var _ = Describe("The Rep", func() {
 			}
 
 			err := bbs.DesireTask(logger, task)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			started, err := bbs.StartTask(logger, taskGuid, cellID)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(started).Should(BeTrue())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(started).To(BeTrue())
 		})
 
 		It("deletes the container", func() {
 			err := bbs.CancelTask(logger, taskGuid)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(deletedContainer).Should(BeClosed())
 
@@ -507,7 +509,7 @@ var _ = Describe("The Rep", func() {
 				lrpNetInfo = models.NewActualLRPNetInfo(address, []models.PortMapping{{ContainerPort: 1470, HostPort: 2589}})
 
 				err := bbs.StartActualLRP(logger, lrpKey, lrpContainerKey, lrpNetInfo)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				container := executor.Container{
 					Guid:       rep.LRPContainerGuid(processGuid, instanceGuid),
@@ -537,9 +539,9 @@ var _ = Describe("The Rep", func() {
 				)
 
 				resp, err := http.Post(fmt.Sprintf("http://0.0.0.0:%d/evacuate", serverPort), "text/html", nil)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 				resp.Body.Close()
-				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
+				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 			})
 
 			It("evacuates them", func() {
@@ -551,13 +553,13 @@ var _ = Describe("The Rep", func() {
 						return nil
 					}
 					err = json.Unmarshal([]byte(node.Value), &actualLRP)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					return &actualLRP
 				}
 
 				Eventually(getEvacuatingLRP, 1).ShouldNot(BeNil())
-				Ω(actualLRP.ProcessGuid).Should(Equal(processGuid))
+				Expect(actualLRP.ProcessGuid).To(Equal(processGuid))
 			})
 
 			Context("when exceeding the evacuation timeout", func() {
@@ -582,8 +584,8 @@ var _ = Describe("The Rep", func() {
 	Describe("when a Ping request comes in", func() {
 		It("responds with 200 OK", func() {
 			resp, err := http.Get(fmt.Sprintf("http://0.0.0.0:%d/ping", serverPort))
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(resp.StatusCode).Should(Equal(http.StatusOK))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(http.StatusOK))
 		})
 	})
 })

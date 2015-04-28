@@ -42,7 +42,7 @@ var _ = Describe("Resources", func() {
 
 		Context("when container is valid", func() {
 			It("does not return an error", func() {
-				Ω(keyConversionErr).ShouldNot(HaveOccurred())
+				Expect(keyConversionErr).NotTo(HaveOccurred())
 			})
 
 			It("converts a valid container without error", func() {
@@ -51,7 +51,7 @@ var _ = Describe("Resources", func() {
 					Index:       999,
 					Domain:      "my-domain",
 				}
-				Ω(lrpKey).Should(Equal(expectedKey))
+				Expect(lrpKey).To(Equal(expectedKey))
 			})
 		})
 
@@ -62,7 +62,7 @@ var _ = Describe("Resources", func() {
 				})
 
 				It("reports an error that the tags are missing", func() {
-					Ω(keyConversionErr).Should(MatchError(rep.ErrContainerMissingTags))
+					Expect(keyConversionErr).To(MatchError(rep.ErrContainerMissingTags))
 				})
 			})
 
@@ -72,8 +72,8 @@ var _ = Describe("Resources", func() {
 				})
 
 				It("reports the process_guid is invalid", func() {
-					Ω(keyConversionErr).Should(HaveOccurred())
-					Ω(keyConversionErr.Error()).Should(ContainSubstring("process_guid"))
+					Expect(keyConversionErr).To(HaveOccurred())
+					Expect(keyConversionErr.Error()).To(ContainSubstring("process_guid"))
 				})
 			})
 
@@ -83,7 +83,7 @@ var _ = Describe("Resources", func() {
 				})
 
 				It("reports the index is invalid when constructing ActualLRPKey", func() {
-					Ω(keyConversionErr).Should(MatchError(rep.ErrInvalidProcessIndex))
+					Expect(keyConversionErr).To(MatchError(rep.ErrInvalidProcessIndex))
 				})
 			})
 		})
@@ -124,7 +124,7 @@ var _ = Describe("Resources", func() {
 
 		Context("when the container and cell id are valid", func() {
 			It("it does not return an error", func() {
-				Ω(instanceKeyConversionErr).ShouldNot(HaveOccurred())
+				Expect(instanceKeyConversionErr).NotTo(HaveOccurred())
 			})
 
 			It("it creates the correct container key", func() {
@@ -133,7 +133,7 @@ var _ = Describe("Resources", func() {
 					CellID:       cellID,
 				}
 
-				Ω(lrpInstanceKey).Should(Equal(expectedInstanceKey))
+				Expect(lrpInstanceKey).To(Equal(expectedInstanceKey))
 			})
 		})
 
@@ -144,7 +144,7 @@ var _ = Describe("Resources", func() {
 				})
 
 				It("reports an error that the tags are missing", func() {
-					Ω(instanceKeyConversionErr).Should(MatchError(rep.ErrContainerMissingTags))
+					Expect(instanceKeyConversionErr).To(MatchError(rep.ErrContainerMissingTags))
 				})
 			})
 
@@ -154,7 +154,7 @@ var _ = Describe("Resources", func() {
 				})
 
 				It("returns an invalid instance-guid error", func() {
-					Ω(instanceKeyConversionErr.Error()).Should(ContainSubstring("instance_guid"))
+					Expect(instanceKeyConversionErr.Error()).To(ContainSubstring("instance_guid"))
 				})
 			})
 
@@ -164,7 +164,7 @@ var _ = Describe("Resources", func() {
 				})
 
 				It("returns an invalid cell id error", func() {
-					Ω(instanceKeyConversionErr.Error()).Should(ContainSubstring("cell_id"))
+					Expect(instanceKeyConversionErr.Error()).To(ContainSubstring("cell_id"))
 				})
 			})
 		})
@@ -202,7 +202,7 @@ var _ = Describe("Resources", func() {
 
 		Context("when container and executor host are valid", func() {
 			It("does not return an error", func() {
-				Ω(netInfoConversionErr).ShouldNot(HaveOccurred())
+				Expect(netInfoConversionErr).NotTo(HaveOccurred())
 			})
 
 			It("returns the correct net info", func() {
@@ -216,7 +216,7 @@ var _ = Describe("Resources", func() {
 					Address: "some-external-ip",
 				}
 
-				Ω(lrpNetInfo).Should(Equal(expectedNetInfo))
+				Expect(lrpNetInfo).To(Equal(expectedNetInfo))
 			})
 		})
 
@@ -226,7 +226,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("does not return an error", func() {
-				Ω(netInfoConversionErr).ShouldNot(HaveOccurred())
+				Expect(netInfoConversionErr).NotTo(HaveOccurred())
 			})
 		})
 
@@ -236,7 +236,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("returns an invalid host error", func() {
-				Ω(netInfoConversionErr.Error()).Should(ContainSubstring("address"))
+				Expect(netInfoConversionErr.Error()).To(ContainSubstring("address"))
 			})
 		})
 	})
@@ -249,17 +249,18 @@ var _ = Describe("Resources", func() {
 			}`)
 
 			stackMap, err := rep.UnmarshalStackPathMap(stackMapPayload)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
-			Ω(stackMap).Should(Equal(rep.StackPathMap{
+			Expect(stackMap).To(Equal(rep.StackPathMap{
 				"waffles":  "/where/is/the/syrup",
 				"pancakes": "/path/to/lingonberries",
 			}))
+
 		})
 
 		It("errors when passed malformed input", func() {
 			_, err := rep.UnmarshalStackPathMap([]byte(`{"foo": ["bar"]}`))
-			Ω(err).Should(MatchError(ContainSubstring("unmarshal")))
+			Expect(err).To(MatchError(ContainSubstring("unmarshal")))
 		})
 	})
 })

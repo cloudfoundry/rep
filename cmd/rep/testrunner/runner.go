@@ -87,7 +87,7 @@ func (r *Runner) Start() {
 		gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[32m[rep]\x1b[0m ", ginkgo.GinkgoWriter),
 	)
 
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	r.Session = repSession
 
 	Eventually(r.Session.Buffer(), 2).Should(gbytes.Say("rep.started"))

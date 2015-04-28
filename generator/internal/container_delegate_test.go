@@ -35,19 +35,19 @@ var _ = Describe("ContainerDelegate", func() {
 		})
 
 		It("runs the container", func() {
-			Ω(executorClient.RunContainerCallCount()).Should(Equal(1))
+			Expect(executorClient.RunContainerCallCount()).To(Equal(1))
 			containerGuid := executorClient.RunContainerArgsForCall(0)
-			Ω(containerGuid).Should(Equal(expectedGuid))
+			Expect(containerGuid).To(Equal(expectedGuid))
 		})
 
 		Context("when running succeeds", func() {
 			It("returns true", func() {
-				Ω(result).Should(BeTrue())
+				Expect(result).To(BeTrue())
 			})
 
 			It("logs the running", func() {
-				Ω(logger).Should(gbytes.Say(sessionPrefix + ".running-container"))
-				Ω(logger).Should(gbytes.Say(sessionPrefix + ".succeeded-running-container"))
+				Expect(logger).To(gbytes.Say(sessionPrefix + ".running-container"))
+				Expect(logger).To(gbytes.Say(sessionPrefix + ".succeeded-running-container"))
 			})
 		})
 
@@ -57,22 +57,22 @@ var _ = Describe("ContainerDelegate", func() {
 			})
 
 			It("returns false", func() {
-				Ω(result).Should(BeFalse())
+				Expect(result).To(BeFalse())
 			})
 
 			It("logs the failure", func() {
-				Ω(logger).Should(gbytes.Say(sessionPrefix + ".failed-running-container"))
+				Expect(logger).To(gbytes.Say(sessionPrefix + ".failed-running-container"))
 			})
 
 			It("deletes the container", func() {
-				Ω(executorClient.DeleteContainerCallCount()).Should(Equal(1))
+				Expect(executorClient.DeleteContainerCallCount()).To(Equal(1))
 				containerGuid := executorClient.DeleteContainerArgsForCall(0)
-				Ω(containerGuid).Should(Equal(expectedGuid))
+				Expect(containerGuid).To(Equal(expectedGuid))
 			})
 
 			It("logs the deletion", func() {
-				Ω(logger).Should(gbytes.Say(sessionPrefix + ".deleting-container"))
-				Ω(logger).Should(gbytes.Say(sessionPrefix + ".succeeded-deleting-container"))
+				Expect(logger).To(gbytes.Say(sessionPrefix + ".deleting-container"))
+				Expect(logger).To(gbytes.Say(sessionPrefix + ".succeeded-deleting-container"))
 			})
 
 			Context("when deleting fails", func() {
@@ -81,7 +81,7 @@ var _ = Describe("ContainerDelegate", func() {
 				})
 
 				It("logs the failure", func() {
-					Ω(logger).Should(gbytes.Say(sessionPrefix + ".failed-deleting-container"))
+					Expect(logger).To(gbytes.Say(sessionPrefix + ".failed-deleting-container"))
 				})
 			})
 		})
@@ -95,19 +95,19 @@ var _ = Describe("ContainerDelegate", func() {
 		})
 
 		It("stops the container", func() {
-			Ω(executorClient.StopContainerCallCount()).Should(Equal(1))
+			Expect(executorClient.StopContainerCallCount()).To(Equal(1))
 			containerGuid := executorClient.StopContainerArgsForCall(0)
-			Ω(containerGuid).Should(Equal(expectedGuid))
+			Expect(containerGuid).To(Equal(expectedGuid))
 		})
 
 		Context("when stopping succeeds", func() {
 			It("returns true", func() {
-				Ω(result).Should(BeTrue())
+				Expect(result).To(BeTrue())
 			})
 
 			It("logs the stopping", func() {
-				Ω(logger).Should(gbytes.Say(sessionPrefix + ".stopping-container"))
-				Ω(logger).Should(gbytes.Say(sessionPrefix + ".succeeded-stopping-container"))
+				Expect(logger).To(gbytes.Say(sessionPrefix + ".stopping-container"))
+				Expect(logger).To(gbytes.Say(sessionPrefix + ".succeeded-stopping-container"))
 			})
 		})
 
@@ -117,11 +117,11 @@ var _ = Describe("ContainerDelegate", func() {
 			})
 
 			It("returns false", func() {
-				Ω(result).Should(BeFalse())
+				Expect(result).To(BeFalse())
 			})
 
 			It("logs the failure", func() {
-				Ω(logger).Should(gbytes.Say(sessionPrefix + ".failed-stopping-container"))
+				Expect(logger).To(gbytes.Say(sessionPrefix + ".failed-stopping-container"))
 			})
 		})
 	})
@@ -134,19 +134,19 @@ var _ = Describe("ContainerDelegate", func() {
 		})
 
 		It("deletes the container", func() {
-			Ω(executorClient.DeleteContainerCallCount()).Should(Equal(1))
+			Expect(executorClient.DeleteContainerCallCount()).To(Equal(1))
 			containerGuid := executorClient.DeleteContainerArgsForCall(0)
-			Ω(containerGuid).Should(Equal(expectedGuid))
+			Expect(containerGuid).To(Equal(expectedGuid))
 		})
 
 		Context("when deleting succeeds", func() {
 			It("returns true", func() {
-				Ω(result).Should(BeTrue())
+				Expect(result).To(BeTrue())
 			})
 
 			It("logs the deleting", func() {
-				Ω(logger).Should(gbytes.Say(sessionPrefix + ".deleting-container"))
-				Ω(logger).Should(gbytes.Say(sessionPrefix + ".succeeded-deleting-container"))
+				Expect(logger).To(gbytes.Say(sessionPrefix + ".deleting-container"))
+				Expect(logger).To(gbytes.Say(sessionPrefix + ".succeeded-deleting-container"))
 			})
 		})
 
@@ -156,11 +156,11 @@ var _ = Describe("ContainerDelegate", func() {
 			})
 
 			It("returns false", func() {
-				Ω(result).Should(BeFalse())
+				Expect(result).To(BeFalse())
 			})
 
 			It("logs the failure", func() {
-				Ω(logger).Should(gbytes.Say(sessionPrefix + ".failed-deleting-container"))
+				Expect(logger).To(gbytes.Say(sessionPrefix + ".failed-deleting-container"))
 			})
 		})
 	})
@@ -202,20 +202,20 @@ var _ = Describe("ContainerDelegate", func() {
 				})
 
 				It("succeeds", func() {
-					Ω(fetchErr).ShouldNot(HaveOccurred())
+					Expect(fetchErr).NotTo(HaveOccurred())
 				})
 
 				It("returns the result of the first file in the stream", func() {
-					Ω(result).Should(Equal("some result"))
+					Expect(result).To(Equal("some result"))
 				})
 
 				It("closes the result stream", func() {
-					Ω(fileStream.Closed()).Should(BeTrue())
+					Expect(fileStream.Closed()).To(BeTrue())
 				})
 
 				It("logs the fetching", func() {
-					Ω(logger).Should(gbytes.Say(sessionPrefix + ".fetching-container-result"))
-					Ω(logger).Should(gbytes.Say(sessionPrefix + ".succeeded-fetching-container-result"))
+					Expect(logger).To(gbytes.Say(sessionPrefix + ".fetching-container-result"))
+					Expect(logger).To(gbytes.Say(sessionPrefix + ".succeeded-fetching-container-result"))
 				})
 			})
 
@@ -232,25 +232,25 @@ var _ = Describe("ContainerDelegate", func() {
 				})
 
 				It("returns an error", func() {
-					Ω(fetchErr).Should(HaveOccurred())
+					Expect(fetchErr).To(HaveOccurred())
 				})
 
 				It("closes the result stream", func() {
-					Ω(fileStream.Closed()).Should(BeTrue())
+					Expect(fileStream.Closed()).To(BeTrue())
 				})
 
 				It("logs the failure", func() {
-					Ω(logger).Should(gbytes.Say(sessionPrefix + ".failed-fetching-container-result-too-large"))
+					Expect(logger).To(gbytes.Say(sessionPrefix + ".failed-fetching-container-result-too-large"))
 				})
 			})
 
 			Context("when the stream is empty for whatever reason", func() {
 				It("returns an error", func() {
-					Ω(fetchErr).Should(HaveOccurred())
+					Expect(fetchErr).To(HaveOccurred())
 				})
 
 				It("closes the result stream", func() {
-					Ω(fileStream.Closed()).Should(BeTrue())
+					Expect(fileStream.Closed()).To(BeTrue())
 				})
 			})
 		})
@@ -263,11 +263,11 @@ var _ = Describe("ContainerDelegate", func() {
 			})
 
 			It("returns the error", func() {
-				Ω(fetchErr).Should(Equal(disaster))
+				Expect(fetchErr).To(Equal(disaster))
 			})
 
 			It("logs the failure", func() {
-				Ω(logger).Should(gbytes.Say(sessionPrefix + ".failed-fetching-container-result-stream-from-executor"))
+				Expect(logger).To(gbytes.Say(sessionPrefix + ".failed-fetching-container-result-stream-from-executor"))
 			})
 		})
 	})
