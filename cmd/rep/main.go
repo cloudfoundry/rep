@@ -12,11 +12,11 @@ import (
 	"github.com/cloudfoundry-incubator/auction/communication/http/auction_http_handlers"
 	auctionroutes "github.com/cloudfoundry-incubator/auction/communication/http/routes"
 	"github.com/cloudfoundry-incubator/cf-debug-server"
-	"github.com/cloudfoundry-incubator/cf-lager"
+	cf_lager "github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/executor"
-	executorclient "github.com/cloudfoundry-incubator/executor/http/client"
+	ExecutorInitializer "github.com/cloudfoundry-incubator/executor/initializer"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/auction_cell_rep"
 	"github.com/cloudfoundry-incubator/rep/evacuation"
@@ -79,12 +79,6 @@ var receptorTaskHandlerURL = flag.String(
 	"receptorTaskHandlerURL",
 	"http://127.0.0.1:1169",
 	"location of receptor task handler",
-)
-
-var executorURL = flag.String(
-	"executorURL",
-	"http://127.0.0.1:1700",
-	"location of executor to represent",
 )
 
 var listenAddr = flag.String(
@@ -186,17 +180,23 @@ func main() {
 	cf_http.Initialize(*communicationTimeout)
 
 	logger, reconfigurableSink := cf_lager.New(*sessionName)
+	executorConfiguration := executorConfig()
+	if !ExecutorInitializer.ValidateExecutor(logger, executorConfiguration) {
+		os.Exit(1)
+	}
 	initializeDropsonde(logger)
 
 	if *cellID == "" {
 		log.Fatalf("-cellID must be specified")
 	}
 
+	executorClient, executorMembers := ExecutorInitializer.Initialize(logger, executorConfiguration)
+
 	bbs := initializeRepBBS(logger)
 
 	clock := clock.NewClock()
 
-	executorClient := executorclient.New(cf_http.NewClient(), cf_http.NewStreamingClient(), *executorURL)
+	//executorClient := executorclient.New(cf_http.NewClient(), cf_http.NewStreamingClient(), *executorURL)
 
 	evacuatable, evacuationReporter, evacuationNotifier := evacuation_context.New()
 
@@ -227,6 +227,8 @@ func main() {
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 		{"evacuator", evacuator},
 	}
+
+	members = append(executorMembers, members...)
 
 	if dbgAddr := cf_debug_server.DebugAddress(flag.CommandLine); dbgAddr != "" {
 		members = append(grouper.Members{
