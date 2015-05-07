@@ -12,18 +12,19 @@ import (
 )
 
 type Runner struct {
-	binPath string
-	Session *gexec.Session
-	config  Config
+	binPath    string
+	Session    *gexec.Session
+	StartCheck string
+	config     Config
 }
 
 type Config struct {
 	preloadedRootFSes      []string
 	rootFSProviders        []string
 	cellID                 string
-	executorURL            string
 	etcdCluster            string
 	serverPort             int
+	gardenAddr             string
 	logLevel               string
 	consulCluster          string
 	receptorTaskHandlerURL string
@@ -32,17 +33,17 @@ type Config struct {
 }
 
 func New(
-	binPath, cellID, executorURL, etcdCluster, consulCluster, receptorTaskHandlerURL, logLevel string,
+	binPath, cellID, etcdCluster, consulCluster, receptorTaskHandlerURL, logLevel string,
 	preloadedRootFSes, rootFSProviders []string,
-	serverPort int,
+	serverPort int, gardenAddr string,
 	pollingInterval, evacuationTimeout time.Duration) *Runner {
 	return &Runner{
-		binPath: binPath,
+		binPath:    binPath,
+		StartCheck: "rep.started",
 		config: Config{
 			cellID:                 cellID,
 			preloadedRootFSes:      preloadedRootFSes,
 			rootFSProviders:        rootFSProviders,
-			executorURL:            executorURL,
 			serverPort:             serverPort,
 			etcdCluster:            etcdCluster,
 			consulCluster:          consulCluster,
@@ -50,6 +51,7 @@ func New(
 			logLevel:               logLevel,
 			pollingInterval:        pollingInterval,
 			evacuationTimeout:      evacuationTimeout,
+			gardenAddr:             gardenAddr,
 		},
 	}
 }
@@ -61,7 +63,6 @@ func (r *Runner) Start() {
 
 	args := []string{
 		"-cellID", r.config.cellID,
-		"-executorURL", r.config.executorURL,
 		"-listenAddr", fmt.Sprintf("0.0.0.0:%d", r.config.serverPort),
 		"-etcdCluster", r.config.etcdCluster,
 		"-logLevel", r.config.logLevel,
@@ -70,6 +71,9 @@ func (r *Runner) Start() {
 		"-lockRetryInterval", "1s",
 		"-consulCluster", r.config.consulCluster,
 		"-receptorTaskHandlerURL", r.config.receptorTaskHandlerURL,
+		"-containerMaxCpuShares", "1024",
+		"-gardenNetwork", "tcp",
+		"-gardenAddr", r.config.gardenAddr,
 	}
 	for _, rootfs := range r.config.preloadedRootFSes {
 		args = append(args, "-preloadedRootFS", rootfs)
@@ -90,7 +94,7 @@ func (r *Runner) Start() {
 	Expect(err).NotTo(HaveOccurred())
 	r.Session = repSession
 
-	Eventually(r.Session.Buffer(), 2).Should(gbytes.Say("rep.started"))
+	Eventually(r.Session.Buffer(), 2).Should(gbytes.Say(r.StartCheck))
 }
 
 func (r *Runner) Stop() {
