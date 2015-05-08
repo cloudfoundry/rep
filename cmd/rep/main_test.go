@@ -165,6 +165,13 @@ var _ = Describe("The Rep", func() {
 				Expect(cellPresence.CellID).To(Equal(cellID))
 			})
 
+			It("should have no session health checks", func() {
+				sessions, _, err := consulRunner.NewClient().Session().List(nil)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sessions).To(HaveLen(1))
+				Expect(sessions[0].Checks).To(BeEmpty())
+			})
+
 			Context("when the presence fails to be maintained", func() {
 				It("should not exit, but keep trying to maintain presence at the same ID", func() {
 					consulRunner.Reset()

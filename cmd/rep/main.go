@@ -278,7 +278,7 @@ func initializeRepBBS(logger lager.Logger) Bbs.RepBBS {
 	}
 
 	sessionMgr := consuladapter.NewSessionManager(client)
-	consulSession, err := consuladapter.NewSession(*sessionName, *lockTTL, client, sessionMgr)
+	consulSession, err := consuladapter.NewSessionNoChecks(*sessionName, *lockTTL, client, sessionMgr)
 	if err != nil {
 		logger.Fatal("consul-session-failed", err)
 	}
