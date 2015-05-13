@@ -441,6 +441,8 @@ var _ = Describe("The Rep", func() {
 			var deletedContainer chan struct{}
 
 			JustBeforeEach(func() {
+				Eventually(bbs.Cells).Should(HaveLen(1))
+
 				deletedContainer = make(chan struct{})
 
 				fakeGarden.RouteToHandler("DELETE", expectedDeleteRoute,
