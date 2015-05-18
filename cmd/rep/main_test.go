@@ -215,6 +215,9 @@ var _ = Describe("The Rep", func() {
 					)
 
 					fakeGarden.RouteToHandler("DELETE", "/containers/handle-guid", ghttp.RespondWithJSONEncoded(http.StatusOK, &struct{}{}))
+
+					// In case the bulker loop is executed
+					fakeGarden.RouteToHandler("GET", "/containers/handle-guid/info", ghttp.RespondWithJSONEncoded(http.StatusInternalServerError, garden.ContainerInfo{}))
 				})
 
 				It("returns total capacity", func() {
