@@ -27,7 +27,7 @@ import (
 	repserver "github.com/cloudfoundry-incubator/rep/http_server"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
-	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
 	bbsroutes "github.com/cloudfoundry-incubator/runtime-schema/routes"
 	"github.com/cloudfoundry/dropsonde"
@@ -190,9 +190,12 @@ func main() {
 		log.Fatalf("-cellID must be specified")
 	}
 
-	executorClient, executorMembers := executorinit.Initialize(logger, executorConfiguration)
+	executorClient, executorMembers, err := executorinit.Initialize(logger, executorConfiguration)
+	if err != nil {
+		log.Fatalf("Failed to initialize executor: %s", err.Error())
+	}
 
-	bbs := initializeRepBBS(logger)
+	repBBS := initializeRepBBS(logger)
 
 	clock := clock.NewClock()
 
@@ -202,8 +205,8 @@ func main() {
 	queue := operationq.NewSlidingQueue(1)
 
 	containerDelegate := internal.NewContainerDelegate(executorClient)
-	lrpProcessor := internal.NewLRPProcessor(bbs, containerDelegate, *cellID, evacuationReporter, uint64(evacuationTimeout.Seconds()))
-	taskProcessor := internal.NewTaskProcessor(bbs, containerDelegate, *cellID)
+	lrpProcessor := internal.NewLRPProcessor(repBBS, containerDelegate, *cellID, evacuationReporter, uint64(evacuationTimeout.Seconds()))
+	taskProcessor := internal.NewTaskProcessor(repBBS, containerDelegate, *cellID)
 
 	evacuator := evacuation.NewEvacuator(
 		logger,
@@ -215,12 +218,12 @@ func main() {
 		*evacuationPollingInterval,
 	)
 
-	httpServer, address := initializeServer(bbs, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders)
-	opGenerator := generator.New(*cellID, bbs, executorClient, lrpProcessor, taskProcessor, containerDelegate)
+	httpServer, address := initializeServer(repBBS, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders)
+	opGenerator := generator.New(*cellID, repBBS, executorClient, lrpProcessor, taskProcessor, containerDelegate)
 
 	members := grouper.Members{
 		{"http_server", httpServer},
-		{"presence", initializeCellPresence(address, bbs, executorClient, logger)},
+		{"presence", initializeCellPresence(address, repBBS, executorClient, logger)},
 		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, *evacuationPollingInterval, evacuationNotifier, clock, opGenerator, queue)},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 		{"evacuator", evacuator},
@@ -240,7 +243,7 @@ func main() {
 
 	logger.Info("started", lager.Data{"cell-id": *cellID})
 
-	err := <-monitor.Wait()
+	err = <-monitor.Wait()
 	if err != nil {
 		logger.Error("exited-with-failure", err)
 		os.Exit(1)
@@ -256,20 +259,25 @@ func initializeDropsonde(logger lager.Logger) {
 	}
 }
 
-func initializeCellPresence(address string, bbs Bbs.RepBBS, executorClient executor.Client, logger lager.Logger) ifrit.Runner {
+func initializeCellPresence(address string, repBBS bbs.RepBBS, executorClient executor.Client, logger lager.Logger) ifrit.Runner {
 	config := maintain.Config{
 		CellID:        *cellID,
 		RepAddress:    address,
 		Zone:          *zone,
 		RetryInterval: *lockRetryInterval,
 	}
-	return maintain.New(config, executorClient, bbs, logger, clock.NewClock())
+	return maintain.New(config, executorClient, repBBS, logger, clock.NewClock())
 }
 
-func initializeRepBBS(logger lager.Logger) Bbs.RepBBS {
+func initializeRepBBS(logger lager.Logger) bbs.RepBBS {
+	workPool, err := workpool.NewWorkPool(100)
+	if err != nil {
+		logger.Fatal("failed-to-construct-etcd-adapter-workpool", err, lager.Data{"num-workers": 100}) // should never happen
+	}
+
 	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
 		strings.Split(*etcdCluster, ","),
-		workpool.NewWorkPool(100),
+		workPool,
 	)
 
 	client, err := consuladapter.NewClient(*consulCluster)
@@ -283,7 +291,7 @@ func initializeRepBBS(logger lager.Logger) Bbs.RepBBS {
 		logger.Fatal("consul-session-failed", err)
 	}
 
-	return Bbs.NewRepBBS(etcdAdapter, consulSession, *receptorTaskHandlerURL, clock.NewClock(), logger)
+	return bbs.NewRepBBS(etcdAdapter, consulSession, *receptorTaskHandlerURL, clock.NewClock(), logger)
 }
 
 func initializeLRPStopper(guid string, executorClient executor.Client, logger lager.Logger) lrp_stopper.LRPStopper {
@@ -291,7 +299,7 @@ func initializeLRPStopper(guid string, executorClient executor.Client, logger la
 }
 
 func initializeServer(
-	bbs Bbs.RepBBS,
+	repBBS bbs.RepBBS,
 	executorClient executor.Client,
 	evacuatable evacuation_context.Evacuatable,
 	evacuationReporter evacuation_context.EvacuationReporter,
@@ -301,7 +309,7 @@ func initializeServer(
 ) (ifrit.Runner, string) {
 	lrpStopper := initializeLRPStopper(*cellID, executorClient, logger)
 
-	auctionCellRep := auction_cell_rep.New(*cellID, stackMap, supportedProviders, *zone, generateGuid, bbs, executorClient, evacuationReporter, logger)
+	auctionCellRep := auction_cell_rep.New(*cellID, stackMap, supportedProviders, *zone, generateGuid, repBBS, executorClient, evacuationReporter, logger)
 	handlers := auction_http_handlers.New(auctionCellRep, logger)
 
 	routes := auctionroutes.Routes
