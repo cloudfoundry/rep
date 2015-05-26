@@ -40,7 +40,7 @@ var _ = Describe("Bulker", func() {
 
 	BeforeEach(func() {
 		sender = fake.NewFakeMetricSender()
-		metrics.Initialize(sender)
+		metrics.Initialize(sender, nil)
 
 		logger = lagertest.NewTestLogger("test")
 		pollInterval = 30 * time.Second
