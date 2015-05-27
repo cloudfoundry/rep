@@ -194,6 +194,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize executor: %s", err.Error())
 	}
+	defer executorClient.Cleanup()
 
 	repBBS := initializeRepBBS(logger)
 
