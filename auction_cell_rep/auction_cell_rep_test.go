@@ -30,9 +30,9 @@ var _ = Describe("AuctionCellRep", func() {
 	var expectedGuidError error
 	var fakeGenerateContainerGuid func() (string, error)
 
-	const lucidStack = "lucid64"
-	const lucidPath = "/data/rootfs/lucid64"
-	var lucidRootFSURL string
+	const linuxStack = "linux"
+	const linuxPath = "/data/rootfs/linux"
+	var linuxRootFSURL string
 
 	BeforeEach(func() {
 		client = new(fake_client.FakeClient)
@@ -45,13 +45,13 @@ var _ = Describe("AuctionCellRep", func() {
 		fakeGenerateContainerGuid = func() (string, error) {
 			return expectedGuid, expectedGuidError
 		}
-		lucidRootFSURL = models.PreloadedRootFS(lucidStack)
+		linuxRootFSURL = models.PreloadedRootFS(linuxStack)
 
 		commonErr = errors.New("Failed to fetch")
 	})
 
 	JustBeforeEach(func() {
-		cellRep = auction_cell_rep.New(expectedCellID, rep.StackPathMap{lucidStack: lucidPath}, []string{"docker"}, "the-zone", fakeGenerateContainerGuid, bbs, client, evacuationReporter, logger)
+		cellRep = auction_cell_rep.New(expectedCellID, rep.StackPathMap{linuxStack: linuxPath}, []string{"docker"}, "the-zone", fakeGenerateContainerGuid, bbs, client, evacuationReporter, logger)
 	})
 
 	Describe("State", func() {
@@ -112,7 +112,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Expect(state.Evacuating).To(BeTrue())
 			Expect(state.RootFSProviders).To(Equal(auctiontypes.RootFSProviders{
-				models.PreloadedRootFSScheme: auctiontypes.NewFixedSetRootFSProvider("lucid64"),
+				models.PreloadedRootFSScheme: auctiontypes.NewFixedSetRootFSProvider("linux"),
 				"docker":                     auctiontypes.ArbitraryRootFSProvider{},
 			}))
 
@@ -198,7 +198,7 @@ var _ = Describe("AuctionCellRep", func() {
 				lrpAuction = auctiontypes.LRPAuction{
 					DesiredLRP: models.DesiredLRP{
 						Domain:      "tests",
-						RootFS:      lucidRootFSURL,
+						RootFS:      linuxRootFSURL,
 						ProcessGuid: "process-guid",
 						DiskMB:      1024,
 						MemoryMB:    2048,
@@ -213,7 +213,7 @@ var _ = Describe("AuctionCellRep", func() {
 				task = models.Task{
 					Domain:     "tests",
 					TaskGuid:   "the-task-guid",
-					RootFS:     lucidRootFSURL,
+					RootFS:     linuxRootFSURL,
 					DiskMB:     1024,
 					MemoryMB:   2048,
 					Privileged: true,
@@ -322,7 +322,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Context("when all LRP Auctions can be successfully translated to container specs", func() {
 				BeforeEach(func() {
-					lrpAuctionOne.DesiredLRP.RootFS = lucidRootFSURL
+					lrpAuctionOne.DesiredLRP.RootFS = linuxRootFSURL
 					lrpAuctionTwo.DesiredLRP.RootFS = "unsupported-arbitrary://still-goes-through"
 				})
 
@@ -346,7 +346,7 @@ var _ = Describe("AuctionCellRep", func() {
 							MemoryMB:   lrpAuctionOne.DesiredLRP.MemoryMB,
 							DiskMB:     lrpAuctionOne.DesiredLRP.DiskMB,
 							CPUWeight:  lrpAuctionOne.DesiredLRP.CPUWeight,
-							RootFSPath: lucidPath,
+							RootFSPath: linuxPath,
 							Privileged: lrpAuctionOne.DesiredLRP.Privileged,
 							Ports:      []executor.PortMapping{{ContainerPort: 8080}},
 
@@ -451,7 +451,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Context("when an LRP Auction specifies a preloaded RootFSes for which it cannot determine a RootFS path", func() {
 				BeforeEach(func() {
-					lrpAuctionOne.DesiredLRP.RootFS = lucidRootFSURL
+					lrpAuctionOne.DesiredLRP.RootFS = linuxRootFSURL
 					lrpAuctionTwo.DesiredLRP.RootFS = "preloaded:not-on-cell"
 				})
 
@@ -475,7 +475,7 @@ var _ = Describe("AuctionCellRep", func() {
 							MemoryMB:   lrpAuctionOne.DesiredLRP.MemoryMB,
 							DiskMB:     lrpAuctionOne.DesiredLRP.DiskMB,
 							CPUWeight:  lrpAuctionOne.DesiredLRP.CPUWeight,
-							RootFSPath: lucidPath,
+							RootFSPath: linuxPath,
 							Privileged: lrpAuctionOne.DesiredLRP.Privileged,
 							Ports:      []executor.PortMapping{{ContainerPort: 8080}},
 
@@ -602,7 +602,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Context("when an LRP Auction specifies an invalid RootFS URL", func() {
 				BeforeEach(func() {
-					lrpAuctionOne.DesiredLRP.RootFS = lucidRootFSURL
+					lrpAuctionOne.DesiredLRP.RootFS = linuxRootFSURL
 					lrpAuctionTwo.DesiredLRP.RootFS = "%x"
 				})
 
@@ -626,7 +626,7 @@ var _ = Describe("AuctionCellRep", func() {
 							MemoryMB:   lrpAuctionOne.DesiredLRP.MemoryMB,
 							DiskMB:     lrpAuctionOne.DesiredLRP.DiskMB,
 							CPUWeight:  lrpAuctionOne.DesiredLRP.CPUWeight,
-							RootFSPath: lucidPath,
+							RootFSPath: linuxPath,
 							Privileged: lrpAuctionOne.DesiredLRP.Privileged,
 							Ports:      []executor.PortMapping{{ContainerPort: 8080}},
 
@@ -748,7 +748,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Context("when all Tasks can be successfully translated to container specs", func() {
 				BeforeEach(func() {
-					task1.RootFS = lucidRootFSURL
+					task1.RootFS = linuxRootFSURL
 					task2.RootFS = "unsupported-arbitrary://still-goes-through"
 				})
 
@@ -786,7 +786,7 @@ var _ = Describe("AuctionCellRep", func() {
 							MemoryMB:   task1.MemoryMB,
 							DiskMB:     task1.DiskMB,
 							CPUWeight:  task1.CPUWeight,
-							RootFSPath: lucidPath,
+							RootFSPath: linuxPath,
 							Privileged: task1.Privileged,
 							EgressRules: []models.SecurityGroupRule{
 								securityRule,
@@ -859,7 +859,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Context("when a Task specifies a preloaded RootFSes for which it cannot determine a RootFS path", func() {
 				BeforeEach(func() {
-					task1.RootFS = lucidRootFSURL
+					task1.RootFS = linuxRootFSURL
 					task2.RootFS = "preloaded:not-on-cell"
 				})
 
@@ -897,7 +897,7 @@ var _ = Describe("AuctionCellRep", func() {
 							MemoryMB:   task1.MemoryMB,
 							DiskMB:     task1.DiskMB,
 							CPUWeight:  task1.CPUWeight,
-							RootFSPath: lucidPath,
+							RootFSPath: linuxPath,
 							Privileged: task1.Privileged,
 							EgressRules: []models.SecurityGroupRule{
 								securityRule,
@@ -992,7 +992,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Context("when a Task specifies an invalid RootFS URL", func() {
 				BeforeEach(func() {
-					task1.RootFS = lucidRootFSURL
+					task1.RootFS = linuxRootFSURL
 					task2.RootFS = "%x"
 				})
 
@@ -1030,7 +1030,7 @@ var _ = Describe("AuctionCellRep", func() {
 							MemoryMB:   task1.MemoryMB,
 							DiskMB:     task1.DiskMB,
 							CPUWeight:  task1.CPUWeight,
-							RootFSPath: lucidPath,
+							RootFSPath: linuxPath,
 							Privileged: task1.Privileged,
 							EgressRules: []models.SecurityGroupRule{
 								securityRule,
