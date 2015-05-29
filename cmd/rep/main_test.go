@@ -361,7 +361,7 @@ var _ = Describe("The Rep", func() {
 				err := bbs.DesireLRP(logger, desiredLRP)
 				Expect(err).NotTo(HaveOccurred())
 
-				actualLRPGroup, err := bbs.ActualLRPGroupByProcessGuidAndIndex(desiredLRP.ProcessGuid, index)
+				actualLRPGroup, err := bbs.ActualLRPGroupByProcessGuidAndIndex(logger, desiredLRP.ProcessGuid, index)
 				Expect(err).NotTo(HaveOccurred())
 
 				instanceKey := models.NewActualLRPInstanceKey("some-instance-guid", cellID)
@@ -370,7 +370,7 @@ var _ = Describe("The Rep", func() {
 			})
 
 			It("eventually reaps actual LRPs with no corresponding container", func() {
-				Eventually(bbs.ActualLRPs, 5*pollingInterval).Should(BeEmpty())
+				Eventually(func() ([]models.ActualLRP, error) { return bbs.ActualLRPs(logger) }, 5*pollingInterval).Should(BeEmpty())
 			})
 		})
 
@@ -415,13 +415,13 @@ var _ = Describe("The Rep", func() {
 				err := bbs.StartActualLRP(logger, lrpKey, instanceKey, netInfo)
 				Expect(err).NotTo(HaveOccurred())
 
-				lrpGroup, err := bbs.ActualLRPGroupByProcessGuidAndIndex(lrpKey.ProcessGuid, lrpKey.Index)
+				lrpGroup, err := bbs.ActualLRPGroupByProcessGuidAndIndex(logger, lrpKey.ProcessGuid, lrpKey.Index)
 				Expect(err).NotTo(HaveOccurred())
 				runningLRP = *lrpGroup.Instance
 			})
 
 			It("should destroy the container", func() {
-				Eventually(bbs.ActualLRPs).Should(HaveLen(1))
+				Eventually(func() ([]models.ActualLRP, error) { return bbs.ActualLRPs(logger) }).Should(HaveLen(1))
 				bbs.RetireActualLRPs(logger, []models.ActualLRPKey{runningLRP.ActualLRPKey})
 
 				findDestroyRequest := func() bool {

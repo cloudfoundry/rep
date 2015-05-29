@@ -78,7 +78,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	}()
 
 	go func() {
-		groups, err := g.bbs.ActualLRPGroupsByCellID(g.cellID)
+		groups, err := g.bbs.ActualLRPGroupsByCellID(logger, g.cellID)
 		if err != nil {
 			logger.Error("failed-to-retrieve-lrp-groups", err)
 			err = fmt.Errorf("failed to retrieve lrps: %s", err.Error())
