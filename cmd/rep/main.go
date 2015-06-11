@@ -123,6 +123,24 @@ var evacuationPollingInterval = flag.Duration(
 	"the interval on which to scan the executor during evacuation",
 )
 
+var certFile = flag.String(
+	"certFile",
+	"",
+	"Location of the client certificate for mutual auth",
+)
+
+var keyFile = flag.String(
+	"keyFile",
+	"",
+	"Location of the client key for mutual auth",
+)
+
+var caFile = flag.String(
+	"caFile",
+	"",
+	"Location of the CA certificate for mutual auth",
+)
+
 type stackPathMap rep.StackPathMap
 
 func (s *stackPathMap) String() string {
@@ -276,10 +294,16 @@ func initializeRepBBS(logger lager.Logger) bbs.RepBBS {
 		logger.Fatal("failed-to-construct-etcd-adapter-workpool", err, lager.Data{"num-workers": 100}) // should never happen
 	}
 
-	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
+	etcdAdapter, err := etcdstoreadapter.NewTLSClient(
 		strings.Split(*etcdCluster, ","),
+		*certFile,
+		*keyFile,
+		*caFile,
 		workPool,
 	)
+	if err != nil {
+		logger.Fatal("failed-to-construct-etcd-tls-client", err)
+	}
 
 	client, err := consuladapter.NewClient(*consulCluster)
 	if err != nil {

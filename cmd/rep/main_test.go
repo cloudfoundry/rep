@@ -16,6 +16,7 @@ import (
 	"github.com/cloudfoundry-incubator/rep/cmd/rep/testrunner"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
+	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager/lagertest"
 
@@ -54,7 +55,12 @@ var _ = Describe("The Rep", func() {
 		fakeGarden.RouteToHandler("GET", "/capacity", ghttp.RespondWithJSONEncoded(http.StatusOK,
 			garden.Capacity{MemoryInBytes: 1024 * 1024 * 1024, DiskInBytes: 2048 * 1024 * 1024, MaxContainers: 4}))
 		fakeGarden.RouteToHandler("GET", "/containers/bulk_info", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
-		etcdAdapter = etcdRunner.Adapter()
+		etcdAdapter = etcdRunner.Adapter(&etcdstorerunner.SSLConfig{
+			CertFile: assetsPath + "client.crt",
+			KeyFile:  assetsPath + "client.key",
+			CAFile:   assetsPath + "ca.crt",
+		})
+
 		logger = lagertest.NewTestLogger("test")
 		receptorTaskHandlerURL := "http://receptor.bogus.com"
 		bbs = Bbs.NewBBS(etcdAdapter, consulSession, receptorTaskHandlerURL, clock.NewClock(), logger)
@@ -68,17 +74,22 @@ var _ = Describe("The Rep", func() {
 
 		runner = testrunner.New(
 			representativePath,
-			cellID,
-			fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
-			consulRunner.ConsulCluster(),
-			receptorTaskHandlerURL,
-			"info",
-			[]string{rootFSArg},
-			[]string{"docker"},
-			serverPort,
-			fakeGarden.HTTPTestServer.Listener.Addr().String(),
-			pollingInterval,
-			evacuationTimeout,
+			testrunner.Config{
+				PreloadedRootFSes:      []string{rootFSArg},
+				RootFSProviders:        []string{"docker"},
+				CellID:                 cellID,
+				EtcdCluster:            fmt.Sprintf("https://127.0.0.1:%d", etcdPort),
+				ServerPort:             serverPort,
+				GardenAddr:             fakeGarden.HTTPTestServer.Listener.Addr().String(),
+				LogLevel:               "info",
+				ConsulCluster:          consulRunner.ConsulCluster(),
+				ReceptorTaskHandlerURL: receptorTaskHandlerURL,
+				PollingInterval:        pollingInterval,
+				EvacuationTimeout:      evacuationTimeout,
+				ClientCert:             assetsPath + "client.crt",
+				ClientKey:              assetsPath + "client.key",
+				CACert:                 assetsPath + "ca.crt",
+			},
 		)
 	})
 
