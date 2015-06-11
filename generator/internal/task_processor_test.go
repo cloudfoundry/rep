@@ -53,7 +53,7 @@ var _ = Describe("Task <-> Container table", func() {
 	itCompletesTheTaskWithFailure := func(reason string) func(*lagertest.TestLogger) {
 		return func(logger *lagertest.TestLogger) {
 			It("completes the task with failure", func() {
-				task, err := BBS.TaskByGuid(taskGuid)
+				task, err := BBS.TaskByGuid(logger, taskGuid)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(task.State).To(Equal(models.TaskStateCompleted))
@@ -73,7 +73,7 @@ var _ = Describe("Task <-> Container table", func() {
 				containerDelegate.FetchContainerResultFileReturns("some-result", nil)
 
 				containerDelegate.DeleteContainerStub = func(logger lager.Logger, guid string) bool {
-					task, err := BBS.TaskByGuid(taskGuid)
+					task, err := BBS.TaskByGuid(logger, taskGuid)
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(task.State).To(Equal(models.TaskStateCompleted))
@@ -83,7 +83,7 @@ var _ = Describe("Task <-> Container table", func() {
 			})
 
 			It("completes the task with the result", func() {
-				task, err := BBS.TaskByGuid(taskGuid)
+				task, err := BBS.TaskByGuid(logger, taskGuid)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(task.Failed).To(BeFalse())
@@ -127,7 +127,7 @@ var _ = Describe("Task <-> Container table", func() {
 
 	itSetsTheTaskToRunning := func(logger *lagertest.TestLogger) {
 		It("transitions the task to the running state", func() {
-			task, err := BBS.TaskByGuid(taskGuid)
+			task, err := BBS.TaskByGuid(logger, taskGuid)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(task.State).To(Equal(models.TaskStateRunning))
