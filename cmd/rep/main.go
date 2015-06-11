@@ -45,12 +45,6 @@ import (
 	"github.com/tedsuo/rata"
 )
 
-var etcdCluster = flag.String(
-	"etcdCluster",
-	"http://127.0.0.1:4001",
-	"comma-separated list of etcd URLs (scheme://ip:port)",
-)
-
 var sessionName = flag.String(
 	"sessionName",
 	"rep",
@@ -170,6 +164,7 @@ const (
 func main() {
 	cf_debug_server.AddFlags(flag.CommandLine)
 	cf_lager.AddFlags(flag.CommandLine)
+	etcdFlags := etcdstoreadapter.AddFlags(flag.CommandLine)
 
 	stackMap := stackPathMap{}
 	supportedProviders := providers{}
@@ -186,6 +181,11 @@ func main() {
 	}
 	initializeDropsonde(logger)
 
+	etcdOptions, err := etcdFlags.Validate()
+	if err != nil {
+		logger.Fatal("etcd-validation-failed", err)
+	}
+
 	if *cellID == "" {
 		log.Fatalf("-cellID must be specified")
 	}
@@ -196,7 +196,7 @@ func main() {
 	}
 	defer executorClient.Cleanup()
 
-	repBBS := initializeRepBBS(logger)
+	repBBS := initializeRepBBS(etcdOptions, logger)
 
 	clock := clock.NewClock()
 
@@ -270,16 +270,17 @@ func initializeCellPresence(address string, repBBS bbs.RepBBS, executorClient ex
 	return maintain.New(config, executorClient, repBBS, logger, clock.NewClock())
 }
 
-func initializeRepBBS(logger lager.Logger) bbs.RepBBS {
+func initializeRepBBS(etcdOptions *etcdstoreadapter.ETCDOptions, logger lager.Logger) bbs.RepBBS {
 	workPool, err := workpool.NewWorkPool(100)
 	if err != nil {
 		logger.Fatal("failed-to-construct-etcd-adapter-workpool", err, lager.Data{"num-workers": 100}) // should never happen
 	}
 
-	etcdAdapter := etcdstoreadapter.NewETCDStoreAdapter(
-		strings.Split(*etcdCluster, ","),
-		workPool,
-	)
+	etcdAdapter, err := etcdstoreadapter.New(etcdOptions, workPool)
+
+	if err != nil {
+		logger.Fatal("failed-to-construct-etcd-tls-client", err)
+	}
 
 	client, err := consuladapter.NewClient(*consulCluster)
 	if err != nil {

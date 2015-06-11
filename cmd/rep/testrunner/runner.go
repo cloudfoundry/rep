@@ -19,40 +19,27 @@ type Runner struct {
 }
 
 type Config struct {
-	preloadedRootFSes      []string
-	rootFSProviders        []string
-	cellID                 string
-	etcdCluster            string
-	serverPort             int
-	gardenAddr             string
-	logLevel               string
-	consulCluster          string
-	receptorTaskHandlerURL string
-	pollingInterval        time.Duration
-	evacuationTimeout      time.Duration
+	PreloadedRootFSes      []string
+	RootFSProviders        []string
+	CellID                 string
+	EtcdCluster            string
+	ServerPort             int
+	GardenAddr             string
+	LogLevel               string
+	ConsulCluster          string
+	ReceptorTaskHandlerURL string
+	PollingInterval        time.Duration
+	EvacuationTimeout      time.Duration
+	ClientCert             string
+	ClientKey              string
+	CACert                 string
 }
 
-func New(
-	binPath, cellID, etcdCluster, consulCluster, receptorTaskHandlerURL, logLevel string,
-	preloadedRootFSes, rootFSProviders []string,
-	serverPort int, gardenAddr string,
-	pollingInterval, evacuationTimeout time.Duration) *Runner {
+func New(binPath string, config Config) *Runner {
 	return &Runner{
 		binPath:    binPath,
 		StartCheck: "rep.started",
-		config: Config{
-			cellID:                 cellID,
-			preloadedRootFSes:      preloadedRootFSes,
-			rootFSProviders:        rootFSProviders,
-			serverPort:             serverPort,
-			etcdCluster:            etcdCluster,
-			consulCluster:          consulCluster,
-			receptorTaskHandlerURL: receptorTaskHandlerURL,
-			logLevel:               logLevel,
-			pollingInterval:        pollingInterval,
-			evacuationTimeout:      evacuationTimeout,
-			gardenAddr:             gardenAddr,
-		},
+		config:     config,
 	}
 }
 
@@ -62,23 +49,26 @@ func (r *Runner) Start() {
 	}
 
 	args := []string{
-		"-cellID", r.config.cellID,
-		"-listenAddr", fmt.Sprintf("0.0.0.0:%d", r.config.serverPort),
-		"-etcdCluster", r.config.etcdCluster,
-		"-logLevel", r.config.logLevel,
-		"-pollingInterval", r.config.pollingInterval.String(),
-		"-evacuationTimeout", r.config.evacuationTimeout.String(),
+		"-cellID", r.config.CellID,
+		"-listenAddr", fmt.Sprintf("0.0.0.0:%d", r.config.ServerPort),
+		"-etcdCluster", r.config.EtcdCluster,
+		"-logLevel", r.config.LogLevel,
+		"-pollingInterval", r.config.PollingInterval.String(),
+		"-evacuationTimeout", r.config.EvacuationTimeout.String(),
 		"-lockRetryInterval", "1s",
-		"-consulCluster", r.config.consulCluster,
-		"-receptorTaskHandlerURL", r.config.receptorTaskHandlerURL,
+		"-consulCluster", r.config.ConsulCluster,
+		"-receptorTaskHandlerURL", r.config.ReceptorTaskHandlerURL,
 		"-containerMaxCpuShares", "1024",
 		"-gardenNetwork", "tcp",
-		"-gardenAddr", r.config.gardenAddr,
+		"-gardenAddr", r.config.GardenAddr,
+		"-certFile", r.config.ClientCert,
+		"-keyFile", r.config.ClientKey,
+		"-caFile", r.config.CACert,
 	}
-	for _, rootfs := range r.config.preloadedRootFSes {
+	for _, rootfs := range r.config.PreloadedRootFSes {
 		args = append(args, "-preloadedRootFS", rootfs)
 	}
-	for _, provider := range r.config.rootFSProviders {
+	for _, provider := range r.config.RootFSProviders {
 		args = append(args, "-rootFSProvider", provider)
 	}
 

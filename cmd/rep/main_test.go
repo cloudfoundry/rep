@@ -54,7 +54,8 @@ var _ = Describe("The Rep", func() {
 		fakeGarden.RouteToHandler("GET", "/capacity", ghttp.RespondWithJSONEncoded(http.StatusOK,
 			garden.Capacity{MemoryInBytes: 1024 * 1024 * 1024, DiskInBytes: 2048 * 1024 * 1024, MaxContainers: 4}))
 		fakeGarden.RouteToHandler("GET", "/containers/bulk_info", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
-		etcdAdapter = etcdRunner.Adapter()
+		etcdAdapter = etcdRunner.Adapter(nil)
+
 		logger = lagertest.NewTestLogger("test")
 		receptorTaskHandlerURL := "http://receptor.bogus.com"
 		bbs = Bbs.NewBBS(etcdAdapter, consulSession, receptorTaskHandlerURL, clock.NewClock(), logger)
@@ -68,17 +69,19 @@ var _ = Describe("The Rep", func() {
 
 		runner = testrunner.New(
 			representativePath,
-			cellID,
-			fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
-			consulRunner.ConsulCluster(),
-			receptorTaskHandlerURL,
-			"info",
-			[]string{rootFSArg},
-			[]string{"docker"},
-			serverPort,
-			fakeGarden.HTTPTestServer.Listener.Addr().String(),
-			pollingInterval,
-			evacuationTimeout,
+			testrunner.Config{
+				PreloadedRootFSes:      []string{rootFSArg},
+				RootFSProviders:        []string{"docker"},
+				CellID:                 cellID,
+				EtcdCluster:            fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
+				ServerPort:             serverPort,
+				GardenAddr:             fakeGarden.HTTPTestServer.Listener.Addr().String(),
+				LogLevel:               "info",
+				ConsulCluster:          consulRunner.ConsulCluster(),
+				ReceptorTaskHandlerURL: receptorTaskHandlerURL,
+				PollingInterval:        pollingInterval,
+				EvacuationTimeout:      evacuationTimeout,
+			},
 		)
 	})
 
