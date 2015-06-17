@@ -2,6 +2,7 @@ package internal_test
 
 import (
 	"github.com/cloudfoundry-incubator/consuladapter"
+	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
@@ -15,7 +16,7 @@ import (
 var BBS *bbs.BBS
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
 var etcdClient storeadapter.StoreAdapter
-var consulRunner *consuladapter.ClusterRunner
+var consulRunner *consulrunner.ClusterRunner
 var consulSession *consuladapter.Session
 
 func TestInternal(t *testing.T) {
@@ -27,8 +28,8 @@ var _ = BeforeSuite(func() {
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(5001+config.GinkgoConfig.ParallelNode, 1, nil)
 	etcdClient = etcdRunner.Adapter(nil)
 
-	consulRunner = consuladapter.NewClusterRunner(
-		9001+config.GinkgoConfig.ParallelNode*consuladapter.PortOffsetLength,
+	consulRunner = consulrunner.NewClusterRunner(
+		9001+config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength,
 		1,
 		"http",
 	)
