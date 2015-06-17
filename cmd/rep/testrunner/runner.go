@@ -30,9 +30,9 @@ type Config struct {
 	ReceptorTaskHandlerURL string
 	PollingInterval        time.Duration
 	EvacuationTimeout      time.Duration
-	ClientCert             string
-	ClientKey              string
-	CACert                 string
+	EtcdClientCert         string
+	EtcdClientKey          string
+	EtcdCACert             string
 }
 
 func New(binPath string, config Config) *Runner {
@@ -61,9 +61,9 @@ func (r *Runner) Start() {
 		"-containerMaxCpuShares", "1024",
 		"-gardenNetwork", "tcp",
 		"-gardenAddr", r.config.GardenAddr,
-		"-certFile", r.config.ClientCert,
-		"-keyFile", r.config.ClientKey,
-		"-caFile", r.config.CACert,
+		"-etcdCertFile", r.config.EtcdClientCert,
+		"-etcdKeyFile", r.config.EtcdClientKey,
+		"-etcdCaFile", r.config.EtcdCACert,
 	}
 	for _, rootfs := range r.config.PreloadedRootFSes {
 		args = append(args, "-preloadedRootFS", rootfs)
