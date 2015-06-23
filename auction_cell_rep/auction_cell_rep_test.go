@@ -714,6 +714,7 @@ var _ = Describe("AuctionCellRep", func() {
 					LogSource:   "log-source",
 					MetricsGuid: "metrics-guid",
 					Action: &models.RunAction{
+						User: "me",
 						Path: "date",
 					},
 					EnvironmentVariables: []models.EnvironmentVariable{
@@ -734,6 +735,7 @@ var _ = Describe("AuctionCellRep", func() {
 					LogSource:   "log-source",
 					MetricsGuid: "metrics-guid",
 					Action: &models.RunAction{
+						User: "me",
 						Path: "date",
 					},
 					EnvironmentVariables: []models.EnvironmentVariable{
@@ -768,6 +770,7 @@ var _ = Describe("AuctionCellRep", func() {
 							},
 
 							Action: &models.RunAction{
+								User: "me",
 								Path: "date",
 							},
 							Env: []executor.EnvironmentVariable{
@@ -802,6 +805,7 @@ var _ = Describe("AuctionCellRep", func() {
 							},
 
 							Action: &models.RunAction{
+								User: "me",
 								Path: "date",
 							},
 							Env: []executor.EnvironmentVariable{
@@ -879,6 +883,7 @@ var _ = Describe("AuctionCellRep", func() {
 							},
 
 							Action: &models.RunAction{
+								User: "me",
 								Path: "date",
 							},
 							Env: []executor.EnvironmentVariable{
@@ -961,6 +966,7 @@ var _ = Describe("AuctionCellRep", func() {
 							},
 
 							Action: &models.RunAction{
+								User: "me",
 								Path: "date",
 							},
 							Env: []executor.EnvironmentVariable{
@@ -1012,6 +1018,7 @@ var _ = Describe("AuctionCellRep", func() {
 							},
 
 							Action: &models.RunAction{
+								User: "me",
 								Path: "date",
 							},
 							Env: []executor.EnvironmentVariable{

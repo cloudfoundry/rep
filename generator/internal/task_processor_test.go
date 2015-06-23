@@ -503,7 +503,7 @@ func NewTask(cellID string, taskState models.TaskState) *models.Task {
 		ResultFile: "some-result-filename",
 		Domain:     "domain",
 		RootFS:     "some:rootfs",
-		Action:     &models.RunAction{Path: "ls"},
+		Action:     &models.RunAction{User: "me", Path: "ls"},
 	}
 }
 

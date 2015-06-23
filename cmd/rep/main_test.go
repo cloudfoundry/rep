@@ -288,6 +288,7 @@ var _ = Describe("The Rep", func() {
 						RootFS:   "the:rootfs",
 						Domain:   "the-domain",
 						Action: &models.RunAction{
+							User: "me",
 							Path: "date",
 						},
 					}
@@ -322,6 +323,7 @@ var _ = Describe("The Rep", func() {
 					Domain:   "the-domain",
 					RootFS:   "some:rootfs",
 					Action: &models.RunAction{
+						User: "me",
 						Path: "the-path",
 						Args: []string{},
 					},
@@ -355,6 +357,7 @@ var _ = Describe("The Rep", func() {
 					Domain:      "some-domain",
 					Instances:   1,
 					Action: &models.RunAction{
+						User: "me",
 						Path: "the-path",
 						Args: []string{},
 					},
@@ -465,6 +468,7 @@ var _ = Describe("The Rep", func() {
 					Domain:   "the-domain",
 					RootFS:   "some:rootfs",
 					Action: &models.RunAction{
+						User: "me",
 						Path: "date",
 					},
 				}
