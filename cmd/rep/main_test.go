@@ -166,6 +166,7 @@ var _ = Describe("The Rep", func() {
 
 			It("should maintain presence", func() {
 				Expect(cellPresence.CellID).To(Equal(cellID))
+				Expect(cellPresence.RootFSProviders).To(ConsistOf("docker"))
 			})
 
 			It("should have no session health checks", func() {

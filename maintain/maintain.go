@@ -22,10 +22,11 @@ type Maintainer struct {
 }
 
 type Config struct {
-	CellID        string
-	RepAddress    string
-	Zone          string
-	RetryInterval time.Duration
+	CellID          string
+	RepAddress      string
+	Zone            string
+	RetryInterval   time.Duration
+	RootFSProviders []string
 }
 
 func New(
@@ -99,7 +100,7 @@ func (m *Maintainer) createHeartbeater() (ifrit.Runner, error) {
 	}
 
 	cellCapacity := models.NewCellCapacity(resources.MemoryMB, resources.DiskMB, resources.Containers)
-	cellPresence := models.NewCellPresence(m.CellID, m.RepAddress, m.Zone, cellCapacity)
+	cellPresence := models.NewCellPresence(m.CellID, m.RepAddress, m.Zone, cellCapacity, m.RootFSProviders...)
 	return m.bbs.NewCellPresence(cellPresence, m.RetryInterval), nil
 }
 

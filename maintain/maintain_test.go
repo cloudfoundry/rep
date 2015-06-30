@@ -74,10 +74,11 @@ var _ = Describe("Maintain Presence", func() {
 		fakeBBS.NewCellPresenceReturns(fakeHeartbeater)
 
 		config = maintain.Config{
-			CellID:        "cell-id",
-			RepAddress:    "1.2.3.4",
-			Zone:          "az1",
-			RetryInterval: 1 * time.Second,
+			CellID:          "cell-id",
+			RepAddress:      "1.2.3.4",
+			Zone:            "az1",
+			RetryInterval:   1 * time.Second,
+			RootFSProviders: []string{"provider-1", "provider-2"},
 		}
 		maintainer = maintain.New(config, fakeClient, fakeBBS, logger, clock)
 	})

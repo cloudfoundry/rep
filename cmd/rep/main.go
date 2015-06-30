@@ -224,7 +224,7 @@ func main() {
 
 	members := grouper.Members{
 		{"http_server", httpServer},
-		{"presence", initializeCellPresence(address, repBBS, executorClient, logger)},
+		{"presence", initializeCellPresence(address, repBBS, executorClient, logger, supportedProviders)},
 		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, *evacuationPollingInterval, evacuationNotifier, clock, opGenerator, queue)},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 		{"evacuator", evacuator},
@@ -260,12 +260,13 @@ func initializeDropsonde(logger lager.Logger) {
 	}
 }
 
-func initializeCellPresence(address string, repBBS bbs.RepBBS, executorClient executor.Client, logger lager.Logger) ifrit.Runner {
+func initializeCellPresence(address string, repBBS bbs.RepBBS, executorClient executor.Client, logger lager.Logger, rootFSProviders []string) ifrit.Runner {
 	config := maintain.Config{
-		CellID:        *cellID,
-		RepAddress:    address,
-		Zone:          *zone,
-		RetryInterval: *lockRetryInterval,
+		CellID:          *cellID,
+		RepAddress:      address,
+		Zone:            *zone,
+		RetryInterval:   *lockRetryInterval,
+		RootFSProviders: rootFSProviders,
 	}
 	return maintain.New(config, executorClient, repBBS, logger, clock.NewClock())
 }
