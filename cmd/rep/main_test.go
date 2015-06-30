@@ -414,6 +414,8 @@ var _ = Describe("The Rep", func() {
 
 				fakeGarden.RouteToHandler("GET", "/containers/my-handle/info", ghttp.RespondWithJSONEncoded(http.StatusOK, containerInfo))
 
+				Eventually(bbs.Cells).Should(HaveLen(1))
+
 				lrpKey := models.NewActualLRPKey(processGuid, 1, "domain")
 				instanceKey := models.NewActualLRPInstanceKey(instanceGuid, cellID)
 				netInfo := models.NewActualLRPNetInfo("bogus-ip", []models.PortMapping{})
