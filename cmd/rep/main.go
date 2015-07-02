@@ -222,9 +222,14 @@ func main() {
 	httpServer, address := initializeServer(repBBS, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders)
 	opGenerator := generator.New(*cellID, repBBS, executorClient, lrpProcessor, taskProcessor, containerDelegate)
 
+	preloadedRootFSes := []string{}
+	for k := range stackMap {
+		preloadedRootFSes = append(preloadedRootFSes, k)
+	}
+
 	members := grouper.Members{
 		{"http_server", httpServer},
-		{"presence", initializeCellPresence(address, repBBS, executorClient, logger, supportedProviders)},
+		{"presence", initializeCellPresence(address, repBBS, executorClient, logger, supportedProviders, preloadedRootFSes)},
 		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, *evacuationPollingInterval, evacuationNotifier, clock, opGenerator, queue)},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 		{"evacuator", evacuator},
@@ -260,13 +265,14 @@ func initializeDropsonde(logger lager.Logger) {
 	}
 }
 
-func initializeCellPresence(address string, repBBS bbs.RepBBS, executorClient executor.Client, logger lager.Logger, rootFSProviders []string) ifrit.Runner {
+func initializeCellPresence(address string, repBBS bbs.RepBBS, executorClient executor.Client, logger lager.Logger, rootFSProviders, preloadedRootFSes []string) ifrit.Runner {
 	config := maintain.Config{
-		CellID:          *cellID,
-		RepAddress:      address,
-		Zone:            *zone,
-		RetryInterval:   *lockRetryInterval,
-		RootFSProviders: rootFSProviders,
+		CellID:            *cellID,
+		RepAddress:        address,
+		Zone:              *zone,
+		RetryInterval:     *lockRetryInterval,
+		RootFSProviders:   rootFSProviders,
+		PreloadedRootFSes: preloadedRootFSes,
 	}
 	return maintain.New(config, executorClient, repBBS, logger, clock.NewClock())
 }
