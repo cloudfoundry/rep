@@ -9,12 +9,13 @@ import (
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/auction/communication/http/auction_http_client"
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/executor/depot/gardenstore"
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/cmd/rep/testrunner"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -44,7 +45,14 @@ var _ = Describe("The Rep", func() {
 		flushEvents chan struct{}
 	)
 
+	var getActualLRPGroups = func() []*models.ActualLRPGroup {
+		actualLRPGroups, err := bbsClient.ActualLRPGroups(models.ActualLRPFilter{})
+		Expect(err).NotTo(HaveOccurred())
+		return actualLRPGroups.GetActualLrpGroups()
+	}
+
 	BeforeEach(func() {
+		Eventually(getActualLRPGroups, 5*pollingInterval).Should(BeEmpty())
 		flushEvents = make(chan struct{})
 		fakeGarden = ghttp.NewUnstartedServer()
 		// these tests only look for the start of a sequence of requests
@@ -155,7 +163,7 @@ var _ = Describe("The Rep", func() {
 		})
 
 		Describe("maintaining presence", func() {
-			var cellPresence models.CellPresence
+			var cellPresence oldmodels.CellPresence
 
 			JustBeforeEach(func() {
 				Eventually(bbs.Cells).Should(HaveLen(1))
@@ -265,7 +273,7 @@ var _ = Describe("The Rep", func() {
 			})
 
 			Describe("running tasks", func() {
-				var task models.Task
+				var task oldmodels.Task
 				var containersCalled chan struct{}
 
 				JustBeforeEach(func() {
@@ -282,13 +290,13 @@ var _ = Describe("The Rep", func() {
 					fakeGarden.RouteToHandler("PUT", "/containers/handle-guid/limits/cpu", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.CPULimits{}))
 					fakeGarden.RouteToHandler("GET", "/containers/handle-guid/info", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.ContainerInfo{}))
 
-					task = models.Task{
+					task = oldmodels.Task{
 						TaskGuid: "the-task-guid",
 						MemoryMB: 2,
 						DiskMB:   2,
 						RootFS:   "the:rootfs",
 						Domain:   "the-domain",
-						Action: &models.RunAction{
+						Action: &oldmodels.RunAction{
 							User: "me",
 							Path: "date",
 						},
@@ -303,7 +311,7 @@ var _ = Describe("The Rep", func() {
 					Expect(bbs.RunningTasks(logger)).To(BeEmpty())
 
 					works := auctiontypes.Work{
-						Tasks: []models.Task{task},
+						Tasks: []oldmodels.Task{task},
 					}
 
 					failedWorks, err := client.Perform(works)
@@ -316,14 +324,14 @@ var _ = Describe("The Rep", func() {
 		})
 
 		Describe("polling the BBS for tasks to reap", func() {
-			var task models.Task
+			var task oldmodels.Task
 
 			JustBeforeEach(func() {
-				task = models.Task{
+				task = oldmodels.Task{
 					TaskGuid: "a-new-task-guid",
 					Domain:   "the-domain",
 					RootFS:   "some:rootfs",
-					Action: &models.RunAction{
+					Action: &oldmodels.RunAction{
 						User: "me",
 						Path: "the-path",
 						Args: []string{},
@@ -338,7 +346,7 @@ var _ = Describe("The Rep", func() {
 			})
 
 			It("eventually marks tasks with no corresponding container as failed", func() {
-				Eventually(func() ([]models.Task, error) {
+				Eventually(func() ([]oldmodels.Task, error) {
 					return bbs.CompletedTasks(logger)
 				}, 5*pollingInterval).Should(HaveLen(1))
 
@@ -352,12 +360,12 @@ var _ = Describe("The Rep", func() {
 
 		Describe("polling the BBS for actual LRPs to reap", func() {
 			JustBeforeEach(func() {
-				desiredLRP := models.DesiredLRP{
+				desiredLRP := oldmodels.DesiredLRP{
 					ProcessGuid: "process-guid",
 					RootFS:      "some:rootfs",
 					Domain:      "some-domain",
 					Instances:   1,
-					Action: &models.RunAction{
+					Action: &oldmodels.RunAction{
 						User: "me",
 						Path: "the-path",
 						Args: []string{},
@@ -371,20 +379,20 @@ var _ = Describe("The Rep", func() {
 				actualLRPGroup, err := bbs.ActualLRPGroupByProcessGuidAndIndex(logger, desiredLRP.ProcessGuid, index)
 				Expect(err).NotTo(HaveOccurred())
 
-				instanceKey := models.NewActualLRPInstanceKey("some-instance-guid", cellID)
+				instanceKey := oldmodels.NewActualLRPInstanceKey("some-instance-guid", cellID)
 				err = bbs.ClaimActualLRP(logger, actualLRPGroup.Instance.ActualLRPKey, instanceKey)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("eventually reaps actual LRPs with no corresponding container", func() {
-				Eventually(func() ([]models.ActualLRP, error) { return bbs.ActualLRPs(logger) }, 5*pollingInterval).Should(BeEmpty())
+				Eventually(getActualLRPGroups, 5*pollingInterval).Should(BeEmpty())
 			})
 		})
 
 		Describe("when a StopLRPInstance request comes in", func() {
 			const processGuid = "process-guid"
 			const instanceGuid = "some-instance-guid"
-			var runningLRP models.ActualLRP
+			var runningLRP oldmodels.ActualLRP
 			var containerGuid = rep.LRPContainerGuid(processGuid, instanceGuid)
 			var expectedDestroyRoute = "/containers/" + containerGuid
 
@@ -417,9 +425,9 @@ var _ = Describe("The Rep", func() {
 
 				Eventually(bbs.Cells).Should(HaveLen(1))
 
-				lrpKey := models.NewActualLRPKey(processGuid, 1, "domain")
-				instanceKey := models.NewActualLRPInstanceKey(instanceGuid, cellID)
-				netInfo := models.NewActualLRPNetInfo("bogus-ip", []models.PortMapping{})
+				lrpKey := oldmodels.NewActualLRPKey(processGuid, 1, "domain")
+				instanceKey := oldmodels.NewActualLRPInstanceKey(instanceGuid, cellID)
+				netInfo := oldmodels.NewActualLRPNetInfo("bogus-ip", []oldmodels.PortMapping{})
 
 				err := bbs.StartActualLRP(logger, lrpKey, instanceKey, netInfo)
 				Expect(err).NotTo(HaveOccurred())
@@ -430,8 +438,8 @@ var _ = Describe("The Rep", func() {
 			})
 
 			It("should destroy the container", func() {
-				Eventually(func() ([]models.ActualLRP, error) { return bbs.ActualLRPs(logger) }).Should(HaveLen(1))
-				bbs.RetireActualLRPs(logger, []models.ActualLRPKey{runningLRP.ActualLRPKey})
+				Eventually(getActualLRPGroups).Should(HaveLen(1))
+				bbs.RetireActualLRPs(logger, []oldmodels.ActualLRPKey{runningLRP.ActualLRPKey})
 
 				findDestroyRequest := func() bool {
 					for _, req := range fakeGarden.ReceivedRequests() {
@@ -466,11 +474,11 @@ var _ = Describe("The Rep", func() {
 					),
 				)
 
-				task := models.Task{
+				task := oldmodels.Task{
 					TaskGuid: taskGuid,
 					Domain:   "the-domain",
 					RootFS:   "some:rootfs",
-					Action: &models.RunAction{
+					Action: &oldmodels.RunAction{
 						User: "me",
 						Path: "date",
 					},
@@ -490,7 +498,7 @@ var _ = Describe("The Rep", func() {
 
 				Eventually(deletedContainer).Should(BeClosed())
 
-				Consistently(func() ([]models.Task, error) {
+				Consistently(func() ([]oldmodels.Task, error) {
 					return bbs.Tasks(logger)
 				}).Should(HaveLen(1))
 			})
@@ -505,9 +513,9 @@ var _ = Describe("The Rep", func() {
 					instanceGuid string
 					address      string
 
-					lrpKey          models.ActualLRPKey
-					lrpContainerKey models.ActualLRPInstanceKey
-					lrpNetInfo      models.ActualLRPNetInfo
+					lrpKey          oldmodels.ActualLRPKey
+					lrpContainerKey oldmodels.ActualLRPInstanceKey
+					lrpNetInfo      oldmodels.ActualLRPNetInfo
 				)
 
 				JustBeforeEach(func() {
@@ -545,9 +553,9 @@ var _ = Describe("The Rep", func() {
 
 					fakeGarden.RouteToHandler("GET", "/containers/"+containerGuid+"/info", ghttp.RespondWithJSONEncoded(http.StatusOK, containerInfo))
 
-					lrpKey = models.NewActualLRPKey(processGuid, index, domain)
-					lrpContainerKey = models.NewActualLRPInstanceKey(instanceGuid, cellID)
-					lrpNetInfo = models.NewActualLRPNetInfo(address, []models.PortMapping{{ContainerPort: 1470, HostPort: 2589}})
+					lrpKey = oldmodels.NewActualLRPKey(processGuid, index, domain)
+					lrpContainerKey = oldmodels.NewActualLRPInstanceKey(instanceGuid, cellID)
+					lrpNetInfo = oldmodels.NewActualLRPNetInfo(address, []oldmodels.PortMapping{{ContainerPort: 1470, HostPort: 2589}})
 
 					err := bbs.StartActualLRP(logger, lrpKey, lrpContainerKey, lrpNetInfo)
 					Expect(err).NotTo(HaveOccurred())
@@ -559,9 +567,9 @@ var _ = Describe("The Rep", func() {
 				})
 
 				It("evacuates them", func() {
-					var actualLRP models.ActualLRP
+					var actualLRP oldmodels.ActualLRP
 
-					getEvacuatingLRP := func() *models.ActualLRP {
+					getEvacuatingLRP := func() *oldmodels.ActualLRP {
 						node, err := etcdAdapter.Get(shared.EvacuatingActualLRPSchemaPath(processGuid, index))
 						if err != nil {
 							return nil
