@@ -48,7 +48,7 @@ var _ = Describe("The Rep", func() {
 	var getActualLRPGroups = func() []*models.ActualLRPGroup {
 		actualLRPGroups, err := bbsClient.ActualLRPGroups(models.ActualLRPFilter{})
 		Expect(err).NotTo(HaveOccurred())
-		return actualLRPGroups.GetActualLrpGroups()
+		return actualLRPGroups
 	}
 
 	BeforeEach(func() {
