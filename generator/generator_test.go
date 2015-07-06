@@ -3,12 +3,14 @@ package generator_test
 import (
 	"errors"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
 	efakes "github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/generator"
 	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/gogo/protobuf/proto"
 	"github.com/pivotal-golang/operationq"
 
 	. "github.com/onsi/ginkgo"
@@ -40,7 +42,7 @@ var _ = Describe("Generator", func() {
 		fakeTaskProcessor = &fake_internal.FakeTaskProcessor{}
 		fakeContainerDelegate = &fake_internal.FakeContainerDelegate{}
 
-		opGenerator = generator.New(cellID, fakeBBS, fakeExecutorClient, fakeLRPProcessor, fakeTaskProcessor, fakeContainerDelegate)
+		opGenerator = generator.New(cellID, fakeBBS, fakeLegacyBBS, fakeExecutorClient, fakeLRPProcessor, fakeTaskProcessor, fakeContainerDelegate)
 	})
 
 	Describe("BatchOperations", func() {
@@ -60,15 +62,14 @@ var _ = Describe("Generator", func() {
 		})
 
 		It("retrieves all actual lrps for its cell id", func() {
-			Expect(fakeBBS.ActualLRPGroupsByCellIDCallCount()).To(Equal(1))
-			actualLogger, actualCellID := fakeBBS.ActualLRPGroupsByCellIDArgsForCall(0)
-			Expect(actualLogger.SessionName()).To(Equal(sessionName))
-			Expect(actualCellID).To(Equal(cellID))
+			Expect(fakeBBS.ActualLRPGroupsCallCount()).To(Equal(1))
+			actualFilter := fakeBBS.ActualLRPGroupsArgsForCall(0)
+			Expect(actualFilter.CellID).To(Equal(cellID))
 		})
 
 		It("retrieves all tasks for its cell id", func() {
-			Expect(fakeBBS.TasksByCellIDCallCount()).To(Equal(1))
-			actualLogger, actualCellID := fakeBBS.TasksByCellIDArgsForCall(0)
+			Expect(fakeLegacyBBS.TasksByCellIDCallCount()).To(Equal(1))
+			actualLogger, actualCellID := fakeLegacyBBS.TasksByCellIDArgsForCall(0)
 			Expect(actualLogger.SessionName()).To(Equal(sessionName))
 			Expect(actualCellID).To(Equal(cellID))
 		})
@@ -101,7 +102,7 @@ var _ = Describe("Generator", func() {
 					{Guid: guidContainerForTask},
 				}
 
-				actualLRPKey := models.ActualLRPKey{ProcessGuid: processGuid}
+				actualLRPKey := models.ActualLRPKey{ProcessGuid: proto.String(processGuid)}
 
 				containerOnlyLRP := models.ActualLRP{ActualLRPKey: actualLRPKey, ActualLRPInstanceKey: models.NewActualLRPInstanceKey(instanceGuidContainerForInstanceLRP, cellID)}
 				instanceOnlyLRP := models.ActualLRP{ActualLRPKey: actualLRPKey, ActualLRPInstanceKey: models.NewActualLRPInstanceKey(instanceGuidInstanceLRPOnly, cellID)}
@@ -111,7 +112,7 @@ var _ = Describe("Generator", func() {
 
 				instanceAndEvacuatingLRP := models.ActualLRP{ActualLRPKey: actualLRPKey, ActualLRPInstanceKey: models.NewActualLRPInstanceKey(instanceGuidInstanceAndEvacuatingLRPsOnly, cellID)}
 
-				lrpGroups := []models.ActualLRPGroup{
+				lrpGroups := []*models.ActualLRPGroup{
 					{Instance: &containerOnlyLRP, Evacuating: nil},
 					{Instance: &instanceOnlyLRP, Evacuating: nil},
 					{Instance: &instanceAndEvacuatingLRP, Evacuating: &instanceAndEvacuatingLRP},
@@ -119,15 +120,15 @@ var _ = Describe("Generator", func() {
 					{Instance: nil, Evacuating: &evacuatingOnlyLRP},
 				}
 
-				tasks := []models.Task{
+				tasks := []oldmodels.Task{
 					{TaskGuid: guidContainerForTask},
 					{TaskGuid: guidTaskOnly},
 				}
 
 				fakeExecutorClient.ListContainersReturns(containers, nil)
 
-				fakeBBS.ActualLRPGroupsByCellIDReturns(lrpGroups, nil)
-				fakeBBS.TasksByCellIDReturns(tasks, nil)
+				fakeBBS.ActualLRPGroupsReturns(lrpGroups, nil)
+				fakeLegacyBBS.TasksByCellIDReturns(tasks, nil)
 			})
 
 			It("does not return an error", func() {
@@ -207,7 +208,7 @@ var _ = Describe("Generator", func() {
 
 			Context("when retrieving the tasks fails", func() {
 				BeforeEach(func() {
-					fakeBBS.TasksByCellIDReturns(nil, errors.New("oh no, no task!"))
+					fakeLegacyBBS.TasksByCellIDReturns(nil, errors.New("oh no, no task!"))
 				})
 
 				It("returns an error", func() {
@@ -222,7 +223,7 @@ var _ = Describe("Generator", func() {
 
 			Context("when retrieving the LRP groups fails", func() {
 				BeforeEach(func() {
-					fakeBBS.ActualLRPGroupsByCellIDReturns(nil, errors.New("oh no, no lrp!"))
+					fakeBBS.ActualLRPGroupsReturns(nil, errors.New("oh no, no lrp!"))
 				})
 
 				It("returns an error", func() {
@@ -327,18 +328,18 @@ var _ = Describe("Generator", func() {
 					})
 
 					Context("when the lifecycle is Task", func() {
-						var task models.Task
+						var task oldmodels.Task
 
 						BeforeEach(func() {
 							container.Tags[rep.LifecycleTag] = rep.TaskLifecycle
 
-							task = models.Task{
+							task = oldmodels.Task{
 								TaskGuid:   "some-instance-guid",
-								State:      models.TaskStateRunning,
+								State:      oldmodels.TaskStateRunning,
 								ResultFile: "some-result-file",
 							}
 
-							fakeBBS.TaskByGuidReturns(task, nil)
+							fakeLegacyBBS.TaskByGuidReturns(task, nil)
 						})
 
 						It("yields an operation for that container", func() {

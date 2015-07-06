@@ -11,6 +11,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/auction/communication/http/auction_http_handlers"
 	auctionroutes "github.com/cloudfoundry-incubator/auction/communication/http/routes"
+	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	cf_lager "github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf_http"
@@ -27,7 +28,7 @@ import (
 	repserver "github.com/cloudfoundry-incubator/rep/http_server"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
 	bbsroutes "github.com/cloudfoundry-incubator/runtime-schema/routes"
 	"github.com/cloudfoundry/dropsonde"
@@ -117,6 +118,12 @@ var evacuationPollingInterval = flag.Duration(
 	"the interval on which to scan the executor during evacuation",
 )
 
+var bbsAddress = flag.String(
+	"bbsAddress",
+	"",
+	"Address to the BBS Server",
+)
+
 type stackPathMap rep.StackPathMap
 
 func (s *stackPathMap) String() string {
@@ -196,6 +203,10 @@ func main() {
 	}
 	defer executorClient.Cleanup()
 
+	if err := validateBBSAddress(); err != nil {
+		logger.Fatal("invalid-bbs-address", err)
+	}
+
 	repBBS := initializeRepBBS(etcdOptions, logger)
 
 	clock := clock.NewClock()
@@ -219,8 +230,9 @@ func main() {
 		*evacuationPollingInterval,
 	)
 
+	bbsClient := bbs.NewClient(*bbsAddress)
 	httpServer, address := initializeServer(repBBS, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders)
-	opGenerator := generator.New(*cellID, repBBS, executorClient, lrpProcessor, taskProcessor, containerDelegate)
+	opGenerator := generator.New(*cellID, bbsClient, repBBS, executorClient, lrpProcessor, taskProcessor, containerDelegate)
 
 	preloadedRootFSes := []string{}
 	for k := range stackMap {
@@ -265,7 +277,7 @@ func initializeDropsonde(logger lager.Logger) {
 	}
 }
 
-func initializeCellPresence(address string, repBBS bbs.RepBBS, executorClient executor.Client, logger lager.Logger, rootFSProviders, preloadedRootFSes []string) ifrit.Runner {
+func initializeCellPresence(address string, repBBS legacybbs.RepBBS, executorClient executor.Client, logger lager.Logger, rootFSProviders, preloadedRootFSes []string) ifrit.Runner {
 	config := maintain.Config{
 		CellID:            *cellID,
 		RepAddress:        address,
@@ -277,7 +289,7 @@ func initializeCellPresence(address string, repBBS bbs.RepBBS, executorClient ex
 	return maintain.New(config, executorClient, repBBS, logger, clock.NewClock())
 }
 
-func initializeRepBBS(etcdOptions *etcdstoreadapter.ETCDOptions, logger lager.Logger) bbs.RepBBS {
+func initializeRepBBS(etcdOptions *etcdstoreadapter.ETCDOptions, logger lager.Logger) legacybbs.RepBBS {
 	workPool, err := workpool.NewWorkPool(100)
 	if err != nil {
 		logger.Fatal("failed-to-construct-etcd-adapter-workpool", err, lager.Data{"num-workers": 100}) // should never happen
@@ -300,7 +312,7 @@ func initializeRepBBS(etcdOptions *etcdstoreadapter.ETCDOptions, logger lager.Lo
 		logger.Fatal("consul-session-failed", err)
 	}
 
-	return bbs.NewRepBBS(etcdAdapter, consulSession, *receptorTaskHandlerURL, clock.NewClock(), logger)
+	return legacybbs.NewRepBBS(etcdAdapter, consulSession, *receptorTaskHandlerURL, clock.NewClock(), logger)
 }
 
 func initializeLRPStopper(guid string, executorClient executor.Client, logger lager.Logger) lrp_stopper.LRPStopper {
@@ -308,7 +320,7 @@ func initializeLRPStopper(guid string, executorClient executor.Client, logger la
 }
 
 func initializeServer(
-	repBBS bbs.RepBBS,
+	repBBS legacybbs.RepBBS,
 	executorClient executor.Client,
 	evacuatable evacuation_context.Evacuatable,
 	evacuationReporter evacuation_context.EvacuationReporter,
@@ -349,6 +361,13 @@ func initializeServer(
 	address := fmt.Sprintf("http://%s:%s", ip, port)
 
 	return http_server.New(*listenAddr, router), address
+}
+
+func validateBBSAddress() error {
+	if *bbsAddress == "" {
+		return errors.New("bbsAddress is required")
+	}
+	return nil
 }
 
 func generateGuid() (string, error) {

@@ -3,10 +3,11 @@ package generator
 import (
 	"fmt"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -35,7 +36,7 @@ func NewResidualInstanceLRPOperation(logger lager.Logger,
 }
 
 func (o *ResidualInstanceLRPOperation) Key() string {
-	return o.InstanceGuid
+	return o.GetInstanceGuid()
 }
 
 func (o *ResidualInstanceLRPOperation) Execute() {
@@ -46,13 +47,15 @@ func (o *ResidualInstanceLRPOperation) Execute() {
 	logger.Info("starting")
 	defer logger.Info("finished")
 
-	_, exists := o.containerDelegate.GetContainer(logger, rep.LRPContainerGuid(o.ProcessGuid, o.InstanceGuid))
+	_, exists := o.containerDelegate.GetContainer(logger, rep.LRPContainerGuid(o.GetProcessGuid(), o.GetInstanceGuid()))
 	if exists {
 		logger.Info("skipped-because-container-exists")
 		return
 	}
 
-	o.bbs.RemoveActualLRP(logger, o.ActualLRPKey, o.ActualLRPInstanceKey)
+	oldActualLRPKey := oldmodels.NewActualLRPKey(o.ActualLRPKey.GetProcessGuid(), int(o.ActualLRPKey.GetIndex()), o.ActualLRPKey.GetDomain())
+	oldActualLRPInstanceKey := oldmodels.NewActualLRPInstanceKey(o.ActualLRPInstanceKey.GetInstanceGuid(), o.ActualLRPInstanceKey.GetCellId())
+	o.bbs.RemoveActualLRP(logger, oldActualLRPKey, oldActualLRPInstanceKey)
 }
 
 // ResidualEvacuatingLRPOperation processes an evacuating ActualLRP with no matching container.
@@ -80,7 +83,7 @@ func NewResidualEvacuatingLRPOperation(logger lager.Logger,
 }
 
 func (o *ResidualEvacuatingLRPOperation) Key() string {
-	return o.InstanceGuid
+	return o.GetInstanceGuid()
 }
 
 func (o *ResidualEvacuatingLRPOperation) Execute() {
@@ -91,13 +94,15 @@ func (o *ResidualEvacuatingLRPOperation) Execute() {
 	logger.Info("starting")
 	defer logger.Info("finished")
 
-	_, exists := o.containerDelegate.GetContainer(logger, rep.LRPContainerGuid(o.ProcessGuid, o.InstanceGuid))
+	_, exists := o.containerDelegate.GetContainer(logger, rep.LRPContainerGuid(o.GetProcessGuid(), o.GetInstanceGuid()))
 	if exists {
 		logger.Info("skipped-because-container-exists")
 		return
 	}
 
-	o.bbs.RemoveEvacuatingActualLRP(logger, o.ActualLRPKey, o.ActualLRPInstanceKey)
+	oldActualLRPKey := oldmodels.NewActualLRPKey(o.ActualLRPKey.GetProcessGuid(), int(o.ActualLRPKey.GetIndex()), o.ActualLRPKey.GetDomain())
+	oldActualLRPInstanceKey := oldmodels.NewActualLRPInstanceKey(o.ActualLRPInstanceKey.GetInstanceGuid(), o.ActualLRPInstanceKey.GetCellId())
+	o.bbs.RemoveEvacuatingActualLRP(logger, oldActualLRPKey, oldActualLRPInstanceKey)
 }
 
 // ResidualJointLRPOperation processes an evacuating ActualLRP with no matching container.
@@ -125,7 +130,7 @@ func NewResidualJointLRPOperation(logger lager.Logger,
 }
 
 func (o *ResidualJointLRPOperation) Key() string {
-	return o.InstanceGuid
+	return o.GetInstanceGuid()
 }
 
 func (o *ResidualJointLRPOperation) Execute() {
@@ -136,14 +141,16 @@ func (o *ResidualJointLRPOperation) Execute() {
 	logger.Info("starting")
 	defer logger.Info("finished")
 
-	_, exists := o.containerDelegate.GetContainer(logger, rep.LRPContainerGuid(o.ProcessGuid, o.InstanceGuid))
+	_, exists := o.containerDelegate.GetContainer(logger, rep.LRPContainerGuid(o.GetProcessGuid(), o.GetInstanceGuid()))
 	if exists {
 		logger.Info("skipped-because-container-exists")
 		return
 	}
 
-	o.bbs.RemoveActualLRP(logger, o.ActualLRPKey, o.ActualLRPInstanceKey)
-	o.bbs.RemoveEvacuatingActualLRP(logger, o.ActualLRPKey, o.ActualLRPInstanceKey)
+	oldActualLRPKey := oldmodels.NewActualLRPKey(o.ActualLRPKey.GetProcessGuid(), int(o.ActualLRPKey.GetIndex()), o.ActualLRPKey.GetDomain())
+	oldActualLRPInstanceKey := oldmodels.NewActualLRPInstanceKey(o.ActualLRPInstanceKey.GetInstanceGuid(), o.ActualLRPInstanceKey.GetCellId())
+	o.bbs.RemoveActualLRP(logger, oldActualLRPKey, oldActualLRPInstanceKey)
+	o.bbs.RemoveEvacuatingActualLRP(logger, oldActualLRPKey, oldActualLRPInstanceKey)
 }
 
 // ResidualTaskOperation processes a Task with no matching container.

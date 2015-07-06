@@ -81,6 +81,7 @@ var _ = Describe("The Rep", func() {
 				PreloadedRootFSes:      []string{rootFSArg},
 				RootFSProviders:        []string{"docker"},
 				CellID:                 cellID,
+				BBSAddress:             bbsURL.String(),
 				EtcdCluster:            fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
 				ServerPort:             serverPort,
 				GardenAddr:             fakeGarden.HTTPTestServer.Listener.Addr().String(),

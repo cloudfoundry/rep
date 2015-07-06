@@ -4,11 +4,13 @@ package generator
 import (
 	"fmt"
 
+	"github.com/cloudfoundry-incubator/bbs"
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/operationq"
 )
@@ -26,7 +28,8 @@ type Generator interface {
 
 type generator struct {
 	cellID            string
-	bbs               bbs.RepBBS
+	legacyBBS         legacybbs.RepBBS
+	bbs               bbs.Client
 	executorClient    executor.Client
 	lrpProcessor      internal.LRPProcessor
 	taskProcessor     internal.TaskProcessor
@@ -35,7 +38,8 @@ type generator struct {
 
 func New(
 	cellID string,
-	bbs bbs.RepBBS,
+	bbs bbs.Client,
+	legacyBBS legacybbs.RepBBS,
 	executorClient executor.Client,
 	lrpProcessor internal.LRPProcessor,
 	taskProcessor internal.TaskProcessor,
@@ -44,6 +48,7 @@ func New(
 	return &generator{
 		cellID:            cellID,
 		bbs:               bbs,
+		legacyBBS:         legacyBBS,
 		executorClient:    executorClient,
 		lrpProcessor:      lrpProcessor,
 		taskProcessor:     taskProcessor,
@@ -58,7 +63,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	containers := make(map[string]executor.Container)
 	instanceLRPs := make(map[string]models.ActualLRP)
 	evacuatingLRPs := make(map[string]models.ActualLRP)
-	tasks := make(map[string]models.Task)
+	tasks := make(map[string]oldmodels.Task)
 
 	errChan := make(chan error, 3)
 
@@ -78,7 +83,8 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	}()
 
 	go func() {
-		groups, err := g.bbs.ActualLRPGroupsByCellID(logger, g.cellID)
+		filter := models.ActualLRPFilter{CellID: g.cellID}
+		groups, err := g.bbs.ActualLRPGroups(filter)
 		if err != nil {
 			logger.Error("failed-to-retrieve-lrp-groups", err)
 			err = fmt.Errorf("failed to retrieve lrps: %s", err.Error())
@@ -86,17 +92,17 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 
 		for _, group := range groups {
 			if group.Instance != nil {
-				instanceLRPs[rep.LRPContainerGuid(group.Instance.ProcessGuid, group.Instance.InstanceGuid)] = *group.Instance
+				instanceLRPs[rep.LRPContainerGuid(group.Instance.GetProcessGuid(), group.Instance.GetInstanceGuid())] = *group.Instance
 			}
 			if group.Evacuating != nil {
-				evacuatingLRPs[rep.LRPContainerGuid(group.Evacuating.ProcessGuid, group.Evacuating.InstanceGuid)] = *group.Evacuating
+				evacuatingLRPs[rep.LRPContainerGuid(group.Evacuating.GetProcessGuid(), group.Evacuating.GetInstanceGuid())] = *group.Evacuating
 			}
 		}
 		errChan <- err
 	}()
 
 	go func() {
-		foundTasks, err := g.bbs.TasksByCellID(logger, g.cellID)
+		foundTasks, err := g.legacyBBS.TasksByCellID(logger, g.cellID)
 		if err != nil {
 			logger.Error("failed-to-retrieve-tasks", err)
 			err = fmt.Errorf("failed to retrieve tasks: %s", err.Error())
@@ -135,9 +141,9 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 			continue
 		}
 		if _, foundEvacuatingLRP := evacuatingLRPs[guid]; foundEvacuatingLRP {
-			batch[guid] = NewResidualJointLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
+			batch[guid] = NewResidualJointLRPOperation(logger, g.legacyBBS, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
 		} else {
-			batch[guid] = NewResidualInstanceLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
+			batch[guid] = NewResidualInstanceLRPOperation(logger, g.legacyBBS, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
 		}
 	}
 
@@ -145,7 +151,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	for guid, lrp := range evacuatingLRPs {
 		_, found := batch[guid]
 		if !found {
-			batch[guid] = NewResidualEvacuatingLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
+			batch[guid] = NewResidualEvacuatingLRPOperation(logger, g.legacyBBS, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
 		}
 	}
 
@@ -153,7 +159,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	for guid, _ := range tasks {
 		_, found := batch[guid]
 		if !found {
-			batch[guid] = NewResidualTaskOperation(logger, g.bbs, g.containerDelegate, guid)
+			batch[guid] = NewResidualTaskOperation(logger, g.legacyBBS, g.containerDelegate, guid)
 		}
 	}
 

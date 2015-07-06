@@ -22,6 +22,7 @@ type Config struct {
 	PreloadedRootFSes      []string
 	RootFSProviders        []string
 	CellID                 string
+	BBSAddress             string
 	EtcdCluster            string
 	ServerPort             int
 	GardenAddr             string
@@ -51,6 +52,7 @@ func (r *Runner) Start() {
 	args := []string{
 		"-cellID", r.config.CellID,
 		"-listenAddr", fmt.Sprintf("0.0.0.0:%d", r.config.ServerPort),
+		"-bbsAddress", r.config.BBSAddress,
 		"-etcdCluster", r.config.EtcdCluster,
 		"-logLevel", r.config.LogLevel,
 		"-pollingInterval", r.config.PollingInterval.String(),
