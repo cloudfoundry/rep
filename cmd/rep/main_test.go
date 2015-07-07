@@ -20,7 +20,7 @@ import (
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager/lagertest"
 
-	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -35,7 +35,7 @@ var etcdAdapter storeadapter.StoreAdapter
 var _ = Describe("The Rep", func() {
 	var (
 		fakeGarden        *ghttp.Server
-		bbs               *Bbs.BBS
+		legacyBBS         *legacybbs.BBS
 		pollingInterval   time.Duration
 		evacuationTimeout time.Duration
 		rootFSName        string
@@ -66,7 +66,7 @@ var _ = Describe("The Rep", func() {
 
 		logger = lagertest.NewTestLogger("test")
 		receptorTaskHandlerURL := "http://receptor.bogus.com"
-		bbs = Bbs.NewBBS(etcdAdapter, consulSession, receptorTaskHandlerURL, clock.NewClock(), logger)
+		legacyBBS = legacybbs.NewBBS(etcdAdapter, consulSession, receptorTaskHandlerURL, clock.NewClock(), logger)
 
 		pollingInterval = 50 * time.Millisecond
 		evacuationTimeout = 200 * time.Millisecond
@@ -167,8 +167,8 @@ var _ = Describe("The Rep", func() {
 			var cellPresence oldmodels.CellPresence
 
 			JustBeforeEach(func() {
-				Eventually(bbs.Cells).Should(HaveLen(1))
-				cells, err := bbs.Cells()
+				Eventually(legacyBBS.Cells).Should(HaveLen(1))
+				cells, err := legacyBBS.Cells()
 				Expect(err).NotTo(HaveOccurred())
 				cellPresence = cells[0]
 			})
@@ -193,8 +193,8 @@ var _ = Describe("The Rep", func() {
 				It("should not exit, but keep trying to maintain presence at the same ID", func() {
 					consulRunner.Reset()
 
-					Eventually(bbs.Cells, 5).Should(HaveLen(1))
-					cells, err := bbs.Cells()
+					Eventually(legacyBBS.Cells, 5).Should(HaveLen(1))
+					cells, err := legacyBBS.Cells()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(cells[0]).To(Equal(cellPresence))
 
@@ -207,8 +207,8 @@ var _ = Describe("The Rep", func() {
 			var client *auction_http_client.AuctionHTTPClient
 
 			JustBeforeEach(func() {
-				Eventually(bbs.Cells).Should(HaveLen(1))
-				cells, err := bbs.Cells()
+				Eventually(legacyBBS.Cells).Should(HaveLen(1))
+				cells, err := legacyBBS.Cells()
 				Expect(err).NotTo(HaveOccurred())
 
 				client = auction_http_client.New(http.DefaultClient, cells[0].CellID, cells[0].RepAddress, lagertest.NewTestLogger("auction-client"))
@@ -307,13 +307,13 @@ var _ = Describe("The Rep", func() {
 						},
 					}
 
-					err := bbs.DesireTask(logger, task)
+					err := legacyBBS.DesireTask(logger, task)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("makes a request to executor to allocate the container", func() {
-					Expect(bbs.PendingTasks(logger)).To(HaveLen(1))
-					Expect(bbs.RunningTasks(logger)).To(BeEmpty())
+					Expect(legacyBBS.PendingTasks(logger)).To(HaveLen(1))
+					Expect(legacyBBS.RunningTasks(logger)).To(BeEmpty())
 
 					works := auctiontypes.Work{
 						Tasks: []oldmodels.Task{task},
@@ -343,19 +343,19 @@ var _ = Describe("The Rep", func() {
 					},
 				}
 
-				err := bbs.DesireTask(logger, task)
+				err := legacyBBS.DesireTask(logger, task)
 				Expect(err).NotTo(HaveOccurred())
 
-				_, err = bbs.StartTask(logger, task.TaskGuid, cellID)
+				_, err = legacyBBS.StartTask(logger, task.TaskGuid, cellID)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("eventually marks tasks with no corresponding container as failed", func() {
 				Eventually(func() ([]oldmodels.Task, error) {
-					return bbs.CompletedTasks(logger)
+					return legacyBBS.CompletedTasks(logger)
 				}, 5*pollingInterval).Should(HaveLen(1))
 
-				completedTasks, err := bbs.CompletedTasks(logger)
+				completedTasks, err := legacyBBS.CompletedTasks(logger)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(completedTasks[0].TaskGuid).To(Equal(task.TaskGuid))
@@ -378,14 +378,16 @@ var _ = Describe("The Rep", func() {
 				}
 				index := 0
 
-				err := bbs.DesireLRP(logger, desiredLRP)
+				err := legacyBBS.DesireLRP(logger, desiredLRP)
 				Expect(err).NotTo(HaveOccurred())
 
-				actualLRPGroup, err := bbs.ActualLRPGroupByProcessGuidAndIndex(logger, desiredLRP.ProcessGuid, index)
+				actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(desiredLRP.ProcessGuid, index)
 				Expect(err).NotTo(HaveOccurred())
+				actualLRP, _, _ := actualLRPGroup.Resolve()
 
+				actualLRPKey := oldmodels.NewActualLRPKey(actualLRP.GetProcessGuid(), int(actualLRP.GetIndex()), actualLRP.GetDomain())
 				instanceKey := oldmodels.NewActualLRPInstanceKey("some-instance-guid", cellID)
-				err = bbs.ClaimActualLRP(logger, actualLRPGroup.Instance.ActualLRPKey, instanceKey)
+				err = legacyBBS.ClaimActualLRP(logger, actualLRPKey, instanceKey)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -397,7 +399,7 @@ var _ = Describe("The Rep", func() {
 		Describe("when a StopLRPInstance request comes in", func() {
 			const processGuid = "process-guid"
 			const instanceGuid = "some-instance-guid"
-			var runningLRP oldmodels.ActualLRP
+			var runningLRP *models.ActualLRP
 			var containerGuid = rep.LRPContainerGuid(processGuid, instanceGuid)
 			var expectedDestroyRoute = "/containers/" + containerGuid
 
@@ -428,23 +430,24 @@ var _ = Describe("The Rep", func() {
 
 				fakeGarden.RouteToHandler("GET", "/containers/my-handle/info", ghttp.RespondWithJSONEncoded(http.StatusOK, containerInfo))
 
-				Eventually(bbs.Cells).Should(HaveLen(1))
+				Eventually(legacyBBS.Cells).Should(HaveLen(1))
 
 				lrpKey := oldmodels.NewActualLRPKey(processGuid, 1, "domain")
 				instanceKey := oldmodels.NewActualLRPInstanceKey(instanceGuid, cellID)
 				netInfo := oldmodels.NewActualLRPNetInfo("bogus-ip", []oldmodels.PortMapping{})
 
-				err := bbs.StartActualLRP(logger, lrpKey, instanceKey, netInfo)
+				err := legacyBBS.StartActualLRP(logger, lrpKey, instanceKey, netInfo)
 				Expect(err).NotTo(HaveOccurred())
 
-				lrpGroup, err := bbs.ActualLRPGroupByProcessGuidAndIndex(logger, lrpKey.ProcessGuid, lrpKey.Index)
+				actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(lrpKey.ProcessGuid, lrpKey.Index)
 				Expect(err).NotTo(HaveOccurred())
-				runningLRP = *lrpGroup.Instance
+				runningLRP = actualLRPGroup.GetInstance()
 			})
 
 			It("should destroy the container", func() {
 				Eventually(getActualLRPGroups).Should(HaveLen(1))
-				bbs.RetireActualLRPs(logger, []oldmodels.ActualLRPKey{runningLRP.ActualLRPKey})
+				actualLRPKey := oldmodels.NewActualLRPKey(runningLRP.GetProcessGuid(), int(runningLRP.GetIndex()), runningLRP.GetDomain())
+				legacyBBS.RetireActualLRPs(logger, []oldmodels.ActualLRPKey{actualLRPKey})
 
 				findDestroyRequest := func() bool {
 					for _, req := range fakeGarden.ReceivedRequests() {
@@ -466,7 +469,7 @@ var _ = Describe("The Rep", func() {
 			var deletedContainer chan struct{}
 
 			JustBeforeEach(func() {
-				Eventually(bbs.Cells).Should(HaveLen(1))
+				Eventually(legacyBBS.Cells).Should(HaveLen(1))
 
 				deletedContainer = make(chan struct{})
 
@@ -489,22 +492,22 @@ var _ = Describe("The Rep", func() {
 					},
 				}
 
-				err := bbs.DesireTask(logger, task)
+				err := legacyBBS.DesireTask(logger, task)
 				Expect(err).NotTo(HaveOccurred())
 
-				started, err := bbs.StartTask(logger, taskGuid, cellID)
+				started, err := legacyBBS.StartTask(logger, taskGuid, cellID)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(started).To(BeTrue())
 			})
 
 			It("deletes the container", func() {
-				err := bbs.CancelTask(logger, taskGuid)
+				err := legacyBBS.CancelTask(logger, taskGuid)
 				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(deletedContainer).Should(BeClosed())
 
 				Consistently(func() ([]oldmodels.Task, error) {
-					return bbs.Tasks(logger)
+					return legacyBBS.Tasks(logger)
 				}).Should(HaveLen(1))
 			})
 		})
@@ -562,7 +565,7 @@ var _ = Describe("The Rep", func() {
 					lrpContainerKey = oldmodels.NewActualLRPInstanceKey(instanceGuid, cellID)
 					lrpNetInfo = oldmodels.NewActualLRPNetInfo(address, []oldmodels.PortMapping{{ContainerPort: 1470, HostPort: 2589}})
 
-					err := bbs.StartActualLRP(logger, lrpKey, lrpContainerKey, lrpNetInfo)
+					err := legacyBBS.StartActualLRP(logger, lrpKey, lrpContainerKey, lrpNetInfo)
 					Expect(err).NotTo(HaveOccurred())
 
 					resp, err := http.Post(fmt.Sprintf("http://0.0.0.0:%d/evacuate", serverPort), "text/html", nil)
@@ -640,3 +643,4 @@ var _ = Describe("The Rep", func() {
 		})
 	})
 })
+
