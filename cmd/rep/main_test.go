@@ -383,7 +383,7 @@ var _ = Describe("The Rep", func() {
 
 				actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(desiredLRP.ProcessGuid, index)
 				Expect(err).NotTo(HaveOccurred())
-				actualLRP, _, _ := actualLRPGroup.Resolve()
+				actualLRP, _ := actualLRPGroup.Resolve()
 
 				actualLRPKey := oldmodels.NewActualLRPKey(actualLRP.GetProcessGuid(), int(actualLRP.GetIndex()), actualLRP.GetDomain())
 				instanceKey := oldmodels.NewActualLRPInstanceKey("some-instance-guid", cellID)
@@ -643,4 +643,3 @@ var _ = Describe("The Rep", func() {
 		})
 	})
 })
-
