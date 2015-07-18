@@ -10,7 +10,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep/generator"
 	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
 	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/gogo/protobuf/proto"
 	"github.com/pivotal-golang/operationq"
 
 	. "github.com/onsi/ginkgo"
@@ -102,7 +101,7 @@ var _ = Describe("Generator", func() {
 					{Guid: guidContainerForTask},
 				}
 
-				actualLRPKey := models.ActualLRPKey{ProcessGuid: proto.String(processGuid)}
+				actualLRPKey := models.ActualLRPKey{ProcessGuid: processGuid}
 
 				containerOnlyLRP := models.ActualLRP{ActualLRPKey: actualLRPKey, ActualLRPInstanceKey: models.NewActualLRPInstanceKey(instanceGuidContainerForInstanceLRP, cellID)}
 				instanceOnlyLRP := models.ActualLRP{ActualLRPKey: actualLRPKey, ActualLRPInstanceKey: models.NewActualLRPInstanceKey(instanceGuidInstanceLRPOnly, cellID)}
