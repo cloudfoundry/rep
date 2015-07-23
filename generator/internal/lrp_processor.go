@@ -1,9 +1,10 @@
 package internal
 
 import (
+	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 )
@@ -35,14 +36,15 @@ type lrpProcessor struct {
 }
 
 func NewLRPProcessor(
-	bbs bbs.RepBBS,
+	bbsClient bbs.Client,
+	legacyBBS legacybbs.RepBBS,
 	containerDelegate ContainerDelegate,
 	cellID string,
 	evacuationReporter evacuation_context.EvacuationReporter,
 	evacuationTTLInSeconds uint64,
 ) LRPProcessor {
-	ordinaryProcessor := newOrdinaryLRPProcessor(bbs, containerDelegate, cellID)
-	evacuationProcessor := newEvacuationLRPProcessor(bbs, containerDelegate, cellID, evacuationTTLInSeconds)
+	ordinaryProcessor := newOrdinaryLRPProcessor(bbsClient, legacyBBS, containerDelegate, cellID)
+	evacuationProcessor := newEvacuationLRPProcessor(legacyBBS, containerDelegate, cellID, evacuationTTLInSeconds)
 	return &lrpProcessor{
 		evacuationReporter:  evacuationReporter,
 		ordinaryProcessor:   ordinaryProcessor,

@@ -4,13 +4,14 @@ import (
 	"errors"
 	"strconv"
 
+	"github.com/cloudfoundry-incubator/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
+	fake_legacy_bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -28,7 +29,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 		var (
 			logger                 *lagertest.TestLogger
-			fakeRepBBS             *fake_bbs.FakeRepBBS
+			fakeBBS                *fake_bbs.FakeClient
+			fakeRepBBS             *fake_legacy_bbs.FakeRepBBS
 			fakeContainerDelegate  *fake_internal.FakeContainerDelegate
 			fakeEvacuationReporter *fake_evacuation_context.FakeEvacuationReporter
 
@@ -47,13 +49,14 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 		BeforeEach(func() {
 			logger = lagertest.NewTestLogger("test")
 
-			fakeRepBBS = new(fake_bbs.FakeRepBBS)
+			fakeBBS = new(fake_bbs.FakeClient)
+			fakeRepBBS = new(fake_legacy_bbs.FakeRepBBS)
 
 			fakeContainerDelegate = &fake_internal.FakeContainerDelegate{}
 			fakeEvacuationReporter = &fake_evacuation_context.FakeEvacuationReporter{}
 			fakeEvacuationReporter.EvacuatingReturns(true)
 
-			lrpProcessor = internal.NewLRPProcessor(fakeRepBBS, fakeContainerDelegate, localCellID, fakeEvacuationReporter, evacuationTTL)
+			lrpProcessor = internal.NewLRPProcessor(fakeBBS, fakeRepBBS, fakeContainerDelegate, localCellID, fakeEvacuationReporter, evacuationTTL)
 
 			processGuid = "process-guid"
 			desiredLRP = models.DesiredLRP{

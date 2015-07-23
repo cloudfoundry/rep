@@ -216,8 +216,10 @@ func main() {
 	// only one outstanding operation per container is necessary
 	queue := operationq.NewSlidingQueue(1)
 
+	bbsClient := bbs.NewClient(*bbsAddress)
+
 	containerDelegate := internal.NewContainerDelegate(executorClient)
-	lrpProcessor := internal.NewLRPProcessor(repBBS, containerDelegate, *cellID, evacuationReporter, uint64(evacuationTimeout.Seconds()))
+	lrpProcessor := internal.NewLRPProcessor(bbsClient, repBBS, containerDelegate, *cellID, evacuationReporter, uint64(evacuationTimeout.Seconds()))
 	taskProcessor := internal.NewTaskProcessor(repBBS, containerDelegate, *cellID)
 
 	evacuator := evacuation.NewEvacuator(
@@ -230,7 +232,6 @@ func main() {
 		*evacuationPollingInterval,
 	)
 
-	bbsClient := bbs.NewClient(*bbsAddress)
 	httpServer, address := initializeServer(repBBS, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders)
 	opGenerator := generator.New(*cellID, bbsClient, repBBS, executorClient, lrpProcessor, taskProcessor, containerDelegate)
 

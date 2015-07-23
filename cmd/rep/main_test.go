@@ -381,13 +381,8 @@ var _ = Describe("The Rep", func() {
 				err := legacyBBS.DesireLRP(logger, desiredLRP)
 				Expect(err).NotTo(HaveOccurred())
 
-				actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(desiredLRP.ProcessGuid, index)
-				Expect(err).NotTo(HaveOccurred())
-				actualLRP, _ := actualLRPGroup.Resolve()
-
-				actualLRPKey := oldmodels.NewActualLRPKey(actualLRP.GetProcessGuid(), int(actualLRP.GetIndex()), actualLRP.GetDomain())
-				instanceKey := oldmodels.NewActualLRPInstanceKey("some-instance-guid", cellID)
-				err = legacyBBS.ClaimActualLRP(logger, actualLRPKey, instanceKey)
+				instanceKey := models.NewActualLRPInstanceKey("some-instance-guid", cellID)
+				_, err = bbsClient.ClaimActualLRP(desiredLRP.ProcessGuid, index, instanceKey)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
