@@ -29,7 +29,7 @@ var _ = Describe("Operation", func() {
 			lrpKey = models.NewActualLRPKey("the-process-guid", 0, "the-domain")
 			instanceKey = models.NewActualLRPInstanceKey("the-instance-guid", "the-cell-id")
 			containerDelegate = new(fake_internal.FakeContainerDelegate)
-			residualLRPOperation = generator.NewResidualInstanceLRPOperation(logger, fakeLegacyBBS, containerDelegate, lrpKey, instanceKey)
+			residualLRPOperation = generator.NewResidualInstanceLRPOperation(logger, fakeBBS, fakeLegacyBBS, containerDelegate, lrpKey, instanceKey)
 
 			expectedContainerGuid = rep.LRPContainerGuid(lrpKey.GetProcessGuid(), instanceKey.GetInstanceGuid())
 		})
@@ -65,14 +65,11 @@ var _ = Describe("Operation", func() {
 				})
 
 				It("removes the actualLRP", func() {
-					Expect(fakeLegacyBBS.RemoveActualLRPCallCount()).To(Equal(1))
-					bbsLogger, oldActualLRPKey, oldActualLRPContainerKey := fakeLegacyBBS.RemoveActualLRPArgsForCall(0)
-					actualLRPKey := models.NewActualLRPKey(oldActualLRPKey.ProcessGuid, int32(oldActualLRPKey.Index), oldActualLRPKey.Domain)
-					actualLRPContainerKey := models.NewActualLRPInstanceKey(oldActualLRPContainerKey.InstanceGuid, oldActualLRPContainerKey.CellID)
+					Expect(fakeBBS.RemoveActualLRPCallCount()).To(Equal(1))
+					processGuid, index := fakeBBS.RemoveActualLRPArgsForCall(0)
 
-					Expect(actualLRPKey).To(Equal(lrpKey))
-					Expect(actualLRPContainerKey).To(Equal(instanceKey))
-					Expect(bbsLogger.SessionName()).To(Equal(sessionName))
+					Expect(processGuid).To(Equal(lrpKey.ProcessGuid))
+					Expect(index).To(Equal(int(lrpKey.Index)))
 				})
 			})
 
@@ -82,7 +79,7 @@ var _ = Describe("Operation", func() {
 				})
 
 				It("does not remove the actualLRP", func() {
-					Expect(fakeLegacyBBS.RemoveActualLRPCallCount()).To(Equal(0))
+					Expect(fakeBBS.RemoveActualLRPCallCount()).To(Equal(0))
 				})
 
 				It("logs that it skipped the operation because the container was found", func() {
@@ -187,7 +184,7 @@ var _ = Describe("Operation", func() {
 			lrpKey = models.NewActualLRPKey("the-process-guid", 0, "the-domain")
 			instanceKey = models.NewActualLRPInstanceKey(instanceGuid, "the-cell-id")
 			containerDelegate = new(fake_internal.FakeContainerDelegate)
-			residualJointLRPOperation = generator.NewResidualJointLRPOperation(logger, fakeLegacyBBS, containerDelegate, lrpKey, instanceKey)
+			residualJointLRPOperation = generator.NewResidualJointLRPOperation(logger, fakeBBS, fakeLegacyBBS, containerDelegate, lrpKey, instanceKey)
 
 			expectedContainerGuid = rep.LRPContainerGuid(lrpKey.GetProcessGuid(), instanceKey.GetInstanceGuid())
 		})
@@ -223,14 +220,11 @@ var _ = Describe("Operation", func() {
 				})
 
 				It("removes the instance actualLRP", func() {
-					Expect(fakeLegacyBBS.RemoveActualLRPCallCount()).To(Equal(1))
-					bbsLogger, oldActualLRPKey, oldActualLRPContainerKey := fakeLegacyBBS.RemoveActualLRPArgsForCall(0)
-					actualLRPKey := models.NewActualLRPKey(oldActualLRPKey.ProcessGuid, int32(oldActualLRPKey.Index), oldActualLRPKey.Domain)
-					actualLRPContainerKey := models.NewActualLRPInstanceKey(oldActualLRPContainerKey.InstanceGuid, oldActualLRPContainerKey.CellID)
+					Expect(fakeBBS.RemoveActualLRPCallCount()).To(Equal(1))
+					processGuid, index := fakeBBS.RemoveActualLRPArgsForCall(0)
 
-					Expect(actualLRPKey).To(Equal(lrpKey))
-					Expect(actualLRPContainerKey).To(Equal(instanceKey))
-					Expect(bbsLogger.SessionName()).To(Equal(sessionName))
+					Expect(processGuid).To(Equal(lrpKey.ProcessGuid))
+					Expect(index).To(Equal(int(lrpKey.Index)))
 				})
 
 				It("removes the evacuating actualLRP", func() {
@@ -251,7 +245,7 @@ var _ = Describe("Operation", func() {
 				})
 
 				It("does not remove either actualLRP", func() {
-					Expect(fakeLegacyBBS.RemoveActualLRPCallCount()).To(Equal(0))
+					Expect(fakeBBS.RemoveActualLRPCallCount()).To(Equal(0))
 					Expect(fakeLegacyBBS.RemoveEvacuatingActualLRPCallCount()).To(Equal(0))
 				})
 

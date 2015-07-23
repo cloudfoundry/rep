@@ -80,7 +80,7 @@ func (p *ordinaryLRPProcessor) processReservedContainer(logger lager.Logger, lrp
 
 	ok = p.containerDelegate.RunContainer(logger, lrpContainer.Guid)
 	if !ok {
-		p.legacyBBS.RemoveActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
+		p.bbsClient.RemoveActualLRP(lrpContainer.ProcessGuid, lrpContainer.Index)
 		return
 	}
 }
@@ -116,7 +116,7 @@ func (p *ordinaryLRPProcessor) processCompletedContainer(logger lager.Logger, lr
 	logger = logger.Session("process-completed-container")
 
 	if lrpContainer.RunResult.Stopped {
-		p.legacyBBS.RemoveActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
+		p.bbsClient.RemoveActualLRP(lrpContainer.ProcessGuid, lrpContainer.Index)
 	} else {
 		p.legacyBBS.CrashActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, lrpContainer.RunResult.FailureReason)
 	}

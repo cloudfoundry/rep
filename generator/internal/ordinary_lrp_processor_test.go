@@ -140,11 +140,11 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						})
 
 						It("removes the actual LRP", func() {
-							Expect(legacyBBS.RemoveActualLRPCallCount()).To(Equal(1))
-							bbsLogger, lrpKey, instanceKey := legacyBBS.RemoveActualLRPArgsForCall(0)
-							Expect(lrpKey).To(Equal(expectedLrpKey))
-							Expect(instanceKey).To(Equal(expectedInstanceKey))
-							Expect(bbsLogger.SessionName()).To(Equal(expectedSessionName))
+							Expect(bbsClient.RemoveActualLRPCallCount()).To(Equal(1))
+							processGuid, index := bbsClient.RemoveActualLRPArgsForCall(0)
+
+							Expect(processGuid).To(Equal(expectedLrpKey.ProcessGuid))
+							Expect(index).To(Equal(expectedLrpKey.Index))
 						})
 					})
 				})
@@ -255,11 +255,11 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						})
 
 						It("removes the actual LRP", func() {
-							Expect(legacyBBS.RemoveActualLRPCallCount()).To(Equal(1))
-							legacyBBSLogger, lrpKey, instanceKey := legacyBBS.RemoveActualLRPArgsForCall(0)
-							Expect(lrpKey).To(Equal(expectedLrpKey))
-							Expect(instanceKey).To(Equal(expectedInstanceKey))
-							Expect(legacyBBSLogger.SessionName()).To(Equal(expectedSessionName))
+							Expect(bbsClient.RemoveActualLRPCallCount()).To(Equal(1))
+							processGuid, index := bbsClient.RemoveActualLRPArgsForCall(0)
+
+							Expect(processGuid).To(Equal(expectedLrpKey.ProcessGuid))
+							Expect(index).To(Equal(expectedLrpKey.Index))
 						})
 
 						Context("when the removal succeeds", func() {
@@ -273,7 +273,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 						Context("when the removal fails", func() {
 							BeforeEach(func() {
-								legacyBBS.RemoveActualLRPReturns(errors.New("whoops"))
+								bbsClient.RemoveActualLRPReturns(errors.New("whoops"))
 							})
 
 							It("deletes the container", func() {

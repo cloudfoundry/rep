@@ -141,9 +141,9 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 			continue
 		}
 		if _, foundEvacuatingLRP := evacuatingLRPs[guid]; foundEvacuatingLRP {
-			batch[guid] = NewResidualJointLRPOperation(logger, g.legacyBBS, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
+			batch[guid] = NewResidualJointLRPOperation(logger, g.bbs, g.legacyBBS, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
 		} else {
-			batch[guid] = NewResidualInstanceLRPOperation(logger, g.legacyBBS, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
+			batch[guid] = NewResidualInstanceLRPOperation(logger, g.bbs, g.legacyBBS, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
 		}
 	}
 

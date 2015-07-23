@@ -3,10 +3,11 @@ package generator
 import (
 	"fmt"
 
+	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 )
@@ -14,21 +15,24 @@ import (
 // ResidualInstanceLRPOperation processes an instance ActualLRP with no matching container.
 type ResidualInstanceLRPOperation struct {
 	logger            lager.Logger
-	bbs               bbs.RepBBS
+	bbsClient         bbs.Client
+	legacyBBS         legacybbs.RepBBS
 	containerDelegate internal.ContainerDelegate
 	models.ActualLRPKey
 	models.ActualLRPInstanceKey
 }
 
 func NewResidualInstanceLRPOperation(logger lager.Logger,
-	bbs bbs.RepBBS,
+	bbsClient bbs.Client,
+	legacyBBS legacybbs.RepBBS,
 	containerDelegate internal.ContainerDelegate,
 	lrpKey models.ActualLRPKey,
 	instanceKey models.ActualLRPInstanceKey,
 ) *ResidualInstanceLRPOperation {
 	return &ResidualInstanceLRPOperation{
 		logger:               logger,
-		bbs:                  bbs,
+		bbsClient:            bbsClient,
+		legacyBBS:            legacyBBS,
 		containerDelegate:    containerDelegate,
 		ActualLRPKey:         lrpKey,
 		ActualLRPInstanceKey: instanceKey,
@@ -53,29 +57,27 @@ func (o *ResidualInstanceLRPOperation) Execute() {
 		return
 	}
 
-	oldActualLRPKey := oldmodels.NewActualLRPKey(o.ActualLRPKey.GetProcessGuid(), int(o.ActualLRPKey.GetIndex()), o.ActualLRPKey.GetDomain())
-	oldActualLRPInstanceKey := oldmodels.NewActualLRPInstanceKey(o.ActualLRPInstanceKey.GetInstanceGuid(), o.ActualLRPInstanceKey.GetCellId())
-	o.bbs.RemoveActualLRP(logger, oldActualLRPKey, oldActualLRPInstanceKey)
+	o.bbsClient.RemoveActualLRP(o.ProcessGuid, int(o.Index))
 }
 
 // ResidualEvacuatingLRPOperation processes an evacuating ActualLRP with no matching container.
 type ResidualEvacuatingLRPOperation struct {
 	logger            lager.Logger
-	bbs               bbs.RepBBS
+	legacyBBS         legacybbs.RepBBS
 	containerDelegate internal.ContainerDelegate
 	models.ActualLRPKey
 	models.ActualLRPInstanceKey
 }
 
 func NewResidualEvacuatingLRPOperation(logger lager.Logger,
-	bbs bbs.RepBBS,
+	legacyBBS legacybbs.RepBBS,
 	containerDelegate internal.ContainerDelegate,
 	lrpKey models.ActualLRPKey,
 	instanceKey models.ActualLRPInstanceKey,
 ) *ResidualEvacuatingLRPOperation {
 	return &ResidualEvacuatingLRPOperation{
 		logger:               logger,
-		bbs:                  bbs,
+		legacyBBS:            legacyBBS,
 		containerDelegate:    containerDelegate,
 		ActualLRPKey:         lrpKey,
 		ActualLRPInstanceKey: instanceKey,
@@ -102,27 +104,30 @@ func (o *ResidualEvacuatingLRPOperation) Execute() {
 
 	oldActualLRPKey := oldmodels.NewActualLRPKey(o.ActualLRPKey.GetProcessGuid(), int(o.ActualLRPKey.GetIndex()), o.ActualLRPKey.GetDomain())
 	oldActualLRPInstanceKey := oldmodels.NewActualLRPInstanceKey(o.ActualLRPInstanceKey.GetInstanceGuid(), o.ActualLRPInstanceKey.GetCellId())
-	o.bbs.RemoveEvacuatingActualLRP(logger, oldActualLRPKey, oldActualLRPInstanceKey)
+	o.legacyBBS.RemoveEvacuatingActualLRP(logger, oldActualLRPKey, oldActualLRPInstanceKey)
 }
 
 // ResidualJointLRPOperation processes an evacuating ActualLRP with no matching container.
 type ResidualJointLRPOperation struct {
 	logger            lager.Logger
-	bbs               bbs.RepBBS
+	bbsClient         bbs.Client
+	legacyBBS         legacybbs.RepBBS
 	containerDelegate internal.ContainerDelegate
 	models.ActualLRPKey
 	models.ActualLRPInstanceKey
 }
 
 func NewResidualJointLRPOperation(logger lager.Logger,
-	bbs bbs.RepBBS,
+	bbsClient bbs.Client,
+	legacyBBS legacybbs.RepBBS,
 	containerDelegate internal.ContainerDelegate,
 	lrpKey models.ActualLRPKey,
 	instanceKey models.ActualLRPInstanceKey,
 ) *ResidualJointLRPOperation {
 	return &ResidualJointLRPOperation{
+		bbsClient:            bbsClient,
 		logger:               logger,
-		bbs:                  bbs,
+		legacyBBS:            legacyBBS,
 		containerDelegate:    containerDelegate,
 		ActualLRPKey:         lrpKey,
 		ActualLRPInstanceKey: instanceKey,
@@ -147,29 +152,29 @@ func (o *ResidualJointLRPOperation) Execute() {
 		return
 	}
 
-	oldActualLRPKey := oldmodels.NewActualLRPKey(o.ActualLRPKey.GetProcessGuid(), int(o.ActualLRPKey.GetIndex()), o.ActualLRPKey.GetDomain())
-	oldActualLRPInstanceKey := oldmodels.NewActualLRPInstanceKey(o.ActualLRPInstanceKey.GetInstanceGuid(), o.ActualLRPInstanceKey.GetCellId())
-	o.bbs.RemoveActualLRP(logger, oldActualLRPKey, oldActualLRPInstanceKey)
-	o.bbs.RemoveEvacuatingActualLRP(logger, oldActualLRPKey, oldActualLRPInstanceKey)
+	oldActualLRPKey := oldmodels.NewActualLRPKey(o.ProcessGuid, int(o.Index), o.Domain)
+	oldActualLRPInstanceKey := oldmodels.NewActualLRPInstanceKey(o.InstanceGuid, o.CellId)
+	o.bbsClient.RemoveActualLRP(o.ProcessGuid, int(o.Index))
+	o.legacyBBS.RemoveEvacuatingActualLRP(logger, oldActualLRPKey, oldActualLRPInstanceKey)
 }
 
 // ResidualTaskOperation processes a Task with no matching container.
 type ResidualTaskOperation struct {
 	logger            lager.Logger
-	bbs               bbs.RepBBS
+	legacyBBS         legacybbs.RepBBS
 	containerDelegate internal.ContainerDelegate
 	TaskGuid          string
 }
 
 func NewResidualTaskOperation(
 	logger lager.Logger,
-	bbs bbs.RepBBS,
+	legacyBBS legacybbs.RepBBS,
 	containerDelegate internal.ContainerDelegate,
 	taskGuid string,
 ) *ResidualTaskOperation {
 	return &ResidualTaskOperation{
 		logger:            logger,
-		bbs:               bbs,
+		legacyBBS:         legacyBBS,
 		TaskGuid:          taskGuid,
 		containerDelegate: containerDelegate,
 	}
@@ -192,7 +197,7 @@ func (o *ResidualTaskOperation) Execute() {
 		return
 	}
 
-	err := o.bbs.FailTask(logger, o.TaskGuid, internal.TaskCompletionReasonMissingContainer)
+	err := o.legacyBBS.FailTask(logger, o.TaskGuid, internal.TaskCompletionReasonMissingContainer)
 	if err != nil {
 		logger.Error("failed-to-fail-task", err)
 	}
