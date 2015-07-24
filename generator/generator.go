@@ -10,7 +10,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/operationq"
 )
@@ -63,7 +62,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	containers := make(map[string]executor.Container)
 	instanceLRPs := make(map[string]models.ActualLRP)
 	evacuatingLRPs := make(map[string]models.ActualLRP)
-	tasks := make(map[string]oldmodels.Task)
+	tasks := make(map[string]*models.Task)
 
 	errChan := make(chan error, 3)
 
@@ -102,7 +101,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	}()
 
 	go func() {
-		foundTasks, err := g.legacyBBS.TasksByCellID(logger, g.cellID)
+		foundTasks, err := g.bbs.TasksByCellID(g.cellID)
 		if err != nil {
 			logger.Error("failed-to-retrieve-tasks", err)
 			err = fmt.Errorf("failed to retrieve tasks: %s", err.Error())

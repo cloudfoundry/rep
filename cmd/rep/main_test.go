@@ -501,8 +501,8 @@ var _ = Describe("The Rep", func() {
 
 				Eventually(deletedContainer).Should(BeClosed())
 
-				Consistently(func() ([]oldmodels.Task, error) {
-					return legacyBBS.Tasks(logger)
+				Consistently(func() ([]*models.Task, error) {
+					return bbsClient.Tasks()
 				}).Should(HaveLen(1))
 			})
 		})

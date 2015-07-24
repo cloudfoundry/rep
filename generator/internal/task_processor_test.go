@@ -3,12 +3,13 @@ package internal_test
 import (
 	"errors"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -17,15 +18,17 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const taskGuid = "my-guid"
-
-var processor internal.TaskProcessor
+var (
+	processor internal.TaskProcessor
+	legacyBBS *legacybbs.BBS
+)
 
 var _ = Describe("Task <-> Container table", func() {
 	var (
 		containerDelegate *fake_internal.FakeContainerDelegate
 	)
 	const (
+		taskGuid      = "my-guid"
 		localCellID   = "a"
 		otherCellID   = "w"
 		sessionPrefix = "task-table-test"
@@ -33,9 +36,9 @@ var _ = Describe("Task <-> Container table", func() {
 
 	BeforeEach(func() {
 		etcdRunner.Reset()
-		BBS = bbs.NewBBS(etcdClient, consulSession, "http://receptor.bogus.com", clock.NewClock(), lagertest.NewTestLogger("test-bbs"))
+		legacyBBS = legacybbs.NewBBS(etcdClient, consulSession, "http://receptor.bogus.com", clock.NewClock(), lagertest.NewTestLogger("test-bbs"))
 		containerDelegate = new(fake_internal.FakeContainerDelegate)
-		processor = internal.NewTaskProcessor(BBS, containerDelegate, localCellID)
+		processor = internal.NewTaskProcessor(legacyBBS, containerDelegate, localCellID)
 
 		containerDelegate.DeleteContainerReturns(true)
 		containerDelegate.StopContainerReturns(true)
@@ -53,10 +56,10 @@ var _ = Describe("Task <-> Container table", func() {
 	itCompletesTheTaskWithFailure := func(reason string) func(*lagertest.TestLogger) {
 		return func(logger *lagertest.TestLogger) {
 			It("completes the task with failure", func() {
-				task, err := BBS.TaskByGuid(logger, taskGuid)
+				task, err := bbsClient.TaskByGuid(taskGuid)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(task.State).To(Equal(models.TaskStateCompleted))
+				Expect(task.State).To(Equal(models.Task_Completed))
 				Expect(task.Failed).To(BeTrue())
 				Expect(task.FailureReason).To(Equal(reason))
 			})
@@ -73,17 +76,17 @@ var _ = Describe("Task <-> Container table", func() {
 				containerDelegate.FetchContainerResultFileReturns("some-result", nil)
 
 				containerDelegate.DeleteContainerStub = func(logger lager.Logger, guid string) bool {
-					task, err := BBS.TaskByGuid(logger, taskGuid)
+					task, err := bbsClient.TaskByGuid(taskGuid)
 					Expect(err).NotTo(HaveOccurred())
 
-					Expect(task.State).To(Equal(models.TaskStateCompleted))
+					Expect(task.State).To(Equal(models.Task_Completed))
 
 					return true
 				}
 			})
 
 			It("completes the task with the result", func() {
-				task, err := BBS.TaskByGuid(logger, taskGuid)
+				task, err := bbsClient.TaskByGuid(taskGuid)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(task.Failed).To(BeFalse())
@@ -127,10 +130,10 @@ var _ = Describe("Task <-> Container table", func() {
 
 	itSetsTheTaskToRunning := func(logger *lagertest.TestLogger) {
 		It("transitions the task to the running state", func() {
-			task, err := BBS.TaskByGuid(logger, taskGuid)
+			task, err := bbsClient.TaskByGuid(taskGuid)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(task.State).To(Equal(models.TaskStateRunning))
+			Expect(task.State).To(Equal(models.Task_Running))
 		})
 	}
 
@@ -172,216 +175,216 @@ var _ = Describe("Task <-> Container table", func() {
 		Rows: []Row{
 			// container reserved
 			ConceivableTaskScenario( // task deleted? (operator/etcd?)
-				NewContainer(executor.StateReserved),
+				NewContainer(taskGuid, executor.StateReserved),
 				nil,
 				itDeletesTheContainer,
 			),
 			ExpectedTaskScenario( // container is reserved for a pending container
-				NewContainer(executor.StateReserved),
-				NewTask("", models.TaskStatePending),
+				NewContainer(taskGuid, executor.StateReserved),
+				NewTask(taskGuid, "", models.Task_Pending),
 				itRunsTheContainer,
 			),
 			ExpectedTaskScenario( // task is started before we run the container. it should eventually transition to initializing or be reaped if things really go wrong.
-				NewContainer(executor.StateReserved),
-				NewTask("a", models.TaskStateRunning),
+				NewContainer(taskGuid, executor.StateReserved),
+				NewTask(taskGuid, "a", models.Task_Running),
 				itDoesNothing,
 			),
 			ConceivableTaskScenario( // maybe the rep reserved the container and failed to report success back to the auctioneer
-				NewContainer(executor.StateReserved),
-				NewTask("w", models.TaskStateRunning),
+				NewContainer(taskGuid, executor.StateReserved),
+				NewTask(taskGuid, "w", models.Task_Running),
 				itDeletesTheContainer,
 			),
 			ConceivableTaskScenario( // if the Run call to the executor fails we complete the task with failure, and try to remove the reservation, but there's a time window.
-				NewContainer(executor.StateReserved),
-				NewTask("a", models.TaskStateCompleted),
+				NewContainer(taskGuid, executor.StateReserved),
+				NewTask(taskGuid, "a", models.Task_Completed),
 				itDeletesTheContainer,
 			),
 			ConceivableTaskScenario( // maybe the rep reserved the container and failed to report success back to the auctioneer
-				NewContainer(executor.StateReserved),
-				NewTask("w", models.TaskStateCompleted),
+				NewContainer(taskGuid, executor.StateReserved),
+				NewTask(taskGuid, "w", models.Task_Completed),
 				itDeletesTheContainer,
 			),
 			ConceivableTaskScenario( // caller is processing failure from Run call
-				NewContainer(executor.StateReserved),
-				NewTask("a", models.TaskStateResolving),
+				NewContainer(taskGuid, executor.StateReserved),
+				NewTask(taskGuid, "a", models.Task_Resolving),
 				itDeletesTheContainer,
 			),
 			ConceivableTaskScenario( // maybe the rep reserved the container and failed to report success back to the auctioneer
-				NewContainer(executor.StateReserved),
-				NewTask("w", models.TaskStateResolving),
+				NewContainer(taskGuid, executor.StateReserved),
+				NewTask(taskGuid, "w", models.Task_Resolving),
 				itDeletesTheContainer,
 			),
 
 			// container initializing
 			ConceivableTaskScenario( // task deleted? (operator/etcd?)
-				NewContainer(executor.StateInitializing),
+				NewContainer(taskGuid, executor.StateInitializing),
 				nil,
 				itDeletesTheContainer,
 			),
 			InconceivableTaskScenario( // task should be started before anyone tries to run
-				NewContainer(executor.StateInitializing),
-				NewTask("", models.TaskStatePending),
+				NewContainer(taskGuid, executor.StateInitializing),
+				NewTask(taskGuid, "", models.Task_Pending),
 				itRunsTheContainer,
 			),
 			ExpectedTaskScenario( // task is running throughout initializing, completed, and running
-				NewContainer(executor.StateInitializing),
-				NewTask("a", models.TaskStateRunning),
+				NewContainer(taskGuid, executor.StateInitializing),
+				NewTask(taskGuid, "a", models.Task_Running),
 				itDoesNothing,
 			),
 			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
-				NewContainer(executor.StateInitializing),
-				NewTask("w", models.TaskStateRunning),
+				NewContainer(taskGuid, executor.StateInitializing),
+				NewTask(taskGuid, "w", models.Task_Running),
 				itDeletesTheContainer,
 			),
 			ConceivableTaskScenario( // task was cancelled
-				NewContainer(executor.StateInitializing),
-				NewTask("a", models.TaskStateCompleted),
+				NewContainer(taskGuid, executor.StateInitializing),
+				NewTask(taskGuid, "a", models.Task_Completed),
 				itDeletesTheContainer,
 			),
 			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
-				NewContainer(executor.StateInitializing),
-				NewTask("w", models.TaskStateCompleted),
+				NewContainer(taskGuid, executor.StateInitializing),
+				NewTask(taskGuid, "w", models.Task_Completed),
 				itDeletesTheContainer,
 			),
 			ConceivableTaskScenario( // task was cancelled
-				NewContainer(executor.StateInitializing),
-				NewTask("a", models.TaskStateResolving),
+				NewContainer(taskGuid, executor.StateInitializing),
+				NewTask(taskGuid, "a", models.Task_Resolving),
 				itDeletesTheContainer,
 			),
 			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
-				NewContainer(executor.StateInitializing),
-				NewTask("w", models.TaskStateResolving),
+				NewContainer(taskGuid, executor.StateInitializing),
+				NewTask(taskGuid, "w", models.Task_Resolving),
 				itDeletesTheContainer,
 			),
 
 			// container created
 			ConceivableTaskScenario( // task deleted? (operator/etcd?)
-				NewContainer(executor.StateCreated),
+				NewContainer(taskGuid, executor.StateCreated),
 				nil,
 				itDeletesTheContainer,
 			),
 			InconceivableTaskScenario( // task should be started before anyone tries to run
-				NewContainer(executor.StateCreated),
-				NewTask("", models.TaskStatePending),
+				NewContainer(taskGuid, executor.StateCreated),
+				NewTask(taskGuid, "", models.Task_Pending),
 				itSetsTheTaskToRunning,
 			),
 			ExpectedTaskScenario( // task is running throughout initializing, completed, and running
-				NewContainer(executor.StateCreated),
-				NewTask("a", models.TaskStateRunning),
+				NewContainer(taskGuid, executor.StateCreated),
+				NewTask(taskGuid, "a", models.Task_Running),
 				itDoesNothing,
 			),
 			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
-				NewContainer(executor.StateCreated),
-				NewTask("w", models.TaskStateRunning),
+				NewContainer(taskGuid, executor.StateCreated),
+				NewTask(taskGuid, "w", models.Task_Running),
 				itDeletesTheContainer,
 			),
 			ConceivableTaskScenario( // task was cancelled
-				NewContainer(executor.StateCreated),
-				NewTask("a", models.TaskStateCompleted),
+				NewContainer(taskGuid, executor.StateCreated),
+				NewTask(taskGuid, "a", models.Task_Completed),
 				itDeletesTheContainer,
 			),
 			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
-				NewContainer(executor.StateCreated),
-				NewTask("w", models.TaskStateCompleted),
+				NewContainer(taskGuid, executor.StateCreated),
+				NewTask(taskGuid, "w", models.Task_Completed),
 				itDeletesTheContainer,
 			),
 			ConceivableTaskScenario( // task was cancelled
-				NewContainer(executor.StateCreated),
-				NewTask("a", models.TaskStateResolving),
+				NewContainer(taskGuid, executor.StateCreated),
+				NewTask(taskGuid, "a", models.Task_Resolving),
 				itDeletesTheContainer,
 			),
 			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
-				NewContainer(executor.StateCreated),
-				NewTask("w", models.TaskStateResolving),
+				NewContainer(taskGuid, executor.StateCreated),
+				NewTask(taskGuid, "w", models.Task_Resolving),
 				itDeletesTheContainer,
 			),
 
 			// container running
 			ConceivableTaskScenario( // task deleted? (operator/etcd?)
-				NewContainer(executor.StateRunning),
+				NewContainer(taskGuid, executor.StateRunning),
 				nil,
 				itDeletesTheContainer,
 			),
 			InconceivableTaskScenario( // task should be started before anyone tries to run
-				NewContainer(executor.StateRunning),
-				NewTask("", models.TaskStatePending),
+				NewContainer(taskGuid, executor.StateRunning),
+				NewTask(taskGuid, "", models.Task_Pending),
 				itSetsTheTaskToRunning,
 			),
 			ExpectedTaskScenario( // task is running throughout initializing, completed, and running
-				NewContainer(executor.StateRunning),
-				NewTask("a", models.TaskStateRunning),
+				NewContainer(taskGuid, executor.StateRunning),
+				NewTask(taskGuid, "a", models.Task_Running),
 				itDoesNothing,
 			),
 			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
-				NewContainer(executor.StateRunning),
-				NewTask("w", models.TaskStateRunning),
+				NewContainer(taskGuid, executor.StateRunning),
+				NewTask(taskGuid, "w", models.Task_Running),
 				itDeletesTheContainer,
 			),
 			ConceivableTaskScenario( // task was cancelled
-				NewContainer(executor.StateRunning),
-				NewTask("a", models.TaskStateCompleted),
+				NewContainer(taskGuid, executor.StateRunning),
+				NewTask(taskGuid, "a", models.Task_Completed),
 				itDeletesTheContainer,
 			),
 			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
-				NewContainer(executor.StateRunning),
-				NewTask("w", models.TaskStateCompleted),
+				NewContainer(taskGuid, executor.StateRunning),
+				NewTask(taskGuid, "w", models.Task_Completed),
 				itDeletesTheContainer,
 			),
 			ConceivableTaskScenario( // task was cancelled
-				NewContainer(executor.StateRunning),
-				NewTask("a", models.TaskStateResolving),
+				NewContainer(taskGuid, executor.StateRunning),
+				NewTask(taskGuid, "a", models.Task_Resolving),
 				itDeletesTheContainer,
 			),
 			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
-				NewContainer(executor.StateRunning),
-				NewTask("w", models.TaskStateResolving),
+				NewContainer(taskGuid, executor.StateRunning),
+				NewTask(taskGuid, "w", models.Task_Resolving),
 				itDeletesTheContainer,
 			),
 
 			// container completed
 			ConceivableTaskScenario( // task deleted? (operator/etcd?)
-				NewCompletedContainer(failedRunResult),
+				NewCompletedContainer(taskGuid, failedRunResult),
 				nil,
 				itDeletesTheContainer,
 			),
 			InconceivableTaskScenario( // task should be walked through lifecycle by the time we get here
-				NewCompletedContainer(failedRunResult),
-				NewTask("", models.TaskStatePending),
+				NewCompletedContainer(taskGuid, failedRunResult),
+				NewTask(taskGuid, "", models.Task_Pending),
 				itCompletesTheTaskWithFailure("invalid state transition"),
 			),
 			ExpectedTaskScenario( // container completed and failed; complete the task with its failure reason
-				NewCompletedContainer(failedRunResult),
-				NewTask("a", models.TaskStateRunning),
+				NewCompletedContainer(taskGuid, failedRunResult),
+				NewTask(taskGuid, "a", models.Task_Running),
 				itCompletesTheFailedTaskAndDeletesTheContainer,
 			),
 			ExpectedTaskScenario( // container completed and succeeded; complete the task with its result
-				NewCompletedContainer(successfulRunResult),
-				NewTask("a", models.TaskStateRunning),
+				NewCompletedContainer(taskGuid, successfulRunResult),
+				NewTask(taskGuid, "a", models.Task_Running),
 				itCompletesTheSuccessfulTaskAndDeletesTheContainer,
 			),
 			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
-				NewCompletedContainer(failedRunResult),
-				NewTask("w", models.TaskStateRunning),
+				NewCompletedContainer(taskGuid, failedRunResult),
+				NewTask(taskGuid, "w", models.Task_Running),
 				itDeletesTheContainer,
 			),
 			ConceivableTaskScenario( // may have completed the task and then failed to delete the container
-				NewCompletedContainer(failedRunResult),
-				NewTask("a", models.TaskStateCompleted),
+				NewCompletedContainer(taskGuid, failedRunResult),
+				NewTask(taskGuid, "a", models.Task_Completed),
 				itDeletesTheContainer,
 			),
 			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
-				NewCompletedContainer(failedRunResult),
-				NewTask("w", models.TaskStateCompleted),
+				NewCompletedContainer(taskGuid, failedRunResult),
+				NewTask(taskGuid, "w", models.Task_Completed),
 				itDeletesTheContainer,
 			),
 			ConceivableTaskScenario( // may have completed the task and then failed to delete the container, and someone started processing the completion
-				NewCompletedContainer(failedRunResult),
-				NewTask("a", models.TaskStateResolving),
+				NewCompletedContainer(taskGuid, failedRunResult),
+				NewTask(taskGuid, "a", models.Task_Resolving),
 				itDeletesTheContainer,
 			),
 			InconceivableTaskScenario( // state machine borked? no other cell should get this far.
-				NewCompletedContainer(failedRunResult),
-				NewTask("w", models.TaskStateResolving),
+				NewCompletedContainer(taskGuid, failedRunResult),
+				NewTask(taskGuid, "w", models.Task_Resolving),
 				itDeletesTheContainer,
 			),
 		},
@@ -392,7 +395,6 @@ var _ = Describe("Task <-> Container table", func() {
 
 type TaskTable struct {
 	LocalCellID string
-	Processor   *internal.TaskProcessor
 	Logger      *lagertest.TestLogger
 	Rows        []Row
 }
@@ -420,18 +422,18 @@ type TaskRow struct {
 	TestFunc  TaskTest
 }
 
-func (e TaskRow) Test(logger *lagertest.TestLogger) {
+func (t TaskRow) Test(logger *lagertest.TestLogger) {
 	BeforeEach(func() {
-		if e.Task != nil {
-			walkToState(logger, BBS, *e.Task)
+		if t.Task != nil {
+			walkToState(logger, legacyBBS, t.Task)
 		}
 	})
 
 	JustBeforeEach(func() {
-		processor.Process(logger, e.Container)
+		processor.Process(logger, t.Container)
 	})
 
-	e.TestFunc(logger)
+	t.TestFunc(logger)
 }
 
 func (t TaskRow) ContextDescription() string {
@@ -448,8 +450,8 @@ func (t TaskRow) taskDescription() string {
 	}
 
 	msg := t.Task.State.String()
-	if t.Task.CellID != "" {
-		msg += " on '" + t.Task.CellID + "'"
+	if t.Task.CellId != "" {
+		msg += " on '" + t.Task.CellId + "'"
 	}
 
 	return msg
@@ -479,7 +481,7 @@ func InconceivableTaskScenario(container executor.Container, task *models.Task, 
 	return TaskRow{container, task, TaskTest(inconceivableTest)}
 }
 
-func NewContainer(containerState executor.State) executor.Container {
+func NewContainer(taskGuid string, containerState executor.State) executor.Container {
 	return executor.Container{
 		Guid:  taskGuid,
 		State: containerState,
@@ -489,54 +491,66 @@ func NewContainer(containerState executor.State) executor.Container {
 	}
 }
 
-func NewCompletedContainer(runResult executor.ContainerRunResult) executor.Container {
-	container := NewContainer(executor.StateCompleted)
+func NewCompletedContainer(taskGuid string, runResult executor.ContainerRunResult) executor.Container {
+	container := NewContainer(taskGuid, executor.StateCompleted)
 	container.RunResult = runResult
 	return container
 }
 
-func NewTask(cellID string, taskState models.TaskState) *models.Task {
+func NewTask(taskGuid, cellID string, taskState models.Task_State) *models.Task {
 	return &models.Task{
 		TaskGuid:   taskGuid,
-		CellID:     cellID,
+		CellId:     cellID,
 		State:      taskState,
 		ResultFile: "some-result-filename",
 		Domain:     "domain",
-		RootFS:     "some:rootfs",
-		Action:     &models.RunAction{User: "me", Path: "ls"},
+		RootFs:     "some:rootfs",
+		Action:     models.WrapAction(&models.RunAction{User: "me", Path: "ls"}),
 	}
 }
 
-func walkToState(logger lager.Logger, BBS *bbs.BBS, task models.Task) {
-	var currentState models.TaskState
+func convertTask(task *models.Task) oldmodels.Task {
+	return oldmodels.Task{
+		TaskGuid:   task.TaskGuid,
+		CellID:     task.CellId,
+		State:      oldmodels.TaskState(task.State),
+		ResultFile: task.ResultFile,
+		Domain:     task.Domain,
+		RootFS:     task.RootFs,
+		Action:     &oldmodels.RunAction{User: "me", Path: "ls"},
+	}
+}
+
+func walkToState(logger lager.Logger, legacyBBS *legacybbs.BBS, task *models.Task) {
+	var currentState models.Task_State
 	desiredState := task.State
 	for desiredState != currentState {
-		currentState = advanceState(logger, BBS, task, currentState)
+		currentState = advanceState(logger, legacyBBS, task, currentState)
 	}
 }
 
-func advanceState(logger lager.Logger, BBS *bbs.BBS, task models.Task, currentState models.TaskState) models.TaskState {
+func advanceState(logger lager.Logger, legacyBBS *legacybbs.BBS, task *models.Task, currentState models.Task_State) models.Task_State {
 	switch currentState {
-	case models.TaskStateInvalid:
-		err := BBS.DesireTask(logger, task)
+	case models.Task_Invalid:
+		err := legacyBBS.DesireTask(logger, convertTask(task))
 		Expect(err).NotTo(HaveOccurred())
-		return models.TaskStatePending
+		return models.Task_Pending
 
-	case models.TaskStatePending:
-		changed, err := BBS.StartTask(logger, task.TaskGuid, task.CellID)
+	case models.Task_Pending:
+		changed, err := legacyBBS.StartTask(logger, task.TaskGuid, task.CellId)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(changed).To(BeTrue())
-		return models.TaskStateRunning
+		return models.Task_Running
 
-	case models.TaskStateRunning:
-		err := BBS.CompleteTask(logger, task.TaskGuid, task.CellID, true, "reason", "result")
+	case models.Task_Running:
+		err := legacyBBS.CompleteTask(logger, task.TaskGuid, task.CellId, true, "reason", "result")
 		Expect(err).NotTo(HaveOccurred())
-		return models.TaskStateCompleted
+		return models.Task_Completed
 
-	case models.TaskStateCompleted:
-		err := BBS.ResolvingTask(logger, task.TaskGuid)
+	case models.Task_Completed:
+		err := legacyBBS.ResolvingTask(logger, task.TaskGuid)
 		Expect(err).NotTo(HaveOccurred())
-		return models.TaskStateResolving
+		return models.Task_Resolving
 
 	default:
 		panic("not a thing.")

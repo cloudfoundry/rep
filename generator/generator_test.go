@@ -9,7 +9,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/generator"
 	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
-	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/operationq"
 
 	. "github.com/onsi/ginkgo"
@@ -67,9 +66,8 @@ var _ = Describe("Generator", func() {
 		})
 
 		It("retrieves all tasks for its cell id", func() {
-			Expect(fakeLegacyBBS.TasksByCellIDCallCount()).To(Equal(1))
-			actualLogger, actualCellID := fakeLegacyBBS.TasksByCellIDArgsForCall(0)
-			Expect(actualLogger.SessionName()).To(Equal(sessionName))
+			Expect(fakeBBS.TasksByCellIDCallCount()).To(Equal(1))
+			actualCellID := fakeBBS.TasksByCellIDArgsForCall(0)
 			Expect(actualCellID).To(Equal(cellID))
 		})
 
@@ -119,7 +117,7 @@ var _ = Describe("Generator", func() {
 					{Instance: nil, Evacuating: &evacuatingOnlyLRP},
 				}
 
-				tasks := []oldmodels.Task{
+				tasks := []*models.Task{
 					{TaskGuid: guidContainerForTask},
 					{TaskGuid: guidTaskOnly},
 				}
@@ -127,7 +125,7 @@ var _ = Describe("Generator", func() {
 				fakeExecutorClient.ListContainersReturns(containers, nil)
 
 				fakeBBS.ActualLRPGroupsReturns(lrpGroups, nil)
-				fakeLegacyBBS.TasksByCellIDReturns(tasks, nil)
+				fakeBBS.TasksByCellIDReturns(tasks, nil)
 			})
 
 			It("does not return an error", func() {
@@ -207,7 +205,7 @@ var _ = Describe("Generator", func() {
 
 			Context("when retrieving the tasks fails", func() {
 				BeforeEach(func() {
-					fakeLegacyBBS.TasksByCellIDReturns(nil, errors.New("oh no, no task!"))
+					fakeBBS.TasksByCellIDReturns(nil, errors.New("oh no, no task!"))
 				})
 
 				It("returns an error", func() {
@@ -327,18 +325,18 @@ var _ = Describe("Generator", func() {
 					})
 
 					Context("when the lifecycle is Task", func() {
-						var task oldmodels.Task
+						var task *models.Task
 
 						BeforeEach(func() {
 							container.Tags[rep.LifecycleTag] = rep.TaskLifecycle
 
-							task = oldmodels.Task{
+							task = &models.Task{
 								TaskGuid:   "some-instance-guid",
-								State:      oldmodels.TaskStateRunning,
+								State:      models.Task_Running,
 								ResultFile: "some-result-file",
 							}
 
-							fakeLegacyBBS.TaskByGuidReturns(task, nil)
+							fakeBBS.TaskByGuidReturns(task, nil)
 						})
 
 						It("yields an operation for that container", func() {
