@@ -80,7 +80,7 @@ func (p *evacuationLRPProcessor) processRunningContainer(logger lager.Logger, lr
 	logger = logger.Session("process-running-container")
 
 	logger.Debug("extracting-net-info-from-container")
-	netInfo, err := rep.ActualLRPNetInfoFromContainer(lrpContainer.Container)
+	netInfo, err := rep.LegacyActualLRPNetInfoFromContainer(lrpContainer.Container)
 	if err != nil {
 		logger.Error("failed-extracting-net-info-from-container", err)
 		return

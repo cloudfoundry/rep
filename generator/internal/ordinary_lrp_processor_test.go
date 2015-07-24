@@ -11,7 +11,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	fake_legacy_bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -46,22 +45,36 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 	Describe("Process", func() {
 		const sessionPrefix = "test.ordinary-lrp-processor."
 
-		var expectedLrpKey oldmodels.ActualLRPKey
-		var expectedInstanceKey oldmodels.ActualLRPInstanceKey
-		var expectedNetInfo oldmodels.ActualLRPNetInfo
-		var expectedSessionName string
+		var (
+			expectedLrpKey      models.ActualLRPKey
+			expectedInstanceKey models.ActualLRPInstanceKey
+			expectedNetInfo     models.ActualLRPNetInfo
+			expectedSessionName string
+		)
+
+		var (
+			oldExpectedLrpKey      oldmodels.ActualLRPKey
+			oldExpectedInstanceKey oldmodels.ActualLRPInstanceKey
+			oldExpectedNetInfo     oldmodels.ActualLRPNetInfo
+		)
 
 		BeforeEach(func() {
-			expectedLrpKey = oldmodels.NewActualLRPKey("process-guid", 2, "domain")
-			expectedInstanceKey = oldmodels.NewActualLRPInstanceKey("instance-guid", "cell-id")
-			expectedNetInfo = oldmodels.NewActualLRPNetInfo("1.2.3.4", []oldmodels.PortMapping{{ContainerPort: 8080, HostPort: 61999}})
+			expectedLrpKey = models.NewActualLRPKey("process-guid", 2, "domain")
+			expectedInstanceKey = models.NewActualLRPInstanceKey("instance-guid", "cell-id")
+			expectedNetInfo = models.NewActualLRPNetInfo("1.2.3.4", models.NewPortMapping(61999, 8080))
+		})
+
+		BeforeEach(func() {
+			oldExpectedLrpKey = oldmodels.NewActualLRPKey("process-guid", 2, "domain")
+			oldExpectedInstanceKey = oldmodels.NewActualLRPInstanceKey("instance-guid", "cell-id")
+			oldExpectedNetInfo = oldmodels.NewActualLRPNetInfo("1.2.3.4", []oldmodels.PortMapping{{ContainerPort: 8080, HostPort: 61999}})
 		})
 
 		Context("when given an LRP container", func() {
 			var container executor.Container
 
 			BeforeEach(func() {
-				container = newLRPContainer(expectedLrpKey, expectedInstanceKey, expectedNetInfo)
+				container = newLRPContainer(oldExpectedLrpKey, oldExpectedInstanceKey, oldExpectedNetInfo)
 			})
 
 			JustBeforeEach(func() {
@@ -85,14 +98,12 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 					container.State = executor.StateReserved
 				})
 
-				It("claims the actualLRP in the legacyBBS", func() {
-					expectedNewInstanceKey := models.NewActualLRPInstanceKey(expectedInstanceKey.InstanceGuid, expectedInstanceKey.CellID)
-
+				It("claims the actualLRP in the bbs", func() {
 					Expect(bbsClient.ClaimActualLRPCallCount()).To(Equal(1))
 					processGuid, index, instanceKey := bbsClient.ClaimActualLRPArgsForCall(0)
 					Expect(processGuid).To(Equal(expectedLrpKey.ProcessGuid))
-					Expect(index).To(Equal(expectedLrpKey.Index))
-					Expect(instanceKey).To(Equal(expectedNewInstanceKey))
+					Expect(int32(index)).To(Equal(expectedLrpKey.Index))
+					Expect(instanceKey).To(Equal(expectedInstanceKey))
 				})
 
 				Context("when claiming fails because ErrActualLRPCannotBeClaimed", func() {
@@ -144,20 +155,18 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 							processGuid, index := bbsClient.RemoveActualLRPArgsForCall(0)
 
 							Expect(processGuid).To(Equal(expectedLrpKey.ProcessGuid))
-							Expect(index).To(Equal(expectedLrpKey.Index))
+							Expect(int32(index)).To(Equal(expectedLrpKey.Index))
 						})
 					})
 				})
 
 				var itClaimsTheLRPOrDeletesTheContainer = func(expectedSessionName string) {
 					It("claims the lrp", func() {
-						expectedNewInstanceKey := models.NewActualLRPInstanceKey(expectedInstanceKey.InstanceGuid, expectedInstanceKey.CellID)
-
 						Expect(bbsClient.ClaimActualLRPCallCount()).To(Equal(1))
 						processGuid, index, instanceKey := bbsClient.ClaimActualLRPArgsForCall(0)
 						Expect(processGuid).To(Equal(expectedLrpKey.ProcessGuid))
-						Expect(index).To(Equal(expectedLrpKey.Index))
-						Expect(instanceKey).To(Equal(expectedNewInstanceKey))
+						Expect(int32(index)).To(Equal(expectedLrpKey.Index))
+						Expect(instanceKey).To(Equal(expectedInstanceKey))
 					})
 
 					Context("when the claim fails because ErrActualLRPCannotBeClaimed", func() {
@@ -210,17 +219,16 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 					})
 
 					It("starts the lrp in the legacyBBS", func() {
-						Expect(legacyBBS.StartActualLRPCallCount()).To(Equal(1))
-						legacyBBSLogger, lrpKey, instanceKey, netInfo := legacyBBS.StartActualLRPArgsForCall(0)
-						Expect(lrpKey).To(Equal(expectedLrpKey))
-						Expect(instanceKey).To(Equal(expectedInstanceKey))
-						Expect(netInfo).To(Equal(expectedNetInfo))
-						Expect(legacyBBSLogger.SessionName()).To(Equal(expectedSessionName))
+						Expect(bbsClient.StartActualLRPCallCount()).To(Equal(1))
+						lrpKey, instanceKey, netInfo := bbsClient.StartActualLRPArgsForCall(0)
+						Expect(*lrpKey).To(Equal(expectedLrpKey))
+						Expect(*instanceKey).To(Equal(expectedInstanceKey))
+						Expect(*netInfo).To(Equal(expectedNetInfo))
 					})
 
 					Context("when starting fails because ErrActualLRPCannotBeStarted", func() {
 						BeforeEach(func() {
-							legacyBBS.StartActualLRPReturns(bbserrors.ErrActualLRPCannotBeStarted)
+							bbsClient.StartActualLRPReturns(nil, models.ErrActualLRPCannotBeStarted)
 						})
 
 						It("stops the container", func() {
@@ -233,7 +241,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 					Context("when starting fails for an unknown reason", func() {
 						BeforeEach(func() {
-							legacyBBS.StartActualLRPReturns(errors.New("boom"))
+							bbsClient.StartActualLRPReturns(nil, errors.New("boom"))
 						})
 
 						It("does not stop or delete the container", func() {
@@ -259,7 +267,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 							processGuid, index := bbsClient.RemoveActualLRPArgsForCall(0)
 
 							Expect(processGuid).To(Equal(expectedLrpKey.ProcessGuid))
-							Expect(index).To(Equal(expectedLrpKey.Index))
+							Expect(int32(index)).To(Equal(expectedLrpKey.Index))
 						})
 
 						Context("when the removal succeeds", func() {
@@ -294,8 +302,8 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						It("crashes the actual LRP", func() {
 							Expect(legacyBBS.CrashActualLRPCallCount()).To(Equal(1))
 							legacyBBSLogger, lrpKey, instanceKey, reason := legacyBBS.CrashActualLRPArgsForCall(0)
-							Expect(lrpKey).To(Equal(expectedLrpKey))
-							Expect(instanceKey).To(Equal(expectedInstanceKey))
+							Expect(lrpKey).To(Equal(oldExpectedLrpKey))
+							Expect(instanceKey).To(Equal(oldExpectedInstanceKey))
 							Expect(reason).To(Equal("crashed"))
 							Expect(legacyBBSLogger.SessionName()).To(Equal(expectedSessionName))
 						})

@@ -427,14 +427,14 @@ var _ = Describe("The Rep", func() {
 
 				Eventually(legacyBBS.Cells).Should(HaveLen(1))
 
-				lrpKey := oldmodels.NewActualLRPKey(processGuid, 1, "domain")
-				instanceKey := oldmodels.NewActualLRPInstanceKey(instanceGuid, cellID)
-				netInfo := oldmodels.NewActualLRPNetInfo("bogus-ip", []oldmodels.PortMapping{})
+				lrpKey := models.NewActualLRPKey(processGuid, 1, "domain")
+				instanceKey := models.NewActualLRPInstanceKey(instanceGuid, cellID)
+				netInfo := models.NewActualLRPNetInfo("bogus-ip")
 
-				err := legacyBBS.StartActualLRP(logger, lrpKey, instanceKey, netInfo)
+				_, err := bbsClient.StartActualLRP(&lrpKey, &instanceKey, &netInfo)
 				Expect(err).NotTo(HaveOccurred())
 
-				actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(lrpKey.ProcessGuid, lrpKey.Index)
+				actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(lrpKey.ProcessGuid, int(lrpKey.Index))
 				Expect(err).NotTo(HaveOccurred())
 				runningLRP = actualLRPGroup.GetInstance()
 			})
@@ -511,14 +511,14 @@ var _ = Describe("The Rep", func() {
 			Context("when it has running LRP containers", func() {
 				var (
 					processGuid  string
-					index        int
+					index        int32
 					domain       string
 					instanceGuid string
 					address      string
 
-					lrpKey          oldmodels.ActualLRPKey
-					lrpContainerKey oldmodels.ActualLRPInstanceKey
-					lrpNetInfo      oldmodels.ActualLRPNetInfo
+					lrpKey          models.ActualLRPKey
+					lrpContainerKey models.ActualLRPInstanceKey
+					lrpNetInfo      models.ActualLRPNetInfo
 				)
 
 				JustBeforeEach(func() {
@@ -540,7 +540,7 @@ var _ = Describe("The Rep", func() {
 							"tag:" + rep.DomainTag:       "domain",
 							"tag:" + rep.ProcessGuidTag:  processGuid,
 							"tag:" + rep.InstanceGuidTag: instanceGuid,
-							"tag:" + rep.ProcessIndexTag: strconv.Itoa(index),
+							"tag:" + rep.ProcessIndexTag: strconv.Itoa(int(index)),
 						}}
 					fakeGarden.RouteToHandler("GET", "/containers",
 						ghttp.RespondWithJSONEncoded(http.StatusOK, map[string][]string{"handles": []string{containerGuid}}),
@@ -556,11 +556,11 @@ var _ = Describe("The Rep", func() {
 
 					fakeGarden.RouteToHandler("GET", "/containers/"+containerGuid+"/info", ghttp.RespondWithJSONEncoded(http.StatusOK, containerInfo))
 
-					lrpKey = oldmodels.NewActualLRPKey(processGuid, index, domain)
-					lrpContainerKey = oldmodels.NewActualLRPInstanceKey(instanceGuid, cellID)
-					lrpNetInfo = oldmodels.NewActualLRPNetInfo(address, []oldmodels.PortMapping{{ContainerPort: 1470, HostPort: 2589}})
+					lrpKey = models.NewActualLRPKey(processGuid, index, domain)
+					lrpContainerKey = models.NewActualLRPInstanceKey(instanceGuid, cellID)
+					lrpNetInfo = models.NewActualLRPNetInfo(address, models.NewPortMapping(2589, 1470))
 
-					err := legacyBBS.StartActualLRP(logger, lrpKey, lrpContainerKey, lrpNetInfo)
+					_, err := bbsClient.StartActualLRP(&lrpKey, &lrpContainerKey, &lrpNetInfo)
 					Expect(err).NotTo(HaveOccurred())
 
 					resp, err := http.Post(fmt.Sprintf("http://0.0.0.0:%d/evacuate", serverPort), "text/html", nil)
@@ -573,7 +573,7 @@ var _ = Describe("The Rep", func() {
 					var actualLRP oldmodels.ActualLRP
 
 					getEvacuatingLRP := func() *oldmodels.ActualLRP {
-						node, err := etcdAdapter.Get(shared.EvacuatingActualLRPSchemaPath(processGuid, index))
+						node, err := etcdAdapter.Get(shared.EvacuatingActualLRPSchemaPath(processGuid, int(index)))
 						if err != nil {
 							return nil
 						}

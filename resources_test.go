@@ -1,9 +1,10 @@
 package rep_test
 
 import (
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,7 +14,7 @@ var _ = Describe("Resources", func() {
 	Describe("ActualLRPKeyFromContainer", func() {
 		var (
 			container        executor.Container
-			lrpKey           models.ActualLRPKey
+			lrpKey           oldmodels.ActualLRPKey
 			keyConversionErr error
 		)
 
@@ -46,7 +47,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("converts a valid container without error", func() {
-				expectedKey := models.ActualLRPKey{
+				expectedKey := oldmodels.ActualLRPKey{
 					ProcessGuid: "process-guid",
 					Index:       999,
 					Domain:      "my-domain",
@@ -93,7 +94,7 @@ var _ = Describe("Resources", func() {
 
 		var (
 			container                executor.Container
-			lrpInstanceKey           models.ActualLRPInstanceKey
+			lrpInstanceKey           oldmodels.ActualLRPInstanceKey
 			instanceKeyConversionErr error
 			cellID                   string
 		)
@@ -128,7 +129,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("it creates the correct container key", func() {
-				expectedInstanceKey := models.ActualLRPInstanceKey{
+				expectedInstanceKey := oldmodels.ActualLRPInstanceKey{
 					InstanceGuid: "some-instance-guid",
 					CellID:       cellID,
 				}
@@ -173,7 +174,7 @@ var _ = Describe("Resources", func() {
 	Describe("ActualLRPNetInfoFromContainer", func() {
 		var (
 			container            executor.Container
-			lrpNetInfo           models.ActualLRPNetInfo
+			lrpNetInfo           *models.ActualLRPNetInfo
 			netInfoConversionErr error
 		)
 
@@ -207,7 +208,7 @@ var _ = Describe("Resources", func() {
 
 			It("returns the correct net info", func() {
 				expectedNetInfo := models.ActualLRPNetInfo{
-					Ports: []models.PortMapping{
+					Ports: []*models.PortMapping{
 						{
 							ContainerPort: 1234,
 							HostPort:      6789,
@@ -216,7 +217,7 @@ var _ = Describe("Resources", func() {
 					Address: "some-external-ip",
 				}
 
-				Expect(lrpNetInfo).To(Equal(expectedNetInfo))
+				Expect(*lrpNetInfo).To(Equal(expectedNetInfo))
 			})
 		})
 

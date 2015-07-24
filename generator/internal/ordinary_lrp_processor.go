@@ -6,7 +6,6 @@ import (
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
 	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 )
@@ -106,8 +105,8 @@ func (p *ordinaryLRPProcessor) processRunningContainer(logger lager.Logger, lrpC
 	}
 	logger.Debug("succeeded-extracting-net-info-from-container")
 
-	err = p.legacyBBS.StartActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo)
-	if err == bbserrors.ErrActualLRPCannotBeStarted {
+	_, err = p.bbsClient.StartActualLRP(oldActualLRPKeyToNew(lrpContainer.ActualLRPKey), oldInstanceKeyToNew(lrpContainer.ActualLRPInstanceKey), netInfo)
+	if err == models.ErrActualLRPCannotBeStarted {
 		p.containerDelegate.StopContainer(logger, lrpContainer.Guid)
 	}
 }
@@ -130,7 +129,7 @@ func (p *ordinaryLRPProcessor) processInvalidContainer(logger lager.Logger, lrpC
 }
 
 func (p *ordinaryLRPProcessor) claimLRPContainer(logger lager.Logger, lrpContainer *lrpContainer) bool {
-	_, err := p.bbsClient.ClaimActualLRP(lrpContainer.ProcessGuid, lrpContainer.Index, oldInstanceKeyToNew(lrpContainer.ActualLRPInstanceKey))
+	_, err := p.bbsClient.ClaimActualLRP(lrpContainer.ProcessGuid, lrpContainer.Index, *oldInstanceKeyToNew(lrpContainer.ActualLRPInstanceKey))
 	switch err {
 	case nil:
 		return true
@@ -142,6 +141,12 @@ func (p *ordinaryLRPProcessor) claimLRPContainer(logger lager.Logger, lrpContain
 	}
 }
 
-func oldInstanceKeyToNew(oldInstanceKey oldmodels.ActualLRPInstanceKey) models.ActualLRPInstanceKey {
-	return models.NewActualLRPInstanceKey(oldInstanceKey.InstanceGuid, oldInstanceKey.CellID)
+func oldActualLRPKeyToNew(oldKey oldmodels.ActualLRPKey) *models.ActualLRPKey {
+	key := models.NewActualLRPKey(oldKey.ProcessGuid, int32(oldKey.Index), oldKey.Domain)
+	return &key
+}
+
+func oldInstanceKeyToNew(oldInstanceKey oldmodels.ActualLRPInstanceKey) *models.ActualLRPInstanceKey {
+	instanceKey := models.NewActualLRPInstanceKey(oldInstanceKey.InstanceGuid, oldInstanceKey.CellID)
+	return &instanceKey
 }
