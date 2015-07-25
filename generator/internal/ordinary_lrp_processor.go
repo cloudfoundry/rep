@@ -129,7 +129,7 @@ func (p *ordinaryLRPProcessor) processInvalidContainer(logger lager.Logger, lrpC
 }
 
 func (p *ordinaryLRPProcessor) claimLRPContainer(logger lager.Logger, lrpContainer *lrpContainer) bool {
-	_, err := p.bbsClient.ClaimActualLRP(lrpContainer.ProcessGuid, lrpContainer.Index, *oldInstanceKeyToNew(lrpContainer.ActualLRPInstanceKey))
+	_, err := p.bbsClient.ClaimActualLRP(lrpContainer.ProcessGuid, lrpContainer.Index, oldInstanceKeyToNew(lrpContainer.ActualLRPInstanceKey))
 	switch err {
 	case nil:
 		return true

@@ -103,7 +103,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 					processGuid, index, instanceKey := bbsClient.ClaimActualLRPArgsForCall(0)
 					Expect(processGuid).To(Equal(expectedLrpKey.ProcessGuid))
 					Expect(int32(index)).To(Equal(expectedLrpKey.Index))
-					Expect(instanceKey).To(Equal(expectedInstanceKey))
+					Expect(*instanceKey).To(Equal(expectedInstanceKey))
 				})
 
 				Context("when claiming fails because ErrActualLRPCannotBeClaimed", func() {
@@ -166,7 +166,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						processGuid, index, instanceKey := bbsClient.ClaimActualLRPArgsForCall(0)
 						Expect(processGuid).To(Equal(expectedLrpKey.ProcessGuid))
 						Expect(int32(index)).To(Equal(expectedLrpKey.Index))
-						Expect(instanceKey).To(Equal(expectedInstanceKey))
+						Expect(*instanceKey).To(Equal(expectedInstanceKey))
 					})
 
 					Context("when the claim fails because ErrActualLRPCannotBeClaimed", func() {

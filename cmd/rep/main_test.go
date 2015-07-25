@@ -382,7 +382,7 @@ var _ = Describe("The Rep", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				instanceKey := models.NewActualLRPInstanceKey("some-instance-guid", cellID)
-				_, err = bbsClient.ClaimActualLRP(desiredLRP.ProcessGuid, index, instanceKey)
+				_, err = bbsClient.ClaimActualLRP(desiredLRP.ProcessGuid, index, &instanceKey)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
