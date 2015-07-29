@@ -49,8 +49,9 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	bbsBinPath := string(payload)
 	bbsAddress := fmt.Sprintf("127.0.0.1:%d", 13000+GinkgoParallelNode())
 	bbsProcess = ginkgomon.Invoke(bbsrunner.New(bbsBinPath, bbsrunner.Args{
-		Address:     bbsAddress,
-		EtcdCluster: etcdRunner.NodeURLS()[0],
+		Address:           bbsAddress,
+		AuctioneerAddress: "some-address",
+		EtcdCluster:       etcdRunner.NodeURLS()[0],
 	}))
 	bbsClient = bbs.NewClient("http://" + bbsAddress)
 
