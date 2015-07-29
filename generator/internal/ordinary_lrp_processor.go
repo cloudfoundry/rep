@@ -6,7 +6,6 @@ import (
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
 	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -79,7 +78,7 @@ func (p *ordinaryLRPProcessor) processReservedContainer(logger lager.Logger, lrp
 
 	ok = p.containerDelegate.RunContainer(logger, lrpContainer.Guid)
 	if !ok {
-		p.bbsClient.RemoveActualLRP(lrpContainer.ProcessGuid, lrpContainer.Index)
+		p.bbsClient.RemoveActualLRP(lrpContainer.ProcessGuid, int(lrpContainer.Index))
 		return
 	}
 }
@@ -105,7 +104,7 @@ func (p *ordinaryLRPProcessor) processRunningContainer(logger lager.Logger, lrpC
 	}
 	logger.Debug("succeeded-extracting-net-info-from-container")
 
-	_, err = p.bbsClient.StartActualLRP(oldActualLRPKeyToNew(lrpContainer.ActualLRPKey), oldInstanceKeyToNew(lrpContainer.ActualLRPInstanceKey), netInfo)
+	_, err = p.bbsClient.StartActualLRP(lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo)
 	if err == models.ErrActualLRPCannotBeStarted {
 		p.containerDelegate.StopContainer(logger, lrpContainer.Guid)
 	}
@@ -115,9 +114,9 @@ func (p *ordinaryLRPProcessor) processCompletedContainer(logger lager.Logger, lr
 	logger = logger.Session("process-completed-container")
 
 	if lrpContainer.RunResult.Stopped {
-		p.bbsClient.RemoveActualLRP(lrpContainer.ProcessGuid, lrpContainer.Index)
+		p.bbsClient.RemoveActualLRP(lrpContainer.ProcessGuid, int(lrpContainer.Index))
 	} else {
-		p.legacyBBS.CrashActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, lrpContainer.RunResult.FailureReason)
+		p.bbsClient.CrashActualLRP(lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, lrpContainer.RunResult.FailureReason)
 	}
 
 	p.containerDelegate.DeleteContainer(logger, lrpContainer.Guid)
@@ -129,7 +128,7 @@ func (p *ordinaryLRPProcessor) processInvalidContainer(logger lager.Logger, lrpC
 }
 
 func (p *ordinaryLRPProcessor) claimLRPContainer(logger lager.Logger, lrpContainer *lrpContainer) bool {
-	_, err := p.bbsClient.ClaimActualLRP(lrpContainer.ProcessGuid, lrpContainer.Index, oldInstanceKeyToNew(lrpContainer.ActualLRPInstanceKey))
+	_, err := p.bbsClient.ClaimActualLRP(lrpContainer.ProcessGuid, int(lrpContainer.Index), lrpContainer.ActualLRPInstanceKey)
 	switch err {
 	case nil:
 		return true
@@ -139,14 +138,4 @@ func (p *ordinaryLRPProcessor) claimLRPContainer(logger lager.Logger, lrpContain
 	default:
 		return false
 	}
-}
-
-func oldActualLRPKeyToNew(oldKey oldmodels.ActualLRPKey) *models.ActualLRPKey {
-	key := models.NewActualLRPKey(oldKey.ProcessGuid, int32(oldKey.Index), oldKey.Domain)
-	return &key
-}
-
-func oldInstanceKeyToNew(oldInstanceKey oldmodels.ActualLRPInstanceKey) *models.ActualLRPInstanceKey {
-	instanceKey := models.NewActualLRPInstanceKey(oldInstanceKey.InstanceGuid, oldInstanceKey.CellID)
-	return &instanceKey
 }

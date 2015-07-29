@@ -4,7 +4,6 @@ import (
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
-	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -14,7 +13,7 @@ var _ = Describe("Resources", func() {
 	Describe("ActualLRPKeyFromContainer", func() {
 		var (
 			container        executor.Container
-			lrpKey           oldmodels.ActualLRPKey
+			lrpKey           *models.ActualLRPKey
 			keyConversionErr error
 		)
 
@@ -47,12 +46,12 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("converts a valid container without error", func() {
-				expectedKey := oldmodels.ActualLRPKey{
+				expectedKey := models.ActualLRPKey{
 					ProcessGuid: "process-guid",
 					Index:       999,
 					Domain:      "my-domain",
 				}
-				Expect(lrpKey).To(Equal(expectedKey))
+				Expect(*lrpKey).To(Equal(expectedKey))
 			})
 		})
 
@@ -94,7 +93,7 @@ var _ = Describe("Resources", func() {
 
 		var (
 			container                executor.Container
-			lrpInstanceKey           oldmodels.ActualLRPInstanceKey
+			lrpInstanceKey           *models.ActualLRPInstanceKey
 			instanceKeyConversionErr error
 			cellID                   string
 		)
@@ -129,12 +128,12 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("it creates the correct container key", func() {
-				expectedInstanceKey := oldmodels.ActualLRPInstanceKey{
+				expectedInstanceKey := models.ActualLRPInstanceKey{
 					InstanceGuid: "some-instance-guid",
-					CellID:       cellID,
+					CellId:       cellID,
 				}
 
-				Expect(lrpInstanceKey).To(Equal(expectedInstanceKey))
+				Expect(*lrpInstanceKey).To(Equal(expectedInstanceKey))
 			})
 		})
 

@@ -300,12 +300,11 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						})
 
 						It("crashes the actual LRP", func() {
-							Expect(legacyBBS.CrashActualLRPCallCount()).To(Equal(1))
-							legacyBBSLogger, lrpKey, instanceKey, reason := legacyBBS.CrashActualLRPArgsForCall(0)
-							Expect(lrpKey).To(Equal(oldExpectedLrpKey))
-							Expect(instanceKey).To(Equal(oldExpectedInstanceKey))
+							Expect(bbsClient.CrashActualLRPCallCount()).To(Equal(1))
+							lrpKey, instanceKey, reason := bbsClient.CrashActualLRPArgsForCall(0)
+							Expect(*lrpKey).To(Equal(expectedLrpKey))
+							Expect(*instanceKey).To(Equal(expectedInstanceKey))
 							Expect(reason).To(Equal("crashed"))
-							Expect(legacyBBSLogger.SessionName()).To(Equal(expectedSessionName))
 						})
 
 						It("deletes the container", func() {

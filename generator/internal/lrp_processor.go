@@ -2,20 +2,20 @@ package internal
 
 import (
 	"github.com/cloudfoundry-incubator/bbs"
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
 	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 )
 
 type lrpContainer struct {
-	models.ActualLRPKey
-	models.ActualLRPInstanceKey
+	*models.ActualLRPKey
+	*models.ActualLRPInstanceKey
 	executor.Container
 }
 
-func newLRPContainer(lrpKey models.ActualLRPKey, instanceKey models.ActualLRPInstanceKey, container executor.Container) *lrpContainer {
+func newLRPContainer(lrpKey *models.ActualLRPKey, instanceKey *models.ActualLRPInstanceKey, container executor.Container) *lrpContainer {
 	return &lrpContainer{
 		ActualLRPKey:         lrpKey,
 		ActualLRPInstanceKey: instanceKey,

@@ -7,7 +7,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
-	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
 const (
@@ -28,46 +27,46 @@ var (
 	ErrInvalidProcessIndex  = errors.New("container does not have a valid process index")
 )
 
-func ActualLRPKeyFromContainer(container executor.Container) (oldmodels.ActualLRPKey, error) {
+func ActualLRPKeyFromContainer(container executor.Container) (*models.ActualLRPKey, error) {
 	if container.Tags == nil {
-		return oldmodels.ActualLRPKey{}, ErrContainerMissingTags
+		return &models.ActualLRPKey{}, ErrContainerMissingTags
 	}
 
 	processIndex, err := strconv.Atoi(container.Tags[ProcessIndexTag])
 	if err != nil {
-		return oldmodels.ActualLRPKey{}, ErrInvalidProcessIndex
+		return &models.ActualLRPKey{}, ErrInvalidProcessIndex
 	}
 
-	actualLRPKey := oldmodels.NewActualLRPKey(
+	actualLRPKey := models.NewActualLRPKey(
 		container.Tags[ProcessGuidTag],
-		processIndex,
+		int32(processIndex),
 		container.Tags[DomainTag],
 	)
 
 	err = actualLRPKey.Validate()
 	if err != nil {
-		return oldmodels.ActualLRPKey{}, err
+		return &models.ActualLRPKey{}, err
 	}
 
-	return actualLRPKey, nil
+	return &actualLRPKey, nil
 }
 
-func ActualLRPInstanceKeyFromContainer(container executor.Container, cellID string) (oldmodels.ActualLRPInstanceKey, error) {
+func ActualLRPInstanceKeyFromContainer(container executor.Container, cellID string) (*models.ActualLRPInstanceKey, error) {
 	if container.Tags == nil {
-		return oldmodels.ActualLRPInstanceKey{}, ErrContainerMissingTags
+		return &models.ActualLRPInstanceKey{}, ErrContainerMissingTags
 	}
 
-	actualLRPInstanceKey := oldmodels.NewActualLRPInstanceKey(
+	actualLRPInstanceKey := models.NewActualLRPInstanceKey(
 		container.Tags[InstanceGuidTag],
 		cellID,
 	)
 
 	err := actualLRPInstanceKey.Validate()
 	if err != nil {
-		return oldmodels.ActualLRPInstanceKey{}, err
+		return &models.ActualLRPInstanceKey{}, err
 	}
 
-	return actualLRPInstanceKey, nil
+	return &actualLRPInstanceKey, nil
 }
 
 func ActualLRPNetInfoFromContainer(container executor.Container) (*models.ActualLRPNetInfo, error) {
@@ -84,25 +83,6 @@ func ActualLRPNetInfoFromContainer(container executor.Container) (*models.Actual
 	}
 
 	return &actualLRPNetInfo, nil
-}
-
-func LegacyActualLRPNetInfoFromContainer(container executor.Container) (oldmodels.ActualLRPNetInfo, error) {
-	ports := []oldmodels.PortMapping{}
-	for _, portMapping := range container.Ports {
-		ports = append(ports, oldmodels.PortMapping{
-			ContainerPort: portMapping.ContainerPort,
-			HostPort:      portMapping.HostPort,
-		})
-	}
-
-	actualLRPNetInfo := oldmodels.NewActualLRPNetInfo(container.ExternalIP, ports)
-
-	err := actualLRPNetInfo.Validate()
-	if err != nil {
-		return oldmodels.ActualLRPNetInfo{}, err
-	}
-
-	return actualLRPNetInfo, nil
 }
 
 func LRPContainerGuid(processGuid, instanceGuid string) string {

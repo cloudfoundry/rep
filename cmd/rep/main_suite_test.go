@@ -2,6 +2,7 @@ package main_test
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/onsi/gomega/ghttp"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
@@ -34,6 +36,7 @@ var bbsURL *url.URL
 var bbsRunner *ginkgomon.Runner
 var bbsProcess ifrit.Process
 var bbsClient bbs.Client
+var auctioneerServer *ghttp.Server
 
 func TestRep(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -78,10 +81,14 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	bbsClient = bbs.NewClient(bbsURL.String())
 
+	auctioneerServer = ghttp.NewServer()
+	auctioneerServer.AppendHandlers(ghttp.RespondWith(http.StatusAccepted, nil))
+
 	etcdUrl := fmt.Sprintf("http://127.0.0.1:%d", etcdPort)
 	bbsArgs = bbstestrunner.Args{
-		Address:     bbsAddress,
-		EtcdCluster: etcdUrl,
+		Address:           bbsAddress,
+		AuctioneerAddress: auctioneerServer.URL(),
+		EtcdCluster:       etcdUrl,
 	}
 	bbsRunner = bbstestrunner.New(bbsBinPath, bbsArgs)
 	bbsProcess = ginkgomon.Invoke(bbsRunner)
@@ -108,6 +115,9 @@ var _ = SynchronizedAfterSuite(func() {
 	}
 	if runner != nil {
 		runner.KillWithFire()
+	}
+	if auctioneerServer != nil {
+		auctioneerServer.Close()
 	}
 }, func() {
 	gexec.CleanupBuildArtifacts()
