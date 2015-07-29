@@ -9,6 +9,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/auction/communication/http/auction_http_client"
+	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/executor/depot/gardenstore"
@@ -312,8 +313,8 @@ var _ = Describe("The Rep", func() {
 				})
 
 				It("makes a request to executor to allocate the container", func() {
-					Expect(legacyBBS.PendingTasks(logger)).To(HaveLen(1))
-					Expect(legacyBBS.RunningTasks(logger)).To(BeEmpty())
+					Expect(getTasksByState(bbsClient, models.Task_Pending)).To(HaveLen(1))
+					Expect(getTasksByState(bbsClient, models.Task_Running)).To(BeEmpty())
 
 					works := auctiontypes.Work{
 						Tasks: []oldmodels.Task{task},
@@ -351,12 +352,11 @@ var _ = Describe("The Rep", func() {
 			})
 
 			It("eventually marks tasks with no corresponding container as failed", func() {
-				Eventually(func() ([]oldmodels.Task, error) {
-					return legacyBBS.CompletedTasks(logger)
+				Eventually(func() []*models.Task {
+					return getTasksByState(bbsClient, models.Task_Completed)
 				}, 5*pollingInterval).Should(HaveLen(1))
 
-				completedTasks, err := legacyBBS.CompletedTasks(logger)
-				Expect(err).NotTo(HaveOccurred())
+				completedTasks := getTasksByState(bbsClient, models.Task_Completed)
 
 				Expect(completedTasks[0].TaskGuid).To(Equal(task.TaskGuid))
 				Expect(completedTasks[0].Failed).To(BeTrue())
@@ -638,3 +638,16 @@ var _ = Describe("The Rep", func() {
 		})
 	})
 })
+
+func getTasksByState(client bbs.Client, state models.Task_State) []*models.Task {
+	tasks, err := client.Tasks()
+	Expect(err).NotTo(HaveOccurred())
+
+	filteredTasks := make([]*models.Task, 0)
+	for _, task := range tasks {
+		if task.State == state {
+			filteredTasks = append(filteredTasks, task)
+		}
+	}
+	return filteredTasks
+}
