@@ -6,11 +6,11 @@ import (
 	"strconv"
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -219,7 +219,7 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 			continue
 		}
 
-		rootFSPath, err := a.pathForRootFS(lrpStart.DesiredLRP.RootFS)
+		rootFSPath, err := a.pathForRootFS(lrpStart.DesiredLRP.RootFs)
 		if err != nil {
 			untranslatedLRPs = append(untranslatedLRPs, lrpStart)
 			continue
@@ -239,13 +239,13 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 				rep.ProcessIndexTag: strconv.Itoa(lrpStart.Index),
 			},
 
-			MemoryMB:     lrpStart.DesiredLRP.MemoryMB,
-			DiskMB:       lrpStart.DesiredLRP.DiskMB,
-			CPUWeight:    lrpStart.DesiredLRP.CPUWeight,
+			MemoryMB:     int(lrpStart.DesiredLRP.MemoryMb),
+			DiskMB:       int(lrpStart.DesiredLRP.DiskMb),
+			CPUWeight:    uint(lrpStart.DesiredLRP.CpuWeight),
 			RootFSPath:   rootFSPath,
 			Privileged:   lrpStart.DesiredLRP.Privileged,
 			Ports:        a.convertPortMappings(lrpStart.DesiredLRP.Ports),
-			StartTimeout: lrpStart.DesiredLRP.StartTimeout,
+			StartTimeout: uint(lrpStart.DesiredLRP.StartTimeout),
 
 			LogConfig: executor.LogConfig{
 				Guid:       lrpStart.DesiredLRP.LogGuid,
@@ -274,12 +274,12 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 	return containers, lrpAuctionMap, untranslatedLRPs
 }
 
-func (a *AuctionCellRep) tasksToContainers(tasks []models.Task) ([]executor.Container, []models.Task) {
+func (a *AuctionCellRep) tasksToContainers(tasks []*models.Task) ([]executor.Container, []*models.Task) {
 	containers := make([]executor.Container, 0, len(tasks))
-	untranslatedTasks := make([]models.Task, 0, len(tasks))
+	untranslatedTasks := make([]*models.Task, 0, len(tasks))
 
 	for _, task := range tasks {
-		rootFSPath, err := a.pathForRootFS(task.RootFS)
+		rootFSPath, err := a.pathForRootFS(task.RootFs)
 		if err != nil {
 			untranslatedTasks = append(untranslatedTasks, task)
 			continue
@@ -288,9 +288,9 @@ func (a *AuctionCellRep) tasksToContainers(tasks []models.Task) ([]executor.Cont
 		container := executor.Container{
 			Guid: task.TaskGuid,
 
-			DiskMB:     task.DiskMB,
-			MemoryMB:   task.MemoryMB,
-			CPUWeight:  task.CPUWeight,
+			DiskMB:     int(task.DiskMb),
+			MemoryMB:   int(task.MemoryMb),
+			CPUWeight:  uint(task.CpuWeight),
 			RootFSPath: rootFSPath,
 			Privileged: task.Privileged,
 
@@ -320,11 +320,11 @@ func (a *AuctionCellRep) tasksToContainers(tasks []models.Task) ([]executor.Cont
 	return containers, untranslatedTasks
 }
 
-func (a *AuctionCellRep) convertPortMappings(containerPorts []uint16) []executor.PortMapping {
+func (a *AuctionCellRep) convertPortMappings(containerPorts []uint32) []executor.PortMapping {
 	out := []executor.PortMapping{}
 	for _, port := range containerPorts {
 		out = append(out, executor.PortMapping{
-			ContainerPort: port,
+			ContainerPort: uint16(port),
 		})
 	}
 

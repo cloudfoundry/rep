@@ -4,13 +4,13 @@ import (
 	"errors"
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
+	"github.com/cloudfoundry-incubator/bbs/models"
 	executor "github.com/cloudfoundry-incubator/executor"
 	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/auction_cell_rep"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
@@ -186,7 +186,7 @@ var _ = Describe("AuctionCellRep", func() {
 		var (
 			work       auctiontypes.Work
 			lrpAuction auctiontypes.LRPAuction
-			task       models.Task
+			task       *models.Task
 
 			expectedIndex = 1
 		)
@@ -196,13 +196,13 @@ var _ = Describe("AuctionCellRep", func() {
 				evacuationReporter.EvacuatingReturns(true)
 
 				lrpAuction = auctiontypes.LRPAuction{
-					DesiredLRP: models.DesiredLRP{
+					DesiredLRP: &models.DesiredLRP{
 						Domain:      "tests",
-						RootFS:      linuxRootFSURL,
+						RootFs:      linuxRootFSURL,
 						ProcessGuid: "process-guid",
-						DiskMB:      1024,
-						MemoryMB:    2048,
-						CPUWeight:   42,
+						DiskMb:      1024,
+						MemoryMb:    2048,
+						CpuWeight:   42,
 						Privileged:  true,
 						LogGuid:     "log-guid",
 					},
@@ -210,19 +210,19 @@ var _ = Describe("AuctionCellRep", func() {
 					Index: expectedIndex,
 				}
 
-				task = models.Task{
+				task = &models.Task{
 					Domain:     "tests",
 					TaskGuid:   "the-task-guid",
-					RootFS:     linuxRootFSURL,
-					DiskMB:     1024,
-					MemoryMB:   2048,
+					RootFs:     linuxRootFSURL,
+					DiskMb:     1024,
+					MemoryMb:   2048,
 					Privileged: true,
-					CPUWeight:  10,
+					CpuWeight:  10,
 				}
 
 				work = auctiontypes.Work{
 					LRPs:  []auctiontypes.LRPAuction{lrpAuction},
-					Tasks: []models.Task{task},
+					Tasks: []*models.Task{task},
 				}
 			})
 
@@ -234,7 +234,7 @@ var _ = Describe("AuctionCellRep", func() {
 		Describe("performing starts", func() {
 			var lrpAuctionOne auctiontypes.LRPAuction
 			var lrpAuctionTwo auctiontypes.LRPAuction
-			var securityRule models.SecurityGroupRule
+			var securityRule *models.SecurityGroupRule
 			var expectedGuidOne = "instance-guid-1"
 			var expectedGuidTwo = "instance-guid-2"
 			var expectedIndexOne = 1
@@ -251,7 +251,7 @@ var _ = Describe("AuctionCellRep", func() {
 					return <-guidChan, nil
 				}
 
-				securityRule = models.SecurityGroupRule{
+				securityRule = &models.SecurityGroupRule{
 					Protocol:     "tcp",
 					Destinations: []string{"0.0.0.0/0"},
 					PortRange: &models.PortRange{
@@ -260,28 +260,28 @@ var _ = Describe("AuctionCellRep", func() {
 					},
 				}
 				lrpAuctionOne = auctiontypes.LRPAuction{
-					DesiredLRP: models.DesiredLRP{
+					DesiredLRP: &models.DesiredLRP{
 						Domain:      "tests",
 						ProcessGuid: "process-guid",
-						DiskMB:      1024,
-						MemoryMB:    2048,
-						CPUWeight:   42,
+						DiskMb:      1024,
+						MemoryMb:    2048,
+						CpuWeight:   42,
 						Privileged:  true,
-						EnvironmentVariables: []models.EnvironmentVariable{
+						EnvironmentVariables: []*models.EnvironmentVariable{
 							{Name: "var1", Value: "val1"},
 							{Name: "var2", Value: "val2"},
 						},
-						Action: &models.DownloadAction{
+						Action: models.WrapAction(&models.DownloadAction{
 							From: "http://example.com/something",
 							To:   "/something",
-						},
+						}),
 						LogGuid:     "log-guid",
 						LogSource:   "log-source",
 						MetricsGuid: "metrics-guid",
-						Ports: []uint16{
+						Ports: []uint32{
 							8080,
 						},
-						EgressRules: []models.SecurityGroupRule{
+						EgressRules: []*models.SecurityGroupRule{
 							securityRule,
 						},
 					},
@@ -290,28 +290,28 @@ var _ = Describe("AuctionCellRep", func() {
 				}
 
 				lrpAuctionTwo = auctiontypes.LRPAuction{
-					DesiredLRP: models.DesiredLRP{
+					DesiredLRP: &models.DesiredLRP{
 						Domain:      "tests",
 						ProcessGuid: "process-guid",
-						DiskMB:      1024,
-						MemoryMB:    2048,
-						CPUWeight:   42,
+						DiskMb:      1024,
+						MemoryMb:    2048,
+						CpuWeight:   42,
 						Privileged:  true,
-						EnvironmentVariables: []models.EnvironmentVariable{
+						EnvironmentVariables: []*models.EnvironmentVariable{
 							{Name: "var1", Value: "val1"},
 							{Name: "var2", Value: "val2"},
 						},
-						Action: &models.DownloadAction{
+						Action: models.WrapAction(&models.DownloadAction{
 							From: "http://example.com/something",
 							To:   "/something",
-						},
+						}),
 						LogGuid:     "log-guid",
 						LogSource:   "log-source",
 						MetricsGuid: "metrics-guid",
-						Ports: []uint16{
+						Ports: []uint32{
 							8080,
 						},
-						EgressRules: []models.SecurityGroupRule{
+						EgressRules: []*models.SecurityGroupRule{
 							securityRule,
 						},
 					},
@@ -322,8 +322,8 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Context("when all LRP Auctions can be successfully translated to container specs", func() {
 				BeforeEach(func() {
-					lrpAuctionOne.DesiredLRP.RootFS = linuxRootFSURL
-					lrpAuctionTwo.DesiredLRP.RootFS = "unsupported-arbitrary://still-goes-through"
+					lrpAuctionOne.DesiredLRP.RootFs = linuxRootFSURL
+					lrpAuctionTwo.DesiredLRP.RootFs = "unsupported-arbitrary://still-goes-through"
 				})
 
 				It("makes the correct allocation requests for all LRP Auctions", func() {
@@ -343,9 +343,9 @@ var _ = Describe("AuctionCellRep", func() {
 								rep.ProcessIndexTag: expectedIndexOneString,
 							},
 
-							MemoryMB:   lrpAuctionOne.DesiredLRP.MemoryMB,
-							DiskMB:     lrpAuctionOne.DesiredLRP.DiskMB,
-							CPUWeight:  lrpAuctionOne.DesiredLRP.CPUWeight,
+							MemoryMB:   int(lrpAuctionOne.DesiredLRP.MemoryMb),
+							DiskMB:     int(lrpAuctionOne.DesiredLRP.DiskMb),
+							CPUWeight:  uint(lrpAuctionOne.DesiredLRP.CpuWeight),
 							RootFSPath: linuxPath,
 							Privileged: lrpAuctionOne.DesiredLRP.Privileged,
 							Ports:      []executor.PortMapping{{ContainerPort: 8080}},
@@ -371,7 +371,7 @@ var _ = Describe("AuctionCellRep", func() {
 								{Name: "var1", Value: "val1"},
 								{Name: "var2", Value: "val2"},
 							},
-							EgressRules: []models.SecurityGroupRule{
+							EgressRules: []*models.SecurityGroupRule{
 								securityRule,
 							},
 						},
@@ -386,9 +386,9 @@ var _ = Describe("AuctionCellRep", func() {
 								rep.ProcessIndexTag: expectedIndexTwoString,
 							},
 
-							MemoryMB:   lrpAuctionTwo.DesiredLRP.MemoryMB,
-							DiskMB:     lrpAuctionTwo.DesiredLRP.DiskMB,
-							CPUWeight:  lrpAuctionTwo.DesiredLRP.CPUWeight,
+							MemoryMB:   int(lrpAuctionTwo.DesiredLRP.MemoryMb),
+							DiskMB:     int(lrpAuctionTwo.DesiredLRP.DiskMb),
+							CPUWeight:  uint(lrpAuctionTwo.DesiredLRP.CpuWeight),
 							RootFSPath: "unsupported-arbitrary://still-goes-through",
 							Privileged: lrpAuctionTwo.DesiredLRP.Privileged,
 							Ports:      []executor.PortMapping{{ContainerPort: 8080}},
@@ -414,7 +414,7 @@ var _ = Describe("AuctionCellRep", func() {
 								{Name: "var1", Value: "val1"},
 								{Name: "var2", Value: "val2"},
 							},
-							EgressRules: []models.SecurityGroupRule{
+							EgressRules: []*models.SecurityGroupRule{
 								securityRule,
 							},
 						},
@@ -451,8 +451,8 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Context("when an LRP Auction specifies a preloaded RootFSes for which it cannot determine a RootFS path", func() {
 				BeforeEach(func() {
-					lrpAuctionOne.DesiredLRP.RootFS = linuxRootFSURL
-					lrpAuctionTwo.DesiredLRP.RootFS = "preloaded:not-on-cell"
+					lrpAuctionOne.DesiredLRP.RootFs = linuxRootFSURL
+					lrpAuctionTwo.DesiredLRP.RootFs = "preloaded:not-on-cell"
 				})
 
 				It("only makes container allocation requests for the remaining LRP Auctions", func() {
@@ -472,9 +472,9 @@ var _ = Describe("AuctionCellRep", func() {
 								rep.ProcessIndexTag: expectedIndexOneString,
 							},
 
-							MemoryMB:   lrpAuctionOne.DesiredLRP.MemoryMB,
-							DiskMB:     lrpAuctionOne.DesiredLRP.DiskMB,
-							CPUWeight:  lrpAuctionOne.DesiredLRP.CPUWeight,
+							MemoryMB:   int(lrpAuctionOne.DesiredLRP.MemoryMb),
+							DiskMB:     int(lrpAuctionOne.DesiredLRP.DiskMb),
+							CPUWeight:  uint(lrpAuctionOne.DesiredLRP.CpuWeight),
 							RootFSPath: linuxPath,
 							Privileged: lrpAuctionOne.DesiredLRP.Privileged,
 							Ports:      []executor.PortMapping{{ContainerPort: 8080}},
@@ -500,7 +500,7 @@ var _ = Describe("AuctionCellRep", func() {
 								{Name: "var1", Value: "val1"},
 								{Name: "var2", Value: "val2"},
 							},
-							EgressRules: []models.SecurityGroupRule{
+							EgressRules: []*models.SecurityGroupRule{
 								securityRule,
 							},
 						},
@@ -543,7 +543,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Context("when an LRP Auction specifies a blank RootFS URL", func() {
 				BeforeEach(func() {
-					lrpAuctionOne.DesiredLRP.RootFS = ""
+					lrpAuctionOne.DesiredLRP.RootFs = ""
 				})
 
 				It("makes the correct allocation request for it, passing along the blank path to the executor client", func() {
@@ -563,9 +563,9 @@ var _ = Describe("AuctionCellRep", func() {
 								rep.ProcessIndexTag: expectedIndexOneString,
 							},
 
-							MemoryMB:   lrpAuctionOne.DesiredLRP.MemoryMB,
-							DiskMB:     lrpAuctionOne.DesiredLRP.DiskMB,
-							CPUWeight:  lrpAuctionOne.DesiredLRP.CPUWeight,
+							MemoryMB:   int(lrpAuctionOne.DesiredLRP.MemoryMb),
+							DiskMB:     int(lrpAuctionOne.DesiredLRP.DiskMb),
+							CPUWeight:  uint(lrpAuctionOne.DesiredLRP.CpuWeight),
 							RootFSPath: "",
 							Privileged: lrpAuctionOne.DesiredLRP.Privileged,
 							Ports:      []executor.PortMapping{{ContainerPort: 8080}},
@@ -591,7 +591,7 @@ var _ = Describe("AuctionCellRep", func() {
 								{Name: "var1", Value: "val1"},
 								{Name: "var2", Value: "val2"},
 							},
-							EgressRules: []models.SecurityGroupRule{
+							EgressRules: []*models.SecurityGroupRule{
 								securityRule,
 							},
 						},
@@ -602,8 +602,8 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Context("when an LRP Auction specifies an invalid RootFS URL", func() {
 				BeforeEach(func() {
-					lrpAuctionOne.DesiredLRP.RootFS = linuxRootFSURL
-					lrpAuctionTwo.DesiredLRP.RootFS = "%x"
+					lrpAuctionOne.DesiredLRP.RootFs = linuxRootFSURL
+					lrpAuctionTwo.DesiredLRP.RootFs = "%x"
 				})
 
 				It("only makes container allocation requests for the remaining LRP Auctions", func() {
@@ -623,9 +623,9 @@ var _ = Describe("AuctionCellRep", func() {
 								rep.ProcessIndexTag: expectedIndexOneString,
 							},
 
-							MemoryMB:   lrpAuctionOne.DesiredLRP.MemoryMB,
-							DiskMB:     lrpAuctionOne.DesiredLRP.DiskMB,
-							CPUWeight:  lrpAuctionOne.DesiredLRP.CPUWeight,
+							MemoryMB:   int(lrpAuctionOne.DesiredLRP.MemoryMb),
+							DiskMB:     int(lrpAuctionOne.DesiredLRP.DiskMb),
+							CPUWeight:  uint(lrpAuctionOne.DesiredLRP.CpuWeight),
 							RootFSPath: linuxPath,
 							Privileged: lrpAuctionOne.DesiredLRP.Privileged,
 							Ports:      []executor.PortMapping{{ContainerPort: 8080}},
@@ -651,7 +651,7 @@ var _ = Describe("AuctionCellRep", func() {
 								{Name: "var1", Value: "val1"},
 								{Name: "var2", Value: "val2"},
 							},
-							EgressRules: []models.SecurityGroupRule{
+							EgressRules: []*models.SecurityGroupRule{
 								securityRule,
 							},
 						},
@@ -694,68 +694,68 @@ var _ = Describe("AuctionCellRep", func() {
 		})
 
 		Describe("starting tasks", func() {
-			var task1, task2 models.Task
-			var securityRule models.SecurityGroupRule
+			var task1, task2 *models.Task
+			var securityRule *models.SecurityGroupRule
 
 			BeforeEach(func() {
-				securityRule = models.SecurityGroupRule{
+				securityRule = &models.SecurityGroupRule{
 					Protocol:     "tcp",
 					Destinations: []string{"0.0.0.0/0"},
-					Ports:        []uint16{80},
+					Ports:        []uint32{80},
 				}
-				task1 = models.Task{
+				task1 = &models.Task{
 					Domain:      "tests",
 					TaskGuid:    "the-task-guid-1",
-					DiskMB:      1024,
-					MemoryMB:    2048,
+					DiskMb:      1024,
+					MemoryMb:    2048,
 					Privileged:  true,
-					CPUWeight:   10,
+					CpuWeight:   10,
 					LogGuid:     "log-guid",
 					LogSource:   "log-source",
 					MetricsGuid: "metrics-guid",
-					Action: &models.RunAction{
+					Action: models.WrapAction(&models.RunAction{
 						User: "me",
 						Path: "date",
-					},
-					EnvironmentVariables: []models.EnvironmentVariable{
+					}),
+					EnvironmentVariables: []*models.EnvironmentVariable{
 						{Name: "FOO", Value: "BAR"},
 					},
-					EgressRules: []models.SecurityGroupRule{
+					EgressRules: []*models.SecurityGroupRule{
 						securityRule,
 					},
 				}
-				task2 = models.Task{
+				task2 = &models.Task{
 					Domain:      "tests",
 					TaskGuid:    "the-task-guid-2",
-					DiskMB:      1024,
-					MemoryMB:    2048,
+					DiskMb:      1024,
+					MemoryMb:    2048,
 					Privileged:  true,
-					CPUWeight:   10,
+					CpuWeight:   10,
 					LogGuid:     "log-guid",
 					LogSource:   "log-source",
 					MetricsGuid: "metrics-guid",
-					Action: &models.RunAction{
+					Action: models.WrapAction(&models.RunAction{
 						User: "me",
 						Path: "date",
-					},
-					EnvironmentVariables: []models.EnvironmentVariable{
+					}),
+					EnvironmentVariables: []*models.EnvironmentVariable{
 						{Name: "FOO", Value: "BAR"},
 					},
-					EgressRules: []models.SecurityGroupRule{
+					EgressRules: []*models.SecurityGroupRule{
 						securityRule,
 					},
 				}
-				work = auctiontypes.Work{Tasks: []models.Task{task}}
+				work = auctiontypes.Work{Tasks: []*models.Task{task}}
 			})
 
 			Context("when all Tasks can be successfully translated to container specs", func() {
 				BeforeEach(func() {
-					task1.RootFS = linuxRootFSURL
-					task2.RootFS = "unsupported-arbitrary://still-goes-through"
+					task1.RootFs = linuxRootFSURL
+					task2.RootFs = "unsupported-arbitrary://still-goes-through"
 				})
 
 				It("makes the correct allocation requests for all Tasks", func() {
-					_, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+					_, err := cellRep.Perform(auctiontypes.Work{Tasks: []*models.Task{task1, task2}})
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
@@ -769,10 +769,10 @@ var _ = Describe("AuctionCellRep", func() {
 								rep.ResultFileTag: task1.ResultFile,
 							},
 
-							Action: &models.RunAction{
+							Action: models.WrapAction(&models.RunAction{
 								User: "me",
 								Path: "date",
-							},
+							}),
 							Env: []executor.EnvironmentVariable{
 								{Name: "FOO", Value: "BAR"},
 							},
@@ -786,12 +786,12 @@ var _ = Describe("AuctionCellRep", func() {
 								Guid: "metrics-guid",
 							},
 
-							MemoryMB:   task1.MemoryMB,
-							DiskMB:     task1.DiskMB,
-							CPUWeight:  task1.CPUWeight,
+							MemoryMB:   int(task1.MemoryMb),
+							DiskMB:     int(task1.DiskMb),
+							CPUWeight:  uint(task1.CpuWeight),
 							RootFSPath: linuxPath,
 							Privileged: task1.Privileged,
-							EgressRules: []models.SecurityGroupRule{
+							EgressRules: []*models.SecurityGroupRule{
 								securityRule,
 							},
 						},
@@ -804,10 +804,10 @@ var _ = Describe("AuctionCellRep", func() {
 								rep.ResultFileTag: task2.ResultFile,
 							},
 
-							Action: &models.RunAction{
+							Action: models.WrapAction(&models.RunAction{
 								User: "me",
 								Path: "date",
-							},
+							}),
 							Env: []executor.EnvironmentVariable{
 								{Name: "FOO", Value: "BAR"},
 							},
@@ -821,12 +821,12 @@ var _ = Describe("AuctionCellRep", func() {
 								Guid: "metrics-guid",
 							},
 
-							MemoryMB:   task2.MemoryMB,
-							DiskMB:     task2.DiskMB,
-							CPUWeight:  task2.CPUWeight,
+							MemoryMB:   int(task2.MemoryMb),
+							DiskMB:     int(task2.DiskMb),
+							CPUWeight:  uint(task2.CpuWeight),
 							RootFSPath: "unsupported-arbitrary://still-goes-through",
 							Privileged: task2.Privileged,
-							EgressRules: []models.SecurityGroupRule{
+							EgressRules: []*models.SecurityGroupRule{
 								securityRule,
 							},
 						},
@@ -840,7 +840,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("does not mark any Tasks as failed", func() {
-						failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+						failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []*models.Task{task1, task2}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork).To(BeZero())
 					})
@@ -854,7 +854,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("marks the corresponding Tasks as failed", func() {
-						failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+						failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []*models.Task{task1, task2}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.Tasks).To(ConsistOf(task1))
 					})
@@ -863,12 +863,12 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Context("when a Task specifies a preloaded RootFSes for which it cannot determine a RootFS path", func() {
 				BeforeEach(func() {
-					task1.RootFS = linuxRootFSURL
-					task2.RootFS = "preloaded:not-on-cell"
+					task1.RootFs = linuxRootFSURL
+					task2.RootFs = "preloaded:not-on-cell"
 				})
 
 				It("only makes container allocation requests for the remaining Tasks", func() {
-					_, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+					_, err := cellRep.Perform(auctiontypes.Work{Tasks: []*models.Task{task1, task2}})
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
@@ -882,10 +882,10 @@ var _ = Describe("AuctionCellRep", func() {
 								rep.ResultFileTag: task1.ResultFile,
 							},
 
-							Action: &models.RunAction{
+							Action: models.WrapAction(&models.RunAction{
 								User: "me",
 								Path: "date",
-							},
+							}),
 							Env: []executor.EnvironmentVariable{
 								{Name: "FOO", Value: "BAR"},
 							},
@@ -899,12 +899,12 @@ var _ = Describe("AuctionCellRep", func() {
 								Guid: "metrics-guid",
 							},
 
-							MemoryMB:   task1.MemoryMB,
-							DiskMB:     task1.DiskMB,
-							CPUWeight:  task1.CPUWeight,
+							MemoryMB:   int(task1.MemoryMb),
+							DiskMB:     int(task1.DiskMb),
+							CPUWeight:  uint(task1.CpuWeight),
 							RootFSPath: linuxPath,
 							Privileged: task1.Privileged,
-							EgressRules: []models.SecurityGroupRule{
+							EgressRules: []*models.SecurityGroupRule{
 								securityRule,
 							},
 						},
@@ -913,7 +913,7 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 
 				It("marks the Task as failed", func() {
-					failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+					failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []*models.Task{task1, task2}})
 					Expect(err).NotTo(HaveOccurred())
 					Expect(failedWork.Tasks).To(ContainElement(task2))
 				})
@@ -924,7 +924,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("does not mark any additional Tasks as failed", func() {
-						failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+						failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []*models.Task{task1, task2}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.Tasks).To(ConsistOf(task2))
 					})
@@ -938,7 +938,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("marks the corresponding Tasks as failed", func() {
-						failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+						failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []*models.Task{task1, task2}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.Tasks).To(ConsistOf(task1, task2))
 					})
@@ -947,11 +947,11 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Context("when a Task specifies a blank RootFS URL", func() {
 				BeforeEach(func() {
-					task1.RootFS = ""
+					task1.RootFs = ""
 				})
 
 				It("makes the correct allocation request for it, passing along the blank path to the executor client", func() {
-					_, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1}})
+					_, err := cellRep.Perform(auctiontypes.Work{Tasks: []*models.Task{task1}})
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
@@ -965,10 +965,10 @@ var _ = Describe("AuctionCellRep", func() {
 								rep.ResultFileTag: task1.ResultFile,
 							},
 
-							Action: &models.RunAction{
+							Action: models.WrapAction(&models.RunAction{
 								User: "me",
 								Path: "date",
-							},
+							}),
 							Env: []executor.EnvironmentVariable{
 								{Name: "FOO", Value: "BAR"},
 							},
@@ -982,12 +982,12 @@ var _ = Describe("AuctionCellRep", func() {
 								Guid: "metrics-guid",
 							},
 
-							MemoryMB:   task1.MemoryMB,
-							DiskMB:     task1.DiskMB,
-							CPUWeight:  task1.CPUWeight,
+							MemoryMB:   int(task1.MemoryMb),
+							DiskMB:     int(task1.DiskMb),
+							CPUWeight:  uint(task1.CpuWeight),
 							RootFSPath: "",
 							Privileged: task1.Privileged,
-							EgressRules: []models.SecurityGroupRule{
+							EgressRules: []*models.SecurityGroupRule{
 								securityRule,
 							},
 						},
@@ -998,12 +998,12 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Context("when a Task specifies an invalid RootFS URL", func() {
 				BeforeEach(func() {
-					task1.RootFS = linuxRootFSURL
-					task2.RootFS = "%x"
+					task1.RootFs = linuxRootFSURL
+					task2.RootFs = "%x"
 				})
 
 				It("only makes container allocation requests for the remaining Tasks", func() {
-					_, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+					_, err := cellRep.Perform(auctiontypes.Work{Tasks: []*models.Task{task1, task2}})
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
@@ -1017,10 +1017,10 @@ var _ = Describe("AuctionCellRep", func() {
 								rep.ResultFileTag: task1.ResultFile,
 							},
 
-							Action: &models.RunAction{
+							Action: models.WrapAction(&models.RunAction{
 								User: "me",
 								Path: "date",
-							},
+							}),
 							Env: []executor.EnvironmentVariable{
 								{Name: "FOO", Value: "BAR"},
 							},
@@ -1034,12 +1034,12 @@ var _ = Describe("AuctionCellRep", func() {
 								Guid: "metrics-guid",
 							},
 
-							MemoryMB:   task1.MemoryMB,
-							DiskMB:     task1.DiskMB,
-							CPUWeight:  task1.CPUWeight,
+							MemoryMB:   int(task1.MemoryMb),
+							DiskMB:     int(task1.DiskMb),
+							CPUWeight:  uint(task1.CpuWeight),
 							RootFSPath: linuxPath,
 							Privileged: task1.Privileged,
-							EgressRules: []models.SecurityGroupRule{
+							EgressRules: []*models.SecurityGroupRule{
 								securityRule,
 							},
 						},
@@ -1048,7 +1048,7 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 
 				It("marks the Task as failed", func() {
-					failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+					failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []*models.Task{task1, task2}})
 					Expect(err).NotTo(HaveOccurred())
 					Expect(failedWork.Tasks).To(ContainElement(task2))
 				})
@@ -1059,7 +1059,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("does not mark any additional LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+						failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []*models.Task{task1, task2}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.Tasks).To(ConsistOf(task2))
 					})
@@ -1073,7 +1073,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("marks the corresponding Tasks as failed", func() {
-						failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []models.Task{task1, task2}})
+						failedWork, err := cellRep.Perform(auctiontypes.Work{Tasks: []*models.Task{task1, task2}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.Tasks).To(ConsistOf(task1, task2))
 					})

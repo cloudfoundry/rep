@@ -89,6 +89,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		Address:           bbsAddress,
 		AuctioneerAddress: auctioneerServer.URL(),
 		EtcdCluster:       etcdUrl,
+		ConsulCluster:     consulRunner.ConsulCluster(),
 	}
 	bbsRunner = bbstestrunner.New(bbsBinPath, bbsArgs)
 	bbsProcess = ginkgomon.Invoke(bbsRunner)

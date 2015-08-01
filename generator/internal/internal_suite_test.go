@@ -52,6 +52,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		Address:           bbsAddress,
 		AuctioneerAddress: "some-address",
 		EtcdCluster:       etcdRunner.NodeURLS()[0],
+		ConsulCluster:     consulRunner.ConsulCluster(),
 	}))
 	bbsClient = bbs.NewClient("http://" + bbsAddress)
 
