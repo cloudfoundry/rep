@@ -30,7 +30,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep/maintain"
 	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/lock_bbs"
-	bbsroutes "github.com/cloudfoundry-incubator/runtime-schema/routes"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/cloudfoundry/gunk/workpool"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
@@ -336,11 +335,9 @@ func initializeServer(
 
 	routes := auctionroutes.Routes
 
-	handlers[bbsroutes.StopLRPInstance] = repserver.NewStopLRPInstanceHandler(logger, lrpStopper)
-	routes = append(routes, bbsroutes.StopLRPRoutes...)
-
-	handlers[bbsroutes.CancelTask] = repserver.NewCancelTaskHandler(logger, executorClient)
-	routes = append(routes, bbsroutes.CancelTaskRoutes...)
+	handlers[rep.StopLRPInstanceRoute] = repserver.NewStopLRPInstanceHandler(logger, lrpStopper)
+	handlers[rep.CancelTaskRoute] = repserver.NewCancelTaskHandler(logger, executorClient)
+	routes = append(routes, rep.CellRoutes...)
 
 	handlers["Ping"] = repserver.NewPingHandler()
 	routes = append(routes, rata.Route{Name: "Ping", Method: "GET", Path: "/ping"})

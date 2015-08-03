@@ -341,7 +341,7 @@ func newLRPContainer(lrpKey oldmodels.ActualLRPKey, instanceKey oldmodels.Actual
 
 	return executor.Container{
 		Guid:       rep.LRPContainerGuid(lrpKey.ProcessGuid, instanceKey.InstanceGuid),
-		Action:     &oldmodels.RunAction{Path: "true"},
+		Action:     models.WrapAction(&models.RunAction{Path: "true"}),
 		ExternalIP: netInfo.Address,
 		Ports:      ports,
 		Tags: executor.Tags{

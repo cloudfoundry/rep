@@ -279,7 +279,7 @@ var _ = Describe("The Rep", func() {
 			})
 
 			Describe("running tasks", func() {
-				var task oldmodels.Task
+				var task *models.Task
 				var containersCalled chan struct{}
 
 				JustBeforeEach(func() {
@@ -296,7 +296,19 @@ var _ = Describe("The Rep", func() {
 					fakeGarden.RouteToHandler("PUT", "/containers/handle-guid/limits/cpu", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.CPULimits{}))
 					fakeGarden.RouteToHandler("GET", "/containers/handle-guid/info", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.ContainerInfo{}))
 
-					task = oldmodels.Task{
+					task = &models.Task{
+						TaskGuid: "the-task-guid",
+						MemoryMb: 2,
+						DiskMb:   2,
+						RootFs:   "the:rootfs",
+						Domain:   "the-domain",
+						Action: models.WrapAction(&models.RunAction{
+							User: "me",
+							Path: "date",
+						}),
+					}
+
+					oldTask := oldmodels.Task{
 						TaskGuid: "the-task-guid",
 						MemoryMB: 2,
 						DiskMB:   2,
@@ -308,7 +320,7 @@ var _ = Describe("The Rep", func() {
 						},
 					}
 
-					err := legacyBBS.DesireTask(logger, task)
+					err := legacyBBS.DesireTask(logger, oldTask)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
@@ -317,7 +329,7 @@ var _ = Describe("The Rep", func() {
 					Expect(getTasksByState(bbsClient, models.Task_Running)).To(BeEmpty())
 
 					works := auctiontypes.Work{
-						Tasks: []oldmodels.Task{task},
+						Tasks: []*models.Task{task},
 					}
 
 					failedWorks, err := client.Perform(works)
