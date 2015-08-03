@@ -453,8 +453,7 @@ var _ = Describe("The Rep", func() {
 
 			It("should destroy the container", func() {
 				Eventually(getActualLRPGroups).Should(HaveLen(1))
-				actualLRPKey := oldmodels.NewActualLRPKey(runningLRP.GetProcessGuid(), int(runningLRP.GetIndex()), runningLRP.GetDomain())
-				legacyBBS.RetireActualLRPs(logger, []oldmodels.ActualLRPKey{actualLRPKey})
+				bbsClient.RetireActualLRP(&runningLRP.ActualLRPKey)
 
 				findDestroyRequest := func() bool {
 					for _, req := range fakeGarden.ReceivedRequests() {
