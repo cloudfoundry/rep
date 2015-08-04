@@ -1,7 +1,6 @@
 package main_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -22,7 +21,6 @@ import (
 	"github.com/pivotal-golang/lager/lagertest"
 
 	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/shared"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -581,21 +579,15 @@ var _ = Describe("The Rep", func() {
 				})
 
 				It("evacuates them", func() {
-					var actualLRP oldmodels.ActualLRP
-
-					getEvacuatingLRP := func() *oldmodels.ActualLRP {
-						node, err := etcdAdapter.Get(shared.EvacuatingActualLRPSchemaPath(processGuid, int(index)))
-						if err != nil {
-							return nil
-						}
-						err = json.Unmarshal([]byte(node.Value), &actualLRP)
+					getEvacuatingLRP := func() *models.ActualLRP {
+						actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(processGuid, int(index))
 						Expect(err).NotTo(HaveOccurred())
 
-						return &actualLRP
+						return actualLRPGroup.Evacuating
 					}
 
 					Eventually(getEvacuatingLRP, 1).ShouldNot(BeNil())
-					Expect(actualLRP.ProcessGuid).To(Equal(processGuid))
+					Expect(getEvacuatingLRP().ProcessGuid).To(Equal(processGuid))
 				})
 
 				Context("when exceeding the evacuation timeout", func() {
