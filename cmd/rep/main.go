@@ -12,6 +12,7 @@ import (
 	"github.com/cloudfoundry-incubator/auction/communication/http/auction_http_handlers"
 	auctionroutes "github.com/cloudfoundry-incubator/auction/communication/http/routes"
 	"github.com/cloudfoundry-incubator/bbs"
+	"github.com/cloudfoundry-incubator/bbs/cellhandlers"
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	cf_lager "github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf_http"
@@ -25,7 +26,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep/generator"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/cloudfoundry-incubator/rep/harmonizer"
-	repserver "github.com/cloudfoundry-incubator/rep/http_server"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
 	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
@@ -335,14 +335,16 @@ func initializeServer(
 
 	routes := auctionroutes.Routes
 
-	handlers[rep.StopLRPInstanceRoute] = repserver.NewStopLRPInstanceHandler(logger, lrpStopper)
-	handlers[rep.CancelTaskRoute] = repserver.NewCancelTaskHandler(logger, executorClient)
-	routes = append(routes, rep.CellRoutes...)
+	handlers[cellhandlers.StopLRPInstanceRoute] = cellhandlers.NewStopLRPInstanceHandler(logger, lrpStopper)
+	handlers[cellhandlers.CancelTaskRoute] = cellhandlers.NewCancelTaskHandler(logger, executorClient)
+	routes = append(routes, cellhandlers.Routes...)
 
-	handlers["Ping"] = repserver.NewPingHandler()
+	// ping and evacuate are called by the rep's ctl scripts
+	// which is why they're defined locally like this
+	handlers["Ping"] = cellhandlers.NewPingHandler()
 	routes = append(routes, rata.Route{Name: "Ping", Method: "GET", Path: "/ping"})
 
-	handlers["Evacuate"] = repserver.NewEvacuationHandler(logger, evacuatable)
+	handlers["Evacuate"] = cellhandlers.NewEvacuationHandler(logger, evacuatable)
 	routes = append(routes, rata.Route{Name: "Evacuate", Method: "POST", Path: "/evacuate"})
 
 	router, err := rata.NewRouter(routes, handlers)
