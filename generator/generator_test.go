@@ -331,9 +331,8 @@ var _ = Describe("Generator", func() {
 							container.Tags[rep.LifecycleTag] = rep.TaskLifecycle
 
 							task = &models.Task{
-								TaskGuid:   "some-instance-guid",
-								State:      models.Task_Running,
-								ResultFile: "some-result-file",
+								TaskGuid: "some-instance-guid",
+								State:    models.Task_Running,
 							}
 
 							fakeBBS.TaskByGuidReturns(task, nil)

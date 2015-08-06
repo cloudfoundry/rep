@@ -4,12 +4,12 @@ import (
 	"errors"
 
 	"github.com/cloudfoundry-incubator/bbs/models"
+	"github.com/cloudfoundry-incubator/bbs/models/internal/model_helpers"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
 	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -498,27 +498,10 @@ func NewCompletedContainer(taskGuid string, runResult executor.ContainerRunResul
 }
 
 func NewTask(taskGuid, cellID string, taskState models.Task_State) *models.Task {
-	return &models.Task{
-		TaskGuid:   taskGuid,
-		CellId:     cellID,
-		State:      taskState,
-		ResultFile: "some-result-filename",
-		Domain:     "domain",
-		RootFs:     "some:rootfs",
-		Action:     models.WrapAction(&models.RunAction{User: "me", Path: "ls"}),
-	}
-}
-
-func convertTask(task *models.Task) oldmodels.Task {
-	return oldmodels.Task{
-		TaskGuid:   task.TaskGuid,
-		CellID:     task.CellId,
-		State:      oldmodels.TaskState(task.State),
-		ResultFile: task.ResultFile,
-		Domain:     task.Domain,
-		RootFS:     task.RootFs,
-		Action:     &oldmodels.RunAction{User: "me", Path: "ls"},
-	}
+	task := model_helpers.NewValidTask(taskGuid)
+	task.CellId = cellID
+	task.State = taskState
+	return task
 }
 
 func walkToState(logger lager.Logger, legacyBBS *legacybbs.BBS, task *models.Task) {
@@ -532,12 +515,12 @@ func walkToState(logger lager.Logger, legacyBBS *legacybbs.BBS, task *models.Tas
 func advanceState(logger lager.Logger, legacyBBS *legacybbs.BBS, task *models.Task, currentState models.Task_State) models.Task_State {
 	switch currentState {
 	case models.Task_Invalid:
-		err := legacyBBS.DesireTask(logger, convertTask(task))
+		err := bbsClient.DesireTask(task.TaskGuid, task.Domain, task.TaskDefinition)
 		Expect(err).NotTo(HaveOccurred())
 		return models.Task_Pending
 
 	case models.Task_Pending:
-		changed, err := legacyBBS.StartTask(logger, task.TaskGuid, task.CellId)
+		changed, err := bbsClient.StartTask(task.TaskGuid, task.CellId)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(changed).To(BeTrue())
 		return models.Task_Running

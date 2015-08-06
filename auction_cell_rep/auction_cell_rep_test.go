@@ -5,6 +5,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/bbs/models"
+	"github.com/cloudfoundry-incubator/bbs/models/internal/model_helpers"
 	executor "github.com/cloudfoundry-incubator/executor"
 	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
@@ -210,15 +211,13 @@ var _ = Describe("AuctionCellRep", func() {
 					Index: expectedIndex,
 				}
 
-				task = &models.Task{
-					Domain:     "tests",
-					TaskGuid:   "the-task-guid",
-					RootFs:     linuxRootFSURL,
-					DiskMb:     1024,
-					MemoryMb:   2048,
-					Privileged: true,
-					CpuWeight:  10,
-				}
+				task = model_helpers.NewValidTask("the-task-guid")
+				task.Domain = "tests"
+				task.RootFs = linuxRootFSURL
+				//				task.DiskMb = 1024
+				//				task.MemoryMb = 2048
+				//				task.Privileged = true
+				//				task.CpuWeight = 10
 
 				work = auctiontypes.Work{
 					LRPs:  []auctiontypes.LRPAuction{lrpAuction},
@@ -695,56 +694,11 @@ var _ = Describe("AuctionCellRep", func() {
 
 		Describe("starting tasks", func() {
 			var task1, task2 *models.Task
-			var securityRule *models.SecurityGroupRule
 
 			BeforeEach(func() {
-				securityRule = &models.SecurityGroupRule{
-					Protocol:     "tcp",
-					Destinations: []string{"0.0.0.0/0"},
-					Ports:        []uint32{80},
-				}
-				task1 = &models.Task{
-					Domain:      "tests",
-					TaskGuid:    "the-task-guid-1",
-					DiskMb:      1024,
-					MemoryMb:    2048,
-					Privileged:  true,
-					CpuWeight:   10,
-					LogGuid:     "log-guid",
-					LogSource:   "log-source",
-					MetricsGuid: "metrics-guid",
-					Action: models.WrapAction(&models.RunAction{
-						User: "me",
-						Path: "date",
-					}),
-					EnvironmentVariables: []*models.EnvironmentVariable{
-						{Name: "FOO", Value: "BAR"},
-					},
-					EgressRules: []*models.SecurityGroupRule{
-						securityRule,
-					},
-				}
-				task2 = &models.Task{
-					Domain:      "tests",
-					TaskGuid:    "the-task-guid-2",
-					DiskMb:      1024,
-					MemoryMb:    2048,
-					Privileged:  true,
-					CpuWeight:   10,
-					LogGuid:     "log-guid",
-					LogSource:   "log-source",
-					MetricsGuid: "metrics-guid",
-					Action: models.WrapAction(&models.RunAction{
-						User: "me",
-						Path: "date",
-					}),
-					EnvironmentVariables: []*models.EnvironmentVariable{
-						{Name: "FOO", Value: "BAR"},
-					},
-					EgressRules: []*models.SecurityGroupRule{
-						securityRule,
-					},
-				}
+				task1 = model_helpers.NewValidTask("the-task-guid-1")
+				task2 = model_helpers.NewValidTask("the-task-guid-2")
+
 				work = auctiontypes.Work{Tasks: []*models.Task{task}}
 			})
 
@@ -760,76 +714,8 @@ var _ = Describe("AuctionCellRep", func() {
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
 					Expect(client.AllocateContainersArgsForCall(0)).To(ConsistOf(
-						executor.Container{
-							Guid: "the-task-guid-1",
-
-							Tags: executor.Tags{
-								rep.LifecycleTag:  rep.TaskLifecycle,
-								rep.DomainTag:     task1.Domain,
-								rep.ResultFileTag: task1.ResultFile,
-							},
-
-							Action: models.WrapAction(&models.RunAction{
-								User: "me",
-								Path: "date",
-							}),
-							Env: []executor.EnvironmentVariable{
-								{Name: "FOO", Value: "BAR"},
-							},
-
-							LogConfig: executor.LogConfig{
-								Guid:       "log-guid",
-								SourceName: "log-source",
-							},
-
-							MetricsConfig: executor.MetricsConfig{
-								Guid: "metrics-guid",
-							},
-
-							MemoryMB:   int(task1.MemoryMb),
-							DiskMB:     int(task1.DiskMb),
-							CPUWeight:  uint(task1.CpuWeight),
-							RootFSPath: linuxPath,
-							Privileged: task1.Privileged,
-							EgressRules: []*models.SecurityGroupRule{
-								securityRule,
-							},
-						},
-						executor.Container{
-							Guid: "the-task-guid-2",
-
-							Tags: executor.Tags{
-								rep.LifecycleTag:  rep.TaskLifecycle,
-								rep.DomainTag:     task2.Domain,
-								rep.ResultFileTag: task2.ResultFile,
-							},
-
-							Action: models.WrapAction(&models.RunAction{
-								User: "me",
-								Path: "date",
-							}),
-							Env: []executor.EnvironmentVariable{
-								{Name: "FOO", Value: "BAR"},
-							},
-
-							LogConfig: executor.LogConfig{
-								Guid:       "log-guid",
-								SourceName: "log-source",
-							},
-
-							MetricsConfig: executor.MetricsConfig{
-								Guid: "metrics-guid",
-							},
-
-							MemoryMB:   int(task2.MemoryMb),
-							DiskMB:     int(task2.DiskMb),
-							CPUWeight:  uint(task2.CpuWeight),
-							RootFSPath: "unsupported-arbitrary://still-goes-through",
-							Privileged: task2.Privileged,
-							EgressRules: []*models.SecurityGroupRule{
-								securityRule,
-							},
-						},
+						containerForTask(task1, linuxPath),
+						containerForTask(task2, task2.RootFs),
 					))
 
 				})
@@ -873,41 +759,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
 					Expect(client.AllocateContainersArgsForCall(0)).To(ConsistOf(
-						executor.Container{
-							Guid: "the-task-guid-1",
-
-							Tags: executor.Tags{
-								rep.LifecycleTag:  rep.TaskLifecycle,
-								rep.DomainTag:     task1.Domain,
-								rep.ResultFileTag: task1.ResultFile,
-							},
-
-							Action: models.WrapAction(&models.RunAction{
-								User: "me",
-								Path: "date",
-							}),
-							Env: []executor.EnvironmentVariable{
-								{Name: "FOO", Value: "BAR"},
-							},
-
-							LogConfig: executor.LogConfig{
-								Guid:       "log-guid",
-								SourceName: "log-source",
-							},
-
-							MetricsConfig: executor.MetricsConfig{
-								Guid: "metrics-guid",
-							},
-
-							MemoryMB:   int(task1.MemoryMb),
-							DiskMB:     int(task1.DiskMb),
-							CPUWeight:  uint(task1.CpuWeight),
-							RootFSPath: linuxPath,
-							Privileged: task1.Privileged,
-							EgressRules: []*models.SecurityGroupRule{
-								securityRule,
-							},
-						},
+						containerForTask(task1, linuxPath),
 					))
 
 				})
@@ -956,41 +808,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
 					Expect(client.AllocateContainersArgsForCall(0)).To(ConsistOf(
-						executor.Container{
-							Guid: "the-task-guid-1",
-
-							Tags: executor.Tags{
-								rep.LifecycleTag:  rep.TaskLifecycle,
-								rep.DomainTag:     task1.Domain,
-								rep.ResultFileTag: task1.ResultFile,
-							},
-
-							Action: models.WrapAction(&models.RunAction{
-								User: "me",
-								Path: "date",
-							}),
-							Env: []executor.EnvironmentVariable{
-								{Name: "FOO", Value: "BAR"},
-							},
-
-							LogConfig: executor.LogConfig{
-								Guid:       "log-guid",
-								SourceName: "log-source",
-							},
-
-							MetricsConfig: executor.MetricsConfig{
-								Guid: "metrics-guid",
-							},
-
-							MemoryMB:   int(task1.MemoryMb),
-							DiskMB:     int(task1.DiskMb),
-							CPUWeight:  uint(task1.CpuWeight),
-							RootFSPath: "",
-							Privileged: task1.Privileged,
-							EgressRules: []*models.SecurityGroupRule{
-								securityRule,
-							},
-						},
+						containerForTask(task1, ""),
 					))
 
 				})
@@ -1008,41 +826,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
 					Expect(client.AllocateContainersArgsForCall(0)).To(ConsistOf(
-						executor.Container{
-							Guid: "the-task-guid-1",
-
-							Tags: executor.Tags{
-								rep.LifecycleTag:  rep.TaskLifecycle,
-								rep.DomainTag:     task1.Domain,
-								rep.ResultFileTag: task1.ResultFile,
-							},
-
-							Action: models.WrapAction(&models.RunAction{
-								User: "me",
-								Path: "date",
-							}),
-							Env: []executor.EnvironmentVariable{
-								{Name: "FOO", Value: "BAR"},
-							},
-
-							LogConfig: executor.LogConfig{
-								Guid:       "log-guid",
-								SourceName: "log-source",
-							},
-
-							MetricsConfig: executor.MetricsConfig{
-								Guid: "metrics-guid",
-							},
-
-							MemoryMB:   int(task1.MemoryMb),
-							DiskMB:     int(task1.DiskMb),
-							CPUWeight:  uint(task1.CpuWeight),
-							RootFSPath: linuxPath,
-							Privileged: task1.Privileged,
-							EgressRules: []*models.SecurityGroupRule{
-								securityRule,
-							},
-						},
+						containerForTask(task1, linuxPath),
 					))
 
 				})
@@ -1082,3 +866,36 @@ var _ = Describe("AuctionCellRep", func() {
 		})
 	})
 })
+
+func containerForTask(task *models.Task, rootFSPath string) executor.Container {
+	return executor.Container{
+		Guid: task.TaskGuid,
+
+		Tags: executor.Tags{
+			rep.LifecycleTag:  rep.TaskLifecycle,
+			rep.DomainTag:     task.Domain,
+			rep.ResultFileTag: task.ResultFile,
+		},
+
+		Action: task.Action,
+		Env: []executor.EnvironmentVariable{
+			{Name: "FOO", Value: "BAR"},
+		},
+
+		LogConfig: executor.LogConfig{
+			Guid:       task.LogGuid,
+			SourceName: task.LogSource,
+		},
+
+		MetricsConfig: executor.MetricsConfig{
+			Guid: task.MetricsGuid,
+		},
+
+		MemoryMB:    int(task.MemoryMb),
+		DiskMB:      int(task.DiskMb),
+		CPUWeight:   uint(task.CpuWeight),
+		RootFSPath:  rootFSPath,
+		Privileged:  task.Privileged,
+		EgressRules: task.EgressRules,
+	}
+}

@@ -10,6 +10,7 @@ import (
 	"github.com/cloudfoundry-incubator/auction/communication/http/auction_http_client"
 	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/bbs/models"
+	"github.com/cloudfoundry-incubator/bbs/models/internal/model_helpers"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/executor/depot/gardenstore"
 	"github.com/cloudfoundry-incubator/garden"
@@ -296,29 +297,19 @@ var _ = Describe("The Rep", func() {
 
 					task = &models.Task{
 						TaskGuid: "the-task-guid",
-						MemoryMb: 2,
-						DiskMb:   2,
-						RootFs:   "the:rootfs",
 						Domain:   "the-domain",
-						Action: models.WrapAction(&models.RunAction{
-							User: "me",
-							Path: "date",
-						}),
-					}
-
-					oldTask := oldmodels.Task{
-						TaskGuid: "the-task-guid",
-						MemoryMB: 2,
-						DiskMB:   2,
-						RootFS:   "the:rootfs",
-						Domain:   "the-domain",
-						Action: &oldmodels.RunAction{
-							User: "me",
-							Path: "date",
+						TaskDefinition: &models.TaskDefinition{
+							MemoryMb: 2,
+							DiskMb:   2,
+							RootFs:   "the:rootfs",
+							Action: models.WrapAction(&models.RunAction{
+								User: "me",
+								Path: "date",
+							}),
 						},
 					}
 
-					err := legacyBBS.DesireTask(logger, oldTask)
+					err := bbsClient.DesireTask(task.TaskGuid, task.Domain, task.TaskDefinition)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
@@ -340,24 +331,14 @@ var _ = Describe("The Rep", func() {
 		})
 
 		Describe("polling the BBS for tasks to reap", func() {
-			var task oldmodels.Task
+			var task *models.Task
 
 			JustBeforeEach(func() {
-				task = oldmodels.Task{
-					TaskGuid: "a-new-task-guid",
-					Domain:   "the-domain",
-					RootFS:   "some:rootfs",
-					Action: &oldmodels.RunAction{
-						User: "me",
-						Path: "the-path",
-						Args: []string{},
-					},
-				}
-
-				err := legacyBBS.DesireTask(logger, task)
+				task = model_helpers.NewValidTask("task-guid")
+				err := bbsClient.DesireTask(task.TaskGuid, task.Domain, task.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 
-				_, err = legacyBBS.StartTask(logger, task.TaskGuid, cellID)
+				_, err = bbsClient.StartTask(task.TaskGuid, cellID)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
