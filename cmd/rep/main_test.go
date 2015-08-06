@@ -467,20 +467,21 @@ var _ = Describe("The Rep", func() {
 					),
 				)
 
-				task := oldmodels.Task{
-					TaskGuid: taskGuid,
-					Domain:   "the-domain",
-					RootFS:   "some:rootfs",
-					Action: &oldmodels.RunAction{
-						User: "me",
-						Path: "date",
-					},
-				}
+				task := model_helpers.NewValidTask(taskGuid)
+				// task := oldmodels.Task{
+				// 	TaskGuid: taskGuid,
+				// 	Domain:   "the-domain",
+				// 	RootFS:   "some:rootfs",
+				// 	Action: &oldmodels.RunAction{
+				// 		User: "me",
+				// 		Path: "date",
+				// 	},
+				// }
 
-				err := legacyBBS.DesireTask(logger, task)
+				err := bbsClient.DesireTask(task.TaskGuid, task.Domain, task.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 
-				started, err := legacyBBS.StartTask(logger, taskGuid, cellID)
+				started, err := bbsClient.StartTask(taskGuid, cellID)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(started).To(BeTrue())
 			})

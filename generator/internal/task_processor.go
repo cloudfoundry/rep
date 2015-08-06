@@ -1,9 +1,12 @@
 package internal
 
 import (
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+
+	"github.com/cloudfoundry-incubator/bbs"
+	legacyBBS "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	"github.com/pivotal-golang/lager"
 )
@@ -20,14 +23,16 @@ type TaskProcessor interface {
 }
 
 type taskProcessor struct {
-	bbs               bbs.RepBBS
+	bbsClient         bbs.Client
+	legacyBBS         legacyBBS.RepBBS
 	containerDelegate ContainerDelegate
 	cellID            string
 }
 
-func NewTaskProcessor(bbs bbs.RepBBS, containerDelegate ContainerDelegate, cellID string) TaskProcessor {
+func NewTaskProcessor(bbs bbs.Client, legacy legacyBBS.RepBBS, containerDelegate ContainerDelegate, cellID string) TaskProcessor {
 	return &taskProcessor{
-		bbs:               bbs,
+		bbsClient:         bbs,
+		legacyBBS:         legacy,
 		containerDelegate: containerDelegate,
 		cellID:            cellID,
 	}
@@ -80,18 +85,17 @@ func (p *taskProcessor) processCompletedContainer(logger lager.Logger, container
 
 func (p *taskProcessor) startTask(logger lager.Logger, guid string) bool {
 	logger.Info("starting-task")
-	changed, err := p.bbs.StartTask(logger, guid, p.cellID)
+	changed, err := p.bbsClient.StartTask(guid, p.cellID)
 	if err != nil {
 		logger.Error("failed-starting-task", err)
 
-		if _, ok := err.(bbserrors.TaskStateTransitionError); ok {
-			p.containerDelegate.DeleteContainer(logger, guid)
-		} else if err == bbserrors.ErrTaskRunningOnDifferentCell {
-			p.containerDelegate.DeleteContainer(logger, guid)
-		} else if err == bbserrors.ErrStoreResourceNotFound {
-			p.containerDelegate.DeleteContainer(logger, guid)
+		if mErr, ok := err.(*models.Error); ok {
+			if mErr.Type == models.InvalidStateTransition {
+				p.containerDelegate.DeleteContainer(logger, guid)
+			} else if mErr.Equal(models.ErrResourceNotFound) {
+				p.containerDelegate.DeleteContainer(logger, guid)
+			}
 		}
-
 		return false
 	}
 
@@ -116,7 +120,7 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 	}
 
 	logger.Info("completing-task")
-	err = p.bbs.CompleteTask(logger, container.Guid, p.cellID, container.RunResult.Failed, container.RunResult.FailureReason, result)
+	err = p.legacyBBS.CompleteTask(logger, container.Guid, p.cellID, container.RunResult.Failed, container.RunResult.FailureReason, result)
 	if err != nil {
 		logger.Error("failed-completing-task", err)
 
@@ -131,7 +135,7 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 
 func (p *taskProcessor) failTask(logger lager.Logger, guid string, reason string) {
 	logger.Info("failing-task")
-	err := p.bbs.FailTask(logger, guid, reason)
+	err := p.legacyBBS.FailTask(logger, guid, reason)
 	if err != nil {
 		logger.Error("failed-failing-task", err)
 		return

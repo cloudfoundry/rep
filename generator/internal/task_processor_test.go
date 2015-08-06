@@ -36,9 +36,11 @@ var _ = Describe("Task <-> Container table", func() {
 
 	BeforeEach(func() {
 		etcdRunner.Reset()
+
 		legacyBBS = legacybbs.NewBBS(etcdClient, consulSession, "http://receptor.bogus.com", clock.NewClock(), lagertest.NewTestLogger("test-bbs"))
 		containerDelegate = new(fake_internal.FakeContainerDelegate)
-		processor = internal.NewTaskProcessor(legacyBBS, containerDelegate, localCellID)
+
+		processor = internal.NewTaskProcessor(bbsClient, legacyBBS, containerDelegate, localCellID)
 
 		containerDelegate.DeleteContainerReturns(true)
 		containerDelegate.StopContainerReturns(true)
