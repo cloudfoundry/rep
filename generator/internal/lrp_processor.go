@@ -44,7 +44,7 @@ func NewLRPProcessor(
 	evacuationTTLInSeconds uint64,
 ) LRPProcessor {
 	ordinaryProcessor := newOrdinaryLRPProcessor(bbsClient, legacyBBS, containerDelegate, cellID)
-	evacuationProcessor := newEvacuationLRPProcessor(legacyBBS, containerDelegate, cellID, evacuationTTLInSeconds)
+	evacuationProcessor := newEvacuationLRPProcessor(bbsClient, containerDelegate, cellID, evacuationTTLInSeconds)
 	return &lrpProcessor{
 		evacuationReporter:  evacuationReporter,
 		ordinaryProcessor:   ordinaryProcessor,
