@@ -40,7 +40,7 @@ var _ = Describe("Task <-> Container table", func() {
 		legacyBBS = legacybbs.NewBBS(etcdClient, consulSession, "http://receptor.bogus.com", clock.NewClock(), lagertest.NewTestLogger("test-bbs"))
 		containerDelegate = new(fake_internal.FakeContainerDelegate)
 
-		processor = internal.NewTaskProcessor(bbsClient, legacyBBS, containerDelegate, localCellID)
+		processor = internal.NewTaskProcessor(bbsClient, containerDelegate, localCellID)
 
 		containerDelegate.DeleteContainerReturns(true)
 		containerDelegate.StopContainerReturns(true)
@@ -528,12 +528,12 @@ func advanceState(logger lager.Logger, legacyBBS *legacybbs.BBS, task *models.Ta
 		return models.Task_Running
 
 	case models.Task_Running:
-		err := legacyBBS.CompleteTask(logger, task.TaskGuid, task.CellId, true, "reason", "result")
+		err := bbsClient.CompleteTask(task.TaskGuid, task.CellId, true, "reason", "result")
 		Expect(err).NotTo(HaveOccurred())
 		return models.Task_Completed
 
 	case models.Task_Completed:
-		err := legacyBBS.ResolvingTask(logger, task.TaskGuid)
+		err := bbsClient.ResolvingTask(task.TaskGuid)
 		Expect(err).NotTo(HaveOccurred())
 		return models.Task_Resolving
 

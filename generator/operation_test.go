@@ -266,7 +266,7 @@ var _ = Describe("Operation", func() {
 		BeforeEach(func() {
 			taskGuid = "the-task-guid"
 			containerDelegate = new(fake_internal.FakeContainerDelegate)
-			residualTaskOperation = generator.NewResidualTaskOperation(logger, fakeLegacyBBS, containerDelegate, taskGuid)
+			residualTaskOperation = generator.NewResidualTaskOperation(logger, taskGuid, fakeBBS, containerDelegate)
 		})
 
 		Describe("Key", func() {
@@ -300,16 +300,15 @@ var _ = Describe("Operation", func() {
 				})
 
 				It("fails the task", func() {
-					Expect(fakeLegacyBBS.FailTaskCallCount()).To(Equal(1))
-					actualLogger, actualTaskGuid, actualFailureReason := fakeLegacyBBS.FailTaskArgsForCall(0)
-					Expect(actualLogger.SessionName()).To(Equal(sessionName))
+					Expect(fakeBBS.FailTaskCallCount()).To(Equal(1))
+					actualTaskGuid, actualFailureReason := fakeBBS.FailTaskArgsForCall(0)
 					Expect(actualTaskGuid).To(Equal(taskGuid))
 					Expect(actualFailureReason).To(Equal(internal.TaskCompletionReasonMissingContainer))
 				})
 
 				Context("when failing the task fails", func() {
 					BeforeEach(func() {
-						fakeLegacyBBS.FailTaskReturns(errors.New("failed"))
+						fakeBBS.FailTaskReturns(errors.New("failed"))
 					})
 
 					It("logs the failure", func() {
@@ -324,7 +323,7 @@ var _ = Describe("Operation", func() {
 				})
 
 				It("does not fail the task", func() {
-					Expect(fakeLegacyBBS.FailTaskCallCount()).To(Equal(0))
+					Expect(fakeBBS.FailTaskCallCount()).To(Equal(0))
 				})
 
 				It("logs that it skipped the operation because the container was found", func() {

@@ -6,8 +6,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep"
 
 	"github.com/cloudfoundry-incubator/bbs"
-	legacyBBS "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -24,15 +22,13 @@ type TaskProcessor interface {
 
 type taskProcessor struct {
 	bbsClient         bbs.Client
-	legacyBBS         legacyBBS.RepBBS
 	containerDelegate ContainerDelegate
 	cellID            string
 }
 
-func NewTaskProcessor(bbs bbs.Client, legacy legacyBBS.RepBBS, containerDelegate ContainerDelegate, cellID string) TaskProcessor {
+func NewTaskProcessor(bbs bbs.Client, containerDelegate ContainerDelegate, cellID string) TaskProcessor {
 	return &taskProcessor{
 		bbsClient:         bbs,
-		legacyBBS:         legacy,
 		containerDelegate: containerDelegate,
 		cellID:            cellID,
 	}
@@ -120,12 +116,14 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 	}
 
 	logger.Info("completing-task")
-	err = p.legacyBBS.CompleteTask(logger, container.Guid, p.cellID, container.RunResult.Failed, container.RunResult.FailureReason, result)
+	err = p.bbsClient.CompleteTask(container.Guid, p.cellID, container.RunResult.Failed, container.RunResult.FailureReason, result)
 	if err != nil {
 		logger.Error("failed-completing-task", err)
 
-		if _, ok := err.(bbserrors.TaskStateTransitionError); ok {
-			p.failTask(logger, container.Guid, TaskCompletionReasonInvalidTransition)
+		if modelErr, ok := err.(*models.Error); ok {
+			if modelErr.Type == models.InvalidStateTransition {
+				p.failTask(logger, container.Guid, TaskCompletionReasonInvalidTransition)
+			}
 		}
 		return
 	}
@@ -135,7 +133,7 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 
 func (p *taskProcessor) failTask(logger lager.Logger, guid string, reason string) {
 	logger.Info("failing-task")
-	err := p.legacyBBS.FailTask(logger, guid, reason)
+	err := p.bbsClient.FailTask(guid, reason)
 	if err != nil {
 		logger.Error("failed-failing-task", err)
 		return

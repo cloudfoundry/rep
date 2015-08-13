@@ -468,15 +468,6 @@ var _ = Describe("The Rep", func() {
 				)
 
 				task := model_helpers.NewValidTask(taskGuid)
-				// task := oldmodels.Task{
-				// 	TaskGuid: taskGuid,
-				// 	Domain:   "the-domain",
-				// 	RootFS:   "some:rootfs",
-				// 	Action: &oldmodels.RunAction{
-				// 		User: "me",
-				// 		Path: "date",
-				// 	},
-				// }
 
 				err := bbsClient.DesireTask(task.TaskGuid, task.Domain, task.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
@@ -487,7 +478,7 @@ var _ = Describe("The Rep", func() {
 			})
 
 			It("deletes the container", func() {
-				err := legacyBBS.CancelTask(logger, taskGuid)
+				err := bbsClient.CancelTask(taskGuid)
 				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(deletedContainer).Should(BeClosed())
