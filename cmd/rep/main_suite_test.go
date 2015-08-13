@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/cloudfoundry-incubator/bbs"
 	bbstestrunner "github.com/cloudfoundry-incubator/bbs/cmd/bbs/testrunner"
@@ -52,6 +53,11 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	return []byte(strings.Join([]string{representative, bbsConfig}, ","))
 }, func(pathsByte []byte) {
+	// tests here are fairly Eventually driven which tends to flake out under
+	// load (for insignificant reasons); bump the default a bit higher than the
+	// default (1 second)
+	SetDefaultEventuallyTimeout(5 * time.Second)
+
 	path := string(pathsByte)
 	representativePath = strings.Split(path, ",")[0]
 	bbsBinPath = strings.Split(path, ",")[1]
