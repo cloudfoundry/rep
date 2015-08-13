@@ -158,21 +158,21 @@ func (o *ResidualJointLRPOperation) Execute() {
 // ResidualTaskOperation processes a Task with no matching container.
 type ResidualTaskOperation struct {
 	logger            lager.Logger
-	legacyBBS         legacybbs.RepBBS
-	containerDelegate internal.ContainerDelegate
 	TaskGuid          string
+	bbsClient         bbs.Client
+	containerDelegate internal.ContainerDelegate
 }
 
 func NewResidualTaskOperation(
 	logger lager.Logger,
-	legacyBBS legacybbs.RepBBS,
-	containerDelegate internal.ContainerDelegate,
 	taskGuid string,
+	bbsClient bbs.Client,
+	containerDelegate internal.ContainerDelegate,
 ) *ResidualTaskOperation {
 	return &ResidualTaskOperation{
 		logger:            logger,
-		legacyBBS:         legacyBBS,
 		TaskGuid:          taskGuid,
+		bbsClient:         bbsClient,
 		containerDelegate: containerDelegate,
 	}
 }
@@ -194,7 +194,7 @@ func (o *ResidualTaskOperation) Execute() {
 		return
 	}
 
-	err := o.legacyBBS.FailTask(logger, o.TaskGuid, internal.TaskCompletionReasonMissingContainer)
+	err := o.bbsClient.FailTask(o.TaskGuid, internal.TaskCompletionReasonMissingContainer)
 	if err != nil {
 		logger.Error("failed-to-fail-task", err)
 	}

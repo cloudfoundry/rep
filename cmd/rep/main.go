@@ -219,7 +219,7 @@ func main() {
 
 	containerDelegate := internal.NewContainerDelegate(executorClient)
 	lrpProcessor := internal.NewLRPProcessor(bbsClient, repBBS, containerDelegate, *cellID, evacuationReporter, uint64(evacuationTimeout.Seconds()))
-	taskProcessor := internal.NewTaskProcessor(bbsClient, repBBS, containerDelegate, *cellID)
+	taskProcessor := internal.NewTaskProcessor(bbsClient, containerDelegate, *cellID)
 
 	evacuator := evacuation.NewEvacuator(
 		logger,

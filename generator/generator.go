@@ -158,7 +158,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	for guid, _ := range tasks {
 		_, found := batch[guid]
 		if !found {
-			batch[guid] = NewResidualTaskOperation(logger, g.legacyBBS, g.containerDelegate, guid)
+			batch[guid] = NewResidualTaskOperation(logger, guid, g.bbs, g.containerDelegate)
 		}
 	}
 
