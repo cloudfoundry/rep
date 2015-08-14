@@ -150,7 +150,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	for guid, lrp := range evacuatingLRPs {
 		_, found := batch[guid]
 		if !found {
-			batch[guid] = NewResidualEvacuatingLRPOperation(logger, g.legacyBBS, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
+			batch[guid] = NewResidualEvacuatingLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
 		}
 	}
 

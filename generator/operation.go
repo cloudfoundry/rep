@@ -8,7 +8,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -63,21 +62,21 @@ func (o *ResidualInstanceLRPOperation) Execute() {
 // ResidualEvacuatingLRPOperation processes an evacuating ActualLRP with no matching container.
 type ResidualEvacuatingLRPOperation struct {
 	logger            lager.Logger
-	legacyBBS         legacybbs.RepBBS
+	bbsClient         bbs.Client
 	containerDelegate internal.ContainerDelegate
 	models.ActualLRPKey
 	models.ActualLRPInstanceKey
 }
 
 func NewResidualEvacuatingLRPOperation(logger lager.Logger,
-	legacyBBS legacybbs.RepBBS,
+	bbsClient bbs.Client,
 	containerDelegate internal.ContainerDelegate,
 	lrpKey models.ActualLRPKey,
 	instanceKey models.ActualLRPInstanceKey,
 ) *ResidualEvacuatingLRPOperation {
 	return &ResidualEvacuatingLRPOperation{
 		logger:               logger,
-		legacyBBS:            legacyBBS,
+		bbsClient:            bbsClient,
 		containerDelegate:    containerDelegate,
 		ActualLRPKey:         lrpKey,
 		ActualLRPInstanceKey: instanceKey,
@@ -102,9 +101,7 @@ func (o *ResidualEvacuatingLRPOperation) Execute() {
 		return
 	}
 
-	oldActualLRPKey := oldmodels.NewActualLRPKey(o.ActualLRPKey.GetProcessGuid(), int(o.ActualLRPKey.GetIndex()), o.ActualLRPKey.GetDomain())
-	oldActualLRPInstanceKey := oldmodels.NewActualLRPInstanceKey(o.ActualLRPInstanceKey.GetInstanceGuid(), o.ActualLRPInstanceKey.GetCellId())
-	o.legacyBBS.RemoveEvacuatingActualLRP(logger, oldActualLRPKey, oldActualLRPInstanceKey)
+	o.bbsClient.RemoveEvacuatingActualLRP(&o.ActualLRPKey, &o.ActualLRPInstanceKey)
 }
 
 // ResidualJointLRPOperation processes an evacuating ActualLRP with no matching container.
@@ -152,10 +149,10 @@ func (o *ResidualJointLRPOperation) Execute() {
 		return
 	}
 
-	oldActualLRPKey := oldmodels.NewActualLRPKey(o.ProcessGuid, int(o.Index), o.Domain)
-	oldActualLRPInstanceKey := oldmodels.NewActualLRPInstanceKey(o.InstanceGuid, o.CellId)
+	actualLRPKey := models.NewActualLRPKey(o.ProcessGuid, int32(o.Index), o.Domain)
+	actualLRPInstanceKey := models.NewActualLRPInstanceKey(o.InstanceGuid, o.CellId)
 	o.bbsClient.RemoveActualLRP(o.ProcessGuid, int(o.Index))
-	o.legacyBBS.RemoveEvacuatingActualLRP(logger, oldActualLRPKey, oldActualLRPInstanceKey)
+	o.bbsClient.RemoveEvacuatingActualLRP(&actualLRPKey, &actualLRPInstanceKey)
 }
 
 // ResidualTaskOperation processes a Task with no matching container.
