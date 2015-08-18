@@ -265,6 +265,8 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 			Env: append([]executor.EnvironmentVariable{
 				{Name: "INSTANCE_GUID", Value: instanceGuid},
 				{Name: "INSTANCE_INDEX", Value: strconv.Itoa(lrpStart.Index)},
+				{Name: "CF_INSTANCE_GUID", Value: instanceGuid},
+				{Name: "CF_INSTANCE_INDEX", Value: strconv.Itoa(lrpStart.Index)},
 			}, executor.EnvironmentVariablesFromModel(lrpStart.DesiredLRP.EnvironmentVariables)...),
 			EgressRules: lrpStart.DesiredLRP.EgressRules,
 		}

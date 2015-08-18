@@ -367,6 +367,8 @@ var _ = Describe("AuctionCellRep", func() {
 							Env: []executor.EnvironmentVariable{
 								{Name: "INSTANCE_GUID", Value: expectedGuidOne},
 								{Name: "INSTANCE_INDEX", Value: expectedIndexOneString},
+								{Name: "CF_INSTANCE_GUID", Value: expectedGuidOne},
+								{Name: "CF_INSTANCE_INDEX", Value: expectedIndexOneString},
 								{Name: "var1", Value: "val1"},
 								{Name: "var2", Value: "val2"},
 							},
@@ -410,6 +412,8 @@ var _ = Describe("AuctionCellRep", func() {
 							Env: []executor.EnvironmentVariable{
 								{Name: "INSTANCE_GUID", Value: expectedGuidTwo},
 								{Name: "INSTANCE_INDEX", Value: expectedIndexTwoString},
+								{Name: "CF_INSTANCE_GUID", Value: expectedGuidTwo},
+								{Name: "CF_INSTANCE_INDEX", Value: expectedIndexTwoString},
 								{Name: "var1", Value: "val1"},
 								{Name: "var2", Value: "val2"},
 							},
@@ -496,6 +500,8 @@ var _ = Describe("AuctionCellRep", func() {
 							Env: []executor.EnvironmentVariable{
 								{Name: "INSTANCE_GUID", Value: expectedGuidOne},
 								{Name: "INSTANCE_INDEX", Value: expectedIndexOneString},
+								{Name: "CF_INSTANCE_GUID", Value: expectedGuidOne},
+								{Name: "CF_INSTANCE_INDEX", Value: expectedIndexOneString},
 								{Name: "var1", Value: "val1"},
 								{Name: "var2", Value: "val2"},
 							},
@@ -587,6 +593,8 @@ var _ = Describe("AuctionCellRep", func() {
 							Env: []executor.EnvironmentVariable{
 								{Name: "INSTANCE_GUID", Value: expectedGuidOne},
 								{Name: "INSTANCE_INDEX", Value: expectedIndexOneString},
+								{Name: "CF_INSTANCE_GUID", Value: expectedGuidOne},
+								{Name: "CF_INSTANCE_INDEX", Value: expectedIndexOneString},
 								{Name: "var1", Value: "val1"},
 								{Name: "var2", Value: "val2"},
 							},
@@ -647,6 +655,8 @@ var _ = Describe("AuctionCellRep", func() {
 							Env: []executor.EnvironmentVariable{
 								{Name: "INSTANCE_GUID", Value: expectedGuidOne},
 								{Name: "INSTANCE_INDEX", Value: expectedIndexOneString},
+								{Name: "CF_INSTANCE_GUID", Value: expectedGuidOne},
+								{Name: "CF_INSTANCE_INDEX", Value: expectedIndexOneString},
 								{Name: "var1", Value: "val1"},
 								{Name: "var2", Value: "val2"},
 							},
