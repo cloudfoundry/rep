@@ -104,7 +104,7 @@ func (p *ordinaryLRPProcessor) processRunningContainer(logger lager.Logger, lrpC
 	}
 	logger.Debug("succeeded-extracting-net-info-from-container")
 
-	_, err = p.bbsClient.StartActualLRP(lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo)
+	err = p.bbsClient.StartActualLRP(lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo)
 	if err == models.ErrActualLRPCannotBeStarted {
 		p.containerDelegate.StopContainer(logger, lrpContainer.Guid)
 	}
@@ -128,7 +128,7 @@ func (p *ordinaryLRPProcessor) processInvalidContainer(logger lager.Logger, lrpC
 }
 
 func (p *ordinaryLRPProcessor) claimLRPContainer(logger lager.Logger, lrpContainer *lrpContainer) bool {
-	_, err := p.bbsClient.ClaimActualLRP(lrpContainer.ProcessGuid, int(lrpContainer.Index), lrpContainer.ActualLRPInstanceKey)
+	err := p.bbsClient.ClaimActualLRP(lrpContainer.ProcessGuid, int(lrpContainer.Index), lrpContainer.ActualLRPInstanceKey)
 	switch err {
 	case nil:
 		return true

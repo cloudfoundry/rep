@@ -108,7 +108,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 				Context("when claiming fails because ErrActualLRPCannotBeClaimed", func() {
 					BeforeEach(func() {
-						bbsClient.ClaimActualLRPReturns(nil, models.ErrActualLRPCannotBeClaimed)
+						bbsClient.ClaimActualLRPReturns(models.ErrActualLRPCannotBeClaimed)
 					})
 
 					It("deletes the container", func() {
@@ -125,7 +125,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 				Context("when claiming fails for an unknown reason", func() {
 					BeforeEach(func() {
-						bbsClient.ClaimActualLRPReturns(nil, errors.New("boom"))
+						bbsClient.ClaimActualLRPReturns(errors.New("boom"))
 					})
 
 					It("does not delete the container", func() {
@@ -171,7 +171,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 					Context("when the claim fails because ErrActualLRPCannotBeClaimed", func() {
 						BeforeEach(func() {
-							bbsClient.ClaimActualLRPReturns(nil, models.ErrActualLRPCannotBeClaimed)
+							bbsClient.ClaimActualLRPReturns(models.ErrActualLRPCannotBeClaimed)
 						})
 
 						It("deletes the container", func() {
@@ -184,7 +184,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 					Context("when the claim fails for an unknown reason", func() {
 						BeforeEach(func() {
-							bbsClient.ClaimActualLRPReturns(nil, errors.New("boom"))
+							bbsClient.ClaimActualLRPReturns(errors.New("boom"))
 						})
 
 						It("does not stop or delete the container", func() {
@@ -228,7 +228,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 					Context("when starting fails because ErrActualLRPCannotBeStarted", func() {
 						BeforeEach(func() {
-							bbsClient.StartActualLRPReturns(nil, models.ErrActualLRPCannotBeStarted)
+							bbsClient.StartActualLRPReturns(models.ErrActualLRPCannotBeStarted)
 						})
 
 						It("stops the container", func() {
@@ -241,7 +241,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 					Context("when starting fails for an unknown reason", func() {
 						BeforeEach(func() {
-							bbsClient.StartActualLRPReturns(nil, errors.New("boom"))
+							bbsClient.StartActualLRPReturns(errors.New("boom"))
 						})
 
 						It("does not stop or delete the container", func() {

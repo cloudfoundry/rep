@@ -373,7 +373,7 @@ var _ = Describe("The Rep", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				instanceKey := models.NewActualLRPInstanceKey("some-instance-guid", cellID)
-				_, err = bbsClient.ClaimActualLRP(desiredLRP.ProcessGuid, index, &instanceKey)
+				err = bbsClient.ClaimActualLRP(desiredLRP.ProcessGuid, index, &instanceKey)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -422,7 +422,7 @@ var _ = Describe("The Rep", func() {
 				instanceKey := models.NewActualLRPInstanceKey(instanceGuid, cellID)
 				netInfo := models.NewActualLRPNetInfo("bogus-ip")
 
-				_, err := bbsClient.StartActualLRP(&lrpKey, &instanceKey, &netInfo)
+				err := bbsClient.StartActualLRP(&lrpKey, &instanceKey, &netInfo)
 				Expect(err).NotTo(HaveOccurred())
 
 				actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(lrpKey.ProcessGuid, int(lrpKey.Index))
@@ -542,7 +542,7 @@ var _ = Describe("The Rep", func() {
 					lrpContainerKey = models.NewActualLRPInstanceKey(instanceGuid, cellID)
 					lrpNetInfo = models.NewActualLRPNetInfo(address, models.NewPortMapping(2589, 1470))
 
-					_, err := bbsClient.StartActualLRP(&lrpKey, &lrpContainerKey, &lrpNetInfo)
+					err := bbsClient.StartActualLRP(&lrpKey, &lrpContainerKey, &lrpNetInfo)
 					Expect(err).NotTo(HaveOccurred())
 
 					resp, err := http.Post(fmt.Sprintf("http://0.0.0.0:%d/evacuate", serverPort), "text/html", nil)
