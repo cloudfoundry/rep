@@ -66,12 +66,6 @@ var maxCacheSizeInBytes = flag.Uint64(
 	"maximum size of the cache (in bytes) - you should include a healthy amount of overhead",
 )
 
-var allowPrivileged = flag.Bool(
-	"allowPrivileged",
-	executorinit.DefaultConfiguration.AllowPrivileged,
-	"allow execution of privileged run actions",
-)
-
 var skipCertVerify = flag.Bool(
 	"skipCertVerify",
 	executorinit.DefaultConfiguration.SkipCertVerify,
@@ -140,7 +134,6 @@ func executorConfig() executorinit.Configuration {
 		TempDir:                     *tempDir,
 		CachePath:                   *cachePath,
 		MaxCacheSizeInBytes:         *maxCacheSizeInBytes,
-		AllowPrivileged:             *allowPrivileged,
 		SkipCertVerify:              *skipCertVerify,
 		ExportNetworkEnvVars:        *exportNetworkEnvVars,
 		ContainerMaxCpuShares:       *containerMaxCpuShares,
