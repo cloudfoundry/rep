@@ -356,20 +356,20 @@ var _ = Describe("The Rep", func() {
 
 		Describe("polling the BBS for actual LRPs to reap", func() {
 			JustBeforeEach(func() {
-				desiredLRP := oldmodels.DesiredLRP{
+				desiredLRP := &models.DesiredLRP{
 					ProcessGuid: "process-guid",
-					RootFS:      "some:rootfs",
+					RootFs:      "some:rootfs",
 					Domain:      "some-domain",
 					Instances:   1,
-					Action: &oldmodels.RunAction{
+					Action: models.WrapAction(&models.RunAction{
 						User: "me",
 						Path: "the-path",
 						Args: []string{},
-					},
+					}),
 				}
 				index := 0
 
-				err := legacyBBS.DesireLRP(logger, desiredLRP)
+				err := bbsClient.DesireLRP(desiredLRP)
 				Expect(err).NotTo(HaveOccurred())
 
 				instanceKey := models.NewActualLRPInstanceKey("some-instance-guid", cellID)
