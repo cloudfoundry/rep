@@ -344,6 +344,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 							MemoryMB:   int(lrpAuctionOne.DesiredLRP.MemoryMb),
 							DiskMB:     int(lrpAuctionOne.DesiredLRP.DiskMb),
+							DiskScope:  executor.ExclusiveDiskLimit,
 							CPUWeight:  uint(lrpAuctionOne.DesiredLRP.CpuWeight),
 							RootFSPath: linuxPath,
 							Privileged: lrpAuctionOne.DesiredLRP.Privileged,
@@ -389,6 +390,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 							MemoryMB:   int(lrpAuctionTwo.DesiredLRP.MemoryMb),
 							DiskMB:     int(lrpAuctionTwo.DesiredLRP.DiskMb),
+							DiskScope:  executor.TotalDiskLimit,
 							CPUWeight:  uint(lrpAuctionTwo.DesiredLRP.CpuWeight),
 							RootFSPath: "unsupported-arbitrary://still-goes-through",
 							Privileged: lrpAuctionTwo.DesiredLRP.Privileged,
@@ -570,6 +572,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 							MemoryMB:   int(lrpAuctionOne.DesiredLRP.MemoryMb),
 							DiskMB:     int(lrpAuctionOne.DesiredLRP.DiskMb),
+							DiskScope:  executor.ExclusiveDiskLimit,
 							CPUWeight:  uint(lrpAuctionOne.DesiredLRP.CpuWeight),
 							RootFSPath: "",
 							Privileged: lrpAuctionOne.DesiredLRP.Privileged,
@@ -603,7 +606,6 @@ var _ = Describe("AuctionCellRep", func() {
 							},
 						},
 					))
-
 				})
 			})
 
@@ -724,10 +726,9 @@ var _ = Describe("AuctionCellRep", func() {
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
 					Expect(client.AllocateContainersArgsForCall(0)).To(ConsistOf(
-						containerForTask(task1, linuxPath),
-						containerForTask(task2, task2.RootFs),
+						containerForTask(task1, linuxPath, executor.ExclusiveDiskLimit),
+						containerForTask(task2, task2.RootFs, executor.TotalDiskLimit),
 					))
-
 				})
 
 				Context("when all containers can be successfully allocated", func() {
@@ -769,7 +770,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
 					Expect(client.AllocateContainersArgsForCall(0)).To(ConsistOf(
-						containerForTask(task1, linuxPath),
+						containerForTask(task1, linuxPath, executor.ExclusiveDiskLimit),
 					))
 
 				})
@@ -818,7 +819,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
 					Expect(client.AllocateContainersArgsForCall(0)).To(ConsistOf(
-						containerForTask(task1, ""),
+						containerForTask(task1, "", executor.ExclusiveDiskLimit),
 					))
 
 				})
@@ -836,7 +837,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
 					Expect(client.AllocateContainersArgsForCall(0)).To(ConsistOf(
-						containerForTask(task1, linuxPath),
+						containerForTask(task1, linuxPath, executor.ExclusiveDiskLimit),
 					))
 
 				})
@@ -877,7 +878,7 @@ var _ = Describe("AuctionCellRep", func() {
 	})
 })
 
-func containerForTask(task *models.Task, rootFSPath string) executor.Container {
+func containerForTask(task *models.Task, rootFSPath string, diskScope executor.DiskLimitScope) executor.Container {
 	return executor.Container{
 		Guid: task.TaskGuid,
 
@@ -903,6 +904,7 @@ func containerForTask(task *models.Task, rootFSPath string) executor.Container {
 
 		MemoryMB:    int(task.MemoryMb),
 		DiskMB:      int(task.DiskMb),
+		DiskScope:   diskScope,
 		CPUWeight:   uint(task.CpuWeight),
 		RootFSPath:  rootFSPath,
 		Privileged:  task.Privileged,

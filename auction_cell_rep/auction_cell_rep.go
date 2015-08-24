@@ -68,21 +68,25 @@ func rootFSProviders(preloaded rep.StackPathMap, arbitrary []string) auctiontype
 	return rootFSProviders
 }
 
-func (a *AuctionCellRep) pathForRootFS(rootFS string) (string, error) {
+func (a *AuctionCellRep) pathForRootFS(rootFS string) (string, bool, error) {
+	if rootFS == "" {
+		return rootFS, true, nil
+	}
+
 	url, err := url.Parse(rootFS)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 
 	if url.Scheme == models.PreloadedRootFSScheme {
 		path, ok := a.stackPathMap[url.Opaque]
 		if !ok {
-			return "", ErrPreloadedRootFSNotFound
+			return "", false, ErrPreloadedRootFSNotFound
 		}
-		return path, nil
+		return path, true, nil
 	}
 
-	return rootFS, nil
+	return rootFS, false, nil
 }
 
 func (a *AuctionCellRep) State() (auctiontypes.CellState, error) {
@@ -219,10 +223,15 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 			continue
 		}
 
-		rootFSPath, err := a.pathForRootFS(lrpStart.DesiredLRP.RootFs)
+		rootFSPath, preloaded, err := a.pathForRootFS(lrpStart.DesiredLRP.RootFs)
 		if err != nil {
 			untranslatedLRPs = append(untranslatedLRPs, lrpStart)
 			continue
+		}
+
+		diskScope := executor.TotalDiskLimit
+		if preloaded {
+			diskScope = executor.ExclusiveDiskLimit
 		}
 
 		containerGuid := rep.LRPContainerGuid(lrpStart.DesiredLRP.ProcessGuid, instanceGuid)
@@ -241,6 +250,7 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 
 			MemoryMB:     int(lrpStart.DesiredLRP.MemoryMb),
 			DiskMB:       int(lrpStart.DesiredLRP.DiskMb),
+			DiskScope:    diskScope,
 			CPUWeight:    uint(lrpStart.DesiredLRP.CpuWeight),
 			RootFSPath:   rootFSPath,
 			Privileged:   lrpStart.DesiredLRP.Privileged,
@@ -281,16 +291,22 @@ func (a *AuctionCellRep) tasksToContainers(tasks []*models.Task) ([]executor.Con
 	untranslatedTasks := make([]*models.Task, 0, len(tasks))
 
 	for _, task := range tasks {
-		rootFSPath, err := a.pathForRootFS(task.RootFs)
+		rootFSPath, preloaded, err := a.pathForRootFS(task.RootFs)
 		if err != nil {
 			untranslatedTasks = append(untranslatedTasks, task)
 			continue
+		}
+
+		diskScope := executor.TotalDiskLimit
+		if preloaded {
+			diskScope = executor.ExclusiveDiskLimit
 		}
 
 		container := executor.Container{
 			Guid: task.TaskGuid,
 
 			DiskMB:     int(task.DiskMb),
+			DiskScope:  diskScope,
 			MemoryMB:   int(task.MemoryMb),
 			CPUWeight:  uint(task.CpuWeight),
 			RootFSPath: rootFSPath,
