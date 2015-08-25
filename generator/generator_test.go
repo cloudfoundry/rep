@@ -7,8 +7,8 @@ import (
 	"github.com/cloudfoundry-incubator/executor"
 	efakes "github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
+	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"github.com/cloudfoundry-incubator/rep/generator"
-	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
 	"github.com/pivotal-golang/operationq"
 
 	. "github.com/onsi/ginkgo"
@@ -24,11 +24,8 @@ func (BogusEvent) EventType() executor.EventType {
 
 var _ = Describe("Generator", func() {
 	var (
-		cellID                string
-		fakeExecutorClient    *efakes.FakeClient
-		fakeLRPProcessor      *fake_internal.FakeLRPProcessor
-		fakeTaskProcessor     *fake_internal.FakeTaskProcessor
-		fakeContainerDelegate *fake_internal.FakeContainerDelegate
+		cellID             string
+		fakeExecutorClient *efakes.FakeClient
 
 		opGenerator generator.Generator
 	)
@@ -36,11 +33,8 @@ var _ = Describe("Generator", func() {
 	BeforeEach(func() {
 		cellID = "some-cell-id"
 		fakeExecutorClient = new(efakes.FakeClient)
-		fakeLRPProcessor = &fake_internal.FakeLRPProcessor{}
-		fakeTaskProcessor = &fake_internal.FakeTaskProcessor{}
-		fakeContainerDelegate = &fake_internal.FakeContainerDelegate{}
-
-		opGenerator = generator.New(cellID, fakeBBS, fakeLegacyBBS, fakeExecutorClient, fakeLRPProcessor, fakeTaskProcessor, fakeContainerDelegate)
+		fakeEvacuationReporter := &fake_evacuation_context.FakeEvacuationReporter{}
+		opGenerator = generator.New(cellID, fakeBBS, fakeLegacyBBS, fakeExecutorClient, fakeEvacuationReporter, 0)
 	})
 
 	Describe("BatchOperations", func() {

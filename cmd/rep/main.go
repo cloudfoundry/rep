@@ -24,7 +24,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep/evacuation"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
 	"github.com/cloudfoundry-incubator/rep/generator"
-	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/cloudfoundry-incubator/rep/harmonizer"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
@@ -217,10 +216,6 @@ func main() {
 
 	bbsClient := bbs.NewClient(*bbsAddress)
 
-	containerDelegate := internal.NewContainerDelegate(executorClient)
-	lrpProcessor := internal.NewLRPProcessor(bbsClient, repBBS, containerDelegate, *cellID, evacuationReporter, uint64(evacuationTimeout.Seconds()))
-	taskProcessor := internal.NewTaskProcessor(bbsClient, containerDelegate, *cellID)
-
 	evacuator := evacuation.NewEvacuator(
 		logger,
 		clock,
@@ -232,7 +227,7 @@ func main() {
 	)
 
 	httpServer, address := initializeServer(repBBS, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders)
-	opGenerator := generator.New(*cellID, bbsClient, repBBS, executorClient, lrpProcessor, taskProcessor, containerDelegate)
+	opGenerator := generator.New(*cellID, bbsClient, repBBS, executorClient, evacuationReporter, uint64(evacuationTimeout.Seconds()))
 
 	preloadedRootFSes := []string{}
 	for k := range stackMap {
