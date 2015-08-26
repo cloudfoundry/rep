@@ -37,7 +37,7 @@ var _ = Describe("Task <-> Container table", func() {
 	BeforeEach(func() {
 		etcdRunner.Reset()
 
-		legacyBBS = legacybbs.NewBBS(etcdClient, consulSession, "http://receptor.bogus.com", clock.NewClock(), lagertest.NewTestLogger("test-bbs"))
+		legacyBBS = legacybbs.NewBBS(etcdClient, consulSession, clock.NewClock(), lagertest.NewTestLogger("test-bbs"))
 		containerDelegate = new(fake_internal.FakeContainerDelegate)
 
 		processor = internal.NewTaskProcessor(bbsClient, containerDelegate, localCellID)

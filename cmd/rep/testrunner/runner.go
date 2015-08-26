@@ -19,21 +19,20 @@ type Runner struct {
 }
 
 type Config struct {
-	PreloadedRootFSes      []string
-	RootFSProviders        []string
-	CellID                 string
-	BBSAddress             string
-	EtcdCluster            string
-	ServerPort             int
-	GardenAddr             string
-	LogLevel               string
-	ConsulCluster          string
-	ReceptorTaskHandlerURL string
-	PollingInterval        time.Duration
-	EvacuationTimeout      time.Duration
-	EtcdClientCert         string
-	EtcdClientKey          string
-	EtcdCACert             string
+	PreloadedRootFSes []string
+	RootFSProviders   []string
+	CellID            string
+	BBSAddress        string
+	EtcdCluster       string
+	ServerPort        int
+	GardenAddr        string
+	LogLevel          string
+	ConsulCluster     string
+	PollingInterval   time.Duration
+	EvacuationTimeout time.Duration
+	EtcdClientCert    string
+	EtcdClientKey     string
+	EtcdCACert        string
 }
 
 func New(binPath string, config Config) *Runner {
@@ -59,7 +58,6 @@ func (r *Runner) Start() {
 		"-evacuationTimeout", r.config.EvacuationTimeout.String(),
 		"-lockRetryInterval", "1s",
 		"-consulCluster", r.config.ConsulCluster,
-		"-receptorTaskHandlerURL", r.config.ReceptorTaskHandlerURL,
 		"-containerMaxCpuShares", "1024",
 		"-gardenNetwork", "tcp",
 		"-gardenAddr", r.config.GardenAddr,

@@ -65,8 +65,7 @@ var _ = Describe("The Rep", func() {
 		etcdAdapter = etcdRunner.Adapter(nil)
 
 		logger = lagertest.NewTestLogger("test")
-		receptorTaskHandlerURL := "http://receptor.bogus.com"
-		legacyBBS = legacybbs.NewBBS(etcdAdapter, consulSession, receptorTaskHandlerURL, clock.NewClock(), logger)
+		legacyBBS = legacybbs.NewBBS(etcdAdapter, consulSession, clock.NewClock(), logger)
 
 		pollingInterval = 50 * time.Millisecond
 		evacuationTimeout = 200 * time.Millisecond
@@ -78,18 +77,17 @@ var _ = Describe("The Rep", func() {
 		runner = testrunner.New(
 			representativePath,
 			testrunner.Config{
-				PreloadedRootFSes:      []string{rootFSArg},
-				RootFSProviders:        []string{"docker"},
-				CellID:                 cellID,
-				BBSAddress:             bbsURL.String(),
-				EtcdCluster:            fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
-				ServerPort:             serverPort,
-				GardenAddr:             fakeGarden.HTTPTestServer.Listener.Addr().String(),
-				LogLevel:               "info",
-				ConsulCluster:          consulRunner.ConsulCluster(),
-				ReceptorTaskHandlerURL: receptorTaskHandlerURL,
-				PollingInterval:        pollingInterval,
-				EvacuationTimeout:      evacuationTimeout,
+				PreloadedRootFSes: []string{rootFSArg},
+				RootFSProviders:   []string{"docker"},
+				CellID:            cellID,
+				BBSAddress:        bbsURL.String(),
+				EtcdCluster:       fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
+				ServerPort:        serverPort,
+				GardenAddr:        fakeGarden.HTTPTestServer.Listener.Addr().String(),
+				LogLevel:          "info",
+				ConsulCluster:     consulRunner.ConsulCluster(),
+				PollingInterval:   pollingInterval,
+				EvacuationTimeout: evacuationTimeout,
 			},
 		)
 	})

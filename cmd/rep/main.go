@@ -68,12 +68,6 @@ var lockRetryInterval = flag.Duration(
 	"interval to wait before retrying a failed lock acquisition",
 )
 
-var receptorTaskHandlerURL = flag.String(
-	"receptorTaskHandlerURL",
-	"http://127.0.0.1:1169",
-	"location of receptor task handler",
-)
-
 var listenAddr = flag.String(
 	"listenAddr",
 	"0.0.0.0:1800",
@@ -307,7 +301,7 @@ func initializeRepBBS(etcdOptions *etcdstoreadapter.ETCDOptions, logger lager.Lo
 		logger.Fatal("consul-session-failed", err)
 	}
 
-	return legacybbs.NewRepBBS(etcdAdapter, consulSession, *receptorTaskHandlerURL, clock.NewClock(), logger)
+	return legacybbs.NewRepBBS(etcdAdapter, consulSession, clock.NewClock(), logger)
 }
 
 func initializeLRPStopper(guid string, executorClient executor.Client, logger lager.Logger) lrp_stopper.LRPStopper {
