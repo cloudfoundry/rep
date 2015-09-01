@@ -85,12 +85,12 @@ func (p *taskProcessor) startTask(logger lager.Logger, guid string) bool {
 	if err != nil {
 		logger.Error("failed-starting-task", err)
 
-		if mErr, ok := err.(*models.Error); ok {
-			if mErr.Type == models.Error_InvalidStateTransition {
-				p.containerDelegate.DeleteContainer(logger, guid)
-			} else if mErr.Equal(models.ErrResourceNotFound) {
-				p.containerDelegate.DeleteContainer(logger, guid)
-			}
+		bbsErr := models.ConvertError(err)
+		switch bbsErr.Type {
+		case models.Error_InvalidStateTransition:
+			p.containerDelegate.DeleteContainer(logger, guid)
+		case models.Error_ResourceNotFound:
+			p.containerDelegate.DeleteContainer(logger, guid)
 		}
 		return false
 	}
@@ -120,10 +120,9 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 	if err != nil {
 		logger.Error("failed-completing-task", err)
 
-		if modelErr, ok := err.(*models.Error); ok {
-			if modelErr.Type == models.Error_InvalidStateTransition {
-				p.failTask(logger, container.Guid, TaskCompletionReasonInvalidTransition)
-			}
+		bbsErr := models.ConvertError(err)
+		if bbsErr.Type == models.Error_InvalidStateTransition {
+			p.failTask(logger, container.Guid, TaskCompletionReasonInvalidTransition)
 		}
 		return
 	}
