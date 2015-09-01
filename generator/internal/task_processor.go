@@ -86,7 +86,7 @@ func (p *taskProcessor) startTask(logger lager.Logger, guid string) bool {
 		logger.Error("failed-starting-task", err)
 
 		if mErr, ok := err.(*models.Error); ok {
-			if mErr.Type == models.InvalidStateTransition {
+			if mErr.Type == models.Error_InvalidStateTransition {
 				p.containerDelegate.DeleteContainer(logger, guid)
 			} else if mErr.Equal(models.ErrResourceNotFound) {
 				p.containerDelegate.DeleteContainer(logger, guid)
@@ -121,7 +121,7 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 		logger.Error("failed-completing-task", err)
 
 		if modelErr, ok := err.(*models.Error); ok {
-			if modelErr.Type == models.InvalidStateTransition {
+			if modelErr.Type == models.Error_InvalidStateTransition {
 				p.failTask(logger, container.Guid, TaskCompletionReasonInvalidTransition)
 			}
 		}
