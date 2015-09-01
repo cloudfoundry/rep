@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudfoundry-incubator/auction/communication/http/auction_http_handlers"
-	auctionroutes "github.com/cloudfoundry-incubator/auction/communication/http/routes"
 	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/bbs/cellhandlers"
 	"github.com/cloudfoundry-incubator/cf-debug-server"
@@ -324,7 +322,7 @@ func initializeServer(
 	auctionCellRep := auction_cell_rep.New(*cellID, stackMap, supportedProviders, *zone, generateGuid, executorClient, evacuationReporter, logger)
 	handlers := auction_http_handlers.New(auctionCellRep, logger)
 
-	routes := auctionroutes.Routes
+	routes := rep.Routes
 
 	handlers[cellhandlers.StopLRPInstanceRoute] = cellhandlers.NewStopLRPInstanceHandler(logger, lrpStopper)
 	handlers[cellhandlers.CancelTaskRoute] = cellhandlers.NewCancelTaskHandler(logger, executorClient)
