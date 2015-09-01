@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/auction/auctiontypes"
-	"github.com/cloudfoundry-incubator/auction/communication/http/auction_http_client"
 	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/bbs/models/test/model_helpers"
@@ -202,14 +201,14 @@ var _ = Describe("The Rep", func() {
 		})
 
 		Context("acting as an auction representative", func() {
-			var client *auction_http_client.AuctionHTTPClient
+			var client *rep.Client
 
 			JustBeforeEach(func() {
 				Eventually(legacyBBS.Cells).Should(HaveLen(1))
 				cells, err := legacyBBS.Cells()
 				Expect(err).NotTo(HaveOccurred())
 
-				client = auction_http_client.New(http.DefaultClient, cells[0].CellID, cells[0].RepAddress, lagertest.NewTestLogger("auction-client"))
+				client = rep.NewClient(http.DefaultClient, cells[0].CellID, cells[0].RepAddress, lagertest.NewTestLogger("auction-client"))
 			})
 
 			Context("Capacity with a container", func() {

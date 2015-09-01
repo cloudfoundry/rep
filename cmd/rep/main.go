@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudfoundry-incubator/auction/communication/http/auction_http_handlers"
-	auctionroutes "github.com/cloudfoundry-incubator/auction/communication/http/routes"
 	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/bbs/cellhandlers"
 	"github.com/cloudfoundry-incubator/cf-debug-server"
@@ -24,6 +22,7 @@ import (
 	"github.com/cloudfoundry-incubator/rep/evacuation"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
 	"github.com/cloudfoundry-incubator/rep/generator"
+	"github.com/cloudfoundry-incubator/rep/handlers"
 	"github.com/cloudfoundry-incubator/rep/harmonizer"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
@@ -320,9 +319,9 @@ func initializeServer(
 	lrpStopper := initializeLRPStopper(*cellID, executorClient, logger)
 
 	auctionCellRep := auction_cell_rep.New(*cellID, stackMap, supportedProviders, *zone, generateGuid, repBBS, executorClient, evacuationReporter, logger)
-	handlers := auction_http_handlers.New(auctionCellRep, logger)
+	handlers := handlers.New(auctionCellRep, logger)
 
-	routes := auctionroutes.Routes
+	routes := rep.Routes
 
 	handlers[cellhandlers.StopLRPInstanceRoute] = cellhandlers.NewStopLRPInstanceHandler(logger, lrpStopper)
 	handlers[cellhandlers.CancelTaskRoute] = cellhandlers.NewCancelTaskHandler(logger, executorClient)
