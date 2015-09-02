@@ -18,6 +18,7 @@ import (
 	"github.com/cloudfoundry-incubator/rep/cmd/rep/testrunner"
 	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
+	"github.com/hashicorp/consul/api"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager/lagertest"
 
@@ -183,8 +184,15 @@ var _ = Describe("The Rep", func() {
 			It("should have no session health checks", func() {
 				sessions, _, err := consulRunner.NewClient().Session().List(nil)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(sessions).To(HaveLen(1))
-				Expect(sessions[0].Checks).To(BeEmpty())
+
+				var repSessions []*api.SessionEntry
+				for _, sess := range sessions {
+					if sess.Name == "rep" {
+						repSessions = append(repSessions, sess)
+					}
+				}
+				Expect(repSessions).To(HaveLen(1))
+				Expect(repSessions[0].Checks).To(BeEmpty())
 			})
 
 			Context("when the presence fails to be maintained", func() {

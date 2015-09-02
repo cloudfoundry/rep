@@ -23,6 +23,9 @@ var etcdRunner *etcdstorerunner.ETCDClusterRunner
 var etcdClient storeadapter.StoreAdapter
 var consulRunner *consulrunner.ClusterRunner
 var consulSession *consuladapter.Session
+var bbsArgs bbsrunner.Args
+var bbsBinPath string
+var bbsRunner *ginkgomon.Runner
 var bbsProcess ifrit.Process
 var bbsClient bbs.Client
 
@@ -46,15 +49,15 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	)
 
 	etcdRunner.Start()
-	bbsBinPath := string(payload)
 	bbsAddress := fmt.Sprintf("127.0.0.1:%d", 13000+GinkgoParallelNode())
-	bbsProcess = ginkgomon.Invoke(bbsrunner.New(bbsBinPath, bbsrunner.Args{
+	bbsBinPath = string(payload)
+	bbsArgs = bbsrunner.Args{
 		Address:           bbsAddress,
 		AdvertiseURL:      "http://" + bbsAddress,
 		AuctioneerAddress: "some-address",
 		EtcdCluster:       etcdRunner.NodeURLS()[0],
 		ConsulCluster:     consulRunner.ConsulCluster(),
-	}))
+	}
 	bbsClient = bbs.NewClient("http://" + bbsAddress)
 
 	consulRunner.Start()
@@ -62,7 +65,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 })
 
 var _ = SynchronizedAfterSuite(func() {
-	ginkgomon.Kill(bbsProcess)
 	consulRunner.Stop()
 	etcdClient.Disconnect()
 	etcdRunner.KillWithFire()
@@ -72,5 +74,11 @@ var _ = SynchronizedAfterSuite(func() {
 
 var _ = BeforeEach(func() {
 	consulRunner.Reset()
+	bbsRunner = bbsrunner.New(bbsBinPath, bbsArgs)
+	bbsProcess = ginkgomon.Invoke(bbsRunner)
 	consulSession = consulRunner.NewSession("a-session")
+})
+
+var _ = AfterEach(func() {
+	ginkgomon.Kill(bbsProcess)
 })
