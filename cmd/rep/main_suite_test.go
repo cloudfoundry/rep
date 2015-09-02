@@ -94,6 +94,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	etcdUrl := fmt.Sprintf("http://127.0.0.1:%d", etcdPort)
 	bbsArgs = bbstestrunner.Args{
 		Address:           bbsAddress,
+		AdvertiseURL:      bbsURL.String(),
 		AuctioneerAddress: auctioneerServer.URL(),
 		EtcdCluster:       etcdUrl,
 		ConsulCluster:     consulRunner.ConsulCluster(),
