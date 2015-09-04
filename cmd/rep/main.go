@@ -158,6 +158,8 @@ func (p *providers) Set(value string) error {
 const (
 	dropsondeDestination = "localhost:3457"
 	dropsondeOrigin      = "rep"
+
+	bbsPingTimeout = 5 * time.Minute
 )
 
 func main() {
@@ -220,7 +222,7 @@ func main() {
 		*evacuationPollingInterval,
 	)
 
-	httpServer, address := initializeServer(executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders)
+	httpServer, address := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders)
 	opGenerator := generator.New(*cellID, bbsClient, executorClient, evacuationReporter, uint64(evacuationTimeout.Seconds()))
 
 	preloadedRootFSes := []string{}
@@ -309,6 +311,7 @@ func initializeLRPStopper(guid string, executorClient executor.Client, logger la
 }
 
 func initializeServer(
+	bbsClient bbs.Client,
 	executorClient executor.Client,
 	evacuatable evacuation_context.Evacuatable,
 	evacuationReporter evacuation_context.EvacuationReporter,
@@ -332,7 +335,7 @@ func initializeServer(
 	handlers["Ping"] = cellhandlers.NewPingHandler()
 	routes = append(routes, rata.Route{Name: "Ping", Method: "GET", Path: "/ping"})
 
-	handlers["Evacuate"] = cellhandlers.NewEvacuationHandler(logger, evacuatable)
+	handlers["Evacuate"] = cellhandlers.NewEvacuationHandler(logger, bbsClient, bbsPingTimeout, evacuatable)
 	routes = append(routes, rata.Route{Name: "Evacuate", Method: "POST", Path: "/evacuate"})
 
 	router, err := rata.NewRouter(routes, handlers)
