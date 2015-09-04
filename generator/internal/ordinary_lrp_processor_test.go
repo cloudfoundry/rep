@@ -11,7 +11,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
-	fake_legacy_bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager/lagertest"
 
@@ -27,18 +26,16 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 		processor          internal.LRPProcessor
 		logger             *lagertest.TestLogger
 		bbsClient          *fake_bbs.FakeClient
-		legacyBBS          *fake_legacy_bbs.FakeRepBBS
 		containerDelegate  *fake_internal.FakeContainerDelegate
 		evacuationReporter *fake_evacuation_context.FakeEvacuationReporter
 	)
 
 	BeforeEach(func() {
-		legacyBBS = new(fake_legacy_bbs.FakeRepBBS)
 		bbsClient = new(fake_bbs.FakeClient)
 		containerDelegate = new(fake_internal.FakeContainerDelegate)
 		evacuationReporter = &fake_evacuation_context.FakeEvacuationReporter{}
 		evacuationReporter.EvacuatingReturns(false)
-		processor = internal.NewLRPProcessor(bbsClient, legacyBBS, containerDelegate, expectedCellID, evacuationReporter, 124)
+		processor = internal.NewLRPProcessor(bbsClient, containerDelegate, expectedCellID, evacuationReporter, 124)
 		logger = lagertest.NewTestLogger("test")
 	})
 

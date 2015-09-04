@@ -11,7 +11,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
@@ -19,7 +18,6 @@ var _ = Describe("LRP Stopper", func() {
 	var (
 		cellID    string
 		stopper   lrp_stopper.LRPStopper
-		bbs       *fake_bbs.FakeRepBBS
 		client    *fake_client.FakeClient
 		logger    lager.Logger
 		actualLRP models.ActualLRP
@@ -39,7 +37,6 @@ var _ = Describe("LRP Stopper", func() {
 			),
 		}
 
-		bbs = &fake_bbs.FakeRepBBS{}
 		client = new(fake_client.FakeClient)
 		logger = lagertest.NewTestLogger("test")
 

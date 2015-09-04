@@ -220,8 +220,8 @@ func main() {
 		*evacuationPollingInterval,
 	)
 
-	httpServer, address := initializeServer(repBBS, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders)
-	opGenerator := generator.New(*cellID, bbsClient, repBBS, executorClient, evacuationReporter, uint64(evacuationTimeout.Seconds()))
+	httpServer, address := initializeServer(executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders)
+	opGenerator := generator.New(*cellID, bbsClient, executorClient, evacuationReporter, uint64(evacuationTimeout.Seconds()))
 
 	preloadedRootFSes := []string{}
 	for k := range stackMap {
@@ -309,7 +309,6 @@ func initializeLRPStopper(guid string, executorClient executor.Client, logger la
 }
 
 func initializeServer(
-	repBBS legacybbs.RepBBS,
 	executorClient executor.Client,
 	evacuatable evacuation_context.Evacuatable,
 	evacuationReporter evacuation_context.EvacuationReporter,
@@ -319,7 +318,7 @@ func initializeServer(
 ) (ifrit.Runner, string) {
 	lrpStopper := initializeLRPStopper(*cellID, executorClient, logger)
 
-	auctionCellRep := auction_cell_rep.New(*cellID, stackMap, supportedProviders, *zone, generateGuid, repBBS, executorClient, evacuationReporter, logger)
+	auctionCellRep := auction_cell_rep.New(*cellID, stackMap, supportedProviders, *zone, generateGuid, executorClient, evacuationReporter, logger)
 	handlers := auction_http_handlers.New(auctionCellRep, logger)
 
 	routes := auctionroutes.Routes

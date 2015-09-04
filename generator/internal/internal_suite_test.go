@@ -5,9 +5,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/bbs"
 	bbsrunner "github.com/cloudfoundry-incubator/bbs/cmd/bbs/testrunner"
-	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
-	"github.com/cloudfoundry/storeadapter"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
@@ -20,9 +18,7 @@ import (
 )
 
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
-var etcdClient storeadapter.StoreAdapter
 var consulRunner *consulrunner.ClusterRunner
-var consulSession *consuladapter.Session
 var bbsArgs bbsrunner.Args
 var bbsBinPath string
 var bbsRunner *ginkgomon.Runner
@@ -40,7 +36,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	return []byte(bbsBinPath)
 }, func(payload []byte) {
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(5001+config.GinkgoConfig.ParallelNode, 1, nil)
-	etcdClient = etcdRunner.Adapter(nil)
 
 	consulRunner = consulrunner.NewClusterRunner(
 		9001+config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength,
@@ -66,7 +61,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 var _ = SynchronizedAfterSuite(func() {
 	consulRunner.Stop()
-	etcdClient.Disconnect()
 	etcdRunner.KillWithFire()
 }, func() {
 	gexec.CleanupBuildArtifacts()
@@ -76,7 +70,6 @@ var _ = BeforeEach(func() {
 	consulRunner.Reset()
 	bbsRunner = bbsrunner.New(bbsBinPath, bbsArgs)
 	bbsProcess = ginkgomon.Invoke(bbsRunner)
-	consulSession = consulRunner.NewSession("a-session")
 })
 
 var _ = AfterEach(func() {

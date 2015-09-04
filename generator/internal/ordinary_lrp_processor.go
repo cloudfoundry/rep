@@ -5,26 +5,22 @@ import (
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
-	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/pivotal-golang/lager"
 )
 
 type ordinaryLRPProcessor struct {
 	bbsClient         bbs.Client
-	legacyBBS         legacybbs.RepBBS
 	containerDelegate ContainerDelegate
 	cellID            string
 }
 
 func newOrdinaryLRPProcessor(
 	bbsClient bbs.Client,
-	legacyBBS legacybbs.RepBBS,
 	containerDelegate ContainerDelegate,
 	cellID string,
 ) LRPProcessor {
 	return &ordinaryLRPProcessor{
 		bbsClient:         bbsClient,
-		legacyBBS:         legacyBBS,
 		containerDelegate: containerDelegate,
 		cellID:            cellID,
 	}

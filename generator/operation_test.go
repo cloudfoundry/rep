@@ -29,7 +29,7 @@ var _ = Describe("Operation", func() {
 			lrpKey = models.NewActualLRPKey("the-process-guid", 0, "the-domain")
 			instanceKey = models.NewActualLRPInstanceKey("the-instance-guid", "the-cell-id")
 			containerDelegate = new(fake_internal.FakeContainerDelegate)
-			residualLRPOperation = generator.NewResidualInstanceLRPOperation(logger, fakeBBS, fakeLegacyBBS, containerDelegate, lrpKey, instanceKey)
+			residualLRPOperation = generator.NewResidualInstanceLRPOperation(logger, fakeBBS, containerDelegate, lrpKey, instanceKey)
 
 			expectedContainerGuid = rep.LRPContainerGuid(lrpKey.GetProcessGuid(), instanceKey.GetInstanceGuid())
 		})
@@ -181,7 +181,7 @@ var _ = Describe("Operation", func() {
 			lrpKey = models.NewActualLRPKey("the-process-guid", 0, "the-domain")
 			instanceKey = models.NewActualLRPInstanceKey(instanceGuid, "the-cell-id")
 			containerDelegate = new(fake_internal.FakeContainerDelegate)
-			residualJointLRPOperation = generator.NewResidualJointLRPOperation(logger, fakeBBS, fakeLegacyBBS, containerDelegate, lrpKey, instanceKey)
+			residualJointLRPOperation = generator.NewResidualJointLRPOperation(logger, fakeBBS, containerDelegate, lrpKey, instanceKey)
 
 			expectedContainerGuid = rep.LRPContainerGuid(lrpKey.GetProcessGuid(), instanceKey.GetInstanceGuid())
 		})

@@ -10,7 +10,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
-	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/operationq"
 )
@@ -28,7 +27,6 @@ type Generator interface {
 
 type generator struct {
 	cellID            string
-	legacyBBS         legacybbs.RepBBS
 	bbs               bbs.Client
 	executorClient    executor.Client
 	lrpProcessor      internal.LRPProcessor
@@ -39,19 +37,17 @@ type generator struct {
 func New(
 	cellID string,
 	bbs bbs.Client,
-	legacyBBS legacybbs.RepBBS,
 	executorClient executor.Client,
 	evacuationReporter evacuation_context.EvacuationReporter,
 	evacuationTTLInSeconds uint64,
 ) Generator {
 	containerDelegate := internal.NewContainerDelegate(executorClient)
-	lrpProcessor := internal.NewLRPProcessor(bbs, legacyBBS, containerDelegate, cellID, evacuationReporter, evacuationTTLInSeconds)
+	lrpProcessor := internal.NewLRPProcessor(bbs, containerDelegate, cellID, evacuationReporter, evacuationTTLInSeconds)
 	taskProcessor := internal.NewTaskProcessor(bbs, containerDelegate, cellID)
 
 	return &generator{
 		cellID:            cellID,
 		bbs:               bbs,
-		legacyBBS:         legacyBBS,
 		executorClient:    executorClient,
 		lrpProcessor:      lrpProcessor,
 		taskProcessor:     taskProcessor,
@@ -144,9 +140,9 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 			continue
 		}
 		if _, foundEvacuatingLRP := evacuatingLRPs[guid]; foundEvacuatingLRP {
-			batch[guid] = NewResidualJointLRPOperation(logger, g.bbs, g.legacyBBS, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
+			batch[guid] = NewResidualJointLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
 		} else {
-			batch[guid] = NewResidualInstanceLRPOperation(logger, g.bbs, g.legacyBBS, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
+			batch[guid] = NewResidualInstanceLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
 		}
 	}
 

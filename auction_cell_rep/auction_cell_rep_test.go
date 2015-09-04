@@ -11,7 +11,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/auction_cell_rep"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context/fake_evacuation_context"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
@@ -22,7 +21,6 @@ var _ = Describe("AuctionCellRep", func() {
 	var cellRep auctiontypes.CellRep
 	var client *fake_client.FakeClient
 	var commonErr error
-	var bbs *fake_bbs.FakeRepBBS
 	var logger *lagertest.TestLogger
 	var evacuationReporter *fake_evacuation_context.FakeEvacuationReporter
 
@@ -37,7 +35,6 @@ var _ = Describe("AuctionCellRep", func() {
 
 	BeforeEach(func() {
 		client = new(fake_client.FakeClient)
-		bbs = &fake_bbs.FakeRepBBS{}
 		logger = lagertest.NewTestLogger("test")
 		evacuationReporter = &fake_evacuation_context.FakeEvacuationReporter{}
 
@@ -52,7 +49,7 @@ var _ = Describe("AuctionCellRep", func() {
 	})
 
 	JustBeforeEach(func() {
-		cellRep = auction_cell_rep.New(expectedCellID, rep.StackPathMap{linuxStack: linuxPath}, []string{"docker"}, "the-zone", fakeGenerateContainerGuid, bbs, client, evacuationReporter, logger)
+		cellRep = auction_cell_rep.New(expectedCellID, rep.StackPathMap{linuxStack: linuxPath}, []string{"docker"}, "the-zone", fakeGenerateContainerGuid, client, evacuationReporter, logger)
 	})
 
 	Describe("State", func() {

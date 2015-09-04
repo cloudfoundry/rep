@@ -10,7 +10,6 @@ import (
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
-	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -23,7 +22,6 @@ type AuctionCellRep struct {
 	stack                string
 	zone                 string
 	generateInstanceGuid func() (string, error)
-	bbs                  Bbs.RepBBS
 	client               executor.Client
 	evacuationReporter   evacuation_context.EvacuationReporter
 	logger               lager.Logger
@@ -35,7 +33,6 @@ func New(
 	arbitraryRootFSes []string,
 	zone string,
 	generateInstanceGuid func() (string, error),
-	bbs Bbs.RepBBS,
 	client executor.Client,
 	evacuationReporter evacuation_context.EvacuationReporter,
 	logger lager.Logger,
@@ -46,7 +43,6 @@ func New(
 		rootFSProviders:      rootFSProviders(preloadedStackPathMap, arbitraryRootFSes),
 		zone:                 zone,
 		generateInstanceGuid: generateInstanceGuid,
-		bbs:                  bbs,
 		client:               client,
 		evacuationReporter:   evacuationReporter,
 		logger:               logger.Session("auction-delegate"),

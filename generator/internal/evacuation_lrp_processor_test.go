@@ -11,8 +11,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/bbserrors"
-	fake_legacy_bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
 	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
@@ -29,7 +27,6 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 		var (
 			logger                 *lagertest.TestLogger
 			fakeBBS                *fake_bbs.FakeClient
-			fakeRepBBS             *fake_legacy_bbs.FakeRepBBS
 			fakeContainerDelegate  *fake_internal.FakeContainerDelegate
 			fakeEvacuationReporter *fake_evacuation_context.FakeEvacuationReporter
 
@@ -49,13 +46,12 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 			logger = lagertest.NewTestLogger("test")
 
 			fakeBBS = new(fake_bbs.FakeClient)
-			fakeRepBBS = new(fake_legacy_bbs.FakeRepBBS)
 
 			fakeContainerDelegate = &fake_internal.FakeContainerDelegate{}
 			fakeEvacuationReporter = &fake_evacuation_context.FakeEvacuationReporter{}
 			fakeEvacuationReporter.EvacuatingReturns(true)
 
-			lrpProcessor = internal.NewLRPProcessor(fakeBBS, fakeRepBBS, fakeContainerDelegate, localCellID, fakeEvacuationReporter, evacuationTTL)
+			lrpProcessor = internal.NewLRPProcessor(fakeBBS, fakeContainerDelegate, localCellID, fakeEvacuationReporter, evacuationTTL)
 
 			processGuid = "process-guid"
 			desiredLRP = models.DesiredLRP{
@@ -116,7 +112,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns that it failed to unclaim the LRP", func() {
 				BeforeEach(func() {
-					fakeBBS.EvacuateClaimedActualLRPReturns(false, bbserrors.ErrActualLRPCannotBeUnclaimed)
+					fakeBBS.EvacuateClaimedActualLRPReturns(false, models.ErrActualLRPCannotBeUnclaimed)
 				})
 
 				It("deletes the container", func() {
@@ -165,7 +161,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns that it failed to unclaim the LRP", func() {
 				BeforeEach(func() {
-					fakeBBS.EvacuateClaimedActualLRPReturns(false, bbserrors.ErrActualLRPCannotBeUnclaimed)
+					fakeBBS.EvacuateClaimedActualLRPReturns(false, models.ErrActualLRPCannotBeUnclaimed)
 				})
 
 				It("deletes the container", func() {
@@ -214,7 +210,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns that it failed to unclaim the LRP", func() {
 				BeforeEach(func() {
-					fakeBBS.EvacuateClaimedActualLRPReturns(false, bbserrors.ErrActualLRPCannotBeUnclaimed)
+					fakeBBS.EvacuateClaimedActualLRPReturns(false, models.ErrActualLRPCannotBeUnclaimed)
 				})
 
 				It("deletes the container", func() {
@@ -269,7 +265,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns that it failed to evacuate the LRP", func() {
 				BeforeEach(func() {
-					fakeBBS.EvacuateRunningActualLRPReturns(false, bbserrors.ErrActualLRPCannotBeEvacuated)
+					fakeBBS.EvacuateRunningActualLRPReturns(false, models.ErrActualLRPCannotBeEvacuated)
 				})
 
 				It("deletes the container", func() {
@@ -317,7 +313,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns that it failed to remove the LRP", func() {
 				BeforeEach(func() {
-					fakeBBS.EvacuateStoppedActualLRPReturns(false, bbserrors.ErrActualLRPCannotBeRemoved)
+					fakeBBS.EvacuateStoppedActualLRPReturns(false, models.ErrActualLRPCannotBeRemoved)
 				})
 
 				It("deletes the container", func() {
@@ -369,7 +365,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns that it failed to remove the LRP", func() {
 				BeforeEach(func() {
-					fakeBBS.EvacuateCrashedActualLRPReturns(false, bbserrors.ErrActualLRPCannotBeCrashed)
+					fakeBBS.EvacuateCrashedActualLRPReturns(false, models.ErrActualLRPCannotBeCrashed)
 				})
 
 				It("deletes the container", func() {

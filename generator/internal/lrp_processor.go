@@ -5,7 +5,6 @@ import (
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
-	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -37,13 +36,12 @@ type lrpProcessor struct {
 
 func NewLRPProcessor(
 	bbsClient bbs.Client,
-	legacyBBS legacybbs.RepBBS,
 	containerDelegate ContainerDelegate,
 	cellID string,
 	evacuationReporter evacuation_context.EvacuationReporter,
 	evacuationTTLInSeconds uint64,
 ) LRPProcessor {
-	ordinaryProcessor := newOrdinaryLRPProcessor(bbsClient, legacyBBS, containerDelegate, cellID)
+	ordinaryProcessor := newOrdinaryLRPProcessor(bbsClient, containerDelegate, cellID)
 	evacuationProcessor := newEvacuationLRPProcessor(bbsClient, containerDelegate, cellID, evacuationTTLInSeconds)
 	return &lrpProcessor{
 		evacuationReporter:  evacuationReporter,

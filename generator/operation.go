@@ -7,7 +7,6 @@ import (
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
-	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -15,7 +14,6 @@ import (
 type ResidualInstanceLRPOperation struct {
 	logger            lager.Logger
 	bbsClient         bbs.Client
-	legacyBBS         legacybbs.RepBBS
 	containerDelegate internal.ContainerDelegate
 	models.ActualLRPKey
 	models.ActualLRPInstanceKey
@@ -23,7 +21,6 @@ type ResidualInstanceLRPOperation struct {
 
 func NewResidualInstanceLRPOperation(logger lager.Logger,
 	bbsClient bbs.Client,
-	legacyBBS legacybbs.RepBBS,
 	containerDelegate internal.ContainerDelegate,
 	lrpKey models.ActualLRPKey,
 	instanceKey models.ActualLRPInstanceKey,
@@ -31,7 +28,6 @@ func NewResidualInstanceLRPOperation(logger lager.Logger,
 	return &ResidualInstanceLRPOperation{
 		logger:               logger,
 		bbsClient:            bbsClient,
-		legacyBBS:            legacyBBS,
 		containerDelegate:    containerDelegate,
 		ActualLRPKey:         lrpKey,
 		ActualLRPInstanceKey: instanceKey,
@@ -108,7 +104,6 @@ func (o *ResidualEvacuatingLRPOperation) Execute() {
 type ResidualJointLRPOperation struct {
 	logger            lager.Logger
 	bbsClient         bbs.Client
-	legacyBBS         legacybbs.RepBBS
 	containerDelegate internal.ContainerDelegate
 	models.ActualLRPKey
 	models.ActualLRPInstanceKey
@@ -116,7 +111,6 @@ type ResidualJointLRPOperation struct {
 
 func NewResidualJointLRPOperation(logger lager.Logger,
 	bbsClient bbs.Client,
-	legacyBBS legacybbs.RepBBS,
 	containerDelegate internal.ContainerDelegate,
 	lrpKey models.ActualLRPKey,
 	instanceKey models.ActualLRPInstanceKey,
@@ -124,7 +118,6 @@ func NewResidualJointLRPOperation(logger lager.Logger,
 	return &ResidualJointLRPOperation{
 		bbsClient:            bbsClient,
 		logger:               logger,
-		legacyBBS:            legacyBBS,
 		containerDelegate:    containerDelegate,
 		ActualLRPKey:         lrpKey,
 		ActualLRPInstanceKey: instanceKey,

@@ -9,8 +9,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
-	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 
@@ -20,7 +18,6 @@ import (
 
 var (
 	processor internal.TaskProcessor
-	legacyBBS *legacybbs.BBS
 )
 
 var _ = Describe("Task <-> Container table", func() {
@@ -37,7 +34,6 @@ var _ = Describe("Task <-> Container table", func() {
 	BeforeEach(func() {
 		etcdRunner.Reset()
 
-		legacyBBS = legacybbs.NewBBS(etcdClient, consulSession, clock.NewClock(), lagertest.NewTestLogger("test-bbs"))
 		containerDelegate = new(fake_internal.FakeContainerDelegate)
 
 		processor = internal.NewTaskProcessor(bbsClient, containerDelegate, localCellID)
@@ -427,7 +423,7 @@ type TaskRow struct {
 func (t TaskRow) Test(logger *lagertest.TestLogger) {
 	BeforeEach(func() {
 		if t.Task != nil {
-			walkToState(logger, legacyBBS, t.Task)
+			walkToState(logger, t.Task)
 		}
 	})
 
@@ -506,15 +502,15 @@ func NewTask(taskGuid, cellID string, taskState models.Task_State) *models.Task 
 	return task
 }
 
-func walkToState(logger lager.Logger, legacyBBS *legacybbs.BBS, task *models.Task) {
+func walkToState(logger lager.Logger, task *models.Task) {
 	var currentState models.Task_State
 	desiredState := task.State
 	for desiredState != currentState {
-		currentState = advanceState(logger, legacyBBS, task, currentState)
+		currentState = advanceState(logger, task, currentState)
 	}
 }
 
-func advanceState(logger lager.Logger, legacyBBS *legacybbs.BBS, task *models.Task, currentState models.Task_State) models.Task_State {
+func advanceState(logger lager.Logger, task *models.Task, currentState models.Task_State) models.Task_State {
 	switch currentState {
 	case models.Task_Invalid:
 		err := bbsClient.DesireTask(task.TaskGuid, task.Domain, task.TaskDefinition)
