@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
@@ -19,7 +18,7 @@ var ErrPreloadedRootFSNotFound = errors.New("preloaded rootfs path not found")
 type AuctionCellRep struct {
 	cellID               string
 	stackPathMap         rep.StackPathMap
-	rootFSProviders      auctiontypes.RootFSProviders
+	rootFSProviders      rep.RootFSProviders
 	stack                string
 	zone                 string
 	generateInstanceGuid func() (string, error)
@@ -53,17 +52,17 @@ func New(
 	}
 }
 
-func rootFSProviders(preloaded rep.StackPathMap, arbitrary []string) auctiontypes.RootFSProviders {
-	rootFSProviders := auctiontypes.RootFSProviders{}
+func rootFSProviders(preloaded rep.StackPathMap, arbitrary []string) rep.RootFSProviders {
+	rootFSProviders := rep.RootFSProviders{}
 	for _, scheme := range arbitrary {
-		rootFSProviders[scheme] = auctiontypes.ArbitraryRootFSProvider{}
+		rootFSProviders[scheme] = rep.ArbitraryRootFSProvider{}
 	}
 
 	stacks := make([]string, 0, len(preloaded))
 	for stack, _ := range preloaded {
 		stacks = append(stacks, stack)
 	}
-	rootFSProviders["preloaded"] = auctiontypes.NewFixedSetRootFSProvider(stacks...)
+	rootFSProviders["preloaded"] = rep.NewFixedSetRootFSProvider(stacks...)
 
 	return rootFSProviders
 }
@@ -89,20 +88,22 @@ func (a *AuctionCellRep) pathForRootFS(rootFS string) (string, bool, error) {
 	return rootFS, false, nil
 }
 
-func (a *AuctionCellRep) State() (auctiontypes.CellState, error) {
+// TODO: State currently does not return tasks or lrp rootfs, because the
+// auctioneer currently does not need them.
+func (a *AuctionCellRep) State() (rep.CellState, error) {
 	logger := a.logger.Session("auction-state")
 	logger.Info("providing")
 
 	totalResources, err := a.fetchResourcesVia(a.client.TotalResources)
 	if err != nil {
 		logger.Error("failed-to-get-total-resources", err)
-		return auctiontypes.CellState{}, err
+		return rep.CellState{}, err
 	}
 
 	availableResources, err := a.fetchResourcesVia(a.client.RemainingResources)
 	if err != nil {
 		logger.Error("failed-to-get-remaining-resource", err)
-		return auctiontypes.CellState{}, err
+		return rep.CellState{}, err
 	}
 
 	lrpContainers, err := a.client.ListContainers(executor.Tags{
@@ -111,30 +112,19 @@ func (a *AuctionCellRep) State() (auctiontypes.CellState, error) {
 
 	if err != nil {
 		logger.Error("failed-to-fetch-containers", err)
-		return auctiontypes.CellState{}, err
+		return rep.CellState{}, err
 	}
 
-	lrps := []auctiontypes.LRP{}
+	lrps := []rep.LRP{}
 
 	for _, container := range lrpContainers {
 		index, _ := strconv.Atoi(container.Tags[rep.ProcessIndexTag])
-		lrp := auctiontypes.LRP{
-			ProcessGuid: container.Tags[rep.ProcessGuidTag],
-			Index:       index,
-			MemoryMB:    container.MemoryMB,
-			DiskMB:      container.DiskMB,
-		}
+		// TODO: convert container rootfspath to diego rootfs uri
+		lrp := rep.NewLRP(rep.ProcessGuidTag, index, rep.NewResource(int32(container.MemoryMB), int32(container.DiskMB), ""))
 		lrps = append(lrps, lrp)
 	}
 
-	state := auctiontypes.CellState{
-		RootFSProviders:    a.rootFSProviders,
-		AvailableResources: availableResources,
-		TotalResources:     totalResources,
-		LRPs:               lrps,
-		Zone:               a.zone,
-		Evacuating:         a.evacuationReporter.Evacuating(),
-	}
+	state := rep.NewCellState(a.rootFSProviders, availableResources, totalResources, lrps, nil, a.zone, a.evacuationReporter.Evacuating())
 
 	a.logger.Info("provided", lager.Data{
 		"available-resources": state.AvailableResources,
@@ -147,8 +137,8 @@ func (a *AuctionCellRep) State() (auctiontypes.CellState, error) {
 	return state, nil
 }
 
-func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, error) {
-	var failedWork = auctiontypes.Work{}
+func (a *AuctionCellRep) Perform(work rep.Work) (rep.Work, error) {
+	var failedWork = rep.Work{}
 
 	logger := a.logger.Session("auction-work", lager.Data{
 		"lrp-starts": len(work.LRPs),
@@ -210,10 +200,10 @@ func (a *AuctionCellRep) Perform(work auctiontypes.Work) (auctiontypes.Work, err
 	return failedWork, nil
 }
 
-func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]executor.Container, map[string]auctiontypes.LRPAuction, []auctiontypes.LRPAuction) {
+func (a *AuctionCellRep) lrpsToContainers(lrps []rep.LRPContainerRequest) ([]executor.Container, map[string]rep.LRPContainerRequest, []rep.LRPContainerRequest) {
 	containers := make([]executor.Container, 0, len(lrps))
-	lrpAuctionMap := map[string]auctiontypes.LRPAuction{}
-	untranslatedLRPs := make([]auctiontypes.LRPAuction, 0, len(lrps))
+	lrpAuctionMap := map[string]rep.LRPContainerRequest{}
+	untranslatedLRPs := make([]rep.LRPContainerRequest, 0, len(lrps))
 
 	for _, lrpStart := range lrps {
 		lrpStart := lrpStart
@@ -286,9 +276,9 @@ func (a *AuctionCellRep) lrpsToContainers(lrps []auctiontypes.LRPAuction) ([]exe
 	return containers, lrpAuctionMap, untranslatedLRPs
 }
 
-func (a *AuctionCellRep) tasksToContainers(tasks []*models.Task) ([]executor.Container, []*models.Task) {
+func (a *AuctionCellRep) tasksToContainers(tasks []rep.TaskContainerRequest) ([]executor.Container, []rep.TaskContainerRequest) {
 	containers := make([]executor.Container, 0, len(tasks))
-	untranslatedTasks := make([]*models.Task, 0, len(tasks))
+	untranslatedTasks := make([]rep.TaskContainerRequest, 0, len(tasks))
 
 	for _, task := range tasks {
 		rootFSPath, preloaded, err := a.pathForRootFS(task.RootFs)
@@ -349,12 +339,12 @@ func (a *AuctionCellRep) convertPortMappings(containerPorts []uint32) []executor
 	return out
 }
 
-func (a *AuctionCellRep) fetchResourcesVia(fetcher func() (executor.ExecutorResources, error)) (auctiontypes.Resources, error) {
+func (a *AuctionCellRep) fetchResourcesVia(fetcher func() (executor.ExecutorResources, error)) (rep.Resources, error) {
 	resources, err := fetcher()
 	if err != nil {
-		return auctiontypes.Resources{}, err
+		return rep.Resources{}, err
 	}
-	return auctiontypes.Resources{
+	return rep.Resources{
 		MemoryMB:   resources.MemoryMB,
 		DiskMB:     resources.DiskMB,
 		Containers: resources.Containers,

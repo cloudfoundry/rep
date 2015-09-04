@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/cloudfoundry-incubator/auction/auctiontypes"
+	"github.com/cloudfoundry-incubator/rep"
 	"github.com/pivotal-golang/lager"
 )
 
 type state struct {
-	rep    auctiontypes.CellRep
+	rep    rep.AuctionCellClient
 	logger lager.Logger
 }
 

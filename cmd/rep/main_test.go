@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/bbs/models/test/model_helpers"
@@ -201,14 +200,14 @@ var _ = Describe("The Rep", func() {
 		})
 
 		Context("acting as an auction representative", func() {
-			var client *rep.Client
+			var client rep.Client
 
 			JustBeforeEach(func() {
 				Eventually(legacyBBS.Cells).Should(HaveLen(1))
 				cells, err := legacyBBS.Cells()
 				Expect(err).NotTo(HaveOccurred())
 
-				client = rep.NewClient(http.DefaultClient, cells[0].CellID, cells[0].RepAddress, lagertest.NewTestLogger("auction-client"))
+				client = rep.NewClient(http.DefaultClient, cells[0].RepAddress)
 			})
 
 			Context("Capacity with a container", func() {
@@ -237,7 +236,7 @@ var _ = Describe("The Rep", func() {
 				It("returns total capacity", func() {
 					state, err := client.State()
 					Expect(err).NotTo(HaveOccurred())
-					Expect(state.TotalResources).To(Equal(auctiontypes.Resources{
+					Expect(state.TotalResources).To(Equal(rep.Resources{
 						MemoryMB:   1024,
 						DiskMB:     2048,
 						Containers: 4,
@@ -245,11 +244,11 @@ var _ = Describe("The Rep", func() {
 				})
 
 				It("returns available capacity", func() {
-					Eventually(func() auctiontypes.Resources {
+					Eventually(func() rep.Resources {
 						state, err := client.State()
 						Expect(err).NotTo(HaveOccurred())
 						return state.AvailableResources
-					}).Should(Equal(auctiontypes.Resources{
+					}).Should(Equal(rep.Resources{
 						MemoryMB:   512,
 						DiskMB:     1024,
 						Containers: 3,
@@ -261,11 +260,11 @@ var _ = Describe("The Rep", func() {
 						fakeGarden.RouteToHandler("GET", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 						fakeGarden.RouteToHandler("GET", "/containers/bulk_info", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 
-						Eventually(func() auctiontypes.Resources {
+						Eventually(func() rep.Resources {
 							state, err := client.State()
 							Expect(err).NotTo(HaveOccurred())
 							return state.AvailableResources
-						}).Should(Equal(auctiontypes.Resources{
+						}).Should(Equal(rep.Resources{
 							MemoryMB:   1024,
 							DiskMB:     2048,
 							Containers: 4,
@@ -275,7 +274,7 @@ var _ = Describe("The Rep", func() {
 			})
 
 			Describe("running tasks", func() {
-				var task *models.Task
+				var task rep.TaskContainerRequest
 				var containersCalled chan struct{}
 
 				JustBeforeEach(func() {
@@ -292,7 +291,7 @@ var _ = Describe("The Rep", func() {
 					fakeGarden.RouteToHandler("PUT", "/containers/handle-guid/limits/cpu", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.CPULimits{}))
 					fakeGarden.RouteToHandler("GET", "/containers/handle-guid/info", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.ContainerInfo{}))
 
-					task = &models.Task{
+					task = rep.NewTaskContainerRequest(&models.Task{
 						TaskGuid: "the-task-guid",
 						Domain:   "the-domain",
 						TaskDefinition: &models.TaskDefinition{
@@ -304,7 +303,7 @@ var _ = Describe("The Rep", func() {
 								Path: "date",
 							}),
 						},
-					}
+					})
 
 					err := bbsClient.DesireTask(task.TaskGuid, task.Domain, task.TaskDefinition)
 					Expect(err).NotTo(HaveOccurred())
@@ -314,8 +313,8 @@ var _ = Describe("The Rep", func() {
 					Expect(getTasksByState(bbsClient, models.Task_Pending)).To(HaveLen(1))
 					Expect(getTasksByState(bbsClient, models.Task_Running)).To(BeEmpty())
 
-					works := auctiontypes.Work{
-						Tasks: []*models.Task{task},
+					works := rep.Work{
+						Tasks: []rep.TaskContainerRequest{task},
 					}
 
 					failedWorks, err := client.Perform(works)

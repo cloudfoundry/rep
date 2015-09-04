@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/cloudfoundry-incubator/auction/auctiontypes"
+	"github.com/cloudfoundry-incubator/rep"
 	"github.com/pivotal-golang/lager"
 )
 
 type perform struct {
-	rep    auctiontypes.CellRep
+	rep    rep.AuctionCellClient
 	logger lager.Logger
 }
 
@@ -17,7 +17,7 @@ func (h *perform) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger := h.logger.Session("auction-perform-work")
 	logger.Info("handling")
 
-	var work auctiontypes.Work
+	var work rep.Work
 	err := json.NewDecoder(r.Body).Decode(&work)
 
 	if err != nil {
