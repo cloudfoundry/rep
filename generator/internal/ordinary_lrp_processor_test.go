@@ -6,12 +6,12 @@ import (
 
 	"github.com/cloudfoundry-incubator/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/bbs/models"
+	"github.com/cloudfoundry-incubator/bbs/models/test/model_helpers"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
-	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
@@ -43,35 +43,25 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 		const sessionPrefix = "test.ordinary-lrp-processor."
 
 		var (
+			desiredLRP          *models.DesiredLRP
 			expectedLrpKey      models.ActualLRPKey
 			expectedInstanceKey models.ActualLRPInstanceKey
 			expectedNetInfo     models.ActualLRPNetInfo
 			expectedSessionName string
 		)
 
-		var (
-			oldExpectedLrpKey      oldmodels.ActualLRPKey
-			oldExpectedInstanceKey oldmodels.ActualLRPInstanceKey
-			oldExpectedNetInfo     oldmodels.ActualLRPNetInfo
-		)
-
 		BeforeEach(func() {
+			desiredLRP = model_helpers.NewValidDesiredLRP("process-guid")
 			expectedLrpKey = models.NewActualLRPKey("process-guid", 2, "domain")
 			expectedInstanceKey = models.NewActualLRPInstanceKey("instance-guid", "cell-id")
 			expectedNetInfo = models.NewActualLRPNetInfo("1.2.3.4", models.NewPortMapping(61999, 8080))
-		})
-
-		BeforeEach(func() {
-			oldExpectedLrpKey = oldmodels.NewActualLRPKey("process-guid", 2, "domain")
-			oldExpectedInstanceKey = oldmodels.NewActualLRPInstanceKey("instance-guid", "cell-id")
-			oldExpectedNetInfo = oldmodels.NewActualLRPNetInfo("1.2.3.4", []oldmodels.PortMapping{{ContainerPort: 8080, HostPort: 61999}})
 		})
 
 		Context("when given an LRP container", func() {
 			var container executor.Container
 
 			BeforeEach(func() {
-				container = newLRPContainer(oldExpectedLrpKey, oldExpectedInstanceKey, oldExpectedNetInfo)
+				container = newLRPContainer(expectedLrpKey, expectedInstanceKey, expectedNetInfo)
 			})
 
 			JustBeforeEach(func() {
@@ -91,6 +81,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 			Context("and the container is RESERVED", func() {
 				BeforeEach(func() {
+					bbsClient.DesiredLRPByProcessGuidReturns(desiredLRP, nil)
 					expectedSessionName = sessionPrefix + "process-reserved-container"
 					container.State = executor.StateReserved
 				})
@@ -137,8 +128,12 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 				Context("when claiming succeeds", func() {
 					It("runs the container", func() {
 						Expect(containerDelegate.RunContainerCallCount()).To(Equal(1))
-						delegateLogger, containerGuid := containerDelegate.RunContainerArgsForCall(0)
-						Expect(containerGuid).To(Equal(container.Guid))
+
+						expectedRunRequest, err := rep.NewRunRequestFromDesiredLRP(container.Guid, desiredLRP, &expectedLrpKey, &expectedInstanceKey)
+						Expect(err).NotTo(HaveOccurred())
+
+						delegateLogger, runRequest := containerDelegate.RunContainerArgsForCall(0)
+						Expect(*runRequest).To(Equal(expectedRunRequest))
 						Expect(delegateLogger.SessionName()).To(Equal(expectedSessionName))
 					})
 
@@ -215,7 +210,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						container.Ports = []executor.PortMapping{{ContainerPort: 8080, HostPort: 61999}}
 					})
 
-					It("starts the lrp in the legacyBBS", func() {
+					It("starts the lrp", func() {
 						Expect(bbsClient.StartActualLRPCallCount()).To(Equal(1))
 						lrpKey, instanceKey, netInfo := bbsClient.StartActualLRPArgsForCall(0)
 						Expect(*lrpKey).To(Equal(expectedLrpKey))
@@ -327,24 +322,26 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 	})
 })
 
-func newLRPContainer(lrpKey oldmodels.ActualLRPKey, instanceKey oldmodels.ActualLRPInstanceKey, netInfo oldmodels.ActualLRPNetInfo) executor.Container {
+func newLRPContainer(lrpKey models.ActualLRPKey, instanceKey models.ActualLRPInstanceKey, netInfo models.ActualLRPNetInfo) executor.Container {
 	ports := []executor.PortMapping{}
 	for _, portMap := range netInfo.Ports {
 		ports = append(ports, executor.PortMapping{
-			ContainerPort: portMap.ContainerPort,
-			HostPort:      portMap.HostPort,
+			ContainerPort: uint16(portMap.ContainerPort),
+			HostPort:      uint16(portMap.HostPort),
 		})
 	}
 
 	return executor.Container{
-		Guid:       rep.LRPContainerGuid(lrpKey.ProcessGuid, instanceKey.InstanceGuid),
-		Action:     models.WrapAction(&models.RunAction{Path: "true"}),
+		Guid: rep.LRPContainerGuid(lrpKey.ProcessGuid, instanceKey.InstanceGuid),
+		RunInfo: executor.RunInfo{
+			Action: models.WrapAction(&models.RunAction{Path: "true"}),
+			Ports:  ports,
+		},
 		ExternalIP: netInfo.Address,
-		Ports:      ports,
 		Tags: executor.Tags{
 			rep.ProcessGuidTag:  lrpKey.ProcessGuid,
 			rep.InstanceGuidTag: instanceKey.InstanceGuid,
-			rep.ProcessIndexTag: strconv.Itoa(lrpKey.Index),
+			rep.ProcessIndexTag: strconv.Itoa(int(lrpKey.Index)),
 			rep.DomainTag:       lrpKey.Domain,
 		},
 	}

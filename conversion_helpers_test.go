@@ -1,7 +1,10 @@
 package rep_test
 
 import (
+	"strconv"
+
 	"github.com/cloudfoundry-incubator/bbs/models"
+	"github.com/cloudfoundry-incubator/bbs/models/test/model_helpers"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
 
@@ -10,42 +13,32 @@ import (
 )
 
 var _ = Describe("Resources", func() {
-	Describe("ActualLRPKeyFromContainer", func() {
+	Describe("ActualLRPKeyFromTags", func() {
 		var (
-			container        executor.Container
+			tags             executor.Tags
 			lrpKey           *models.ActualLRPKey
 			keyConversionErr error
 		)
 
 		BeforeEach(func() {
-			container = executor.Container{
-				Tags: executor.Tags{
-					rep.LifecycleTag:    rep.LRPLifecycle,
-					rep.DomainTag:       "my-domain",
-					rep.ProcessGuidTag:  "process-guid",
-					rep.ProcessIndexTag: "999",
-				},
-				Guid:       "some-instance-guid",
-				ExternalIP: "some-external-ip",
-				Ports: []executor.PortMapping{
-					{
-						ContainerPort: 1234,
-						HostPort:      6789,
-					},
-				},
+			tags = executor.Tags{
+				rep.LifecycleTag:    rep.LRPLifecycle,
+				rep.DomainTag:       "my-domain",
+				rep.ProcessGuidTag:  "process-guid",
+				rep.ProcessIndexTag: "999",
 			}
 		})
 
 		JustBeforeEach(func() {
-			lrpKey, keyConversionErr = rep.ActualLRPKeyFromContainer(container)
+			lrpKey, keyConversionErr = rep.ActualLRPKeyFromTags(tags)
 		})
 
-		Context("when container is valid", func() {
+		Context("when the tags are valid", func() {
 			It("does not return an error", func() {
 				Expect(keyConversionErr).NotTo(HaveOccurred())
 			})
 
-			It("converts a valid container without error", func() {
+			It("converts a valid tags without error", func() {
 				expectedKey := models.ActualLRPKey{
 					ProcessGuid: "process-guid",
 					Index:       999,
@@ -55,10 +48,10 @@ var _ = Describe("Resources", func() {
 			})
 		})
 
-		Context("when the container is invalid", func() {
-			Context("when the container has no tags", func() {
+		Context("when the tags are invalid", func() {
+			Context("when the tags have no tags", func() {
 				BeforeEach(func() {
-					container.Tags = nil
+					tags = nil
 				})
 
 				It("reports an error that the tags are missing", func() {
@@ -66,9 +59,9 @@ var _ = Describe("Resources", func() {
 				})
 			})
 
-			Context("when the container is missing the process guid tag ", func() {
+			Context("when the tags are missing the process guid tag ", func() {
 				BeforeEach(func() {
-					delete(container.Tags, rep.ProcessGuidTag)
+					delete(tags, rep.ProcessGuidTag)
 				})
 
 				It("reports the process_guid is invalid", func() {
@@ -77,9 +70,9 @@ var _ = Describe("Resources", func() {
 				})
 			})
 
-			Context("when the container process index tag is not a number", func() {
+			Context("when the tags process index tag is not a number", func() {
 				BeforeEach(func() {
-					container.Tags[rep.ProcessIndexTag] = "hi there"
+					tags[rep.ProcessIndexTag] = "hi there"
 				})
 
 				It("reports the index is invalid when constructing ActualLRPKey", func() {
@@ -90,7 +83,6 @@ var _ = Describe("Resources", func() {
 	})
 
 	Describe("ActualLRPInstanceKeyFromContainer", func() {
-
 		var (
 			container                executor.Container
 			lrpInstanceKey           *models.ActualLRPInstanceKey
@@ -100,6 +92,7 @@ var _ = Describe("Resources", func() {
 
 		BeforeEach(func() {
 			container = executor.Container{
+				Guid: "container-guid",
 				Tags: executor.Tags{
 					rep.LifecycleTag:    rep.LRPLifecycle,
 					rep.DomainTag:       "my-domain",
@@ -107,11 +100,12 @@ var _ = Describe("Resources", func() {
 					rep.ProcessIndexTag: "999",
 					rep.InstanceGuidTag: "some-instance-guid",
 				},
-				Guid: "container-guid",
-				Ports: []executor.PortMapping{
-					{
-						ContainerPort: 1234,
-						HostPort:      6789,
+				RunInfo: executor.RunInfo{
+					Ports: []executor.PortMapping{
+						{
+							ContainerPort: 1234,
+							HostPort:      6789,
+						},
 					},
 				},
 			}
@@ -179,18 +173,20 @@ var _ = Describe("Resources", func() {
 
 		BeforeEach(func() {
 			container = executor.Container{
+				Guid:       "some-instance-guid",
+				ExternalIP: "some-external-ip",
 				Tags: executor.Tags{
 					rep.LifecycleTag:    rep.LRPLifecycle,
 					rep.DomainTag:       "my-domain",
 					rep.ProcessGuidTag:  "process-guid",
 					rep.ProcessIndexTag: "999",
 				},
-				Guid:       "some-instance-guid",
-				ExternalIP: "some-external-ip",
-				Ports: []executor.PortMapping{
-					{
-						ContainerPort: 1234,
-						HostPort:      6789,
+				RunInfo: executor.RunInfo{
+					Ports: []executor.PortMapping{
+						{
+							ContainerPort: 1234,
+							HostPort:      6789,
+						},
 					},
 				},
 			}
@@ -261,6 +257,111 @@ var _ = Describe("Resources", func() {
 		It("errors when passed malformed input", func() {
 			_, err := rep.UnmarshalStackPathMap([]byte(`{"foo": ["bar"]}`))
 			Expect(err).To(MatchError(ContainSubstring("unmarshal")))
+		})
+	})
+
+	Describe("NewRunRequestFromDesiredLRP", func() {
+		var (
+			containerGuid string
+			desiredLRP    *models.DesiredLRP
+			actualLRP     *models.ActualLRP
+		)
+
+		BeforeEach(func() {
+			containerGuid = "the-container-guid"
+			desiredLRP = model_helpers.NewValidDesiredLRP("the-process-guid")
+			actualLRP = model_helpers.NewValidActualLRP("the-process-guid", 9)
+			desiredLRP.RootFs = "preloaded://foobar"
+		})
+
+		It("returns a valid run request", func() {
+			runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(runReq.Tags).To(Equal(executor.Tags{}))
+			Expect(runReq.RunInfo).To(Equal(executor.RunInfo{
+				CPUWeight: uint(desiredLRP.CpuWeight),
+				DiskScope: executor.ExclusiveDiskLimit,
+				Ports:     rep.ConvertPortMappings(desiredLRP.Ports),
+				LogConfig: executor.LogConfig{
+					Guid:       desiredLRP.LogGuid,
+					Index:      int(actualLRP.Index),
+					SourceName: desiredLRP.LogSource,
+				},
+
+				MetricsConfig: executor.MetricsConfig{
+					Guid:  desiredLRP.MetricsGuid,
+					Index: int(actualLRP.Index),
+				},
+				StartTimeout: uint(desiredLRP.StartTimeout),
+				Privileged:   desiredLRP.Privileged,
+				Setup:        desiredLRP.Setup,
+				Action:       desiredLRP.Action,
+				Monitor:      desiredLRP.Monitor,
+				EgressRules:  desiredLRP.EgressRules,
+				Env: append([]executor.EnvironmentVariable{
+					{Name: "INSTANCE_GUID", Value: actualLRP.InstanceGuid},
+					{Name: "INSTANCE_INDEX", Value: strconv.Itoa(int(actualLRP.Index))},
+					{Name: "CF_INSTANCE_GUID", Value: actualLRP.InstanceGuid},
+					{Name: "CF_INSTANCE_INDEX", Value: strconv.Itoa(int(actualLRP.Index))},
+				}, executor.EnvironmentVariablesFromModel(desiredLRP.EnvironmentVariables)...),
+			}))
+		})
+
+		Context("when the rootfs is not preloaded", func() {
+			BeforeEach(func() {
+				desiredLRP.RootFs = "docker://cloudfoundry/test"
+			})
+
+			It("uses TotalDiskLimit as the disk scope", func() {
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.DiskScope).To(Equal(executor.TotalDiskLimit))
+			})
+		})
+	})
+
+	Describe("NewRunRequestFromTask", func() {
+		var task *models.Task
+		BeforeEach(func() {
+			task = model_helpers.NewValidTask("task-guid")
+			task.RootFs = "preloaded://rootfs"
+		})
+
+		It("returns a valid run request", func() {
+			runReq, err := rep.NewRunRequestFromTask(task)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(runReq.Tags).To(Equal(executor.Tags{
+				rep.ResultFileTag: task.ResultFile,
+			}))
+
+			Expect(runReq.RunInfo).To(Equal(executor.RunInfo{
+				DiskScope:  executor.ExclusiveDiskLimit,
+				CPUWeight:  uint(task.CpuWeight),
+				Privileged: task.Privileged,
+
+				LogConfig: executor.LogConfig{
+					Guid:       task.LogGuid,
+					SourceName: task.LogSource,
+				},
+				MetricsConfig: executor.MetricsConfig{
+					Guid: task.MetricsGuid,
+				},
+				Action:      task.Action,
+				Env:         executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
+				EgressRules: task.EgressRules,
+			}))
+		})
+
+		Context("when the rootfs is not preloaded", func() {
+			BeforeEach(func() {
+				task.RootFs = "docker://cloudfoundry/test"
+			})
+
+			It("uses TotalDiskLimit as the disk scope", func() {
+				runReq, err := rep.NewRunRequestFromTask(task)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.DiskScope).To(Equal(executor.TotalDiskLimit))
+			})
 		})
 	})
 })

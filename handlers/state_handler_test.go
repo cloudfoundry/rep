@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/rep"
 
 	. "github.com/onsi/ginkgo"
@@ -13,13 +12,13 @@ import (
 
 var _ = Describe("State", func() {
 	Context("when the state call succeeds", func() {
-		var repState auctiontypes.CellState
+		var repState rep.CellState
 		BeforeEach(func() {
-			repState = auctiontypes.CellState{
-				RootFSProviders: auctiontypes.RootFSProviders{"docker": auctiontypes.ArbitraryRootFSProvider{}},
+			repState = rep.CellState{
+				RootFSProviders: rep.RootFSProviders{"docker": rep.ArbitraryRootFSProvider{}},
 			}
-			auctionRep.StateReturns(repState, nil)
-			Expect(auctionRep.StateCallCount()).To(Equal(0))
+			fakeLocalRep.StateReturns(repState, nil)
+			Expect(fakeLocalRep.StateCallCount()).To(Equal(0))
 		})
 
 		It("it returns whatever the state call returns", func() {
@@ -28,20 +27,20 @@ var _ = Describe("State", func() {
 
 			Expect(body).To(MatchJSON(JSONFor(repState)))
 
-			Expect(auctionRep.StateCallCount()).To(Equal(1))
+			Expect(fakeLocalRep.StateCallCount()).To(Equal(1))
 		})
 	})
 
 	Context("when the state call fails", func() {
 		It("fails", func() {
-			auctionRep.StateReturns(auctiontypes.CellState{}, errors.New("boom"))
-			Expect(auctionRep.StateCallCount()).To(Equal(0))
+			fakeLocalRep.StateReturns(rep.CellState{}, errors.New("boom"))
+			Expect(fakeLocalRep.StateCallCount()).To(Equal(0))
 
 			status, body := Request(rep.StateRoute, nil, nil)
 			Expect(status).To(Equal(http.StatusInternalServerError))
 			Expect(body).To(BeEmpty())
 
-			Expect(auctionRep.StateCallCount()).To(Equal(1))
+			Expect(fakeLocalRep.StateCallCount()).To(Equal(1))
 		})
 	})
 })

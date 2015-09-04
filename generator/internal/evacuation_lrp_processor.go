@@ -32,7 +32,7 @@ func (p *evacuationLRPProcessor) Process(logger lager.Logger, container executor
 	})
 	logger.Debug("start")
 
-	lrpKey, err := rep.ActualLRPKeyFromContainer(container)
+	lrpKey, err := rep.ActualLRPKeyFromTags(container.Tags)
 	if err != nil {
 		logger.Error("failed-to-generate-lrp-key", err)
 		return

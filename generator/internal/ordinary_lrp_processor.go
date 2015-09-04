@@ -34,7 +34,7 @@ func (p *ordinaryLRPProcessor) Process(logger lager.Logger, container executor.C
 	logger.Debug("starting")
 	defer logger.Debug("finished")
 
-	lrpKey, err := rep.ActualLRPKeyFromContainer(container)
+	lrpKey, err := rep.ActualLRPKeyFromTags(container.Tags)
 	if err != nil {
 		logger.Error("failed-to-generate-lrp-key", err)
 		return
@@ -72,7 +72,18 @@ func (p *ordinaryLRPProcessor) processReservedContainer(logger lager.Logger, lrp
 		return
 	}
 
-	ok = p.containerDelegate.RunContainer(logger, lrpContainer.Guid)
+	desired, err := p.bbsClient.DesiredLRPByProcessGuid(lrpContainer.ProcessGuid)
+	if err != nil {
+		logger.Error("failed-to-fetch-desired", err)
+		return
+	}
+
+	runReq, err := rep.NewRunRequestFromDesiredLRP(lrpContainer.Guid, desired, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
+	if err != nil {
+		logger.Error("failed-to-construct-run-request", err)
+		return
+	}
+	ok = p.containerDelegate.RunContainer(logger, &runReq)
 	if !ok {
 		p.bbsClient.RemoveActualLRP(lrpContainer.ProcessGuid, int(lrpContainer.Index))
 		return

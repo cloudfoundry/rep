@@ -20,11 +20,11 @@ type FakeContainerDelegate struct {
 		result1 executor.Container
 		result2 bool
 	}
-	RunContainerStub        func(logger lager.Logger, guid string) bool
+	RunContainerStub        func(logger lager.Logger, req *executor.RunRequest) bool
 	runContainerMutex       sync.RWMutex
 	runContainerArgsForCall []struct {
 		logger lager.Logger
-		guid   string
+		req    *executor.RunRequest
 	}
 	runContainerReturns struct {
 		result1 bool
@@ -94,15 +94,15 @@ func (fake *FakeContainerDelegate) GetContainerReturns(result1 executor.Containe
 	}{result1, result2}
 }
 
-func (fake *FakeContainerDelegate) RunContainer(logger lager.Logger, guid string) bool {
+func (fake *FakeContainerDelegate) RunContainer(logger lager.Logger, req *executor.RunRequest) bool {
 	fake.runContainerMutex.Lock()
 	fake.runContainerArgsForCall = append(fake.runContainerArgsForCall, struct {
 		logger lager.Logger
-		guid   string
-	}{logger, guid})
+		req    *executor.RunRequest
+	}{logger, req})
 	fake.runContainerMutex.Unlock()
 	if fake.RunContainerStub != nil {
-		return fake.RunContainerStub(logger, guid)
+		return fake.RunContainerStub(logger, req)
 	} else {
 		return fake.runContainerReturns.result1
 	}
@@ -114,10 +114,10 @@ func (fake *FakeContainerDelegate) RunContainerCallCount() int {
 	return len(fake.runContainerArgsForCall)
 }
 
-func (fake *FakeContainerDelegate) RunContainerArgsForCall(i int) (lager.Logger, string) {
+func (fake *FakeContainerDelegate) RunContainerArgsForCall(i int) (lager.Logger, *executor.RunRequest) {
 	fake.runContainerMutex.RLock()
 	defer fake.runContainerMutex.RUnlock()
-	return fake.runContainerArgsForCall[i].logger, fake.runContainerArgsForCall[i].guid
+	return fake.runContainerArgsForCall[i].logger, fake.runContainerArgsForCall[i].req
 }
 
 func (fake *FakeContainerDelegate) RunContainerReturns(result1 bool) {

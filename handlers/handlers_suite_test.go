@@ -8,9 +8,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/cloudfoundry-incubator/auction/auctiontypes/fakes"
+	executorfakes "github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
+	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"github.com/cloudfoundry-incubator/rep/handlers"
+	"github.com/cloudfoundry-incubator/rep/lrp_stopper/fake_lrp_stopper"
+	"github.com/cloudfoundry-incubator/rep/repfakes"
 	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
@@ -28,15 +31,17 @@ func TestAuctionHttpHandlers(t *testing.T) {
 var server *httptest.Server
 var requestGenerator *rata.RequestGenerator
 var client *http.Client
-var auctionRep *fakes.FakeSimulationCellRep
+var fakeLocalRep *repfakes.FakeSimClient
 var repGuid string
 
 var _ = BeforeEach(func() {
 	logger := lagertest.NewTestLogger("handlers")
 
-	auctionRep = &fakes.FakeSimulationCellRep{}
-
-	handler, err := rata.NewRouter(rep.Routes, handlers.New(auctionRep, logger))
+	fakeLocalRep = new(repfakes.FakeSimClient)
+	fakeLRPStopper := new(fake_lrp_stopper.FakeLRPStopper)
+	fakeExecutorClient := new(executorfakes.FakeClient)
+	fakeEvacuatable := new(fake_evacuation_context.FakeEvacuatable)
+	handler, err := rata.NewRouter(rep.Routes, handlers.New(fakeLocalRep, fakeLRPStopper, fakeExecutorClient, fakeEvacuatable, logger))
 	Expect(err).NotTo(HaveOccurred())
 	server = httptest.NewServer(handler)
 

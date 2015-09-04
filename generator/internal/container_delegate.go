@@ -19,7 +19,7 @@ var ErrResultFileTooLarge = errors.New(
 
 type ContainerDelegate interface {
 	GetContainer(logger lager.Logger, guid string) (executor.Container, bool)
-	RunContainer(logger lager.Logger, guid string) bool
+	RunContainer(logger lager.Logger, req *executor.RunRequest) bool
 	StopContainer(logger lager.Logger, guid string) bool
 	DeleteContainer(logger lager.Logger, guid string) bool
 	FetchContainerResultFile(logger lager.Logger, guid string, filename string) (string, error)
@@ -46,12 +46,12 @@ func (d *containerDelegate) GetContainer(logger lager.Logger, guid string) (exec
 	return container, true
 }
 
-func (d *containerDelegate) RunContainer(logger lager.Logger, guid string) bool {
+func (d *containerDelegate) RunContainer(logger lager.Logger, req *executor.RunRequest) bool {
 	logger.Info("running-container")
-	err := d.client.RunContainer(guid)
+	err := d.client.RunContainer(req)
 	if err != nil {
 		logInfoOrError(logger, "failed-running-container", err)
-		d.DeleteContainer(logger, guid)
+		d.DeleteContainer(logger, req.Guid)
 		return false
 	}
 	logger.Info("succeeded-running-container")

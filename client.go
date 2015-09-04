@@ -5,140 +5,190 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
-	"github.com/cloudfoundry-incubator/auction/auctiontypes"
-	"github.com/pivotal-golang/lager"
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/tedsuo/rata"
 )
 
-type Client struct {
+//go:generate counterfeiter -o repfakes/fake_client_factory.go . ClientFactory
+
+type ClientFactory interface {
+	CreateClient(address string) Client
+}
+
+type clientFactory struct {
+	httpClient *http.Client
+}
+
+func NewClientFactory(httpClient *http.Client) ClientFactory {
+	return &clientFactory{httpClient}
+}
+
+func (factory *clientFactory) CreateClient(address string) Client {
+	return NewClient(factory.httpClient, address)
+}
+
+type AuctionCellClient interface {
+	State() (CellState, error)
+	Perform(work Work) (Work, error)
+}
+
+//go:generate counterfeiter -o repfakes/fake_client.go . Client
+
+type Client interface {
+	AuctionCellClient
+	StopLRPInstance(key models.ActualLRPKey, instanceKey models.ActualLRPInstanceKey) error
+	CancelTask(taskGuid string) error
+}
+
+//go:generate counterfeiter -o repfakes/fake_sim_client.go . SimClient
+
+type SimClient interface {
+	Client
+	Reset() error
+}
+
+type client struct {
 	client           *http.Client
-	repGuid          string
 	address          string
 	requestGenerator *rata.RequestGenerator
-	logger           lager.Logger
 }
 
-type Response struct {
-	Body []byte
-}
-
-func NewClient(client *http.Client, repGuid string, address string, logger lager.Logger) *Client {
-	return &Client{
-		client:           client,
-		repGuid:          repGuid,
+func NewClient(httpClient *http.Client, address string) Client {
+	return &client{
+		client:           httpClient,
 		address:          address,
 		requestGenerator: rata.NewRequestGenerator(address, Routes),
-		logger:           logger,
 	}
 }
 
-func (c *Client) State() (auctiontypes.CellState, error) {
-	logger := c.logger.Session("fetching-state", lager.Data{
-		"rep": c.repGuid,
-	})
-
-	logger.Debug("requesting")
+func (c *client) State() (CellState, error) {
 
 	req, err := c.requestGenerator.CreateRequest(StateRoute, nil, nil)
 	if err != nil {
-		logger.Error("failed-to-create-request", err)
-		return auctiontypes.CellState{}, err
+		return CellState{}, err
 	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		logger.Error("failed-to-perform-request", err)
-		return auctiontypes.CellState{}, err
+		return CellState{}, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		logger.Error("invalid-status-code", fmt.Errorf("%d", resp.StatusCode))
-		return auctiontypes.CellState{}, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return CellState{}, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	var state auctiontypes.CellState
+	var state CellState
 	err = json.NewDecoder(resp.Body).Decode(&state)
 	if err != nil {
-		logger.Error("failed-to-decode-rep-state", err)
-		return auctiontypes.CellState{}, err
+		return CellState{}, err
 	}
-
-	logger.Debug("done")
 
 	return state, nil
 }
 
-func (c *Client) Perform(work auctiontypes.Work) (auctiontypes.Work, error) {
-	logger := c.logger.Session("sending-work", lager.Data{
-		"rep":    c.repGuid,
-		"starts": len(work.LRPs),
-	})
-
-	logger.Debug("requesting")
-
+func (c *client) Perform(work Work) (Work, error) {
 	body, err := json.Marshal(work)
 	if err != nil {
-		logger.Error("failed-to-marshal-work", err)
-		return auctiontypes.Work{}, err
+		return Work{}, err
 	}
 
 	req, err := c.requestGenerator.CreateRequest(PerformRoute, nil, bytes.NewReader(body))
 	if err != nil {
-		logger.Error("failed-to-create-request", err)
-		return auctiontypes.Work{}, err
+		return Work{}, err
 	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		logger.Error("failed-to-perform-request", err)
-		return auctiontypes.Work{}, err
+		return Work{}, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		logger.Error("invalid-status-code", fmt.Errorf("%d", resp.StatusCode))
-		return auctiontypes.Work{}, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return Work{}, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	var failedWork auctiontypes.Work
+	var failedWork Work
 	err = json.NewDecoder(resp.Body).Decode(&failedWork)
 	if err != nil {
-		logger.Error("failed-to-decode-failed-work", err)
-		return auctiontypes.Work{}, err
+		return Work{}, err
 	}
-
-	logger.Debug("done")
 
 	return failedWork, nil
 }
 
-func (c *Client) Reset() error {
-	logger := c.logger.Session("SIM-reseting", lager.Data{
-		"rep": c.repGuid,
-	})
-
-	logger.Debug("requesting")
-
+func (c *client) Reset() error {
 	req, err := c.requestGenerator.CreateRequest(Sim_ResetRoute, nil, nil)
 	if err != nil {
-		logger.Error("failed-to-create-request", err)
 		return err
 	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		logger.Error("failed-to-perform-request", err)
 		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		logger.Error("invalid-status-code", fmt.Errorf("%d", resp.StatusCode))
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	logger.Debug("done")
 	return nil
+}
+
+func (c *client) StopLRPInstance(
+	key models.ActualLRPKey,
+	instanceKey models.ActualLRPInstanceKey,
+) error {
+	req, err := c.requestGenerator.CreateRequest(StopLRPInstanceRoute, stopParamsFromLRP(key, instanceKey), nil)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("http error: status code %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode))
+	}
+
+	return nil
+}
+
+func (c *client) CancelTask(taskGuid string) error {
+	req, err := c.requestGenerator.CreateRequest(CancelTaskRoute, rata.Params{"task_guid": taskGuid}, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("http error: status code %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode))
+	}
+
+	return nil
+}
+
+func stopParamsFromLRP(
+	key models.ActualLRPKey,
+	instanceKey models.ActualLRPInstanceKey,
+) rata.Params {
+	return rata.Params{
+		"process_guid":  key.ProcessGuid,
+		"instance_guid": instanceKey.InstanceGuid,
+		"index":         strconv.Itoa(int(key.Index)),
+	}
 }

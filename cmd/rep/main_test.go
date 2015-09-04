@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/bbs/models/test/model_helpers"
@@ -85,7 +84,7 @@ var _ = Describe("The Rep", func() {
 				EtcdCluster:       fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
 				ServerPort:        serverPort,
 				GardenAddr:        fakeGarden.HTTPTestServer.Listener.Addr().String(),
-				LogLevel:          "info",
+				LogLevel:          "debug",
 				ConsulCluster:     consulRunner.ConsulCluster(),
 				PollingInterval:   pollingInterval,
 				EvacuationTimeout: evacuationTimeout,
@@ -210,14 +209,14 @@ var _ = Describe("The Rep", func() {
 		})
 
 		Context("acting as an auction representative", func() {
-			var client *rep.Client
+			var client rep.Client
 
 			JustBeforeEach(func() {
 				Eventually(legacyBBS.Cells).Should(HaveLen(1))
 				cells, err := legacyBBS.Cells()
 				Expect(err).NotTo(HaveOccurred())
 
-				client = rep.NewClient(http.DefaultClient, cells[0].CellID, cells[0].RepAddress, lagertest.NewTestLogger("auction-client"))
+				client = rep.NewClient(http.DefaultClient, cells[0].RepAddress)
 			})
 
 			Context("Capacity with a container", func() {
@@ -246,7 +245,7 @@ var _ = Describe("The Rep", func() {
 				It("returns total capacity", func() {
 					state, err := client.State()
 					Expect(err).NotTo(HaveOccurred())
-					Expect(state.TotalResources).To(Equal(auctiontypes.Resources{
+					Expect(state.TotalResources).To(Equal(rep.Resources{
 						MemoryMB:   1024,
 						DiskMB:     2048,
 						Containers: 4,
@@ -254,11 +253,11 @@ var _ = Describe("The Rep", func() {
 				})
 
 				It("returns available capacity", func() {
-					Eventually(func() auctiontypes.Resources {
+					Eventually(func() rep.Resources {
 						state, err := client.State()
 						Expect(err).NotTo(HaveOccurred())
 						return state.AvailableResources
-					}).Should(Equal(auctiontypes.Resources{
+					}).Should(Equal(rep.Resources{
 						MemoryMB:   512,
 						DiskMB:     1024,
 						Containers: 3,
@@ -270,11 +269,11 @@ var _ = Describe("The Rep", func() {
 						fakeGarden.RouteToHandler("GET", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 						fakeGarden.RouteToHandler("GET", "/containers/bulk_info", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 
-						Eventually(func() auctiontypes.Resources {
+						Eventually(func() rep.Resources {
 							state, err := client.State()
 							Expect(err).NotTo(HaveOccurred())
 							return state.AvailableResources
-						}).Should(Equal(auctiontypes.Resources{
+						}).Should(Equal(rep.Resources{
 							MemoryMB:   1024,
 							DiskMB:     2048,
 							Containers: 4,
@@ -284,7 +283,7 @@ var _ = Describe("The Rep", func() {
 			})
 
 			Describe("running tasks", func() {
-				var task *models.Task
+				var task rep.Task
 				var containersCalled chan struct{}
 
 				JustBeforeEach(func() {
@@ -304,32 +303,25 @@ var _ = Describe("The Rep", func() {
 					fakeGarden.RouteToHandler("PUT", "/containers/the-task-guid/limits/memory", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.MemoryLimits{}))
 					fakeGarden.RouteToHandler("PUT", "/containers/the-task-guid/limits/disk", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.DiskLimits{}))
 					fakeGarden.RouteToHandler("PUT", "/containers/the-task-guid/limits/cpu", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.CPULimits{}))
+					fakeGarden.RouteToHandler("POST", "/containers/the-task-guid/net/out", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.CPULimits{}))
 					fakeGarden.RouteToHandler("GET", "/containers/the-task-guid/info", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.ContainerInfo{}))
 
-					task = &models.Task{
-						TaskGuid: "the-task-guid",
-						Domain:   "the-domain",
-						TaskDefinition: &models.TaskDefinition{
-							MemoryMb: 2,
-							DiskMb:   2,
-							RootFs:   "the:rootfs",
-							Action: models.WrapAction(&models.RunAction{
-								User: "me",
-								Path: "date",
-							}),
-						},
-					}
+					taskModel := model_helpers.NewValidTask("the-task-guid")
+					task = rep.NewTask(
+						taskModel.TaskGuid,
+						taskModel.Domain,
+						rep.NewResource(taskModel.MemoryMb, taskModel.DiskMb, taskModel.RootFs),
+					)
 
-					err := bbsClient.DesireTask(task.TaskGuid, task.Domain, task.TaskDefinition)
+					err := bbsClient.DesireTask(taskModel.TaskGuid, taskModel.Domain, taskModel.TaskDefinition)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("makes a request to executor to allocate the container", func() {
 					Expect(getTasksByState(bbsClient, models.Task_Pending)).To(HaveLen(1))
 					Expect(getTasksByState(bbsClient, models.Task_Running)).To(BeEmpty())
-					time.Sleep(5 * time.Second)
-					works := auctiontypes.Work{
-						Tasks: []*models.Task{task},
+					works := rep.Work{
+						Tasks: []rep.Task{task},
 					}
 
 					failedWorks, err := client.Perform(works)

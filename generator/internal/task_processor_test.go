@@ -16,14 +16,11 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var (
-	processor internal.TaskProcessor
-)
+var processor internal.TaskProcessor
 
 var _ = Describe("Task <-> Container table", func() {
-	var (
-		containerDelegate *fake_internal.FakeContainerDelegate
-	)
+	var containerDelegate *fake_internal.FakeContainerDelegate
+
 	const (
 		taskGuid      = "my-guid"
 		localCellID   = "a"
@@ -33,9 +30,7 @@ var _ = Describe("Task <-> Container table", func() {
 
 	BeforeEach(func() {
 		etcdRunner.Reset()
-
 		containerDelegate = new(fake_internal.FakeContainerDelegate)
-
 		processor = internal.NewTaskProcessor(bbsClient, containerDelegate, localCellID)
 
 		containerDelegate.DeleteContainerReturns(true)
@@ -140,8 +135,15 @@ var _ = Describe("Task <-> Container table", func() {
 
 		It("runs the container", func() {
 			Expect(containerDelegate.RunContainerCallCount()).To(Equal(1))
-			_, containerGuid := containerDelegate.RunContainerArgsForCall(0)
-			Expect(containerGuid).To(Equal(taskGuid))
+
+			task, err := bbsClient.TaskByGuid(taskGuid)
+			Expect(err).NotTo(HaveOccurred())
+
+			expectedRunRequest, err := rep.NewRunRequestFromTask(task)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, runRequest := containerDelegate.RunContainerArgsForCall(0)
+			Expect(*runRequest).To(Equal(expectedRunRequest))
 		})
 
 		Context("when running the container fails", func() {

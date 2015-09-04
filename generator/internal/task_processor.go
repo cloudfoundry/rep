@@ -68,7 +68,19 @@ func (p *taskProcessor) processActiveContainer(logger lager.Logger, container ex
 		return
 	}
 
-	ok = p.containerDelegate.RunContainer(logger, container.Guid)
+	task, err := p.bbsClient.TaskByGuid(container.Guid)
+	if err != nil {
+		logger.Error("failed-fetching-task", err)
+		return
+	}
+
+	runReq, err := rep.NewRunRequestFromTask(task)
+	if err != nil {
+		logger.Error("failed-to-construct-run-request", err)
+		return
+	}
+
+	ok = p.containerDelegate.RunContainer(logger, &runReq)
 	if !ok {
 		p.failTask(logger, container.Guid, TaskCompletionReasonFailedToRunContainer)
 	}

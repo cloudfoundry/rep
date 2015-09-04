@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/pivotal-golang/archiver/extractor/test_helper"
@@ -29,15 +30,20 @@ var _ = Describe("ContainerDelegate", func() {
 
 	Describe("RunContainer", func() {
 		var result bool
+		var runRequest executor.RunRequest
+
+		BeforeEach(func() {
+			runRequest = executor.NewRunRequest(expectedGuid, &executor.RunInfo{}, executor.Tags{})
+		})
 
 		JustBeforeEach(func() {
-			result = containerDelegate.RunContainer(logger, expectedGuid)
+			result = containerDelegate.RunContainer(logger, &runRequest)
 		})
 
 		It("runs the container", func() {
 			Expect(executorClient.RunContainerCallCount()).To(Equal(1))
-			containerGuid := executorClient.RunContainerArgsForCall(0)
-			Expect(containerGuid).To(Equal(expectedGuid))
+			runReq := executorClient.RunContainerArgsForCall(0)
+			Expect(*runReq).To(Equal(runRequest))
 		})
 
 		Context("when running succeeds", func() {
