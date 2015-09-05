@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+
+	"github.com/cloudfoundry-incubator/bbs/models"
 )
 
 var ErrorIncompatibleRootfs = errors.New("rootfs not found")
@@ -117,13 +119,12 @@ func (r *Resource) Copy() Resource {
 }
 
 type LRP struct {
-	ProcessGuid string
-	Index       int
+	models.ActualLRPKey
 	Resource
 }
 
-func NewLRP(guid string, index int, res Resource) LRP {
-	return LRP{guid, index, res}
+func NewLRP(key models.ActualLRPKey, res Resource) LRP {
+	return LRP{key, res}
 }
 
 func (lrp *LRP) Identifier() string {
@@ -131,7 +132,7 @@ func (lrp *LRP) Identifier() string {
 }
 
 func (lrp *LRP) Copy() LRP {
-	return NewLRP(lrp.ProcessGuid, lrp.Index, lrp.Resource)
+	return NewLRP(lrp.ActualLRPKey, lrp.Resource)
 }
 
 type Task struct {
