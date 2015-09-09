@@ -2,6 +2,7 @@ package main_test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"time"
@@ -290,16 +291,21 @@ var _ = Describe("The Rep", func() {
 				JustBeforeEach(func() {
 					containersCalled = make(chan struct{})
 					fakeGarden.RouteToHandler("POST", "/containers", ghttp.CombineHandlers(
-						ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{"handle": "handle-guid"}),
+						ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{"handle": "the-task-guid"}),
 						func(w http.ResponseWriter, r *http.Request) {
+							body, err := ioutil.ReadAll(r.Body)
+							Expect(err).NotTo(HaveOccurred())
+
+							Expect(string(body)).To(ContainSubstring(`"handle":"the-task-guid"`))
+							Expect(r.Body.Close()).NotTo(HaveOccurred())
 							close(containersCalled)
 						},
 					))
 
-					fakeGarden.RouteToHandler("PUT", "/containers/handle-guid/limits/memory", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.MemoryLimits{}))
-					fakeGarden.RouteToHandler("PUT", "/containers/handle-guid/limits/disk", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.DiskLimits{}))
-					fakeGarden.RouteToHandler("PUT", "/containers/handle-guid/limits/cpu", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.CPULimits{}))
-					fakeGarden.RouteToHandler("GET", "/containers/handle-guid/info", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.ContainerInfo{}))
+					fakeGarden.RouteToHandler("PUT", "/containers/the-task-guid/limits/memory", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.MemoryLimits{}))
+					fakeGarden.RouteToHandler("PUT", "/containers/the-task-guid/limits/disk", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.DiskLimits{}))
+					fakeGarden.RouteToHandler("PUT", "/containers/the-task-guid/limits/cpu", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.CPULimits{}))
+					fakeGarden.RouteToHandler("GET", "/containers/the-task-guid/info", ghttp.RespondWithJSONEncoded(http.StatusOK, garden.ContainerInfo{}))
 
 					task = &models.Task{
 						TaskGuid: "the-task-guid",
@@ -322,7 +328,7 @@ var _ = Describe("The Rep", func() {
 				It("makes a request to executor to allocate the container", func() {
 					Expect(getTasksByState(bbsClient, models.Task_Pending)).To(HaveLen(1))
 					Expect(getTasksByState(bbsClient, models.Task_Running)).To(BeEmpty())
-
+					time.Sleep(5 * time.Second)
 					works := auctiontypes.Work{
 						Tasks: []*models.Task{task},
 					}
@@ -403,7 +409,7 @@ var _ = Describe("The Rep", func() {
 				// ensure the container remains after being stopped
 				fakeGarden.RouteToHandler("GET", "/containers",
 					ghttp.RespondWithJSONEncoded(http.StatusOK, map[string][]string{
-						"handles": []string{"my-handle"},
+						"handles": []string{containerGuid},
 					}),
 				)
 
@@ -415,12 +421,12 @@ var _ = Describe("The Rep", func() {
 				fakeGarden.RouteToHandler("GET", "/containers/bulk_info",
 					ghttp.RespondWithJSONEncoded(http.StatusOK,
 						map[string]garden.ContainerInfoEntry{
-							"my-handle": garden.ContainerInfoEntry{Info: containerInfo},
+							containerGuid: garden.ContainerInfoEntry{Info: containerInfo},
 						},
 					),
 				)
 
-				fakeGarden.RouteToHandler("GET", "/containers/my-handle/info", ghttp.RespondWithJSONEncoded(http.StatusOK, containerInfo))
+				fakeGarden.RouteToHandler("GET", fmt.Sprintf("/containers/%s/info", containerGuid), ghttp.RespondWithJSONEncoded(http.StatusOK, containerInfo))
 
 				Eventually(legacyBBS.Cells).Should(HaveLen(1))
 
@@ -438,7 +444,8 @@ var _ = Describe("The Rep", func() {
 
 			It("should destroy the container", func() {
 				Eventually(getActualLRPGroups).Should(HaveLen(1))
-				bbsClient.RetireActualLRP(&runningLRP.ActualLRPKey)
+				err := bbsClient.RetireActualLRP(&runningLRP.ActualLRPKey)
+				Expect(err).NotTo(HaveOccurred())
 
 				findDestroyRequest := func() bool {
 					for _, req := range fakeGarden.ReceivedRequests() {
