@@ -19,18 +19,20 @@ var _ = Describe("Resources", func() {
 
 		BeforeEach(func() {
 			container = executor.Container{
+				Guid:       "some-instance-guid",
+				ExternalIP: "some-external-ip",
 				Tags: executor.Tags{
 					rep.LifecycleTag:    rep.LRPLifecycle,
 					rep.DomainTag:       "my-domain",
 					rep.ProcessGuidTag:  "process-guid",
 					rep.ProcessIndexTag: "999",
 				},
-				Guid:       "some-instance-guid",
-				ExternalIP: "some-external-ip",
-				Ports: []executor.PortMapping{
-					{
-						ContainerPort: 1234,
-						HostPort:      6789,
+				RunInfo: executor.RunInfo{
+					Ports: []executor.PortMapping{
+						{
+							ContainerPort: 1234,
+							HostPort:      6789,
+						},
 					},
 				},
 			}
@@ -100,6 +102,7 @@ var _ = Describe("Resources", func() {
 
 		BeforeEach(func() {
 			container = executor.Container{
+				Guid: "container-guid",
 				Tags: executor.Tags{
 					rep.LifecycleTag:    rep.LRPLifecycle,
 					rep.DomainTag:       "my-domain",
@@ -107,11 +110,12 @@ var _ = Describe("Resources", func() {
 					rep.ProcessIndexTag: "999",
 					rep.InstanceGuidTag: "some-instance-guid",
 				},
-				Guid: "container-guid",
-				Ports: []executor.PortMapping{
-					{
-						ContainerPort: 1234,
-						HostPort:      6789,
+				RunInfo: executor.RunInfo{
+					Ports: []executor.PortMapping{
+						{
+							ContainerPort: 1234,
+							HostPort:      6789,
+						},
 					},
 				},
 			}
@@ -179,18 +183,20 @@ var _ = Describe("Resources", func() {
 
 		BeforeEach(func() {
 			container = executor.Container{
+				Guid:       "some-instance-guid",
+				ExternalIP: "some-external-ip",
 				Tags: executor.Tags{
 					rep.LifecycleTag:    rep.LRPLifecycle,
 					rep.DomainTag:       "my-domain",
 					rep.ProcessGuidTag:  "process-guid",
 					rep.ProcessIndexTag: "999",
 				},
-				Guid:       "some-instance-guid",
-				ExternalIP: "some-external-ip",
-				Ports: []executor.PortMapping{
-					{
-						ContainerPort: 1234,
-						HostPort:      6789,
+				RunInfo: executor.RunInfo{
+					Ports: []executor.PortMapping{
+						{
+							ContainerPort: 1234,
+							HostPort:      6789,
+						},
 					},
 				},
 			}

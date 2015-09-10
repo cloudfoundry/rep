@@ -115,13 +115,19 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 		return rep.CellState{}, err
 	}
 
+	var key *models.ActualLRPKey
+	var keyErr error
 	lrps := []rep.LRP{}
-
-	for _, container := range lrpContainers {
-		index, _ := strconv.Atoi(container.Tags[rep.ProcessIndexTag])
+	for i := range lrpContainers {
+		container := &lrpContainers[i]
 		// TODO: convert container rootfspath to diego rootfs uri
-		lrp := rep.NewLRP(rep.ProcessGuidTag, index, rep.NewResource(int32(container.MemoryMB), int32(container.DiskMB), ""))
-		lrps = append(lrps, lrp)
+		rootfs := ""
+		resource := rep.NewResource(int32(container.MemoryMB), int32(container.DiskMB), rootfs)
+		key,keyErr = rep.ActualLRPKeyFromContainer(*container)
+		if keyErr != nil {
+			continue
+		}
+		lrps = append(lrps,rep.NewLRP(*key, resource))
 	}
 
 	state := rep.NewCellState(a.rootFSProviders, availableResources, totalResources, lrps, nil, a.zone, a.evacuationReporter.Evacuating())
