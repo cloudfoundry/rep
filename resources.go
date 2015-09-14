@@ -1,6 +1,7 @@
 package rep
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -156,4 +157,12 @@ func (task Task) Copy() Task {
 type Work struct {
 	LRPs  []LRP
 	Tasks []Task
+}
+
+type StackPathMap map[string]string
+
+func UnmarshalStackPathMap(payload []byte) (StackPathMap, error) {
+	stackPathMap := StackPathMap{}
+	err := json.Unmarshal(payload, &stackPathMap)
+	return stackPathMap, err
 }

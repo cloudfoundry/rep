@@ -3,6 +3,7 @@ package auction_cell_rep
 import (
 	"errors"
 	"net/url"
+	"strconv"
 
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
@@ -83,7 +84,7 @@ func PathForRootFS(rootFS string, stackPathMap rep.StackPathMap) (string, error)
 	return rootFS, nil
 }
 
-// TODO: State currently does not return tasks or lrp rootfs, because the
+// State currently does not return tasks or lrp rootfs, because the
 // auctioneer currently does not need them.
 func (a *AuctionCellRep) State() (rep.CellState, error) {
 	logger := a.logger.Session("auction-state")
@@ -115,9 +116,7 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 	lrps := []rep.LRP{}
 	for i := range lrpContainers {
 		container := &lrpContainers[i]
-		// TODO: convert container rootfspath to diego rootfs uri
-		rootfs := ""
-		resource := rep.NewResource(int32(container.MemoryMB), int32(container.DiskMB), rootfs)
+		resource := rep.Resource{MemoryMB: int32(container.MemoryMB), DiskMB: int32(container.DiskMB)}
 		key, keyErr = rep.ActualLRPKeyFromTags(container.Tags)
 		if keyErr != nil {
 			logger.Error("failed-to-extract-key", keyErr)
@@ -220,7 +219,9 @@ func (a *AuctionCellRep) lrpsToAllocationRequest(lrps []rep.LRP) ([]executor.All
 			continue
 		}
 
-		rep.AddActualLRPKeyToTags(&lrp.ActualLRPKey, tags)
+		tags[rep.DomainTag] = lrp.Domain
+		tags[rep.ProcessGuidTag] = lrp.ProcessGuid
+		tags[rep.ProcessIndexTag] = strconv.Itoa(int(lrp.Index))
 		tags[rep.LifecycleTag] = rep.LRPLifecycle
 		tags[rep.InstanceGuidTag] = instanceGuid
 
@@ -239,82 +240,6 @@ func (a *AuctionCellRep) lrpsToAllocationRequest(lrps []rep.LRP) ([]executor.All
 
 	return requests, lrpMap, untranslatedLRPs
 }
-
-// func (a *AuctionCellRep) lrpsToContainers(lrps []rep.LRP) ([]executor.Container, map[string]rep.LRPContainerRequest, []rep.LRPContainerRequest) {
-// 	containers := make([]executor.Container, 0, len(lrps))
-// 	lrpAuctionMap := map[string]rep.LRPContainerRequest{}
-// 	untranslatedLRPs := make([]rep.LRPContainerRequest, 0, len(lrps))
-
-// 	for _, lrpStart := range lrps {
-// 		lrpStart := lrpStart
-// 		instanceGuid, err := a.generateInstanceGuid()
-// 		if err != nil {
-// 			untranslatedLRPs = append(untranslatedLRPs, lrpStart)
-// 			continue
-// 		}
-
-// 		rootFSPath, preloaded, err := a.pathForRootFS(lrpStart.DesiredLRP.RootFs)
-// 		if err != nil {
-// 			untranslatedLRPs = append(untranslatedLRPs, lrpStart)
-// 			continue
-// 		}
-
-// 		diskScope := executor.TotalDiskLimit
-// 		if preloaded {
-// 			diskScope = executor.ExclusiveDiskLimit
-// 		}
-
-// 		containerGuid := rep.LRPContainerGuid(lrpStart.DesiredLRP.ProcessGuid, instanceGuid)
-// 		lrpAuctionMap[containerGuid] = lrpStart
-
-// 		container := executor.Container{
-// 			Guid: containerGuid,
-
-// 			Tags: executor.Tags{
-// 				rep.LifecycleTag:    rep.LRPLifecycle,
-// 				rep.DomainTag:       lrpStart.DesiredLRP.Domain,
-// 				rep.ProcessGuidTag:  lrpStart.DesiredLRP.ProcessGuid,
-// 				rep.InstanceGuidTag: instanceGuid,
-// 				rep.ProcessIndexTag: strconv.Itoa(lrpStart.Index),
-// 			},
-
-// 			MemoryMB:     int(lrpStart.DesiredLRP.MemoryMb),
-// 			DiskMB:       int(lrpStart.DesiredLRP.DiskMb),
-// 			DiskScope:    diskScope,
-// 			CPUWeight:    uint(lrpStart.DesiredLRP.CpuWeight),
-// 			RootFSPath:   rootFSPath,
-// 			Privileged:   lrpStart.DesiredLRP.Privileged,
-// 			Ports:        a.convertPortMappings(lrpStart.DesiredLRP.Ports),
-// 			StartTimeout: uint(lrpStart.DesiredLRP.StartTimeout),
-
-// 			LogConfig: executor.LogConfig{
-// 				Guid:       lrpStart.DesiredLRP.LogGuid,
-// 				Index:      lrpStart.Index,
-// 				SourceName: lrpStart.DesiredLRP.LogSource,
-// 			},
-
-// 			MetricsConfig: executor.MetricsConfig{
-// 				Guid:  lrpStart.DesiredLRP.MetricsGuid,
-// 				Index: lrpStart.Index,
-// 			},
-
-// 			Setup:   lrpStart.DesiredLRP.Setup,
-// 			Action:  lrpStart.DesiredLRP.Action,
-// 			Monitor: lrpStart.DesiredLRP.Monitor,
-
-// 			Env: append([]executor.EnvironmentVariable{
-// 				{Name: "INSTANCE_GUID", Value: instanceGuid},
-// 				{Name: "INSTANCE_INDEX", Value: strconv.Itoa(lrpStart.Index)},
-// 				{Name: "CF_INSTANCE_GUID", Value: instanceGuid},
-// 				{Name: "CF_INSTANCE_INDEX", Value: strconv.Itoa(lrpStart.Index)},
-// 			}, executor.EnvironmentVariablesFromModel(lrpStart.DesiredLRP.EnvironmentVariables)...),
-// 			EgressRules: lrpStart.DesiredLRP.EgressRules,
-// 		}
-// 		containers = append(containers, container)
-// 	}
-
-// 	return containers, lrpAuctionMap, untranslatedLRPs
-// }
 
 func (a *AuctionCellRep) tasksToAllocationRequests(tasks []rep.Task) ([]executor.AllocationRequest, map[string]*rep.Task, []rep.Task) {
 	failedTasks := make([]rep.Task, 0)
@@ -339,58 +264,6 @@ func (a *AuctionCellRep) tasksToAllocationRequests(tasks []rep.Task) ([]executor
 
 	return requests, taskMap, failedTasks
 }
-
-// func (a *AuctionCellRep) tasksToContainers(tasks []rep.TaskContainerRequest) ([]executor.Container, []rep.TaskContainerRequest) {
-// 	containers := make([]executor.Container, 0, len(tasks))
-// 	untranslatedTasks := make([]rep.TaskContainerRequest, 0, len(tasks))
-
-// 	for _, task := range tasks {
-// 		rootFSPath, preloaded, err := a.pathForRootFS(task.RootFs)
-// 		if err != nil {
-// 			untranslatedTasks = append(untranslatedTasks, task)
-// 			continue
-// 		}
-
-// 		diskScope := executor.TotalDiskLimit
-// 		if preloaded {
-// 			diskScope = executor.ExclusiveDiskLimit
-// 		}
-
-// 		container := executor.Container{
-// 			Guid: task.TaskGuid,
-
-// 			DiskMB:     int(task.DiskMb),
-// 			DiskScope:  diskScope,
-// 			MemoryMB:   int(task.MemoryMb),
-// 			CPUWeight:  uint(task.CpuWeight),
-// 			RootFSPath: rootFSPath,
-// 			Privileged: task.Privileged,
-
-// 			LogConfig: executor.LogConfig{
-// 				Guid:       task.LogGuid,
-// 				SourceName: task.LogSource,
-// 			},
-
-// 			MetricsConfig: executor.MetricsConfig{
-// 				Guid: task.MetricsGuid,
-// 			},
-
-// 			Tags: executor.Tags{
-// 				rep.LifecycleTag:  rep.TaskLifecycle,
-// 				rep.DomainTag:     task.Domain,
-// 				rep.ResultFileTag: task.ResultFile,
-// 			},
-
-// 			Action: task.Action,
-
-// 			Env:         executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
-// 			EgressRules: task.EgressRules,
-// 		}
-// 		containers = append(containers, container)
-// 	}
-
-// 	return containers, untranslatedTasks
-// }
 
 func (a *AuctionCellRep) fetchResourcesVia(fetcher func() (executor.ExecutorResources, error)) (rep.Resources, error) {
 	resources, err := fetcher()

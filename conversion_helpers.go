@@ -1,7 +1,6 @@
 package rep
 
 import (
-	"encoding/json"
 	"errors"
 	"net/url"
 	"strconv"
@@ -27,12 +26,6 @@ var (
 	ErrContainerMissingTags = errors.New("container is missing tags")
 	ErrInvalidProcessIndex  = errors.New("container does not have a valid process index")
 )
-
-func AddActualLRPKeyToTags(key *models.ActualLRPKey, tags executor.Tags) {
-	tags[DomainTag] = key.Domain
-	tags[ProcessGuidTag] = key.ProcessGuid
-	tags[ProcessIndexTag] = strconv.Itoa(int(key.Index))
-}
 
 func ActualLRPKeyFromTags(tags executor.Tags) (*models.ActualLRPKey, error) {
 	if tags == nil {
@@ -96,21 +89,13 @@ func LRPContainerGuid(processGuid, instanceGuid string) string {
 	return processGuid + "-" + instanceGuid
 }
 
-type StackPathMap map[string]string
-
-func UnmarshalStackPathMap(payload []byte) (StackPathMap, error) {
-	stackPathMap := StackPathMap{}
-	err := json.Unmarshal(payload, &stackPathMap)
-	return stackPathMap, err
-}
-
 func NewRunRequestFromDesiredLRP(
 	containerGuid string,
 	desiredLRP *models.DesiredLRP,
 	lrpKey *models.ActualLRPKey,
 	lrpInstanceKey *models.ActualLRPInstanceKey,
 ) (executor.RunRequest, error) {
-	diskScope, err := DiskScopeForRootFS(desiredLRP.RootFs)
+	diskScope, err := diskScopeForRootFS(desiredLRP.RootFs)
 	if err != nil {
 		return executor.RunRequest{}, err
 	}
@@ -147,7 +132,7 @@ func NewRunRequestFromDesiredLRP(
 }
 
 func NewRunRequestFromTask(task *models.Task) (executor.RunRequest, error) {
-	diskScope, err := DiskScopeForRootFS(task.RootFs)
+	diskScope, err := diskScopeForRootFS(task.RootFs)
 	if err != nil {
 		return executor.RunRequest{}, err
 	}
@@ -185,7 +170,7 @@ func ConvertPortMappings(containerPorts []uint32) []executor.PortMapping {
 	return out
 }
 
-func DiskScopeForRootFS(rootFS string) (executor.DiskLimitScope, error) {
+func diskScopeForRootFS(rootFS string) (executor.DiskLimitScope, error) {
 	preloaded := false
 
 	url, err := url.Parse(rootFS)

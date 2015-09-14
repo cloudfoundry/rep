@@ -209,7 +209,6 @@ var _ = Describe("Maintain Presence", func() {
 					BeforeEach(func() {
 						pingErrors <- nil
 						Eventually(fakeClient.PingCallCount).Should(Equal(3))
-						//Eventually(pingErrors).Should(BeSent(Equal(nil)))
 						pingErrors <- nil
 						clock.Increment(1 * time.Second)
 						Eventually(fakeClient.PingCallCount).Should(Equal(4))

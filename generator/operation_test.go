@@ -145,7 +145,6 @@ var _ = Describe("Operation", func() {
 					actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveEvacuatingActualLRPArgsForCall(0)
 					Expect(*actualLRPKey).To(Equal(lrpKey))
 					Expect(*actualLRPContainerKey).To(Equal(instanceKey))
-					// Expect(bbsLogger.SessionName()).To(Equal(sessionName))
 				})
 			})
 
@@ -229,7 +228,6 @@ var _ = Describe("Operation", func() {
 					actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveEvacuatingActualLRPArgsForCall(0)
 					Expect(*actualLRPKey).To(Equal(lrpKey))
 					Expect(*actualLRPContainerKey).To(Equal(instanceKey))
-					// Expect(bbsLogger.SessionName()).To(Equal(sessionName))
 				})
 			})
 
