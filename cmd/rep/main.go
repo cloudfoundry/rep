@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -111,6 +112,24 @@ var bbsAddress = flag.String(
 	"Address to the BBS Server",
 )
 
+var bbsCACert = flag.String(
+	"bbsCACert",
+	"",
+	"path to certificate authority cert used for mutually authenticated TLS BBS communication",
+)
+
+var bbsClientCert = flag.String(
+	"bbsClientCert",
+	"",
+	"path to client cert used for mutually authenticated TLS BBS communication",
+)
+
+var bbsClientKey = flag.String(
+	"bbsClientKey",
+	"",
+	"path to client key used for mutually authenticated TLS BBS communication",
+)
+
 type stackPathMap rep.StackPathMap
 
 func (s *stackPathMap) String() string {
@@ -198,8 +217,6 @@ func main() {
 	// only one outstanding operation per container is necessary
 	queue := operationq.NewSlidingQueue(1)
 
-	bbsClient := bbs.NewClient(*bbsAddress)
-
 	evacuator := evacuation.NewEvacuator(
 		logger,
 		clock,
@@ -210,6 +227,7 @@ func main() {
 		*evacuationPollingInterval,
 	)
 
+	bbsClient := initializeBBSClient(logger)
 	httpServer, address := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders)
 	opGenerator := generator.New(*cellID, bbsClient, executorClient, evacuationReporter, uint64(evacuationTimeout.Seconds()))
 
@@ -330,4 +348,21 @@ func generateGuid() (string, error) {
 		return "", err
 	}
 	return guid.String(), nil
+}
+
+func initializeBBSClient(logger lager.Logger) bbs.Client {
+	bbsURL, err := url.Parse(*bbsAddress)
+	if err != nil {
+		logger.Fatal("Invalid BBS URL", err)
+	}
+
+	if bbsURL.Scheme != "https" {
+		return bbs.NewClient(*bbsAddress)
+	}
+
+	bbsClient, err := bbs.NewSecureClient(*bbsAddress, *bbsCACert, *bbsClientCert, *bbsClientKey)
+	if err != nil {
+		logger.Fatal("Failed to configure secure BBS client", err)
+	}
+	return bbsClient
 }
