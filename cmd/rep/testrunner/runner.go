@@ -23,16 +23,12 @@ type Config struct {
 	RootFSProviders   []string
 	CellID            string
 	BBSAddress        string
-	EtcdCluster       string
 	ServerPort        int
 	GardenAddr        string
 	LogLevel          string
 	ConsulCluster     string
 	PollingInterval   time.Duration
 	EvacuationTimeout time.Duration
-	EtcdClientCert    string
-	EtcdClientKey     string
-	EtcdCACert        string
 }
 
 func New(binPath string, config Config) *Runner {
@@ -52,7 +48,6 @@ func (r *Runner) Start() {
 		"-cellID", r.config.CellID,
 		"-listenAddr", fmt.Sprintf("0.0.0.0:%d", r.config.ServerPort),
 		"-bbsAddress", r.config.BBSAddress,
-		"-etcdCluster", r.config.EtcdCluster,
 		"-logLevel", r.config.LogLevel,
 		"-pollingInterval", r.config.PollingInterval.String(),
 		"-evacuationTimeout", r.config.EvacuationTimeout.String(),
@@ -61,9 +56,6 @@ func (r *Runner) Start() {
 		"-containerMaxCpuShares", "1024",
 		"-gardenNetwork", "tcp",
 		"-gardenAddr", r.config.GardenAddr,
-		"-etcdCertFile", r.config.EtcdClientCert,
-		"-etcdKeyFile", r.config.EtcdClientKey,
-		"-etcdCaFile", r.config.EtcdCACert,
 	}
 	for _, rootfs := range r.config.PreloadedRootFSes {
 		args = append(args, "-preloadedRootFS", rootfs)

@@ -13,15 +13,14 @@ import (
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/executor/depot/gardenstore"
 	"github.com/cloudfoundry-incubator/garden"
+	"github.com/cloudfoundry-incubator/locket"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/cmd/rep/testrunner"
 	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry/storeadapter"
 	"github.com/hashicorp/consul/api"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager/lagertest"
 
-	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -30,12 +29,11 @@ import (
 )
 
 var runner *testrunner.Runner
-var etcdAdapter storeadapter.StoreAdapter
 
 var _ = Describe("The Rep", func() {
 	var (
 		fakeGarden        *ghttp.Server
-		legacyBBS         *legacybbs.BBS
+		locketClient      locket.Client
 		pollingInterval   time.Duration
 		evacuationTimeout time.Duration
 		rootFSName        string
@@ -62,10 +60,9 @@ var _ = Describe("The Rep", func() {
 		fakeGarden.RouteToHandler("GET", "/capacity", ghttp.RespondWithJSONEncoded(http.StatusOK,
 			garden.Capacity{MemoryInBytes: 1024 * 1024 * 1024, DiskInBytes: 2048 * 1024 * 1024, MaxContainers: 4}))
 		fakeGarden.RouteToHandler("GET", "/containers/bulk_info", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
-		etcdAdapter = etcdRunner.Adapter(nil)
 
 		logger = lagertest.NewTestLogger("test")
-		legacyBBS = legacybbs.NewBBS(etcdAdapter, consulSession, clock.NewClock(), logger)
+		locketClient = locket.NewClient(consulSession, clock.NewClock(), logger)
 
 		pollingInterval = 50 * time.Millisecond
 		evacuationTimeout = 200 * time.Millisecond
@@ -81,7 +78,6 @@ var _ = Describe("The Rep", func() {
 				RootFSProviders:   []string{"docker"},
 				CellID:            cellID,
 				BBSAddress:        bbsURL.String(),
-				EtcdCluster:       fmt.Sprintf("http://127.0.0.1:%d", etcdPort),
 				ServerPort:        serverPort,
 				GardenAddr:        fakeGarden.HTTPTestServer.Listener.Addr().String(),
 				LogLevel:          "debug",
@@ -98,7 +94,6 @@ var _ = Describe("The Rep", func() {
 
 	AfterEach(func(done Done) {
 		close(flushEvents)
-		etcdAdapter.Disconnect()
 		runner.KillWithFire()
 		fakeGarden.Close()
 		close(done)
@@ -165,8 +160,8 @@ var _ = Describe("The Rep", func() {
 			var cellPresence oldmodels.CellPresence
 
 			JustBeforeEach(func() {
-				Eventually(legacyBBS.Cells).Should(HaveLen(1))
-				cells, err := legacyBBS.Cells()
+				Eventually(locketClient.Cells).Should(HaveLen(1))
+				cells, err := locketClient.Cells()
 				Expect(err).NotTo(HaveOccurred())
 				cellPresence = cells[0]
 			})
@@ -198,8 +193,8 @@ var _ = Describe("The Rep", func() {
 				It("should not exit, but keep trying to maintain presence at the same ID", func() {
 					consulRunner.Reset()
 
-					Eventually(legacyBBS.Cells, 5).Should(HaveLen(1))
-					cells, err := legacyBBS.Cells()
+					Eventually(locketClient.Cells, 5).Should(HaveLen(1))
+					cells, err := locketClient.Cells()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(cells[0]).To(Equal(cellPresence))
 
@@ -212,8 +207,8 @@ var _ = Describe("The Rep", func() {
 			var client rep.Client
 
 			JustBeforeEach(func() {
-				Eventually(legacyBBS.Cells).Should(HaveLen(1))
-				cells, err := legacyBBS.Cells()
+				Eventually(locketClient.Cells).Should(HaveLen(1))
+				cells, err := locketClient.Cells()
 				Expect(err).NotTo(HaveOccurred())
 
 				client = rep.NewClient(http.DefaultClient, cells[0].RepAddress)
@@ -419,7 +414,7 @@ var _ = Describe("The Rep", func() {
 
 				fakeGarden.RouteToHandler("GET", fmt.Sprintf("/containers/%s/info", containerGuid), ghttp.RespondWithJSONEncoded(http.StatusOK, containerInfo))
 
-				Eventually(legacyBBS.Cells).Should(HaveLen(1))
+				Eventually(locketClient.Cells).Should(HaveLen(1))
 
 				lrpKey := models.NewActualLRPKey(processGuid, 1, "domain")
 				instanceKey := models.NewActualLRPInstanceKey(instanceGuid, cellID)
@@ -458,7 +453,7 @@ var _ = Describe("The Rep", func() {
 			var deletedContainer chan struct{}
 
 			JustBeforeEach(func() {
-				Eventually(legacyBBS.Cells).Should(HaveLen(1))
+				Eventually(locketClient.Cells).Should(HaveLen(1))
 
 				deletedContainer = make(chan struct{})
 

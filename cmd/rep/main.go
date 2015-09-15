@@ -26,10 +26,7 @@ import (
 	"github.com/cloudfoundry-incubator/rep/harmonizer"
 	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
-	legacybbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry/dropsonde"
-	"github.com/cloudfoundry/gunk/workpool"
-	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
@@ -163,7 +160,6 @@ const (
 func main() {
 	cf_debug_server.AddFlags(flag.CommandLine)
 	cf_lager.AddFlags(flag.CommandLine)
-	etcdFlags := etcdstoreadapter.AddFlags(flag.CommandLine)
 
 	stackMap := stackPathMap{}
 	supportedProviders := providers{}
@@ -180,11 +176,6 @@ func main() {
 	}
 	initializeDropsonde(logger)
 
-	etcdOptions, err := etcdFlags.Validate()
-	if err != nil {
-		logger.Fatal("etcd-validation-failed", err)
-	}
-
 	if *cellID == "" {
 		log.Fatalf("-cellID must be specified")
 	}
@@ -199,8 +190,7 @@ func main() {
 		logger.Fatal("invalid-bbs-address", err)
 	}
 
-	repBBS := initializeRepBBS(etcdOptions, logger)
-
+	locketClient := initializeLocketClient(logger)
 	clock := clock.NewClock()
 
 	evacuatable, evacuationReporter, evacuationNotifier := evacuation_context.New()
@@ -230,7 +220,7 @@ func main() {
 
 	members := grouper.Members{
 		{"http_server", httpServer},
-		{"presence", initializeCellPresence(address, repBBS, executorClient, logger, supportedProviders, preloadedRootFSes)},
+		{"presence", initializeCellPresence(address, locketClient, executorClient, logger, supportedProviders, preloadedRootFSes)},
 		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, *evacuationPollingInterval, evacuationNotifier, clock, opGenerator, queue)},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 		{"evacuator", evacuator},
@@ -266,7 +256,7 @@ func initializeDropsonde(logger lager.Logger) {
 	}
 }
 
-func initializeCellPresence(address string, repBBS legacybbs.RepBBS, executorClient executor.Client, logger lager.Logger, rootFSProviders, preloadedRootFSes []string) ifrit.Runner {
+func initializeCellPresence(address string, locketClient locket.Client, executorClient executor.Client, logger lager.Logger, rootFSProviders, preloadedRootFSes []string) ifrit.Runner {
 	config := maintain.Config{
 		CellID:            *cellID,
 		RepAddress:        address,
@@ -275,21 +265,10 @@ func initializeCellPresence(address string, repBBS legacybbs.RepBBS, executorCli
 		RootFSProviders:   rootFSProviders,
 		PreloadedRootFSes: preloadedRootFSes,
 	}
-	return maintain.New(config, executorClient, repBBS, logger, clock.NewClock())
+	return maintain.New(config, executorClient, locketClient, logger, clock.NewClock())
 }
 
-func initializeRepBBS(etcdOptions *etcdstoreadapter.ETCDOptions, logger lager.Logger) legacybbs.RepBBS {
-	workPool, err := workpool.NewWorkPool(100)
-	if err != nil {
-		logger.Fatal("failed-to-construct-etcd-adapter-workpool", err, lager.Data{"num-workers": 100}) // should never happen
-	}
-
-	etcdAdapter, err := etcdstoreadapter.New(etcdOptions, workPool)
-
-	if err != nil {
-		logger.Fatal("failed-to-construct-etcd-tls-client", err)
-	}
-
+func initializeLocketClient(logger lager.Logger) locket.Client {
 	client, err := consuladapter.NewClient(*consulCluster)
 	if err != nil {
 		logger.Fatal("new-client-failed", err)
@@ -301,7 +280,7 @@ func initializeRepBBS(etcdOptions *etcdstoreadapter.ETCDOptions, logger lager.Lo
 		logger.Fatal("consul-session-failed", err)
 	}
 
-	return legacybbs.NewRepBBS(etcdAdapter, consulSession, clock.NewClock(), logger)
+	return locket.NewClient(consulSession, clock.NewClock(), logger)
 }
 
 func initializeLRPStopper(guid string, executorClient executor.Client, logger lager.Logger) lrp_stopper.LRPStopper {

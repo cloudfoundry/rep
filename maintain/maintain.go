@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/executor"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/locket"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
@@ -16,7 +16,7 @@ import (
 type Maintainer struct {
 	Config
 	executorClient executor.Client
-	bbs            bbs.RepBBS
+	locketClient   locket.Client
 	logger         lager.Logger
 	clock          clock.Clock
 }
@@ -33,14 +33,14 @@ type Config struct {
 func New(
 	config Config,
 	executorClient executor.Client,
-	bbs bbs.RepBBS,
+	locketClient locket.Client,
 	logger lager.Logger,
 	clock clock.Clock,
 ) *Maintainer {
 	return &Maintainer{
 		Config:         config,
 		executorClient: executorClient,
-		bbs:            bbs,
+		locketClient:   locketClient,
 		logger:         logger.Session("maintainer"),
 		clock:          clock,
 	}
@@ -102,7 +102,7 @@ func (m *Maintainer) createHeartbeater() (ifrit.Runner, error) {
 
 	cellCapacity := models.NewCellCapacity(resources.MemoryMB, resources.DiskMB, resources.Containers)
 	cellPresence := models.NewCellPresence(m.CellID, m.RepAddress, m.Zone, cellCapacity, m.RootFSProviders, m.PreloadedRootFSes)
-	return m.bbs.NewCellPresence(cellPresence, m.RetryInterval), nil
+	return m.locketClient.NewCellPresence(cellPresence, m.RetryInterval), nil
 }
 
 func (m *Maintainer) heartbeat(sigChan <-chan os.Signal, ready chan<- struct{}, heartbeater ifrit.Runner) error {
