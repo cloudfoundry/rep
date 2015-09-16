@@ -2,10 +2,8 @@ package internal
 
 import (
 	"github.com/cloudfoundry-incubator/bbs"
-	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep"
-	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -126,27 +124,4 @@ func (p *evacuationLRPProcessor) evacuateClaimedLRPContainer(logger lager.Logger
 	}
 
 	p.containerDelegate.DeleteContainer(logger, lrpContainer.Container.Guid)
-}
-
-func newActualLRPKeyToOld(newKey *models.ActualLRPKey) oldmodels.ActualLRPKey {
-	key := oldmodels.NewActualLRPKey(newKey.ProcessGuid, int(newKey.Index), newKey.Domain)
-	return key
-}
-
-func newInstanceKeyToOld(newInstanceKey *models.ActualLRPInstanceKey) oldmodels.ActualLRPInstanceKey {
-	instanceKey := oldmodels.NewActualLRPInstanceKey(newInstanceKey.InstanceGuid, newInstanceKey.CellId)
-	return instanceKey
-}
-
-func newNetInfoToOld(newNetInfo *models.ActualLRPNetInfo) oldmodels.ActualLRPNetInfo {
-	ports := make([]oldmodels.PortMapping, 0, len(newNetInfo.Ports))
-	for _, portMapping := range newNetInfo.Ports {
-		ports = append(ports, oldmodels.PortMapping{
-			HostPort:      uint16(portMapping.HostPort),
-			ContainerPort: uint16(portMapping.ContainerPort),
-		})
-	}
-
-	netInfo := oldmodels.NewActualLRPNetInfo(newNetInfo.Address, ports)
-	return netInfo
 }

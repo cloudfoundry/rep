@@ -7,7 +7,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/locket"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry-incubator/locket/presence"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
@@ -100,8 +100,8 @@ func (m *Maintainer) createHeartbeater() (ifrit.Runner, error) {
 		return nil, err
 	}
 
-	cellCapacity := models.NewCellCapacity(resources.MemoryMB, resources.DiskMB, resources.Containers)
-	cellPresence := models.NewCellPresence(m.CellID, m.RepAddress, m.Zone, cellCapacity, m.RootFSProviders, m.PreloadedRootFSes)
+	cellCapacity := presence.NewCellCapacity(resources.MemoryMB, resources.DiskMB, resources.Containers)
+	cellPresence := presence.NewCellPresence(m.CellID, m.RepAddress, m.Zone, cellCapacity, m.RootFSProviders, m.PreloadedRootFSes)
 	return m.locketClient.NewCellPresence(cellPresence, m.RetryInterval), nil
 }
 

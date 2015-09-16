@@ -14,9 +14,9 @@ import (
 	"github.com/cloudfoundry-incubator/executor/depot/gardenstore"
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/locket"
+	"github.com/cloudfoundry-incubator/locket/presence"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/cmd/rep/testrunner"
-	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/hashicorp/consul/api"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -157,7 +157,7 @@ var _ = Describe("The Rep", func() {
 		})
 
 		Describe("maintaining presence", func() {
-			var cellPresence oldmodels.CellPresence
+			var cellPresence presence.CellPresence
 
 			JustBeforeEach(func() {
 				Eventually(locketClient.Cells).Should(HaveLen(1))

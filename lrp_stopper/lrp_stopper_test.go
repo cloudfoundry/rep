@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry-incubator/bbs/models"
 )
 
 var _ = Describe("LRP Stopper", func() {
@@ -20,12 +20,12 @@ var _ = Describe("LRP Stopper", func() {
 		stopper   lrp_stopper.LRPStopper
 		client    *fake_client.FakeClient
 		logger    lager.Logger
-		actualLRP models.ActualLRP
+		actualLRP *models.ActualLRP
 	)
 
 	BeforeEach(func() {
 		cellID = "the-cell-id"
-		actualLRP = models.ActualLRP{
+		actualLRP = &models.ActualLRP{
 			ActualLRPKey: models.NewActualLRPKey(
 				"some-process-guid",
 				1138,
