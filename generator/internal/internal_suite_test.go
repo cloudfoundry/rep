@@ -52,6 +52,9 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		AuctioneerAddress: "some-address",
 		EtcdCluster:       etcdRunner.NodeURLS()[0],
 		ConsulCluster:     consulRunner.ConsulCluster(),
+
+		EncryptionKeys: []string{"label:key"},
+		ActiveKeyLabel: "label",
 	}
 	bbsClient = bbs.NewClient("http://" + bbsAddress)
 

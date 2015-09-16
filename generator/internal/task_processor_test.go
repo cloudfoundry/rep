@@ -3,6 +3,7 @@ package internal_test
 import (
 	"errors"
 
+	etcddb "github.com/cloudfoundry-incubator/bbs/db/etcd"
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/bbs/models/test/model_helpers"
 	"github.com/cloudfoundry-incubator/executor"
@@ -29,7 +30,7 @@ var _ = Describe("Task <-> Container table", func() {
 	)
 
 	BeforeEach(func() {
-		etcdRunner.Reset()
+		etcdRunner.ResetAllBut(etcddb.VersionKey)
 		containerDelegate = new(fake_internal.FakeContainerDelegate)
 		processor = internal.NewTaskProcessor(bbsClient, containerDelegate, localCellID)
 
