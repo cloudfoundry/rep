@@ -104,7 +104,7 @@ var _ = Describe("Client", func() {
 
 			It("makes the request and returns an error", func() {
 				Expect(stopErr).To(HaveOccurred())
-				Expect(stopErr.Error()).To(ContainSubstring("use of closed network connection"))
+				Expect(stopErr.Error()).To(MatchRegexp("use of closed network connection|Client.Timeout exceeded while awaiting headers"))
 				Expect(fakeServer.ReceivedRequests()).To(HaveLen(1))
 			})
 		})
@@ -185,7 +185,7 @@ var _ = Describe("Client", func() {
 
 			It("makes the request and returns an error", func() {
 				Expect(cancelErr).To(HaveOccurred())
-				Expect(cancelErr.Error()).To(ContainSubstring("use of closed network connection"))
+				Expect(cancelErr.Error()).To(MatchRegexp("use of closed network connection|Client.Timeout exceeded while awaiting headers"))
 				Expect(fakeServer.ReceivedRequests()).To(HaveLen(1))
 			})
 		})
