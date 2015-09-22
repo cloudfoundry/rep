@@ -188,18 +188,21 @@ func main() {
 
 	cf_http.Initialize(*communicationTimeout)
 
+	clock := clock.NewClock()
 	logger, reconfigurableSink := cf_lager.New(*sessionName)
+
 	executorConfiguration := executorConfig()
 	if !executorinit.ValidateExecutor(logger, executorConfiguration) {
 		os.Exit(1)
 	}
+
 	initializeDropsonde(logger)
 
 	if *cellID == "" {
 		log.Fatalf("-cellID must be specified")
 	}
 
-	executorClient, executorMembers, err := executorinit.Initialize(logger, executorConfiguration)
+	executorClient, executorMembers, err := executorinit.Initialize(logger, executorConfiguration, clock)
 	if err != nil {
 		log.Fatalf("Failed to initialize executor: %s", err.Error())
 	}
@@ -210,7 +213,6 @@ func main() {
 	}
 
 	locketClient := initializeLocketClient(logger)
-	clock := clock.NewClock()
 
 	evacuatable, evacuationReporter, evacuationNotifier := evacuation_context.New()
 
