@@ -16,22 +16,30 @@ type CellState struct {
 	RootFSProviders    RootFSProviders
 	AvailableResources Resources
 	TotalResources     Resources
+	Containers         []Containers
 	LRPs               []LRP
 	Tasks              []Task
 	Zone               string
 	Evacuating         bool
 }
 
-func NewCellState(root RootFSProviders, avail Resources, total Resources, lrps []LRP, tasks []Task, zone string, isEvac bool) CellState {
-	return CellState{root, avail, total, lrps, tasks, zone, isEvac}
+func NewCellState(root RootFSProviders, avail Resources, total Resources, containers []Container, lrps []LRP, tasks []Task, zone string, isEvac bool) CellState {
+	return CellState{root, avail, total, containers, lrps, tasks, zone, isEvac}
 }
 
 func (c *CellState) Copy() CellState {
+	containers := make([]Container, 0, len(c.Containers))
+	copy(containers, c.Containers)
 	lrps := make([]LRP, 0, len(c.LRPs))
 	copy(lrps, c.LRPs)
 	tasks := make([]Task, 0, len(c.Tasks))
 	copy(tasks, c.Tasks)
 	return NewCellState(c.RootFSProviders.Copy(), c.AvailableResources, c.TotalResources, lrps, tasks, c.Zone, c.Evacuating)
+}
+
+func (c *CellState) AddContainer(container *Container) {
+	c.AvailableResources.Subtract(&container.Resource)
+	c.Containers = append(c.Containers, *container)
 }
 
 func (c *CellState) AddLRP(lrp *LRP) {
@@ -119,6 +127,23 @@ func (r *Resource) Copy() Resource {
 	return NewResource(r.MemoryMB, r.DiskMB, r.RootFs)
 }
 
+type Container struct {
+	ContainerGuid string
+	Resource
+}
+
+func NewContainer(guid string, res Resource) Container {
+	return Container{guid, res}
+}
+
+func (c *Container) Identifier() string {
+	return c.ContainerGuid
+}
+
+func (c *Container) Copy() Container {
+	return NewContainer(c.ContainerGuid, c.Resource)
+}
+
 type LRP struct {
 	models.ActualLRPKey
 	Resource
@@ -155,8 +180,9 @@ func (task Task) Copy() Task {
 }
 
 type Work struct {
-	LRPs  []LRP
-	Tasks []Task
+	LRPs       []LRP
+	Tasks      []Task
+	Containers []Container
 }
 
 type StackPathMap map[string]string

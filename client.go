@@ -138,6 +138,26 @@ func (c *client) Reset() error {
 	return nil
 }
 
+func (c *client) StopContainer(containerGuid string) error {
+	req, err := c.requestGenerator.CreateRequest(StopContainerRoute, rata.Params{"container_guid": containerGuid}, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("http error: status code %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode))
+	}
+
+	return nil
+}
+
 func (c *client) StopLRPInstance(
 	key models.ActualLRPKey,
 	instanceKey models.ActualLRPInstanceKey,
