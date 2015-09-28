@@ -224,7 +224,7 @@ func main() {
 		logger.Fatal("invalid-bbs-address", err)
 	}
 
-	locketClient := initializeLocketClient(logger)
+	serviceClient := initializeServiceClient(logger)
 
 	evacuatable, evacuationReporter, evacuationNotifier := evacuation_context.New()
 
@@ -252,7 +252,7 @@ func main() {
 
 	members := grouper.Members{
 		{"http_server", httpServer},
-		{"presence", initializeCellPresence(address, locketClient, executorClient, logger, supportedProviders, preloadedRootFSes)},
+		{"presence", initializeCellPresence(address, serviceClient, executorClient, logger, supportedProviders, preloadedRootFSes)},
 		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, *evacuationPollingInterval, evacuationNotifier, clock, opGenerator, queue)},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 		{"evacuator", evacuator},
@@ -288,7 +288,7 @@ func initializeDropsonde(logger lager.Logger) {
 	}
 }
 
-func initializeCellPresence(address string, locketClient locket.Client, executorClient executor.Client, logger lager.Logger, rootFSProviders, preloadedRootFSes []string) ifrit.Runner {
+func initializeCellPresence(address string, serviceClient bbs.ServiceClient, executorClient executor.Client, logger lager.Logger, rootFSProviders, preloadedRootFSes []string) ifrit.Runner {
 	config := maintain.Config{
 		CellID:            *cellID,
 		RepAddress:        address,
@@ -297,10 +297,10 @@ func initializeCellPresence(address string, locketClient locket.Client, executor
 		RootFSProviders:   rootFSProviders,
 		PreloadedRootFSes: preloadedRootFSes,
 	}
-	return maintain.New(config, executorClient, locketClient, logger, clock.NewClock())
+	return maintain.New(config, executorClient, serviceClient, logger, clock.NewClock())
 }
 
-func initializeLocketClient(logger lager.Logger) locket.Client {
+func initializeServiceClient(logger lager.Logger) bbs.ServiceClient {
 	client, err := consuladapter.NewClient(*consulCluster)
 	if err != nil {
 		logger.Fatal("new-client-failed", err)
@@ -312,7 +312,7 @@ func initializeLocketClient(logger lager.Logger) locket.Client {
 		logger.Fatal("consul-session-failed", err)
 	}
 
-	return locket.NewClient(consulSession, clock.NewClock(), logger)
+	return bbs.NewServiceClient(consulSession, clock.NewClock())
 }
 
 func initializeLRPStopper(guid string, executorClient executor.Client, logger lager.Logger) lrp_stopper.LRPStopper {

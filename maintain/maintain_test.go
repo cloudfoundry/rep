@@ -5,9 +5,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/cloudfoundry-incubator/bbs/fake_bbs"
 	"github.com/cloudfoundry-incubator/executor"
 	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
-	"github.com/cloudfoundry-incubator/locket/locketfakes"
 	"github.com/cloudfoundry-incubator/rep/maintain"
 	maintain_fakes "github.com/cloudfoundry-incubator/rep/maintain/fakes"
 	"github.com/pivotal-golang/clock/fakeclock"
@@ -25,7 +25,7 @@ var _ = Describe("Maintain Presence", func() {
 		config          maintain.Config
 		fakeHeartbeater *maintain_fakes.FakeRunner
 		fakeClient      *fake_client.FakeClient
-		locketClient    *locketfakes.FakeClient
+		serviceClient   *fake_bbs.FakeServiceClient
 		logger          *lagertest.TestLogger
 
 		maintainer        ifrit.Runner
@@ -70,8 +70,8 @@ var _ = Describe("Maintain Presence", func() {
 			},
 		}
 
-		locketClient = &locketfakes.FakeClient{}
-		locketClient.NewCellPresenceReturns(fakeHeartbeater)
+		serviceClient = &fake_bbs.FakeServiceClient{}
+		serviceClient.NewCellPresenceRunnerReturns(fakeHeartbeater)
 
 		config = maintain.Config{
 			CellID:          "cell-id",
@@ -80,7 +80,7 @@ var _ = Describe("Maintain Presence", func() {
 			RetryInterval:   1 * time.Second,
 			RootFSProviders: []string{"provider-1", "provider-2"},
 		}
-		maintainer = maintain.New(config, fakeClient, locketClient, logger, clock)
+		maintainer = maintain.New(config, fakeClient, serviceClient, logger, clock)
 	})
 
 	AfterEach(func() {
@@ -136,7 +136,7 @@ var _ = Describe("Maintain Presence", func() {
 					},
 				}
 
-				locketClient.NewCellPresenceReturns(fakeHeartbeater)
+				serviceClient.NewCellPresenceRunnerReturns(fakeHeartbeater)
 
 				pingErrors <- nil
 				maintainProcess = ifrit.Background(maintainer)
@@ -161,7 +161,7 @@ var _ = Describe("Maintain Presence", func() {
 				})
 
 				It("retries to heartbeat", func() {
-					Eventually(locketClient.NewCellPresenceCallCount).Should(Equal(2))
+					Eventually(serviceClient.NewCellPresenceRunnerCallCount).Should(Equal(2))
 					Eventually(fakeHeartbeater.RunCallCount).Should(Equal(2))
 				})
 			})
@@ -175,7 +175,7 @@ var _ = Describe("Maintain Presence", func() {
 			})
 
 			It("starts maintaining presence", func() {
-				Expect(locketClient.NewCellPresenceCallCount()).To(Equal(1))
+				Expect(serviceClient.NewCellPresenceRunnerCallCount()).To(Equal(1))
 				Eventually(fakeHeartbeater.RunCallCount).Should(Equal(1))
 			})
 
