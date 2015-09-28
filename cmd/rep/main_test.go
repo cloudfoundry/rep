@@ -13,8 +13,6 @@ import (
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/executor/depot/gardenstore"
 	"github.com/cloudfoundry-incubator/garden"
-	"github.com/cloudfoundry-incubator/locket"
-	"github.com/cloudfoundry-incubator/locket/presence"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/cmd/rep/testrunner"
 	"github.com/hashicorp/consul/api"
@@ -33,7 +31,7 @@ var runner *testrunner.Runner
 var _ = Describe("The Rep", func() {
 	var (
 		fakeGarden        *ghttp.Server
-		locketClient      locket.Client
+		serviceClient            bbs.ServiceClient
 		pollingInterval   time.Duration
 		evacuationTimeout time.Duration
 		rootFSName        string
@@ -62,7 +60,7 @@ var _ = Describe("The Rep", func() {
 		fakeGarden.RouteToHandler("GET", "/containers/bulk_info", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 
 		logger = lagertest.NewTestLogger("test")
-		locketClient = locket.NewClient(consulSession, clock.NewClock(), logger)
+		serviceClient = bbs.NewServiceClient(consulSession, clock.NewClock())
 
 		pollingInterval = 50 * time.Millisecond
 		evacuationTimeout = 200 * time.Millisecond
@@ -157,13 +155,13 @@ var _ = Describe("The Rep", func() {
 		})
 
 		Describe("maintaining presence", func() {
-			var cellPresence presence.CellPresence
+			var cellPresence *models.CellPresence
 
 			JustBeforeEach(func() {
-				Eventually(locketClient.Cells).Should(HaveLen(1))
-				cells, err := locketClient.Cells()
+				Eventually(func() (models.CellSet, error) { return serviceClient.Cells(logger) }).Should(HaveLen(1))
+				cells, err := serviceClient.Cells(logger)
 				Expect(err).NotTo(HaveOccurred())
-				cellPresence = cells[0]
+				cellPresence = cells[cellID]
 			})
 
 			It("should maintain presence", func() {
@@ -193,10 +191,10 @@ var _ = Describe("The Rep", func() {
 				It("should not exit, but keep trying to maintain presence at the same ID", func() {
 					consulRunner.Reset()
 
-					Eventually(locketClient.Cells, 5).Should(HaveLen(1))
-					cells, err := locketClient.Cells()
+					Eventually(serviceClient.Cells, 5).Should(HaveLen(1))
+					cells, err := serviceClient.Cells(logger)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(cells[0]).To(Equal(cellPresence))
+					Expect(cells[cellID]).To(Equal(cellPresence))
 
 					Expect(runner.Session).NotTo(Exit())
 				})
@@ -207,11 +205,11 @@ var _ = Describe("The Rep", func() {
 			var client rep.Client
 
 			JustBeforeEach(func() {
-				Eventually(locketClient.Cells).Should(HaveLen(1))
-				cells, err := locketClient.Cells()
+				Eventually(serviceClient.Cells).Should(HaveLen(1))
+				cells, err := serviceClient.Cells(logger)
 				Expect(err).NotTo(HaveOccurred())
 
-				client = rep.NewClient(http.DefaultClient, cells[0].RepAddress)
+				client = rep.NewClient(http.DefaultClient, cells[cellID].RepAddress)
 			})
 
 			Context("Capacity with a container", func() {
@@ -414,7 +412,7 @@ var _ = Describe("The Rep", func() {
 
 				fakeGarden.RouteToHandler("GET", fmt.Sprintf("/containers/%s/info", containerGuid), ghttp.RespondWithJSONEncoded(http.StatusOK, containerInfo))
 
-				Eventually(locketClient.Cells).Should(HaveLen(1))
+				Eventually(serviceClient.Cells).Should(HaveLen(1))
 
 				lrpKey := models.NewActualLRPKey(processGuid, 1, "domain")
 				instanceKey := models.NewActualLRPInstanceKey(instanceGuid, cellID)
@@ -453,7 +451,7 @@ var _ = Describe("The Rep", func() {
 			var deletedContainer chan struct{}
 
 			JustBeforeEach(func() {
-				Eventually(locketClient.Cells).Should(HaveLen(1))
+				Eventually(serviceClient.Cells).Should(HaveLen(1))
 
 				deletedContainer = make(chan struct{})
 
