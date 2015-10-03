@@ -14,8 +14,9 @@ const (
 	ResultFileTag = "result-file"
 	DomainTag     = "domain"
 
-	TaskLifecycle = "task"
-	LRPLifecycle  = "lrp"
+	TaskLifecycle      = "task"
+	LRPLifecycle       = "lrp"
+	ContainerLifecycle = "container"
 
 	ProcessGuidTag  = "process-guid"
 	InstanceGuidTag = "instance-guid"
@@ -49,6 +50,30 @@ func ActualLRPKeyFromTags(tags executor.Tags) (*models.ActualLRPKey, error) {
 	}
 
 	return &actualLRPKey, nil
+}
+
+func ContainerKeyFromTags(tags executor.Tags) (*ContainerKey, error) {
+	if tags == nil {
+		return nil, ErrContainerMissingTags
+	}
+
+	processIndex, err := strconv.Atoi(tags[ProcessIndexTag])
+	if err != nil {
+		return nil, ErrInvalidProcessIndex
+	}
+
+	containerKey := NewContainerKey(
+		tags[ProcessGuidTag],
+		tags[DomainTag],
+		int32(processIndex),
+	)
+
+	err = containerKey.Validate()
+	if err != nil {
+		return nil, err
+	}
+
+	return &containerKey, nil
 }
 
 func ActualLRPInstanceKeyFromContainer(container executor.Container, cellID string) (*models.ActualLRPInstanceKey, error) {
@@ -86,6 +111,10 @@ func ActualLRPNetInfoFromContainer(container executor.Container) (*models.Actual
 }
 
 func LRPContainerGuid(processGuid, instanceGuid string) string {
+	return processGuid + "-" + instanceGuid
+}
+
+func ContainerGuid(processGuid, instanceGuid string) string {
 	return processGuid + "-" + instanceGuid
 }
 

@@ -7,6 +7,7 @@ const (
 	PerformRoute = "PERFORM"
 
 	StopLRPInstanceRoute = "StopLRPInstance"
+	StopContainerRoute   = "StopContainer"
 	CancelTaskRoute      = "CancelTask"
 
 	Sim_ResetRoute = "RESET"
@@ -20,6 +21,7 @@ var Routes = rata.Routes{
 	{Path: "/work", Method: "POST", Name: PerformRoute},
 
 	{Path: "/v1/lrps/:process_guid/instances/:instance_guid/stop", Method: "POST", Name: StopLRPInstanceRoute},
+	{Path: "/v1/containers/:process_guid/instances/:instance_guid/stop", Method: "POST", Name: StopContainerRoute},
 	{Path: "/v1/tasks/:task_guid/cancel", Method: "POST", Name: CancelTaskRoute},
 
 	{Path: "/sim/reset", Method: "POST", Name: Sim_ResetRoute},

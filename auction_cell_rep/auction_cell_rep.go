@@ -106,6 +106,22 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 		rep.LifecycleTag: rep.LRPLifecycle,
 	})
 
+	executorContainers, err := a.client.ListContainers(executor.Tags{
+		rep.LifecycleTag: rep.ContainerLifecycle,
+	})
+
+	var containers []rep.Container
+	for i := range executorContainers {
+		container := &executorContainers[i]
+		resource := rep.Resource{MemoryMB: int32(container.MemoryMB), DiskMB: int32(container.DiskMB)}
+		key, keyErr := rep.ContainerKeyFromTags(container.Tags)
+		if keyErr != nil {
+			logger.Error("failed-to-extract-key", keyErr)
+			continue
+		}
+		containers = append(containers, rep.NewContainer(*key, resource))
+	}
+
 	if err != nil {
 		logger.Error("failed-to-fetch-containers", err)
 		return rep.CellState{}, err
@@ -125,7 +141,7 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 		lrps = append(lrps, rep.NewLRP(*key, resource))
 	}
 
-	state := rep.NewCellState(a.rootFSProviders, availableResources, totalResources, lrps, nil, a.zone, a.evacuationReporter.Evacuating())
+	state := rep.NewCellState(a.rootFSProviders, availableResources, totalResources, containers, lrps, nil, a.zone, a.evacuationReporter.Evacuating())
 
 	a.logger.Info("provided", lager.Data{
 		"available-resources": state.AvailableResources,
@@ -202,7 +218,69 @@ func (a *AuctionCellRep) Perform(work rep.Work) (rep.Work, error) {
 		}
 	}
 
+	if len(work.Containers) > 0 {
+		taskLogger := logger.Session("container-allocate-instances")
+
+		requests, containerMap, failedContainers := a.containersToAllocationRequests(work.Containers)
+		if len(failedContainers) > 0 {
+			taskLogger.Info("failed-to-translate-containers", lager.Data{"num-failed-to-translate": len(failedContainers)})
+			failedWork.Containers = failedContainers
+		}
+
+		taskLogger.Info("requesting-container-allocation", lager.Data{"num-requesting-allocation": len(requests)})
+		failures, err := a.client.AllocateContainers(requests)
+		if err != nil {
+			taskLogger.Error("failed-requesting-container-allocation", err)
+			failedWork.Containers = work.Containers
+		} else {
+			taskLogger.Info("succeeded-requesting-container-allocation", lager.Data{"num-failed-to-allocate": len(failures)})
+			for i := range failures {
+				failure := &failures[i]
+				taskLogger.Error("container-allocation-failure", failure, lager.Data{"failed-request": &failure.AllocationRequest})
+				if container, found := containerMap[failure.Guid]; found {
+					failedWork.Containers = append(failedWork.Containers, *container)
+				}
+			}
+		}
+	}
+
 	return failedWork, nil
+}
+
+func (a *AuctionCellRep) containersToAllocationRequests(containers []rep.Container) ([]executor.AllocationRequest, map[string]*rep.Container, []rep.Container) {
+	requests := make([]executor.AllocationRequest, 0, len(containers))
+	failedContainers := make([]rep.Container, 0)
+	containerMap := make(map[string]*rep.Container, len(containers))
+	for i := range containers {
+		container := &containers[i]
+		tags := executor.Tags{}
+
+		instanceGuid, err := a.generateInstanceGuid()
+		if err != nil {
+			failedContainers = append(failedContainers, *container)
+			continue
+		}
+
+		tags[rep.DomainTag] = container.Domain
+		tags[rep.ProcessGuidTag] = container.ContainerGuid
+		tags[rep.ProcessIndexTag] = strconv.Itoa(int(container.Index))
+		tags[rep.LifecycleTag] = rep.ContainerLifecycle
+		tags[rep.InstanceGuidTag] = instanceGuid
+
+		rootFSPath, err := PathForRootFS(container.RootFs, a.stackPathMap)
+		if err != nil {
+			failedContainers = append(failedContainers, *container)
+			continue
+		}
+
+		containerGuid := rep.ContainerGuid(container.ContainerGuid, instanceGuid)
+		containerMap[containerGuid] = container
+
+		resource := executor.NewResource(int(container.MemoryMB), int(container.DiskMB), rootFSPath)
+		requests = append(requests, executor.NewAllocationRequest(containerGuid, &resource, tags))
+	}
+
+	return requests, containerMap, failedContainers
 }
 
 func (a *AuctionCellRep) lrpsToAllocationRequest(lrps []rep.LRP) ([]executor.AllocationRequest, map[string]*rep.LRP, []rep.LRP) {

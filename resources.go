@@ -16,7 +16,7 @@ type CellState struct {
 	RootFSProviders    RootFSProviders
 	AvailableResources Resources
 	TotalResources     Resources
-	Containers         []Containers
+	Containers         []Container
 	LRPs               []LRP
 	Tasks              []Task
 	Zone               string
@@ -34,7 +34,7 @@ func (c *CellState) Copy() CellState {
 	copy(lrps, c.LRPs)
 	tasks := make([]Task, 0, len(c.Tasks))
 	copy(tasks, c.Tasks)
-	return NewCellState(c.RootFSProviders.Copy(), c.AvailableResources, c.TotalResources, lrps, tasks, c.Zone, c.Evacuating)
+	return NewCellState(c.RootFSProviders.Copy(), c.AvailableResources, c.TotalResources, containers, lrps, tasks, c.Zone, c.Evacuating)
 }
 
 func (c *CellState) AddContainer(container *Container) {
@@ -127,13 +127,39 @@ func (r *Resource) Copy() Resource {
 	return NewResource(r.MemoryMB, r.DiskMB, r.RootFs)
 }
 
-type Container struct {
+type ContainerKey struct {
 	ContainerGuid string
+	Domain        string
+	Index         int32
+}
+
+func (k *ContainerKey) Validate() error {
+	if k.ContainerGuid == "" {
+		return errors.New("container guid cannot be blank")
+	}
+
+	if k.Domain == "" {
+		return errors.New("domain cannot be blank")
+	}
+
+	if k.Index < 0 {
+		return errors.New("index must be non-negative")
+	}
+
+	return nil
+}
+
+type Container struct {
+	ContainerKey
 	Resource
 }
 
-func NewContainer(guid string, res Resource) Container {
-	return Container{guid, res}
+func NewContainerKey(guid string, domain string, index int32) ContainerKey {
+	return ContainerKey{guid, domain, index}
+}
+
+func NewContainer(key ContainerKey, res Resource) Container {
+	return Container{key, res}
 }
 
 func (c *Container) Identifier() string {
@@ -141,7 +167,7 @@ func (c *Container) Identifier() string {
 }
 
 func (c *Container) Copy() Container {
-	return NewContainer(c.ContainerGuid, c.Resource)
+	return NewContainer(c.ContainerKey, c.Resource)
 }
 
 type LRP struct {

@@ -22,6 +22,7 @@ func New(
 		rep.Sim_ResetRoute: &reset{rep: localCellClient, logger: logger},
 
 		rep.StopLRPInstanceRoute: NewStopLRPInstanceHandler(logger, lrpStopper),
+		rep.StopContainerRoute:   NewStopContainerHandler(logger, executorClient),
 		rep.CancelTaskRoute:      NewCancelTaskHandler(logger, executorClient),
 
 		rep.PingRoute:     NewPingHandler(),
