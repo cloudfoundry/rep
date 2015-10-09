@@ -96,7 +96,10 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 				Context("when claiming fails because ErrActualLRPCannotBeClaimed", func() {
 					BeforeEach(func() {
-						bbsClient.ClaimActualLRPReturns(models.ErrActualLRPCannotBeClaimed)
+						bbsClient.ClaimActualLRPReturns(models.NewError(
+							models.Error_ActualLRPCannotBeClaimed,
+							"something-broke?",
+						))
 					})
 
 					It("deletes the container", func() {
@@ -220,7 +223,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 					Context("when starting fails because ErrActualLRPCannotBeStarted", func() {
 						BeforeEach(func() {
-							bbsClient.StartActualLRPReturns(models.ErrActualLRPCannotBeStarted)
+							bbsClient.StartActualLRPReturns(models.NewError(models.Error_ActualLRPCannotBeStarted, "foobar").ToError())
 						})
 
 						It("stops the container", func() {
