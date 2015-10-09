@@ -149,6 +149,12 @@ func (k *ContainerKey) Validate() error {
 	return nil
 }
 
+type Containers []Container
+
+func NewContainers(containers ...Container) Containers {
+	return Containers(containers)
+}
+
 type Container struct {
 	ContainerKey
 	Resource
