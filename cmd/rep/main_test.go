@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -105,6 +106,10 @@ var _ = Describe("The Rep", func() {
 
 		Describe("when an interrupt signal is sent to the representative", func() {
 			JustBeforeEach(func() {
+				if runtime.GOOS == "windows" {
+					Skip("Interrupt isn't supported on windows")
+				}
+
 				runner.Stop()
 			})
 
@@ -115,7 +120,7 @@ var _ = Describe("The Rep", func() {
 
 		Context("when etcd is down", func() {
 			BeforeEach(func() {
-				etcdRunner.Stop()
+				etcdRunner.KillWithFire()
 			})
 
 			AfterEach(func() {
@@ -543,7 +548,7 @@ var _ = Describe("The Rep", func() {
 					err := bbsClient.StartActualLRP(&lrpKey, &lrpContainerKey, &lrpNetInfo)
 					Expect(err).NotTo(HaveOccurred())
 
-					resp, err := http.Post(fmt.Sprintf("http://0.0.0.0:%d/evacuate", serverPort), "text/html", nil)
+					resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/evacuate", serverPort), "text/html", nil)
 					Expect(err).NotTo(HaveOccurred())
 					resp.Body.Close()
 					Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
@@ -582,7 +587,7 @@ var _ = Describe("The Rep", func() {
 
 		Describe("when a Ping request comes in", func() {
 			It("responds with 200 OK", func() {
-				resp, err := http.Get(fmt.Sprintf("http://0.0.0.0:%d/ping", serverPort))
+				resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusOK))
 			})
