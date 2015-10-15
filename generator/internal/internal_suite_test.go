@@ -63,7 +63,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 })
 
 var _ = SynchronizedAfterSuite(func() {
-	consulRunner.Stop()
+	consulRunner.KillWithFire()
 	etcdRunner.KillWithFire()
 }, func() {
 	gexec.CleanupBuildArtifacts()
