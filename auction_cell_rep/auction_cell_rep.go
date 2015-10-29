@@ -102,9 +102,7 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 		return rep.CellState{}, err
 	}
 
-	lrpContainers, err := a.client.ListContainers(executor.Tags{
-		rep.LifecycleTag: rep.LRPLifecycle,
-	})
+	containers, err := a.client.ListContainers(executor.Tags{})
 
 	if err != nil {
 		logger.Error("failed-to-fetch-containers", err)
@@ -114,18 +112,32 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 	var key *models.ActualLRPKey
 	var keyErr error
 	lrps := []rep.LRP{}
-	for i := range lrpContainers {
-		container := &lrpContainers[i]
+	tasks := []rep.Task{}
+
+	for i := range containers {
+		container := &containers[i]
 		resource := rep.Resource{MemoryMB: int32(container.MemoryMB), DiskMB: int32(container.DiskMB)}
-		key, keyErr = rep.ActualLRPKeyFromTags(container.Tags)
-		if keyErr != nil {
-			logger.Error("failed-to-extract-key", keyErr)
+
+		if container.Tags == nil {
+			logger.Error("failed-to-extract-container-tags", nil)
 			continue
 		}
-		lrps = append(lrps, rep.NewLRP(*key, resource))
+
+		switch container.Tags[rep.LifecycleTag] {
+		case rep.LRPLifecycle:
+			key, keyErr = rep.ActualLRPKeyFromTags(container.Tags)
+			if keyErr != nil {
+				logger.Error("failed-to-extract-key", keyErr)
+				continue
+			}
+			lrps = append(lrps, rep.NewLRP(*key, resource))
+		case rep.TaskLifecycle:
+			domain := container.Tags[rep.DomainTag]
+			tasks = append(tasks, rep.NewTask(container.Guid, domain, resource))
+		}
 	}
 
-	state := rep.NewCellState(a.rootFSProviders, availableResources, totalResources, lrps, nil, a.zone, a.evacuationReporter.Evacuating())
+	state := rep.NewCellState(a.rootFSProviders, availableResources, totalResources, lrps, tasks, a.zone, a.evacuationReporter.Evacuating())
 
 	a.logger.Info("provided", lager.Data{
 		"available-resources": state.AvailableResources,

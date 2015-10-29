@@ -91,6 +91,19 @@ var _ = Describe("AuctionCellRep", func() {
 						rep.DomainTag:       "domain",
 					},
 				},
+				{
+					Guid:     "da-task",
+					Resource: executor.NewResource(40, 30, "rootfs"),
+					Tags: executor.Tags{
+						rep.LifecycleTag: rep.TaskLifecycle,
+						rep.DomainTag:    "domain",
+					},
+				},
+				{
+					Guid:     "other-task",
+					Resource: executor.NewResource(40, 30, "rootfs"),
+					Tags:     nil,
+				},
 			}
 
 			client.TotalResourcesReturns(totalResources, nil)
@@ -102,9 +115,7 @@ var _ = Describe("AuctionCellRep", func() {
 			state, err := cellRep.State()
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(client.ListContainersArgsForCall(0)).To(Equal(executor.Tags{
-				rep.LifecycleTag: rep.LRPLifecycle,
-			}))
+			Expect(client.ListContainersArgsForCall(0)).To(Equal(executor.Tags{}))
 
 			Expect(state.Evacuating).To(BeTrue())
 			Expect(state.RootFSProviders).To(Equal(rep.RootFSProviders{
@@ -127,6 +138,10 @@ var _ = Describe("AuctionCellRep", func() {
 			Expect(state.LRPs).To(ConsistOf([]rep.LRP{
 				rep.NewLRP(models.NewActualLRPKey("the-first-app-guid", 17, "domain"), rep.NewResource(20, 10, "")),
 				rep.NewLRP(models.NewActualLRPKey("the-second-app-guid", 92, "domain"), rep.NewResource(40, 30, "")),
+			}))
+
+			Expect(state.Tasks).To(ConsistOf([]rep.Task{
+				rep.NewTask("da-task", "domain", rep.NewResource(40, 30, "")),
 			}))
 		})
 
