@@ -19,7 +19,7 @@ var _ = Describe("Client", func() {
 
 	BeforeEach(func() {
 		fakeServer = ghttp.NewServer()
-		client = rep.NewClient(cf_http.NewClient(), fakeServer.URL())
+		client = rep.NewClient(cf_http.NewClient(), nil, fakeServer.URL())
 	})
 
 	AfterEach(func() {

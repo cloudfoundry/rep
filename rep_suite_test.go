@@ -56,7 +56,7 @@ var _ = BeforeEach(func() {
 	Expect(err).NotTo(HaveOccurred())
 	server = httptest.NewServer(handler)
 
-	client = rep.NewClient(&http.Client{}, server.URL)
+	client = rep.NewClient(&http.Client{}, &http.Client{}, server.URL)
 
 	serverThatErrors = ghttp.NewServer()
 	erroringHandler := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
@@ -65,7 +65,7 @@ var _ = BeforeEach(func() {
 	//5 erroringHandlers should be more than enough: none of the individual tests should make more than 5 requests to this server
 	serverThatErrors.AppendHandlers(erroringHandler, erroringHandler, erroringHandler, erroringHandler, erroringHandler)
 
-	clientForServerThatErrors = rep.NewClient(&http.Client{}, serverThatErrors.URL())
+	clientForServerThatErrors = rep.NewClient(&http.Client{}, &http.Client{}, serverThatErrors.URL())
 })
 
 var _ = AfterEach(func() {

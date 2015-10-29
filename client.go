@@ -18,15 +18,16 @@ type ClientFactory interface {
 }
 
 type clientFactory struct {
-	httpClient *http.Client
+	httpClient  *http.Client
+	stateClient *http.Client
 }
 
-func NewClientFactory(httpClient *http.Client) ClientFactory {
-	return &clientFactory{httpClient}
+func NewClientFactory(httpClient, stateClient *http.Client) ClientFactory {
+	return &clientFactory{httpClient, stateClient}
 }
 
 func (factory *clientFactory) CreateClient(address string) Client {
-	return NewClient(factory.httpClient, address)
+	return NewClient(factory.httpClient, factory.stateClient, address)
 }
 
 type AuctionCellClient interface {
@@ -51,26 +52,27 @@ type SimClient interface {
 
 type client struct {
 	client           *http.Client
+	stateClient      *http.Client
 	address          string
 	requestGenerator *rata.RequestGenerator
 }
 
-func NewClient(httpClient *http.Client, address string) Client {
+func NewClient(httpClient, stateClient *http.Client, address string) Client {
 	return &client{
 		client:           httpClient,
+		stateClient:      stateClient,
 		address:          address,
 		requestGenerator: rata.NewRequestGenerator(address, Routes),
 	}
 }
 
 func (c *client) State() (CellState, error) {
-
 	req, err := c.requestGenerator.CreateRequest(StateRoute, nil, nil)
 	if err != nil {
 		return CellState{}, err
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.stateClient.Do(req)
 	if err != nil {
 		return CellState{}, err
 	}

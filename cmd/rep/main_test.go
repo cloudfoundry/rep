@@ -11,6 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/bbs/models/test/model_helpers"
+	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/executor/depot/gardenstore"
 	"github.com/cloudfoundry-incubator/garden"
@@ -215,7 +216,7 @@ var _ = Describe("The Rep", func() {
 				cells, err := serviceClient.Cells(logger)
 				Expect(err).NotTo(HaveOccurred())
 
-				client = rep.NewClient(http.DefaultClient, cells[cellID].RepAddress)
+				client = rep.NewClient(http.DefaultClient, cf_http.NewCustomTimeoutClient(100*time.Millisecond), cells[cellID].RepAddress)
 			})
 
 			Context("Capacity with a container", func() {
@@ -277,6 +278,21 @@ var _ = Describe("The Rep", func() {
 							DiskMB:     2048,
 							Containers: 4,
 						}))
+					})
+				})
+
+				Context("when garden takes too long to list containers", func() {
+					BeforeEach(func() {
+						fakeGarden.RouteToHandler("GET", "/containers/bulk_info", func(w http.ResponseWriter, r *http.Request) {
+							time.Sleep(200 * time.Millisecond)
+							w.WriteHeader(http.StatusOK)
+							w.Write([]byte("{}"))
+						})
+					})
+
+					It("times out", func() {
+						_, err := client.State()
+						Expect(err).To(HaveOccurred())
 					})
 				})
 			})
