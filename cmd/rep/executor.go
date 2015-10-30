@@ -126,6 +126,12 @@ var healthCheckWorkPoolSize = flag.Int(
 	"Number of concurrent ping operations in garden",
 )
 
+var maxConcurrentDownloads = flag.Int(
+	"maxConcurrentDownloads",
+	executorinit.DefaultConfiguration.MaxConcurrentDownloads,
+	"Number of concurrent download steps",
+)
+
 func executorConfig() executorinit.Configuration {
 	return executorinit.Configuration{
 		GardenNetwork:               *gardenNetwork,
@@ -148,5 +154,6 @@ func executorConfig() executorinit.Configuration {
 		RegistryPruningInterval:     *registryPruningInterval,
 		MemoryMB:                    *memoryMBFlag,
 		DiskMB:                      *diskMBFlag,
+		MaxConcurrentDownloads:      *maxConcurrentDownloads,
 	}
 }
