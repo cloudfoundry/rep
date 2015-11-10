@@ -90,22 +90,21 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 	logger := a.logger.Session("auction-state")
 	logger.Info("providing")
 
-	totalResources, err := a.fetchResourcesVia(a.client.TotalResources)
+	containers, err := a.client.ListContainers(executor.Tags{})
+	if err != nil {
+		logger.Error("failed-to-fetch-containers", err)
+		return rep.CellState{}, err
+	}
+
+	totalResources, err := a.client.TotalResources()
 	if err != nil {
 		logger.Error("failed-to-get-total-resources", err)
 		return rep.CellState{}, err
 	}
 
-	availableResources, err := a.fetchResourcesVia(a.client.RemainingResources)
+	availableResources, err := a.client.RemainingResourcesFrom(containers)
 	if err != nil {
 		logger.Error("failed-to-get-remaining-resource", err)
-		return rep.CellState{}, err
-	}
-
-	containers, err := a.client.ListContainers(executor.Tags{})
-
-	if err != nil {
-		logger.Error("failed-to-fetch-containers", err)
 		return rep.CellState{}, err
 	}
 
@@ -137,7 +136,15 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 		}
 	}
 
-	state := rep.NewCellState(a.rootFSProviders, availableResources, totalResources, lrps, tasks, a.zone, a.evacuationReporter.Evacuating())
+	state := rep.NewCellState(
+		a.rootFSProviders,
+		a.convertResources(availableResources),
+		a.convertResources(totalResources),
+		lrps,
+		tasks,
+		a.zone,
+		a.evacuationReporter.Evacuating(),
+	)
 
 	a.logger.Info("provided", lager.Data{
 		"available-resources": state.AvailableResources,
@@ -277,14 +284,10 @@ func (a *AuctionCellRep) tasksToAllocationRequests(tasks []rep.Task) ([]executor
 	return requests, taskMap, failedTasks
 }
 
-func (a *AuctionCellRep) fetchResourcesVia(fetcher func() (executor.ExecutorResources, error)) (rep.Resources, error) {
-	resources, err := fetcher()
-	if err != nil {
-		return rep.Resources{}, err
-	}
+func (a *AuctionCellRep) convertResources(resources executor.ExecutorResources) rep.Resources {
 	return rep.Resources{
 		MemoryMB:   int32(resources.MemoryMB),
 		DiskMB:     int32(resources.DiskMB),
 		Containers: resources.Containers,
-	}, nil
+	}
 }

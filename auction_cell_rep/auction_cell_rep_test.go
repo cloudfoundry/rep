@@ -107,7 +107,7 @@ var _ = Describe("AuctionCellRep", func() {
 			}
 
 			client.TotalResourcesReturns(totalResources, nil)
-			client.RemainingResourcesReturns(availableResources, nil)
+			client.RemainingResourcesFromReturns(availableResources, nil)
 			client.ListContainersReturns(containers, nil)
 		})
 
@@ -116,6 +116,7 @@ var _ = Describe("AuctionCellRep", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(client.ListContainersArgsForCall(0)).To(Equal(executor.Tags{}))
+			Expect(client.RemainingResourcesFromArgsForCall(0)).To(Equal(containers))
 
 			Expect(state.Evacuating).To(BeTrue())
 			Expect(state.RootFSProviders).To(Equal(rep.RootFSProviders{
@@ -159,7 +160,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 		Context("when the client fails to fetch available resources", func() {
 			BeforeEach(func() {
-				client.RemainingResourcesReturns(executor.ExecutorResources{}, commonErr)
+				client.RemainingResourcesFromReturns(executor.ExecutorResources{}, commonErr)
 			})
 
 			It("should return an error and no state", func() {

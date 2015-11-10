@@ -23,7 +23,15 @@ type CellState struct {
 }
 
 func NewCellState(root RootFSProviders, avail Resources, total Resources, lrps []LRP, tasks []Task, zone string, isEvac bool) CellState {
-	return CellState{root, avail, total, lrps, tasks, zone, isEvac}
+	return CellState{
+		RootFSProviders:    root,
+		AvailableResources: avail,
+		TotalResources:     total,
+		LRPs:               lrps,
+		Tasks:              tasks,
+		Zone:               zone,
+		Evacuating:         isEvac,
+	}
 }
 
 func (c *CellState) Copy() CellState {
