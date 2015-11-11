@@ -61,6 +61,8 @@ var _ = Describe("The Rep", func() {
 		fakeGarden.RouteToHandler("GET", "/capacity", ghttp.RespondWithJSONEncoded(http.StatusOK,
 			garden.Capacity{MemoryInBytes: 1024 * 1024 * 1024, DiskInBytes: 2048 * 1024 * 1024, MaxContainers: 4}))
 		fakeGarden.RouteToHandler("GET", "/containers/bulk_info", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
+		fakeGarden.RouteToHandler("POST", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{"handle": "healthcheck-container"}))
+		fakeGarden.RouteToHandler("POST", "/containers/healthcheck-container/processes", ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{}))
 
 		logger = lagertest.NewTestLogger("test")
 		serviceClient = bbs.NewServiceClient(consulSession, clock.NewClock())

@@ -44,6 +44,7 @@ var _ = Describe("AuctionCellRep", func() {
 		linuxRootFSURL = models.PreloadedRootFS(linuxStack)
 
 		commonErr = errors.New("Failed to fetch")
+		client.HealthyReturns(true)
 	})
 
 	JustBeforeEach(func() {
@@ -144,6 +145,16 @@ var _ = Describe("AuctionCellRep", func() {
 			Expect(state.Tasks).To(ConsistOf([]rep.Task{
 				rep.NewTask("da-task", "domain", rep.NewResource(40, 30, "")),
 			}))
+		})
+
+		Context("when the cell is not healthy", func() {
+			BeforeEach(func() {
+				client.HealthyReturns(false)
+			})
+
+			XIt("does ... something", func() {
+				Fail("TODO")
+			})
 		})
 
 		Context("when the client fails to fetch total resources", func() {

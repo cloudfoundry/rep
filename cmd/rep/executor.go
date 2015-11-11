@@ -132,28 +132,49 @@ var maxConcurrentDownloads = flag.Int(
 	"Number of concurrent download steps",
 )
 
+var gardenHealthcheckInterval = flag.Duration(
+	"gardenHealthcheckInterval",
+	executorinit.DefaultConfiguration.GardenHealthcheckInterval,
+	"Frequency for healthchecking garden",
+)
+
+var gardenHealthcheckTimeout = flag.Duration(
+	"gardenHealthcheckTimeout",
+	executorinit.DefaultConfiguration.GardenHealthcheckTimeout,
+	"Maximum allowed time for garden healthcheck",
+)
+
+var gardenHealthcheckRetryCommandInterval = flag.Duration(
+	"gardenHealthcheckRetryCommandInterval",
+	executorinit.DefaultConfiguration.GardenHealthcheckCommandTimeout,
+	"Time to wait between retrying garden commands",
+)
+
 func executorConfig() executorinit.Configuration {
 	return executorinit.Configuration{
-		GardenNetwork:               *gardenNetwork,
-		GardenAddr:                  *gardenAddr,
-		ContainerOwnerName:          *containerOwnerName,
-		TempDir:                     *tempDir,
-		CachePath:                   *cachePath,
-		MaxCacheSizeInBytes:         *maxCacheSizeInBytes,
-		SkipCertVerify:              *skipCertVerify,
-		ExportNetworkEnvVars:        *exportNetworkEnvVars,
-		ContainerMaxCpuShares:       *containerMaxCpuShares,
-		ContainerInodeLimit:         *containerInodeLimit,
-		HealthyMonitoringInterval:   *healthyMonitoringInterval,
-		UnhealthyMonitoringInterval: *unhealthyMonitoringInterval,
-		HealthCheckWorkPoolSize:     *healthCheckWorkPoolSize,
-		CreateWorkPoolSize:          *createWorkPoolSize,
-		DeleteWorkPoolSize:          *deleteWorkPoolSize,
-		ReadWorkPoolSize:            *readWorkPoolSize,
-		MetricsWorkPoolSize:         *metricsWorkPoolSize,
-		RegistryPruningInterval:     *registryPruningInterval,
-		MemoryMB:                    *memoryMBFlag,
-		DiskMB:                      *diskMBFlag,
-		MaxConcurrentDownloads:      *maxConcurrentDownloads,
+		GardenNetwork:                   *gardenNetwork,
+		GardenAddr:                      *gardenAddr,
+		ContainerOwnerName:              *containerOwnerName,
+		TempDir:                         *tempDir,
+		CachePath:                       *cachePath,
+		MaxCacheSizeInBytes:             *maxCacheSizeInBytes,
+		SkipCertVerify:                  *skipCertVerify,
+		ExportNetworkEnvVars:            *exportNetworkEnvVars,
+		ContainerMaxCpuShares:           *containerMaxCpuShares,
+		ContainerInodeLimit:             *containerInodeLimit,
+		HealthyMonitoringInterval:       *healthyMonitoringInterval,
+		UnhealthyMonitoringInterval:     *unhealthyMonitoringInterval,
+		HealthCheckWorkPoolSize:         *healthCheckWorkPoolSize,
+		CreateWorkPoolSize:              *createWorkPoolSize,
+		DeleteWorkPoolSize:              *deleteWorkPoolSize,
+		ReadWorkPoolSize:                *readWorkPoolSize,
+		MetricsWorkPoolSize:             *metricsWorkPoolSize,
+		RegistryPruningInterval:         *registryPruningInterval,
+		MemoryMB:                        *memoryMBFlag,
+		DiskMB:                          *diskMBFlag,
+		MaxConcurrentDownloads:          *maxConcurrentDownloads,
+		GardenHealthcheckInterval:       *gardenHealthcheckInterval,
+		GardenHealthcheckTimeout:        *gardenHealthcheckTimeout,
+		GardenHealthcheckCommandTimeout: *gardenHealthcheckRetryCommandInterval,
 	}
 }

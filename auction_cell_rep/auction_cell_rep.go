@@ -90,6 +90,13 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 	logger := a.logger.Session("auction-state")
 	logger.Info("providing")
 
+	// TODO: fail quick if cached internal health is sick
+	healthy := a.client.Healthy()
+	if !healthy {
+		logger.Error("Failed-garden-health-check", nil)
+		return rep.CellState{}, errors.New("FIGURE ME OUT")
+	}
+
 	containers, err := a.client.ListContainers(executor.Tags{})
 	if err != nil {
 		logger.Error("failed-to-fetch-containers", err)
