@@ -191,6 +191,7 @@ var _ = Describe("Maintain Presence", func() {
 				BeforeEach(func() {
 					pingErrors <- errors.New("failed to ping")
 					clock.Increment(1 * time.Second)
+					Eventually(fakeClient.PingCallCount).Should(Equal(3))
 				})
 
 				It("stops heartbeating the executor's presence", func() {
@@ -198,7 +199,7 @@ var _ = Describe("Maintain Presence", func() {
 				})
 
 				It("continues pinging the executor", func() {
-					for i := 2; i < 6; i++ {
+					for i := 4; i < 8; i++ {
 						pingErrors <- errors.New("failed again")
 						clock.Increment(1 * time.Second)
 						Eventually(fakeClient.PingCallCount).Should(Equal(i))
@@ -208,7 +209,7 @@ var _ = Describe("Maintain Presence", func() {
 				Context("when the executor ping succeeds again", func() {
 					BeforeEach(func() {
 						pingErrors <- nil
-						Eventually(fakeClient.PingCallCount).Should(Equal(3))
+						Eventually(fakeHeartbeater.RunCallCount, 10*config.RetryInterval).Should(Equal(2))
 						pingErrors <- nil
 						clock.Increment(1 * time.Second)
 						Eventually(fakeClient.PingCallCount).Should(Equal(4))
@@ -219,7 +220,7 @@ var _ = Describe("Maintain Presence", func() {
 					})
 
 					It("continues to ping the executor", func() {
-						for i := 4; i < 6; i++ {
+						for i := 5; i < 7; i++ {
 							pingErrors <- nil
 							clock.Increment(1 * time.Second)
 							Eventually(fakeClient.PingCallCount).Should(Equal(i))

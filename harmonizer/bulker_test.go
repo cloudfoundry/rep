@@ -56,6 +56,7 @@ var _ = Describe("Bulker", func() {
 
 	JustBeforeEach(func() {
 		process = ifrit.Invoke(bulker)
+		Eventually(fakeClock.WatcherCount).Should(Equal(1))
 	})
 
 	AfterEach(func() {
