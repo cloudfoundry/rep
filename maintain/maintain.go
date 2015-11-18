@@ -16,7 +16,7 @@ import (
 type Maintainer struct {
 	Config
 	executorClient executor.Client
-	serviceClient         bbs.ServiceClient
+	serviceClient  bbs.ServiceClient
 	logger         lager.Logger
 	clock          clock.Clock
 }
@@ -40,7 +40,7 @@ func New(
 	return &Maintainer{
 		Config:         config,
 		executorClient: executorClient,
-		serviceClient:         serviceClient,
+		serviceClient:  serviceClient,
 		logger:         logger.Session("maintainer"),
 		clock:          clock,
 	}

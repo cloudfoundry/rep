@@ -171,6 +171,7 @@ var _ = Describe("Maintain Presence", func() {
 			BeforeEach(func() {
 				pingErrors <- nil
 				maintainProcess = ginkgomon.Invoke(maintainer)
+				Eventually(fakeClient.PingCallCount).Should(Equal(1))
 				Expect(maintainProcess.Ready()).To(BeClosed())
 			})
 
@@ -180,7 +181,7 @@ var _ = Describe("Maintain Presence", func() {
 			})
 
 			It("continues pings the executor on an interval", func() {
-				for i := 1; i < 5; i++ {
+				for i := 2; i < 6; i++ {
 					pingErrors <- nil
 					clock.Increment(1 * time.Second)
 					Eventually(fakeClient.PingCallCount).Should(Equal(i))
@@ -209,7 +210,6 @@ var _ = Describe("Maintain Presence", func() {
 				Context("when the executor ping succeeds again", func() {
 					BeforeEach(func() {
 						pingErrors <- nil
-						Eventually(fakeHeartbeater.RunCallCount, 10*config.RetryInterval).Should(Equal(2))
 						pingErrors <- nil
 						clock.Increment(1 * time.Second)
 						Eventually(fakeClient.PingCallCount).Should(Equal(4))
