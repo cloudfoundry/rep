@@ -88,6 +88,12 @@ var pollingInterval = flag.Duration(
 	"the interval on which to scan the executor",
 )
 
+var dropsondePort = flag.Int(
+	"dropsondePort",
+	3457,
+	"port the local metron agent is listening on",
+)
+
 var communicationTimeout = flag.Duration(
 	"communicationTimeout",
 	10*time.Second,
@@ -182,8 +188,7 @@ func (p *providers) Set(value string) error {
 }
 
 const (
-	dropsondeDestination = "localhost:3457"
-	dropsondeOrigin      = "rep"
+	dropsondeOrigin = "rep"
 
 	bbsPingTimeout = 5 * time.Minute
 )
@@ -282,6 +287,7 @@ func main() {
 }
 
 func initializeDropsonde(logger lager.Logger) {
+	dropsondeDestination := fmt.Sprint("localhost:", *dropsondePort)
 	err := dropsonde.Initialize(dropsondeDestination, dropsondeOrigin)
 	if err != nil {
 		logger.Error("failed to initialize dropsonde: %v", err)
