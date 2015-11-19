@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/tedsuo/rata"
@@ -41,6 +42,8 @@ type Client interface {
 	AuctionCellClient
 	StopLRPInstance(key models.ActualLRPKey, instanceKey models.ActualLRPInstanceKey) error
 	CancelTask(taskGuid string) error
+	SetStateClient(stateClient *http.Client)
+	StateClientTimeout() time.Duration
 }
 
 //go:generate counterfeiter -o repfakes/fake_sim_client.go . SimClient
@@ -64,6 +67,14 @@ func NewClient(httpClient, stateClient *http.Client, address string) Client {
 		address:          address,
 		requestGenerator: rata.NewRequestGenerator(address, Routes),
 	}
+}
+
+func (c *client) SetStateClient(stateClient *http.Client) {
+	c.stateClient = stateClient
+}
+
+func (c *client) StateClientTimeout() time.Duration {
+	return c.stateClient.Timeout
 }
 
 func (c *client) State() (CellState, error) {

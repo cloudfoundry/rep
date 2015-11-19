@@ -2,7 +2,9 @@
 package repfakes
 
 import (
+	"net/http"
 	"sync"
+	"time"
 
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/rep"
@@ -41,6 +43,17 @@ type FakeSimClient struct {
 	}
 	cancelTaskReturns struct {
 		result1 error
+	}
+	SetStateClientStub        func(stateClient *http.Client)
+	setStateClientMutex       sync.RWMutex
+	setStateClientArgsForCall []struct {
+		stateClient *http.Client
+	}
+	StateClientTimeoutStub        func() time.Duration
+	stateClientTimeoutMutex       sync.RWMutex
+	stateClientTimeoutArgsForCall []struct{}
+	stateClientTimeoutReturns struct {
+		result1 time.Duration
 	}
 	ResetStub        func() error
 	resetMutex       sync.RWMutex
@@ -170,6 +183,53 @@ func (fake *FakeSimClient) CancelTaskReturns(result1 error) {
 	fake.CancelTaskStub = nil
 	fake.cancelTaskReturns = struct {
 		result1 error
+	}{result1}
+}
+
+func (fake *FakeSimClient) SetStateClient(stateClient *http.Client) {
+	fake.setStateClientMutex.Lock()
+	fake.setStateClientArgsForCall = append(fake.setStateClientArgsForCall, struct {
+		stateClient *http.Client
+	}{stateClient})
+	fake.setStateClientMutex.Unlock()
+	if fake.SetStateClientStub != nil {
+		fake.SetStateClientStub(stateClient)
+	}
+}
+
+func (fake *FakeSimClient) SetStateClientCallCount() int {
+	fake.setStateClientMutex.RLock()
+	defer fake.setStateClientMutex.RUnlock()
+	return len(fake.setStateClientArgsForCall)
+}
+
+func (fake *FakeSimClient) SetStateClientArgsForCall(i int) *http.Client {
+	fake.setStateClientMutex.RLock()
+	defer fake.setStateClientMutex.RUnlock()
+	return fake.setStateClientArgsForCall[i].stateClient
+}
+
+func (fake *FakeSimClient) StateClientTimeout() time.Duration {
+	fake.stateClientTimeoutMutex.Lock()
+	fake.stateClientTimeoutArgsForCall = append(fake.stateClientTimeoutArgsForCall, struct{}{})
+	fake.stateClientTimeoutMutex.Unlock()
+	if fake.StateClientTimeoutStub != nil {
+		return fake.StateClientTimeoutStub()
+	} else {
+		return fake.stateClientTimeoutReturns.result1
+	}
+}
+
+func (fake *FakeSimClient) StateClientTimeoutCallCount() int {
+	fake.stateClientTimeoutMutex.RLock()
+	defer fake.stateClientTimeoutMutex.RUnlock()
+	return len(fake.stateClientTimeoutArgsForCall)
+}
+
+func (fake *FakeSimClient) StateClientTimeoutReturns(result1 time.Duration) {
+	fake.StateClientTimeoutStub = nil
+	fake.stateClientTimeoutReturns = struct {
+		result1 time.Duration
 	}{result1}
 }
 
