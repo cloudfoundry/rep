@@ -14,7 +14,7 @@ type FakeSimClient struct {
 	StateStub        func() (rep.CellState, error)
 	stateMutex       sync.RWMutex
 	stateArgsForCall []struct{}
-	stateReturns struct {
+	stateReturns     struct {
 		result1 rep.CellState
 		result2 error
 	}
@@ -58,7 +58,7 @@ type FakeSimClient struct {
 	ResetStub        func() error
 	resetMutex       sync.RWMutex
 	resetArgsForCall []struct{}
-	resetReturns struct {
+	resetReturns     struct {
 		result1 error
 	}
 }

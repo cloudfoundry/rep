@@ -13,6 +13,7 @@ import (
 )
 
 var ErrPreloadedRootFSNotFound = errors.New("preloaded rootfs path not found")
+var ErrCellUnhealthy = errors.New("internal cell healthcheck failed")
 
 type AuctionCellRep struct {
 	cellID               string
@@ -90,11 +91,11 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 	logger := a.logger.Session("auction-state")
 	logger.Info("providing")
 
-	// TODO: fail quick if cached internal health is sick
+	// Fail quick if cached internal health is sick
 	healthy := a.client.Healthy()
 	if !healthy {
-		logger.Error("Failed-garden-health-check", nil)
-		return rep.CellState{}, errors.New("FIGURE ME OUT")
+		logger.Error("failed-garden-health-check", nil)
+		return rep.CellState{}, ErrCellUnhealthy
 	}
 
 	containers, err := a.client.ListContainers(executor.Tags{})

@@ -11,7 +11,7 @@ type FakeEvacuationNotifier struct {
 	EvacuateNotifyStub        func() <-chan struct{}
 	evacuateNotifyMutex       sync.RWMutex
 	evacuateNotifyArgsForCall []struct{}
-	evacuateNotifyReturns struct {
+	evacuateNotifyReturns     struct {
 		result1 <-chan struct{}
 	}
 }

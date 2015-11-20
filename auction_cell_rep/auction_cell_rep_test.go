@@ -152,8 +152,9 @@ var _ = Describe("AuctionCellRep", func() {
 				client.HealthyReturns(false)
 			})
 
-			XIt("does ... something", func() {
-				Fail("TODO")
+			It("errors when reporting state", func() {
+				_, err := cellRep.State()
+				Expect(err).To(MatchError(auction_cell_rep.ErrCellUnhealthy))
 			})
 		})
 
