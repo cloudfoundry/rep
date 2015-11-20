@@ -219,10 +219,27 @@ var _ = Describe("The Rep", func() {
 				client = rep.NewClient(http.DefaultClient, cf_http.NewCustomTimeoutClient(100*time.Millisecond), cells[cellID].RepAddress)
 			})
 
-			Context("Capacity with a container", func() {
+			FContext("Capacity with a container", func() {
+				var lrp rep.LRP
+
 				BeforeEach(func() {
+					lrpModel := model_helpers.NewValidDesiredLRP("guid-1")
+					lrpModel.MemoryMb = 512
+					lrpModel.DiskMb = 1024
+
+					err := bbsClient.DesireLRP(lrpModel)
+					Expect(err).NotTo(HaveOccurred())
+
+					actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex("guid-1", 0)
+					Expect(err).NotTo(HaveOccurred())
+
+					lrp = rep.LRP{
+						ActualLRPKey: actualLRPGroup.Instance.ActualLRPKey,
+						Resource:     rep.NewResource(lrpModel.MemoryMb, lrpModel.DiskMb, lrpModel.RootFs),
+					}
+
 					fakeGarden.RouteToHandler("GET", "/containers",
-						ghttp.RespondWithJSONEncoded(http.StatusOK, map[string][]string{"handles": []string{"handle-guid"}}),
+						ghttp.RespondWithJSONEncoded(http.StatusOK, map[string][]string{"handles": []string{}}),
 					)
 					fakeGarden.RouteToHandler("GET", "/containers/bulk_info",
 						ghttp.RespondWithJSONEncoded(http.StatusOK,
@@ -236,10 +253,14 @@ var _ = Describe("The Rep", func() {
 						),
 					)
 
-					fakeGarden.RouteToHandler("DELETE", "/containers/handle-guid", ghttp.RespondWithJSONEncoded(http.StatusOK, &struct{}{}))
-
 					// In case the bulker loop is executed
 					fakeGarden.RouteToHandler("GET", "/containers/handle-guid/info", ghttp.RespondWithJSONEncoded(http.StatusInternalServerError, garden.ContainerInfo{}))
+				})
+
+				JustBeforeEach(func() {
+					works := rep.Work{LRPs: []rep.LRP{lrp}}
+					_, err := client.Perform(works)
+					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("returns total capacity", func() {
@@ -278,21 +299,6 @@ var _ = Describe("The Rep", func() {
 							DiskMB:     2048,
 							Containers: 4,
 						}))
-					})
-				})
-
-				Context("when garden takes too long to list containers", func() {
-					BeforeEach(func() {
-						fakeGarden.RouteToHandler("GET", "/containers/bulk_info", func(w http.ResponseWriter, r *http.Request) {
-							time.Sleep(200 * time.Millisecond)
-							w.WriteHeader(http.StatusOK)
-							w.Write([]byte("{}"))
-						})
-					})
-
-					It("times out", func() {
-						_, err := client.State()
-						Expect(err).To(HaveOccurred())
 					})
 				})
 			})
