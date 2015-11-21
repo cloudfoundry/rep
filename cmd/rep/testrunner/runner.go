@@ -56,6 +56,8 @@ func (r *Runner) Start() {
 		"-containerMaxCpuShares", "1024",
 		"-gardenNetwork", "tcp",
 		"-gardenAddr", r.config.GardenAddr,
+		"-gardenHealthcheckProcessUser", "me",
+		"-gardenHealthcheckProcessPath", "ls",
 	}
 	for _, rootfs := range r.config.PreloadedRootFSes {
 		args = append(args, "-preloadedRootFS", rootfs)

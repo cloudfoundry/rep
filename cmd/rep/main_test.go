@@ -1,9 +1,11 @@
 package main_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"runtime"
 	"strconv"
 	"time"
@@ -14,7 +16,9 @@ import (
 	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/executor/depot/gardenstore"
+	"github.com/cloudfoundry-incubator/executor/gardenhealth"
 	"github.com/cloudfoundry-incubator/garden"
+	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/cmd/rep/testrunner"
 	"github.com/hashicorp/consul/api"
@@ -61,6 +65,22 @@ var _ = Describe("The Rep", func() {
 		fakeGarden.RouteToHandler("GET", "/capacity", ghttp.RespondWithJSONEncoded(http.StatusOK,
 			garden.Capacity{MemoryInBytes: 1024 * 1024 * 1024, DiskInBytes: 2048 * 1024 * 1024, MaxContainers: 4}))
 		fakeGarden.RouteToHandler("GET", "/containers/bulk_info", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
+
+		// The following handlers are needed to fake out the healthcheck containers
+		fakeGarden.RouteToHandler("POST", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{"handle": "healthcheck-container"}))
+		fakeGarden.RouteToHandler("DELETE", regexp.MustCompile("/containers/executor-healthcheck-[-a-f0-9]+"), ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
+		fakeGarden.RouteToHandler("POST", "/containers/healthcheck-container/processes", func() http.HandlerFunc {
+			firstResponse, err := json.Marshal(transport.ProcessPayload{})
+			Expect(err).NotTo(HaveOccurred())
+
+			exitStatus := 0
+			secondResponse, err := json.Marshal(transport.ProcessPayload{ExitStatus: &exitStatus})
+			Expect(err).NotTo(HaveOccurred())
+
+			headers := http.Header{"Content-Type": []string{"application/json"}}
+			response := string(firstResponse) + string(secondResponse)
+			return ghttp.RespondWith(http.StatusOK, response, headers)
+		}())
 
 		logger = lagertest.NewTestLogger("test")
 		serviceClient = bbs.NewServiceClient(consulSession, clock.NewClock())
@@ -137,22 +157,29 @@ var _ = Describe("The Rep", func() {
 			var deleteChan chan struct{}
 			BeforeEach(func() {
 				fakeGarden.RouteToHandler("GET", "/containers",
-					ghttp.RespondWithJSONEncoded(http.StatusOK, map[string][]string{"handles": []string{"cnr1", "cnr2"}}),
+					func(w http.ResponseWriter, r *http.Request) {
+						r.ParseForm()
+						healthcheckTagQueryParam := gardenstore.TagPropertyPrefix + gardenhealth.HealthcheckTag
+						if r.FormValue(healthcheckTagQueryParam) == gardenhealth.HealthcheckTagValue {
+							ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{})(w, r)
+						} else {
+							ghttp.RespondWithJSONEncoded(http.StatusOK, map[string][]string{"handles": []string{"cnr1", "cnr2"}})(w, r)
+						}
+					},
 				)
-
 				deleteChan = make(chan struct{}, 2)
-				fakeGarden.AppendHandlers(
-					ghttp.CombineHandlers(ghttp.VerifyRequest("DELETE", "/containers/cnr1"),
+				fakeGarden.RouteToHandler("DELETE", "/containers/cnr1",
+					ghttp.CombineHandlers(
 						func(http.ResponseWriter, *http.Request) {
 							deleteChan <- struct{}{}
 						},
-						ghttp.RespondWithJSONEncoded(http.StatusOK, &struct{}{})),
-					ghttp.CombineHandlers(ghttp.VerifyRequest("DELETE", "/containers/cnr2"),
+						ghttp.RespondWithJSONEncoded(http.StatusOK, &struct{}{})))
+				fakeGarden.RouteToHandler("DELETE", "/containers/cnr2",
+					ghttp.CombineHandlers(
 						func(http.ResponseWriter, *http.Request) {
 							deleteChan <- struct{}{}
 						},
-						ghttp.RespondWithJSONEncoded(http.StatusOK, &struct{}{})),
-				)
+						ghttp.RespondWithJSONEncoded(http.StatusOK, &struct{}{})))
 			})
 
 			It("destroys any existing containers", func() {

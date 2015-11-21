@@ -187,6 +187,17 @@ func (p *providers) Set(value string) error {
 	return nil
 }
 
+type argList []string
+
+func (a *argList) String() string {
+	return fmt.Sprintf("%v", *a)
+}
+
+func (a *argList) Set(value string) error {
+	*a = strings.Split(value, ",")
+	return nil
+}
+
 const (
 	dropsondeOrigin = "rep"
 
@@ -199,17 +210,33 @@ func main() {
 
 	stackMap := stackPathMap{}
 	supportedProviders := providers{}
+	gardenHealthcheckEnv := argList{}
+	gardenHealthcheckArgs := argList{}
 	flag.Var(&stackMap, "preloadedRootFS", "List of preloaded RootFSes")
 	flag.Var(&supportedProviders, "rootFSProvider", "List of RootFS providers")
+	flag.Var(&gardenHealthcheckArgs, "gardenHealthcheckProcessArgs", "List of command line args to pass to the garden health check process")
+	flag.Var(&gardenHealthcheckEnv, "gardenHealthcheckProcessEnv", "Environment variables to use when running the garden health check")
 	flag.Parse()
+
+	preloadedRootFSes := []string{}
+	for k := range stackMap {
+		preloadedRootFSes = append(preloadedRootFSes, k)
+	}
 
 	cf_http.Initialize(*communicationTimeout)
 
 	clock := clock.NewClock()
 	logger, reconfigurableSink := cf_lager.New(*sessionName)
 
-	executorConfiguration := executorConfig()
-	if !executorinit.ValidateExecutor(logger, executorConfiguration) {
+	var executorConfiguration executorinit.Configuration
+	var gardenHealthcheckRootFS string
+	if len(preloadedRootFSes) == 0 {
+		gardenHealthcheckRootFS = ""
+	} else {
+		gardenHealthcheckRootFS = stackMap[preloadedRootFSes[0]]
+	}
+	executorConfiguration = executorConfig(gardenHealthcheckRootFS, gardenHealthcheckArgs, gardenHealthcheckEnv)
+	if !executorConfiguration.Validate(logger) {
 		os.Exit(1)
 	}
 
@@ -249,11 +276,6 @@ func main() {
 	bbsClient := initializeBBSClient(logger)
 	httpServer, address := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders)
 	opGenerator := generator.New(*cellID, bbsClient, executorClient, evacuationReporter, uint64(evacuationTimeout.Seconds()))
-
-	preloadedRootFSes := []string{}
-	for k := range stackMap {
-		preloadedRootFSes = append(preloadedRootFSes, k)
-	}
 
 	members := grouper.Members{
 		{"http_server", httpServer},
