@@ -104,7 +104,7 @@ var _ = Describe("Evacuation", func() {
 					}
 
 					index := 0
-					executorClient.ListContainersStub = func(executor.Tags) ([]executor.Container, error) {
+					executorClient.ListContainersStub = func() ([]executor.Container, error) {
 						containersToReturn := containerResponses[index]
 						index++
 						return containersToReturn, nil
@@ -124,7 +124,7 @@ var _ = Describe("Evacuation", func() {
 				Context("when the executor client returns an error", func() {
 					BeforeEach(func() {
 						index := 0
-						executorClient.ListContainersStub = func(executor.Tags) ([]executor.Container, error) {
+						executorClient.ListContainersStub = func() ([]executor.Container, error) {
 							if index == 0 {
 								index++
 								return nil, errors.New("whoops")

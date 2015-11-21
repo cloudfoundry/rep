@@ -103,7 +103,7 @@ func (e *Evacuator) evacuate(logger lager.Logger, doneCh chan<- struct{}) {
 }
 
 func (e *Evacuator) allContainersEvacuated(logger lager.Logger) bool {
-	containers, err := e.executorClient.ListContainers(nil)
+	containers, err := e.executorClient.ListContainers()
 	if err != nil {
 		logger.Error("failed-to-list-containers", err)
 		return false

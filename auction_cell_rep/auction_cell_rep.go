@@ -90,7 +90,7 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 	logger := a.logger.Session("auction-state")
 	logger.Info("providing")
 
-	containers, err := a.client.ListContainers(executor.Tags{})
+	containers, err := a.client.ListContainers()
 	if err != nil {
 		logger.Error("failed-to-fetch-containers", err)
 		return rep.CellState{}, err

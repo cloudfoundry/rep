@@ -115,7 +115,6 @@ var _ = Describe("AuctionCellRep", func() {
 			state, err := cellRep.State()
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(client.ListContainersArgsForCall(0)).To(Equal(executor.Tags{}))
 			Expect(client.RemainingResourcesFromArgsForCall(0)).To(Equal(containers))
 
 			Expect(state.Evacuating).To(BeTrue())

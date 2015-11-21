@@ -67,8 +67,6 @@ var _ = Describe("Generator", func() {
 
 		It("lists all containers from the executor", func() {
 			Expect(fakeExecutorClient.ListContainersCallCount()).To(Equal(1))
-			tags := fakeExecutorClient.ListContainersArgsForCall(0)
-			Expect(tags).To(BeNil())
 		})
 
 		Context("when retrieving container and BBS data succeeds", func() {
