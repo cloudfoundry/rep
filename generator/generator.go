@@ -68,7 +68,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 
 	logger.Info("getting-containers-lrps-and-tasks")
 	go func() {
-		foundContainers, err := g.executorClient.ListContainers(nil)
+		foundContainers, err := g.executorClient.ListContainers()
 		if err != nil {
 			logger.Error("failed-to-list-containers", err)
 			err = fmt.Errorf("failed to list containers: %s", err.Error())
