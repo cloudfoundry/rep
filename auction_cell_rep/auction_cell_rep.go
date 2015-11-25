@@ -110,7 +110,7 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 		return rep.CellState{}, err
 	}
 
-	availableResources, err := a.client.RemainingResourcesFrom(containers)
+	availableResources, err := a.client.RemainingResources()
 	if err != nil {
 		logger.Error("failed-to-get-remaining-resource", err)
 		return rep.CellState{}, err
