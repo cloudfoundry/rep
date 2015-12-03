@@ -122,9 +122,15 @@ func (p *ordinaryLRPProcessor) processCompletedContainer(logger lager.Logger, lr
 	logger = logger.Session("process-completed-container")
 
 	if lrpContainer.RunResult.Stopped {
-		p.bbsClient.RemoveActualLRP(lrpContainer.ProcessGuid, int(lrpContainer.Index))
+		err := p.bbsClient.RemoveActualLRP(lrpContainer.ProcessGuid, int(lrpContainer.Index))
+		if err != nil {
+			logger.Info("failed-to-remove-actual-lrp", lager.Data{"error": err})
+		}
 	} else {
-		p.bbsClient.CrashActualLRP(lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, lrpContainer.RunResult.FailureReason)
+		err := p.bbsClient.CrashActualLRP(lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, lrpContainer.RunResult.FailureReason)
+		if err != nil {
+			logger.Info("failed-to-crash-actual-lrp", lager.Data{"error": err})
+		}
 	}
 
 	p.containerDelegate.DeleteContainer(logger, lrpContainer.Guid)
