@@ -36,10 +36,16 @@ var tempDir = flag.String(
 	"location to store temporary assets",
 )
 
-var registryPruningInterval = flag.Duration(
-	"pruneInterval",
-	executorinit.DefaultConfiguration.RegistryPruningInterval,
+var reservedExpirationTime = flag.Duration(
+	"reservedExpirationTime",
+	executorinit.DefaultConfiguration.ReservedExpirationTime,
 	"amount of time during which a container can remain in the allocated state",
+)
+
+var containerReapInterval = flag.Duration(
+	"containerReapInterval",
+	executorinit.DefaultConfiguration.ContainerReapInterval,
+	"interval at which the executor reaps extra/missing containers",
 )
 
 var containerInodeLimit = flag.Uint64(
@@ -187,7 +193,8 @@ func executorConfig(gardenHealthcheckRootFS string, gardenHealthcheckArgs, garde
 		DeleteWorkPoolSize:                 *deleteWorkPoolSize,
 		ReadWorkPoolSize:                   *readWorkPoolSize,
 		MetricsWorkPoolSize:                *metricsWorkPoolSize,
-		RegistryPruningInterval:            *registryPruningInterval,
+		ReservedExpirationTime:             *reservedExpirationTime,
+		ContainerReapInterval:              *containerReapInterval,
 		MemoryMB:                           *memoryMBFlag,
 		DiskMB:                             *diskMBFlag,
 		MaxConcurrentDownloads:             *maxConcurrentDownloads,
