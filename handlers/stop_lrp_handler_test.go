@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"bytes"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -55,16 +56,28 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 			req.URL.RawQuery = values.Encode()
 		})
 
-		It("responds with 202 Accepted", func() {
-			Expect(resp.Code).To(Equal(http.StatusAccepted))
+		Context("and StopContainer succeeds", func() {
+			It("responds with 202 Accepted", func() {
+				Expect(resp.Code).To(Equal(http.StatusAccepted))
+			})
+
+			It("eventually stops the instance", func() {
+				Eventually(fakeClient.StopContainerCallCount).Should(Equal(1))
+
+				processGuid, instanceGuid := fakeClient.StopContainerArgsForCall(0)
+				Expect(processGuid).To(Equal(processGuid))
+				Expect(instanceGuid).To(Equal(instanceGuid))
+			})
 		})
 
-		It("eventually stops the instance", func() {
-			Eventually(fakeClient.StopContainerCallCount).Should(Equal(1))
+		Context("but StopContainer fails", func() {
+			BeforeEach(func() {
+				fakeClient.StopContainerReturns(errors.New("fail"))
+			})
 
-			processGuid, instanceGuid := fakeClient.StopContainerArgsForCall(0)
-			Expect(processGuid).To(Equal(processGuid))
-			Expect(instanceGuid).To(Equal(instanceGuid))
+			It("responds with 500 Internal Server Error", func() {
+				Expect(resp.Code).To(Equal(http.StatusInternalServerError))
+			})
 		})
 	})
 

@@ -44,7 +44,12 @@ func (h StopLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	w.WriteHeader(http.StatusAccepted)
+	err := h.client.StopContainer(logger, rep.LRPContainerGuid(processGuid, instanceGuid))
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		logger.Error("failed-to-stop-container", err)
+		return
+	}
 
-	go h.client.StopContainer(logger, rep.LRPContainerGuid(processGuid, instanceGuid))
+	w.WriteHeader(http.StatusAccepted)
 }
