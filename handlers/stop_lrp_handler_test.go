@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 
+	executorfakes "github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep/handlers"
-	"github.com/cloudfoundry-incubator/rep/lrp_stopper/fake_lrp_stopper"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 
@@ -18,18 +18,18 @@ import (
 
 var _ = Describe("StopLRPInstanceHandler", func() {
 	var stopInstanceHandler *handlers.StopLRPInstanceHandler
-	var fakeStopper *fake_lrp_stopper.FakeLRPStopper
+	var fakeClient *executorfakes.FakeClient
 	var resp *httptest.ResponseRecorder
 	var req *http.Request
 
 	BeforeEach(func() {
 		var err error
-		fakeStopper = &fake_lrp_stopper.FakeLRPStopper{}
+		fakeClient = &executorfakes.FakeClient{}
 
 		logger := lagertest.NewTestLogger("test")
 		logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 
-		stopInstanceHandler = handlers.NewStopLRPInstanceHandler(logger, fakeStopper)
+		stopInstanceHandler = handlers.NewStopLRPInstanceHandler(logger, fakeClient)
 
 		resp = httptest.NewRecorder()
 
@@ -60,9 +60,9 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 		})
 
 		It("eventually stops the instance", func() {
-			Eventually(fakeStopper.StopInstanceCallCount).Should(Equal(1))
+			Eventually(fakeClient.StopContainerCallCount).Should(Equal(1))
 
-			processGuid, instanceGuid := fakeStopper.StopInstanceArgsForCall(0)
+			processGuid, instanceGuid := fakeClient.StopContainerArgsForCall(0)
 			Expect(processGuid).To(Equal(processGuid))
 			Expect(instanceGuid).To(Equal(instanceGuid))
 		})
@@ -78,7 +78,7 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 		})
 
 		It("does not attempt to stop the instance", func() {
-			Expect(fakeStopper.StopInstanceCallCount()).To(Equal(0))
+			Expect(fakeClient.StopContainerCallCount()).To(Equal(0))
 		})
 	})
 })

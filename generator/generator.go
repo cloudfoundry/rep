@@ -68,7 +68,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 
 	logger.Info("getting-containers-lrps-and-tasks")
 	go func() {
-		foundContainers, err := g.executorClient.ListContainers()
+		foundContainers, err := g.executorClient.ListContainers(logger)
 		if err != nil {
 			logger.Error("failed-to-list-containers", err)
 			err = fmt.Errorf("failed to list containers: %s", err.Error())
@@ -170,7 +170,7 @@ func (g *generator) OperationStream(logger lager.Logger) (<-chan operationq.Oper
 	logger = logger.Session("operation-stream")
 
 	logger.Info("subscribing")
-	events, err := g.executorClient.SubscribeToEvents()
+	events, err := g.executorClient.SubscribeToEvents(logger)
 	if err != nil {
 		logger.Error("failed-subscribing", err)
 		return nil, err

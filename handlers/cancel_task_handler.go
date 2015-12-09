@@ -30,7 +30,7 @@ func (h CancelTaskHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		logger.Info("deleting-container")
-		err := h.executorClient.DeleteContainer(taskGuid)
+		err := h.executorClient.DeleteContainer(logger, taskGuid)
 		if err == executor.ErrContainerNotFound {
 			logger.Info("container-not-found")
 			return

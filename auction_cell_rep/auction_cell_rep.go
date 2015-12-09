@@ -92,25 +92,25 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 	logger.Info("providing")
 
 	// Fail quickly if cached internal health is sick
-	healthy := a.client.Healthy()
+	healthy := a.client.Healthy(logger)
 	if !healthy {
 		logger.Error("failed-garden-health-check", nil)
 		return rep.CellState{}, ErrCellUnhealthy
 	}
 
-	containers, err := a.client.ListContainers()
+	containers, err := a.client.ListContainers(logger)
 	if err != nil {
 		logger.Error("failed-to-fetch-containers", err)
 		return rep.CellState{}, err
 	}
 
-	totalResources, err := a.client.TotalResources()
+	totalResources, err := a.client.TotalResources(logger)
 	if err != nil {
 		logger.Error("failed-to-get-total-resources", err)
 		return rep.CellState{}, err
 	}
 
-	availableResources, err := a.client.RemainingResources()
+	availableResources, err := a.client.RemainingResources(logger)
 	if err != nil {
 		logger.Error("failed-to-get-remaining-resource", err)
 		return rep.CellState{}, err
@@ -187,7 +187,7 @@ func (a *AuctionCellRep) Perform(work rep.Work) (rep.Work, error) {
 		}
 
 		lrpLogger.Info("requesting-container-allocation", lager.Data{"num-requesting-allocation": len(requests)})
-		failures, err := a.client.AllocateContainers(requests)
+		failures, err := a.client.AllocateContainers(logger, requests)
 		if err != nil {
 			lrpLogger.Error("failed-requesting-container-allocation", err)
 			failedWork.LRPs = work.LRPs
@@ -213,7 +213,7 @@ func (a *AuctionCellRep) Perform(work rep.Work) (rep.Work, error) {
 		}
 
 		taskLogger.Info("requesting-container-allocation", lager.Data{"num-requesting-allocation": len(requests)})
-		failures, err := a.client.AllocateContainers(requests)
+		failures, err := a.client.AllocateContainers(logger, requests)
 		if err != nil {
 			taskLogger.Error("failed-requesting-container-allocation", err)
 			failedWork.Tasks = work.Tasks

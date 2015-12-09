@@ -4,19 +4,20 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
+	"github.com/cloudfoundry-incubator/executor"
+	"github.com/cloudfoundry-incubator/rep"
 	"github.com/pivotal-golang/lager"
 )
 
 type StopLRPInstanceHandler struct {
-	logger  lager.Logger
-	stopper lrp_stopper.LRPStopper
+	logger lager.Logger
+	client executor.Client
 }
 
-func NewStopLRPInstanceHandler(logger lager.Logger, stopper lrp_stopper.LRPStopper) *StopLRPInstanceHandler {
+func NewStopLRPInstanceHandler(logger lager.Logger, client executor.Client) *StopLRPInstanceHandler {
 	return &StopLRPInstanceHandler{
-		logger:  logger,
-		stopper: stopper,
+		logger: logger,
+		client: client,
 	}
 }
 
@@ -45,14 +46,5 @@ func (h StopLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 
 	w.WriteHeader(http.StatusAccepted)
 
-	go func() {
-		err := h.stopper.StopInstance(processGuid, instanceGuid)
-
-		if err != nil {
-			logger.Error("failed-to-stop", err)
-			return
-		}
-
-		logger.Info("stopped")
-	}()
+	go h.client.StopContainer(logger, rep.LRPContainerGuid(processGuid, instanceGuid))
 }

@@ -42,7 +42,7 @@ var _ = Describe("ContainerDelegate", func() {
 
 		It("runs the container", func() {
 			Expect(executorClient.RunContainerCallCount()).To(Equal(1))
-			runReq := executorClient.RunContainerArgsForCall(0)
+			_, runReq := executorClient.RunContainerArgsForCall(0)
 			Expect(*runReq).To(Equal(runRequest))
 		})
 
@@ -72,7 +72,7 @@ var _ = Describe("ContainerDelegate", func() {
 
 			It("deletes the container", func() {
 				Expect(executorClient.DeleteContainerCallCount()).To(Equal(1))
-				containerGuid := executorClient.DeleteContainerArgsForCall(0)
+				_, containerGuid := executorClient.DeleteContainerArgsForCall(0)
 				Expect(containerGuid).To(Equal(expectedGuid))
 			})
 
@@ -102,7 +102,7 @@ var _ = Describe("ContainerDelegate", func() {
 
 		It("stops the container", func() {
 			Expect(executorClient.StopContainerCallCount()).To(Equal(1))
-			containerGuid := executorClient.StopContainerArgsForCall(0)
+			_, containerGuid := executorClient.StopContainerArgsForCall(0)
 			Expect(containerGuid).To(Equal(expectedGuid))
 		})
 
@@ -141,7 +141,7 @@ var _ = Describe("ContainerDelegate", func() {
 
 		It("deletes the container", func() {
 			Expect(executorClient.DeleteContainerCallCount()).To(Equal(1))
-			containerGuid := executorClient.DeleteContainerArgsForCall(0)
+			_, containerGuid := executorClient.DeleteContainerArgsForCall(0)
 			Expect(containerGuid).To(Equal(expectedGuid))
 		})
 

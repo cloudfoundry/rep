@@ -37,7 +37,7 @@ func NewContainerDelegate(client executor.Client) ContainerDelegate {
 
 func (d *containerDelegate) GetContainer(logger lager.Logger, guid string) (executor.Container, bool) {
 	logger.Info("fetch-container")
-	container, err := d.client.GetContainer(guid)
+	container, err := d.client.GetContainer(logger, guid)
 	if err != nil {
 		logInfoOrError(logger, "failed-fetch-container", err)
 		return container, false
@@ -48,7 +48,7 @@ func (d *containerDelegate) GetContainer(logger lager.Logger, guid string) (exec
 
 func (d *containerDelegate) RunContainer(logger lager.Logger, req *executor.RunRequest) bool {
 	logger.Info("running-container")
-	err := d.client.RunContainer(req)
+	err := d.client.RunContainer(logger, req)
 	if err != nil {
 		logInfoOrError(logger, "failed-running-container", err)
 		d.DeleteContainer(logger, req.Guid)
@@ -60,7 +60,7 @@ func (d *containerDelegate) RunContainer(logger lager.Logger, req *executor.RunR
 
 func (d *containerDelegate) StopContainer(logger lager.Logger, guid string) bool {
 	logger.Info("stopping-container")
-	err := d.client.StopContainer(guid)
+	err := d.client.StopContainer(logger, guid)
 	if err != nil {
 		logInfoOrError(logger, "failed-stopping-container", err)
 		return false
@@ -71,7 +71,7 @@ func (d *containerDelegate) StopContainer(logger lager.Logger, guid string) bool
 
 func (d *containerDelegate) DeleteContainer(logger lager.Logger, guid string) bool {
 	logger.Info("deleting-container")
-	err := d.client.DeleteContainer(guid)
+	err := d.client.DeleteContainer(logger, guid)
 	if err != nil {
 		logInfoOrError(logger, "failed-deleting-container", err)
 		return false
@@ -82,7 +82,7 @@ func (d *containerDelegate) DeleteContainer(logger lager.Logger, guid string) bo
 
 func (d *containerDelegate) FetchContainerResultFile(logger lager.Logger, guid string, filename string) (string, error) {
 	logger.Info("fetching-container-result")
-	stream, err := d.client.GetFiles(guid, filename)
+	stream, err := d.client.GetFiles(logger, guid, filename)
 	if err != nil {
 		logInfoOrError(logger, "failed-fetching-container-result-stream-from-executor", err)
 		return "", err

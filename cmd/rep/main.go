@@ -25,7 +25,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep/generator"
 	"github.com/cloudfoundry-incubator/rep/handlers"
 	"github.com/cloudfoundry-incubator/rep/harmonizer"
-	"github.com/cloudfoundry-incubator/rep/lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/maintain"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/nu7hatch/gouuid"
@@ -250,7 +249,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize executor: %s", err.Error())
 	}
-	defer executorClient.Cleanup()
+	defer executorClient.Cleanup(logger)
 
 	if err := validateBBSAddress(); err != nil {
 		logger.Fatal("invalid-bbs-address", err)
@@ -343,10 +342,6 @@ func initializeServiceClient(logger lager.Logger) bbs.ServiceClient {
 	return bbs.NewServiceClient(consulSession, clock.NewClock())
 }
 
-func initializeLRPStopper(guid string, executorClient executor.Client, logger lager.Logger) lrp_stopper.LRPStopper {
-	return lrp_stopper.New(guid, executorClient, logger)
-}
-
 func initializeServer(
 	bbsClient bbs.Client,
 	executorClient executor.Client,
@@ -356,10 +351,9 @@ func initializeServer(
 	stackMap rep.StackPathMap,
 	supportedProviders []string,
 ) (ifrit.Runner, string) {
-	lrpStopper := initializeLRPStopper(*cellID, executorClient, logger)
 
 	auctionCellRep := auction_cell_rep.New(*cellID, stackMap, supportedProviders, *zone, generateGuid, executorClient, evacuationReporter, logger)
-	handlers := handlers.New(auctionCellRep, lrpStopper, executorClient, evacuatable, logger)
+	handlers := handlers.New(auctionCellRep, executorClient, evacuatable, logger)
 
 	router, err := rata.NewRouter(rep.Routes, handlers)
 	if err != nil {

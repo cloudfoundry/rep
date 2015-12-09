@@ -272,7 +272,8 @@ var _ = Describe("AuctionCellRep", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
-					Expect(client.AllocateContainersArgsForCall(0)).To(ConsistOf(
+					_, arg := client.AllocateContainersArgsForCall(0)
+					Expect(arg).To(ConsistOf(
 						executor.AllocationRequest{
 							Guid: rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
 							Tags: executor.Tags{
@@ -343,7 +344,8 @@ var _ = Describe("AuctionCellRep", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
-					Expect(client.AllocateContainersArgsForCall(0)).To(ConsistOf(
+					_, arg := client.AllocateContainersArgsForCall(0)
+					Expect(arg).To(ConsistOf(
 						executor.AllocationRequest{
 							Guid: rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
 							Tags: executor.Tags{
@@ -408,7 +410,8 @@ var _ = Describe("AuctionCellRep", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
-					Expect(client.AllocateContainersArgsForCall(0)).To(ConsistOf(
+					_, arg := client.AllocateContainersArgsForCall(0)
+					Expect(arg).To(ConsistOf(
 						executor.AllocationRequest{
 							Guid: rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
 							Tags: executor.Tags{
@@ -435,7 +438,8 @@ var _ = Describe("AuctionCellRep", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
-					Expect(client.AllocateContainersArgsForCall(0)).To(ConsistOf(
+					_, arg := client.AllocateContainersArgsForCall(0)
+					Expect(arg).To(ConsistOf(
 						executor.AllocationRequest{
 							Guid: rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
 							Tags: executor.Tags{
@@ -515,7 +519,8 @@ var _ = Describe("AuctionCellRep", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
-					Expect(client.AllocateContainersArgsForCall(0)).To(ConsistOf(
+					_, arg := client.AllocateContainersArgsForCall(0)
+					Expect(arg).To(ConsistOf(
 						allocationRequestFromTask(task1, linuxPath),
 						allocationRequestFromTask(task2, task2.RootFs),
 					))
@@ -565,7 +570,8 @@ var _ = Describe("AuctionCellRep", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
-					Expect(client.AllocateContainersArgsForCall(0)).To(ConsistOf(
+					_, arg := client.AllocateContainersArgsForCall(0)
+					Expect(arg).To(ConsistOf(
 						allocationRequestFromTask(task1, linuxPath),
 					))
 				})
@@ -613,7 +619,8 @@ var _ = Describe("AuctionCellRep", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
-					Expect(client.AllocateContainersArgsForCall(0)).To(ConsistOf(
+					_, arg := client.AllocateContainersArgsForCall(0)
+					Expect(arg).To(ConsistOf(
 						allocationRequestFromTask(task1, ""),
 					))
 				})
@@ -630,7 +637,8 @@ var _ = Describe("AuctionCellRep", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
-					Expect(client.AllocateContainersArgsForCall(0)).To(ConsistOf(
+					_, arg := client.AllocateContainersArgsForCall(0)
+					Expect(arg).To(ConsistOf(
 						allocationRequestFromTask(task1, linuxPath),
 					))
 				})

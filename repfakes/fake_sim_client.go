@@ -52,7 +52,7 @@ type FakeSimClient struct {
 	StateClientTimeoutStub        func() time.Duration
 	stateClientTimeoutMutex       sync.RWMutex
 	stateClientTimeoutArgsForCall []struct{}
-	stateClientTimeoutReturns struct {
+	stateClientTimeoutReturns     struct {
 		result1 time.Duration
 	}
 	ResetStub        func() error

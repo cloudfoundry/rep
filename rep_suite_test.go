@@ -10,7 +10,6 @@ import (
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"github.com/cloudfoundry-incubator/rep/handlers"
-	"github.com/cloudfoundry-incubator/rep/lrp_stopper/fake_lrp_stopper"
 	"github.com/cloudfoundry-incubator/rep/repfakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -29,7 +28,6 @@ var (
 
 	client, clientForServerThatErrors rep.Client
 
-	fakeLRPStopper     *fake_lrp_stopper.FakeLRPStopper
 	fakeExecutorClient *executorfakes.FakeClient
 	fakeEvacuatable    *fake_evacuation_context.FakeEvacuatable
 )
@@ -48,11 +46,10 @@ var _ = BeforeEach(func() {
 	logger := lagertest.NewTestLogger("test")
 
 	auctionRep = &repfakes.FakeClient{}
-	fakeLRPStopper = &fake_lrp_stopper.FakeLRPStopper{}
 	fakeExecutorClient = &executorfakes.FakeClient{}
 	fakeEvacuatable = &fake_evacuation_context.FakeEvacuatable{}
 
-	handler, err := rata.NewRouter(rep.Routes, handlers.New(auctionRep, fakeLRPStopper, fakeExecutorClient, fakeEvacuatable, logger))
+	handler, err := rata.NewRouter(rep.Routes, handlers.New(auctionRep, fakeExecutorClient, fakeEvacuatable, logger))
 	Expect(err).NotTo(HaveOccurred())
 	server = httptest.NewServer(handler)
 

@@ -11,6 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/rep/maintain"
 	maintain_fakes "github.com/cloudfoundry-incubator/rep/maintain/fakes"
 	"github.com/pivotal-golang/clock/fakeclock"
+	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -39,7 +40,7 @@ var _ = Describe("Maintain Presence", func() {
 	BeforeEach(func() {
 		pingErrors = make(chan error, 1)
 		fakeClient = &fake_client.FakeClient{
-			PingStub: func() error {
+			PingStub: func(lager.Logger) error {
 				return <-pingErrors
 			},
 		}

@@ -77,7 +77,7 @@ func (m *Maintainer) waitForExecutor(sigChan <-chan os.Signal) (ifrit.Runner, er
 	sleeper := m.clock.NewTimer(ExecutorPollInterval)
 	for {
 		m.logger.Debug("waiting-pinging-executor")
-		err := m.executorClient.Ping()
+		err := m.executorClient.Ping(m.logger)
 		if err == nil {
 			return m.createHeartbeater()
 		}
@@ -95,7 +95,7 @@ func (m *Maintainer) waitForExecutor(sigChan <-chan os.Signal) (ifrit.Runner, er
 }
 
 func (m *Maintainer) createHeartbeater() (ifrit.Runner, error) {
-	resources, err := m.executorClient.TotalResources()
+	resources, err := m.executorClient.TotalResources(m.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func (m *Maintainer) heartbeat(sigChan <-chan os.Signal, ready chan<- struct{}, 
 
 		case <-ticker.C():
 			m.logger.Debug("heartbeat-pinging-executor")
-			err := m.executorClient.Ping()
+			err := m.executorClient.Ping(m.logger)
 			if err == nil {
 				continue
 			}
