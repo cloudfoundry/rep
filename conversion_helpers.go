@@ -114,12 +114,13 @@ func NewRunRequestFromDesiredLRP(
 			Guid:  desiredLRP.MetricsGuid,
 			Index: int(lrpKey.Index),
 		},
-		StartTimeout: uint(desiredLRP.StartTimeout),
-		Privileged:   desiredLRP.Privileged,
-		Setup:        desiredLRP.Setup,
-		Action:       desiredLRP.Action,
-		Monitor:      desiredLRP.Monitor,
-		EgressRules:  desiredLRP.EgressRules,
+		StartTimeout:      uint(desiredLRP.StartTimeout),
+		Privileged:        desiredLRP.Privileged,
+		CacheDependencies: ConvertCacheDependencies(desiredLRP.CacheDependencies),
+		Setup:             desiredLRP.Setup,
+		Action:            desiredLRP.Action,
+		Monitor:           desiredLRP.Monitor,
+		EgressRules:       desiredLRP.EgressRules,
 		Env: append([]executor.EnvironmentVariable{
 			{Name: "INSTANCE_GUID", Value: lrpInstanceKey.InstanceGuid},
 			{Name: "INSTANCE_INDEX", Value: strconv.Itoa(int(lrpKey.Index))},
@@ -144,7 +145,6 @@ func NewRunRequestFromTask(task *models.Task) (executor.RunRequest, error) {
 		DiskScope:  diskScope,
 		CPUWeight:  uint(task.CpuWeight),
 		Privileged: task.Privileged,
-
 		LogConfig: executor.LogConfig{
 			Guid:       task.LogGuid,
 			SourceName: task.LogSource,
@@ -152,11 +152,30 @@ func NewRunRequestFromTask(task *models.Task) (executor.RunRequest, error) {
 		MetricsConfig: executor.MetricsConfig{
 			Guid: task.MetricsGuid,
 		},
-		Action:      task.Action,
-		Env:         executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
-		EgressRules: task.EgressRules,
+		CacheDependencies: ConvertCacheDependencies(task.CacheDependencies),
+		Action:            task.Action,
+		Env:               executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
+		EgressRules:       task.EgressRules,
 	}
 	return executor.NewRunRequest(task.TaskGuid, &runInfo, tags), nil
+}
+
+func ConvertCacheDependencies(modelDeps []*models.CacheDependency) []executor.CacheDependency {
+	execDeps := make([]executor.CacheDependency, len(modelDeps))
+	for i := range modelDeps {
+		execDeps[i] = ConvertCacheDependency(modelDeps[i])
+	}
+	return execDeps
+}
+
+func ConvertCacheDependency(modelDep *models.CacheDependency) executor.CacheDependency {
+	return executor.CacheDependency{
+		Name:      modelDep.Name,
+		From:      modelDep.From,
+		To:        modelDep.To,
+		CacheKey:  modelDep.CacheKey,
+		LogSource: modelDep.LogSource,
+	}
 }
 
 func ConvertPortMappings(containerPorts []uint32) []executor.PortMapping {

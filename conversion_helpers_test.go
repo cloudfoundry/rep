@@ -287,17 +287,19 @@ var _ = Describe("Resources", func() {
 					Index:      int(actualLRP.Index),
 					SourceName: desiredLRP.LogSource,
 				},
-
 				MetricsConfig: executor.MetricsConfig{
 					Guid:  desiredLRP.MetricsGuid,
 					Index: int(actualLRP.Index),
 				},
 				StartTimeout: uint(desiredLRP.StartTimeout),
 				Privileged:   desiredLRP.Privileged,
-				Setup:        desiredLRP.Setup,
-				Action:       desiredLRP.Action,
-				Monitor:      desiredLRP.Monitor,
-				EgressRules:  desiredLRP.EgressRules,
+				CacheDependencies: []executor.CacheDependency{
+					{Name: "app bits", From: "blobstore.com/bits/app-bits", To: "/usr/local/app", CacheKey: "cache-key", LogSource: "log-source"},
+				},
+				Setup:       desiredLRP.Setup,
+				Action:      desiredLRP.Action,
+				Monitor:     desiredLRP.Monitor,
+				EgressRules: desiredLRP.EgressRules,
 				Env: append([]executor.EnvironmentVariable{
 					{Name: "INSTANCE_GUID", Value: actualLRP.InstanceGuid},
 					{Name: "INSTANCE_INDEX", Value: strconv.Itoa(int(actualLRP.Index))},
@@ -338,7 +340,9 @@ var _ = Describe("Resources", func() {
 				DiskScope:  executor.ExclusiveDiskLimit,
 				CPUWeight:  uint(task.CpuWeight),
 				Privileged: task.Privileged,
-
+				CacheDependencies: []executor.CacheDependency{
+					{Name: "app bits", From: "blobstore.com/bits/app-bits", To: "/usr/local/app", CacheKey: "cache-key", LogSource: "log-source"},
+				},
 				LogConfig: executor.LogConfig{
 					Guid:       task.LogGuid,
 					SourceName: task.LogSource,
