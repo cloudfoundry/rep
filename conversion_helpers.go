@@ -114,13 +114,13 @@ func NewRunRequestFromDesiredLRP(
 			Guid:  desiredLRP.MetricsGuid,
 			Index: int(lrpKey.Index),
 		},
-		StartTimeout:      uint(desiredLRP.StartTimeout),
-		Privileged:        desiredLRP.Privileged,
-		CacheDependencies: ConvertCacheDependencies(desiredLRP.CacheDependencies),
-		Setup:             desiredLRP.Setup,
-		Action:            desiredLRP.Action,
-		Monitor:           desiredLRP.Monitor,
-		EgressRules:       desiredLRP.EgressRules,
+		StartTimeout:       uint(desiredLRP.StartTimeout),
+		Privileged:         desiredLRP.Privileged,
+		CachedDependencies: ConvertCachedDependencies(desiredLRP.CachedDependencies),
+		Setup:              desiredLRP.Setup,
+		Action:             desiredLRP.Action,
+		Monitor:            desiredLRP.Monitor,
+		EgressRules:        desiredLRP.EgressRules,
 		Env: append([]executor.EnvironmentVariable{
 			{Name: "INSTANCE_GUID", Value: lrpInstanceKey.InstanceGuid},
 			{Name: "INSTANCE_INDEX", Value: strconv.Itoa(int(lrpKey.Index))},
@@ -152,24 +152,24 @@ func NewRunRequestFromTask(task *models.Task) (executor.RunRequest, error) {
 		MetricsConfig: executor.MetricsConfig{
 			Guid: task.MetricsGuid,
 		},
-		CacheDependencies: ConvertCacheDependencies(task.CacheDependencies),
-		Action:            task.Action,
-		Env:               executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
-		EgressRules:       task.EgressRules,
+		CachedDependencies: ConvertCachedDependencies(task.CachedDependencies),
+		Action:             task.Action,
+		Env:                executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
+		EgressRules:        task.EgressRules,
 	}
 	return executor.NewRunRequest(task.TaskGuid, &runInfo, tags), nil
 }
 
-func ConvertCacheDependencies(modelDeps []*models.CacheDependency) []executor.CacheDependency {
-	execDeps := make([]executor.CacheDependency, len(modelDeps))
+func ConvertCachedDependencies(modelDeps []*models.CachedDependency) []executor.CachedDependency {
+	execDeps := make([]executor.CachedDependency, len(modelDeps))
 	for i := range modelDeps {
-		execDeps[i] = ConvertCacheDependency(modelDeps[i])
+		execDeps[i] = ConvertCachedDependency(modelDeps[i])
 	}
 	return execDeps
 }
 
-func ConvertCacheDependency(modelDep *models.CacheDependency) executor.CacheDependency {
-	return executor.CacheDependency{
+func ConvertCachedDependency(modelDep *models.CachedDependency) executor.CachedDependency {
+	return executor.CachedDependency{
 		Name:      modelDep.Name,
 		From:      modelDep.From,
 		To:        modelDep.To,

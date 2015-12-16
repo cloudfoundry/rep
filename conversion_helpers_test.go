@@ -293,7 +293,7 @@ var _ = Describe("Resources", func() {
 				},
 				StartTimeout: uint(desiredLRP.StartTimeout),
 				Privileged:   desiredLRP.Privileged,
-				CacheDependencies: []executor.CacheDependency{
+				CachedDependencies: []executor.CachedDependency{
 					{Name: "app bits", From: "blobstore.com/bits/app-bits", To: "/usr/local/app", CacheKey: "cache-key", LogSource: "log-source"},
 				},
 				Setup:       desiredLRP.Setup,
@@ -340,7 +340,7 @@ var _ = Describe("Resources", func() {
 				DiskScope:  executor.ExclusiveDiskLimit,
 				CPUWeight:  uint(task.CpuWeight),
 				Privileged: task.Privileged,
-				CacheDependencies: []executor.CacheDependency{
+				CachedDependencies: []executor.CachedDependency{
 					{Name: "app bits", From: "blobstore.com/bits/app-bits", To: "/usr/local/app", CacheKey: "cache-key", LogSource: "log-source"},
 				},
 				LogConfig: executor.LogConfig{
