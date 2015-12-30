@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/bbs"
+	bbstestrunner "github.com/cloudfoundry-incubator/bbs/cmd/bbs/testrunner"
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/bbs/models/test/model_helpers"
 	"github.com/cloudfoundry-incubator/cf_http"
@@ -18,9 +19,9 @@ import (
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/cmd/rep/testrunner"
 	"github.com/hashicorp/consul/api"
-	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
+	"github.com/tedsuo/ifrit/ginkgomon"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -34,7 +35,6 @@ var runner *testrunner.Runner
 var _ = Describe("The Rep", func() {
 	var (
 		fakeGarden        *ghttp.Server
-		serviceClient     bbs.ServiceClient
 		pollingInterval   time.Duration
 		evacuationTimeout time.Duration
 		rootFSName        string
@@ -79,7 +79,6 @@ var _ = Describe("The Rep", func() {
 		}())
 
 		logger = lagertest.NewTestLogger("test")
-		serviceClient = bbs.NewServiceClient(consulSession, clock.NewClock())
 
 		pollingInterval = 50 * time.Millisecond
 		evacuationTimeout = 200 * time.Millisecond
@@ -188,19 +187,20 @@ var _ = Describe("The Rep", func() {
 			var cellPresence *models.CellPresence
 
 			JustBeforeEach(func() {
-				Eventually(fetchCells(logger, serviceClient)).Should(HaveLen(1))
-				cells, err := serviceClient.Cells(logger)
+				Eventually(fetchCells(logger)).Should(HaveLen(1))
+				cells, err := bbsClient.Cells()
+				cellSet := models.NewCellSetFromList(cells)
 				Expect(err).NotTo(HaveOccurred())
-				cellPresence = cells[cellID]
+				cellPresence = cellSet[cellID]
 			})
 
 			It("should maintain presence", func() {
-				Expect(cellPresence.CellID).To(Equal(cellID))
-				expectedRootFSProviders := map[string][]string{
-					"docker":    []string{},
-					"preloaded": []string{"the-rootfs"},
+				Expect(cellPresence.CellId).To(Equal(cellID))
+				expectedRootFSProviders := models.RootFSProviders{
+					"docker":    &models.Providers{ProvidersList: nil},
+					"preloaded": &models.Providers{ProvidersList: []string{"the-rootfs"}},
 				}
-				Expect(cellPresence.RootFSProviders).To(Equal(expectedRootFSProviders))
+				Expect(cellPresence.RootfsProviders).To(Equal(expectedRootFSProviders))
 			})
 
 			It("should have no session health checks", func() {
@@ -220,11 +220,16 @@ var _ = Describe("The Rep", func() {
 			Context("when the presence fails to be maintained", func() {
 				It("should not exit, but keep trying to maintain presence at the same ID", func() {
 					consulRunner.Reset()
+					// Resetting consul will cause the BBS to die.  But now we get Cells from
+					// the BBS we need to restart this process as well after the consul reset
+					bbsRunner = bbstestrunner.New(bbsBinPath, bbsArgs)
+					bbsProcess = ginkgomon.Invoke(bbsRunner)
 
-					Eventually(fetchCells(logger, serviceClient), 5).Should(HaveLen(1))
-					cells, err := serviceClient.Cells(logger)
+					Eventually(fetchCells(logger), 5).Should(HaveLen(1))
+					cells, err := bbsClient.Cells()
+					cellSet := models.NewCellSetFromList(cells)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(cells[cellID]).To(Equal(cellPresence))
+					Expect(cellSet[cellID]).To(Equal(cellPresence))
 
 					Expect(runner.Session).NotTo(Exit())
 				})
@@ -235,11 +240,12 @@ var _ = Describe("The Rep", func() {
 			var client rep.Client
 
 			JustBeforeEach(func() {
-				Eventually(fetchCells(logger, serviceClient)).Should(HaveLen(1))
-				cells, err := serviceClient.Cells(logger)
+				Eventually(fetchCells(logger)).Should(HaveLen(1))
+				cells, err := bbsClient.Cells()
+				cellSet := models.NewCellSetFromList(cells)
 				Expect(err).NotTo(HaveOccurred())
 
-				client = rep.NewClient(http.DefaultClient, cf_http.NewCustomTimeoutClient(100*time.Millisecond), cells[cellID].RepAddress)
+				client = rep.NewClient(http.DefaultClient, cf_http.NewCustomTimeoutClient(100*time.Millisecond), cellSet[cellID].RepAddress)
 			})
 
 			Context("Capacity with a container", func() {
@@ -396,8 +402,8 @@ func getTasksByState(client bbs.Client, state models.Task_State) []*models.Task 
 	return filteredTasks
 }
 
-func fetchCells(logger lager.Logger, serviceClient bbs.ServiceClient) func() (models.CellSet, error) {
-	return func() (models.CellSet, error) {
-		return serviceClient.Cells(logger)
+func fetchCells(logger lager.Logger) func() ([]*models.CellPresence, error) {
+	return func() ([]*models.CellPresence, error) {
+		return bbsClient.Cells()
 	}
 }
