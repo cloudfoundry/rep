@@ -197,8 +197,8 @@ var _ = Describe("The Rep", func() {
 			It("should maintain presence", func() {
 				Expect(cellPresence.CellId).To(Equal(cellID))
 				expectedRootFSProviders := models.RootFSProviders{
-					"docker":    &models.Providers{ProvidersList: nil},
-					"preloaded": &models.Providers{ProvidersList: []string{"the-rootfs"}},
+					"docker":    &models.Providers{Parameters: nil},
+					"preloaded": &models.Providers{Parameters: []string{"the-rootfs"}},
 				}
 				Expect(cellPresence.RootfsProviders).To(Equal(expectedRootFSProviders))
 			})
