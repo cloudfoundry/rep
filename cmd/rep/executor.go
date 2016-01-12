@@ -132,6 +132,18 @@ var maxConcurrentDownloads = flag.Int(
 	"Number of concurrent download steps",
 )
 
+var postSetupHook = flag.String(
+	"postSetupHook",
+	"",
+	"Set of commands to run after the setup action",
+)
+
+var postSetupUser = flag.String(
+	"postSetupUser",
+	"root",
+	"User to run the post setup hook",
+)
+
 func executorConfig() executorinit.Configuration {
 	return executorinit.Configuration{
 		GardenNetwork:               *gardenNetwork,
@@ -155,5 +167,7 @@ func executorConfig() executorinit.Configuration {
 		MemoryMB:                    *memoryMBFlag,
 		DiskMB:                      *diskMBFlag,
 		MaxConcurrentDownloads:      *maxConcurrentDownloads,
+		PostSetupHook:               *postSetupHook,
+		PostSetupUser:               *postSetupUser,
 	}
 }
