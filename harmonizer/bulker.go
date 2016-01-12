@@ -91,14 +91,17 @@ func (b *Bulker) sync(logger lager.Logger) {
 
 	startTime := b.clock.Now()
 
-	ops, err := b.generator.BatchOperations(logger)
+	ops, batchError := b.generator.BatchOperations(logger)
 
 	endTime := b.clock.Now()
 
-	repBulkSyncDuration.Send(endTime.Sub(startTime))
+	sendError := repBulkSyncDuration.Send(endTime.Sub(startTime))
+	if sendError != nil {
+		logger.Error("failed-to-send-rep-bulk-sync-duration-metric", sendError)
+	}
 
-	if err != nil {
-		logger.Error("failed-to-generate-operations", err)
+	if batchError != nil {
+		logger.Error("failed-to-generate-operations", batchError)
 		return
 	}
 
