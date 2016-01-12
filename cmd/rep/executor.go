@@ -174,6 +174,18 @@ var gardenHealthcheckProcessDir = flag.String(
 	"Directory to run the healthcheck process from",
 )
 
+var postSetupHook = flag.String(
+	"postSetupHook",
+	"",
+	"Set of commands to run after the setup action",
+)
+
+var postSetupUser = flag.String(
+	"postSetupUser",
+	"root",
+	"User to run the post setup hook",
+)
+
 func executorConfig(gardenHealthcheckRootFS string, gardenHealthcheckArgs, gardenHealthcheckEnv []string) executorinit.Configuration {
 	return executorinit.Configuration{
 		GardenNetwork:                      *gardenNetwork,
@@ -207,5 +219,7 @@ func executorConfig(gardenHealthcheckRootFS string, gardenHealthcheckArgs, garde
 		GardenHealthcheckProcessDir:        *gardenHealthcheckProcessDir,
 		GardenHealthcheckProcessArgs:       gardenHealthcheckArgs,
 		GardenHealthcheckProcessEnv:        gardenHealthcheckEnv,
+		PostSetupHook:                      *postSetupHook,
+		PostSetupUser:                      *postSetupUser,
 	}
 }
