@@ -118,6 +118,7 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 
 	var key *models.ActualLRPKey
 	var keyErr error
+	var startingContainersCount int
 	lrps := []rep.LRP{}
 	tasks := []rep.Task{}
 
@@ -130,6 +131,10 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 			continue
 		}
 
+		if container.State == executor.StateInitializing ||
+			container.State == executor.StateReserved {
+			startingContainersCount += 1
+		}
 		switch container.Tags[rep.LifecycleTag] {
 		case rep.LRPLifecycle:
 			key, keyErr = rep.ActualLRPKeyFromTags(container.Tags)
@@ -152,14 +157,16 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 		tasks,
 		a.zone,
 		a.evacuationReporter.Evacuating(),
+		startingContainersCount,
 	)
 
 	a.logger.Info("provided", lager.Data{
-		"available-resources": state.AvailableResources,
-		"total-resources":     state.TotalResources,
-		"num-lrps":            len(state.LRPs),
-		"zone":                state.Zone,
-		"evacuating":          state.Evacuating,
+		"available-resources":     state.AvailableResources,
+		"total-resources":         state.TotalResources,
+		"num-lrps":                len(state.LRPs),
+		"zone":                    state.Zone,
+		"evacuating":              state.Evacuating,
+		"totalStartingContainers": state.TotalStartingContainers,
 	})
 
 	return state, nil

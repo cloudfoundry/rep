@@ -13,24 +13,26 @@ var ErrorIncompatibleRootfs = errors.New("rootfs not found")
 var ErrorInsufficientResources = errors.New("insufficient resources")
 
 type CellState struct {
-	RootFSProviders    RootFSProviders
-	AvailableResources Resources
-	TotalResources     Resources
-	LRPs               []LRP
-	Tasks              []Task
-	Zone               string
-	Evacuating         bool
+	RootFSProviders         RootFSProviders
+	AvailableResources      Resources
+	TotalResources          Resources
+	LRPs                    []LRP
+	Tasks                   []Task
+	Zone                    string
+	Evacuating              bool
+	TotalStartingContainers int
 }
 
-func NewCellState(root RootFSProviders, avail Resources, total Resources, lrps []LRP, tasks []Task, zone string, isEvac bool) CellState {
+func NewCellState(root RootFSProviders, avail Resources, total Resources, lrps []LRP, tasks []Task, zone string, isEvac bool, totalStartingContainers int) CellState {
 	return CellState{
-		RootFSProviders:    root,
-		AvailableResources: avail,
-		TotalResources:     total,
-		LRPs:               lrps,
-		Tasks:              tasks,
-		Zone:               zone,
-		Evacuating:         isEvac,
+		RootFSProviders:         root,
+		AvailableResources:      avail,
+		TotalResources:          total,
+		LRPs:                    lrps,
+		Tasks:                   tasks,
+		Zone:                    zone,
+		Evacuating:              isEvac,
+		TotalStartingContainers: totalStartingContainers,
 	}
 }
 
@@ -39,12 +41,13 @@ func (c *CellState) Copy() CellState {
 	copy(lrps, c.LRPs)
 	tasks := make([]Task, 0, len(c.Tasks))
 	copy(tasks, c.Tasks)
-	return NewCellState(c.RootFSProviders.Copy(), c.AvailableResources, c.TotalResources, lrps, tasks, c.Zone, c.Evacuating)
+	return NewCellState(c.RootFSProviders.Copy(), c.AvailableResources, c.TotalResources, lrps, tasks, c.Zone, c.Evacuating, c.TotalStartingContainers)
 }
 
 func (c *CellState) AddLRP(lrp *LRP) {
 	c.AvailableResources.Subtract(&lrp.Resource)
 	c.LRPs = append(c.LRPs, *lrp)
+	c.TotalStartingContainers++
 }
 
 func (c *CellState) AddTask(task *Task) {
@@ -67,10 +70,11 @@ func (c *CellState) ResourceMatch(res *Resource) error {
 	}
 }
 
-func (c CellState) ComputeScore(res *Resource) float64 {
+func (c CellState) ComputeScore(res *Resource, weight float64) float64 {
 	remainingResources := c.AvailableResources.Copy()
 	remainingResources.Subtract(res)
-	return remainingResources.ComputeScore(&c.TotalResources)
+	intermediateScore := remainingResources.ComputeScore(&c.TotalResources)
+	return intermediateScore + (float64(c.TotalStartingContainers) * weight)
 }
 
 func (c *CellState) MatchRootFS(rootfs string) bool {
