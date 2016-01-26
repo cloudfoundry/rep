@@ -2,6 +2,7 @@ package internal_test
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/cloudfoundry-incubator/bbs/fake_bbs"
@@ -219,6 +220,15 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						Expect(*lrpKey).To(Equal(expectedLrpKey))
 						Expect(*instanceKey).To(Equal(expectedInstanceKey))
 						Expect(*netInfo).To(Equal(expectedNetInfo))
+
+						Eventually(logger).Should(Say(
+							fmt.Sprintf(
+								`"net-info":\{"address":"%s","ports":\[\{"container_port":%d,"host_port":%d\}\]\}`,
+								expectedNetInfo.Address,
+								expectedNetInfo.Ports[0].ContainerPort,
+								expectedNetInfo.Ports[0].HostPort,
+							),
+						))
 					})
 
 					Context("when starting fails because ErrActualLRPCannotBeStarted", func() {
