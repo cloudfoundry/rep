@@ -2,6 +2,7 @@ package internal_test
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/cloudfoundry-incubator/bbs/fake_bbs"
@@ -15,6 +16,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("EvacuationLrpProcessor", func() {
@@ -251,6 +253,15 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				Expect(*actualLRPContainerKey).To(Equal(lrpInstanceKey))
 				Expect(*actualLRPNetInfo).To(Equal(lrpNetInfo))
 				Expect(actualTTL).To(Equal(uint64(evacuationTTL)))
+
+				Eventually(logger).Should(Say(
+					fmt.Sprintf(
+						`"net_info":\{"address":"%s","ports":\[\{"container_port":%d,"host_port":%d\}\]\}`,
+						lrpNetInfo.Address,
+						lrpNetInfo.Ports[0].ContainerPort,
+						lrpNetInfo.Ports[0].HostPort,
+					),
+				))
 			})
 
 			Context("when the evacuation returns successfully", func() {
