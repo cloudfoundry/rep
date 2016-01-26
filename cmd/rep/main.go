@@ -333,8 +333,7 @@ func initializeServiceClient(logger lager.Logger) bbs.ServiceClient {
 		logger.Fatal("new-client-failed", err)
 	}
 
-	sessionMgr := consuladapter.NewSessionManager(client)
-	consulSession, err := consuladapter.NewSessionNoChecks(*sessionName, *lockTTL, client, sessionMgr)
+	consulSession, err := consuladapter.NewSessionNoChecks(*sessionName, *lockTTL, consuladapter.NewConsulClient(client))
 	if err != nil {
 		logger.Fatal("consul-session-failed", err)
 	}
