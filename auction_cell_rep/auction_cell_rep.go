@@ -120,10 +120,15 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 	var keyErr error
 	lrps := []rep.LRP{}
 	tasks := []rep.Task{}
+	startingContainerCount := 0
 
 	for i := range containers {
 		container := &containers[i]
 		resource := rep.Resource{MemoryMB: int32(container.MemoryMB), DiskMB: int32(container.DiskMB)}
+
+		if containerIsStarting(container) {
+			startingContainerCount++
+		}
 
 		if container.Tags == nil {
 			logger.Error("failed-to-extract-container-tags", nil)
@@ -151,6 +156,7 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 		lrps,
 		tasks,
 		a.zone,
+		startingContainerCount,
 		a.evacuationReporter.Evacuating(),
 	)
 
@@ -163,6 +169,12 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 	})
 
 	return state, nil
+}
+
+func containerIsStarting(container *executor.Container) bool {
+	return container.State == executor.StateReserved ||
+		container.State == executor.StateInitializing ||
+		container.State == executor.StateCreated
 }
 
 func (a *AuctionCellRep) Perform(work rep.Work) (rep.Work, error) {
