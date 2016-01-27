@@ -81,6 +81,7 @@ var _ = Describe("AuctionCellRep", func() {
 						rep.ProcessIndexTag: "17",
 						rep.DomainTag:       "domain",
 					},
+					State: executor.StateReserved,
 				},
 				{
 					Guid:     "second",
@@ -91,6 +92,7 @@ var _ = Describe("AuctionCellRep", func() {
 						rep.ProcessIndexTag: "92",
 						rep.DomainTag:       "domain",
 					},
+					State: executor.StateInitializing,
 				},
 				{
 					Guid:     "da-task",
@@ -99,11 +101,13 @@ var _ = Describe("AuctionCellRep", func() {
 						rep.LifecycleTag: rep.TaskLifecycle,
 						rep.DomainTag:    "domain",
 					},
+					State: executor.StateCreated,
 				},
 				{
 					Guid:     "other-task",
 					Resource: executor.NewResource(40, 30, "rootfs"),
 					Tags:     nil,
+					State:    executor.StateRunning,
 				},
 			}
 
@@ -142,6 +146,8 @@ var _ = Describe("AuctionCellRep", func() {
 			Expect(state.Tasks).To(ConsistOf([]rep.Task{
 				rep.NewTask("da-task", "domain", rep.NewResource(40, 30, "")),
 			}))
+
+			Expect(state.StartingContainerCount).To(Equal(3))
 		})
 
 		Context("when the cell is not healthy", func() {
