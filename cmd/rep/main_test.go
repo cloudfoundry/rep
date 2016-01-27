@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/bbs"
-	bbstestrunner "github.com/cloudfoundry-incubator/bbs/cmd/bbs/testrunner"
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/bbs/models/test/model_helpers"
 	"github.com/cloudfoundry-incubator/cf_http"
@@ -18,10 +17,8 @@ import (
 	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/cmd/rep/testrunner"
-	"github.com/hashicorp/consul/api"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
-	"github.com/tedsuo/ifrit/ginkgomon"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -184,50 +181,13 @@ var _ = Describe("The Rep", func() {
 		})
 
 		Describe("maintaining presence", func() {
-			var cellPresence *models.CellPresence
-
-			JustBeforeEach(func() {
+			It("should maintain presence", func() {
 				Eventually(fetchCells(logger)).Should(HaveLen(1))
 				cells, err := bbsClient.Cells()
 				cellSet := models.NewCellSetFromList(cells)
 				Expect(err).NotTo(HaveOccurred())
-				cellPresence = cellSet[cellID]
-			})
-
-			It("should maintain presence", func() {
+				cellPresence := cellSet[cellID]
 				Expect(cellPresence.CellId).To(Equal(cellID))
-			})
-
-			It("should have no session health checks", func() {
-				sessions, _, err := consulRunner.NewClient().Session().List(nil)
-				Expect(err).NotTo(HaveOccurred())
-
-				var repSessions []*api.SessionEntry
-				for _, sess := range sessions {
-					if sess.Name == "rep" {
-						repSessions = append(repSessions, sess)
-					}
-				}
-				Expect(repSessions).To(HaveLen(1))
-				Expect(repSessions[0].Checks).To(BeEmpty())
-			})
-
-			Context("when the presence fails to be maintained", func() {
-				It("should not exit, but keep trying to maintain presence at the same ID", func() {
-					consulRunner.Reset()
-					// Resetting consul will cause the BBS to die.  But now we get Cells from
-					// the BBS we need to restart this process as well after the consul reset
-					bbsRunner = bbstestrunner.New(bbsBinPath, bbsArgs)
-					bbsProcess = ginkgomon.Invoke(bbsRunner)
-
-					Eventually(fetchCells(logger), 5).Should(HaveLen(1))
-					cells, err := bbsClient.Cells()
-					cellSet := models.NewCellSetFromList(cells)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(cellSet[cellID]).To(Equal(cellPresence))
-
-					Expect(runner.Session).NotTo(Exit())
-				})
 			})
 		})
 

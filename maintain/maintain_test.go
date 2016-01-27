@@ -81,7 +81,7 @@ var _ = Describe("Maintain Presence", func() {
 			RetryInterval:   1 * time.Second,
 			RootFSProviders: []string{"provider-1", "provider-2"},
 		}
-		maintainer = maintain.New(config, fakeClient, serviceClient, logger, clock)
+		maintainer = maintain.New(logger, config, fakeClient, serviceClient, 10*time.Second, clock)
 	})
 
 	AfterEach(func() {

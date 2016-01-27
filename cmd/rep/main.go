@@ -324,7 +324,7 @@ func initializeCellPresence(address string, serviceClient bbs.ServiceClient, exe
 		RootFSProviders:   rootFSProviders,
 		PreloadedRootFSes: preloadedRootFSes,
 	}
-	return maintain.New(config, executorClient, serviceClient, logger, clock.NewClock())
+	return maintain.New(logger, config, executorClient, serviceClient, *lockTTL, clock.NewClock())
 }
 
 func initializeServiceClient(logger lager.Logger) bbs.ServiceClient {
@@ -333,12 +333,9 @@ func initializeServiceClient(logger lager.Logger) bbs.ServiceClient {
 		logger.Fatal("new-client-failed", err)
 	}
 
-	consulSession, err := consuladapter.NewSessionNoChecks(*sessionName, *lockTTL, consuladapter.NewConsulClient(client))
-	if err != nil {
-		logger.Fatal("consul-session-failed", err)
-	}
+	consulClient := consuladapter.NewConsulClient(client)
 
-	return bbs.NewServiceClient(consulSession, clock.NewClock())
+	return bbs.NewServiceClient(logger, consulClient, *lockTTL, clock.NewClock())
 }
 
 func initializeServer(
