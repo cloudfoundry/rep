@@ -335,7 +335,7 @@ func initializeServiceClient(logger lager.Logger) bbs.ServiceClient {
 
 	consulClient := consuladapter.NewConsulClient(client)
 
-	return bbs.NewServiceClient(logger, consulClient, *lockTTL, clock.NewClock())
+	return bbs.NewServiceClient(consulClient, clock.NewClock())
 }
 
 func initializeServer(
