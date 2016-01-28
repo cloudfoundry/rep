@@ -46,11 +46,13 @@ func (c *CellState) Copy() CellState {
 
 func (c *CellState) AddLRP(lrp *LRP) {
 	c.AvailableResources.Subtract(&lrp.Resource)
+	c.StartingContainerCount += 1
 	c.LRPs = append(c.LRPs, *lrp)
 }
 
 func (c *CellState) AddTask(task *Task) {
 	c.AvailableResources.Subtract(&task.Resource)
+	c.StartingContainerCount += 1
 	c.Tasks = append(c.Tasks, *task)
 }
 
