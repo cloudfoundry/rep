@@ -11,7 +11,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/bbs"
 	bbstestrunner "github.com/cloudfoundry-incubator/bbs/cmd/bbs/testrunner"
-	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
@@ -29,7 +28,6 @@ var etcdRunner *etcdstorerunner.ETCDClusterRunner
 var etcdPort, natsPort int
 var serverPort int
 var consulRunner *consulrunner.ClusterRunner
-var consulSession *consuladapter.Session
 
 var bbsArgs bbstestrunner.Args
 var bbsBinPath string
@@ -112,8 +110,6 @@ var _ = BeforeEach(func() {
 
 	bbsRunner = bbstestrunner.New(bbsBinPath, bbsArgs)
 	bbsProcess = ginkgomon.Invoke(bbsRunner)
-
-	consulSession = consulRunner.NewSession("a-session")
 })
 
 var _ = AfterEach(func() {
