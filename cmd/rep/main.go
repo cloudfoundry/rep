@@ -328,12 +328,10 @@ func initializeCellPresence(address string, serviceClient bbs.ServiceClient, exe
 }
 
 func initializeServiceClient(logger lager.Logger) bbs.ServiceClient {
-	client, err := consuladapter.NewClient(*consulCluster)
+	consulClient, err := consuladapter.NewClientFromUrl(*consulCluster)
 	if err != nil {
 		logger.Fatal("new-client-failed", err)
 	}
-
-	consulClient := consuladapter.NewConsulClient(client)
 
 	return bbs.NewServiceClient(consulClient, clock.NewClock())
 }
