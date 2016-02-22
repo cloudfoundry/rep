@@ -186,6 +186,12 @@ var postSetupUser = flag.String(
 	"User to run the post setup hook",
 )
 
+var trustedSystemCertificatesPath = flag.String(
+	"trustedSystemCertificatesPath",
+	"",
+	"path to directory containing trusted system ca certs.",
+)
+
 func executorConfig(gardenHealthcheckRootFS string, gardenHealthcheckArgs, gardenHealthcheckEnv []string) executorinit.Configuration {
 	return executorinit.Configuration{
 		GardenNetwork:                      *gardenNetwork,
@@ -221,5 +227,6 @@ func executorConfig(gardenHealthcheckRootFS string, gardenHealthcheckArgs, garde
 		GardenHealthcheckProcessEnv:        gardenHealthcheckEnv,
 		PostSetupHook:                      *postSetupHook,
 		PostSetupUser:                      *postSetupUser,
+		TrustedSystemCertificatesPath:      *trustedSystemCertificatesPath,
 	}
 }

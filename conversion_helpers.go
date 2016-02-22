@@ -127,6 +127,7 @@ func NewRunRequestFromDesiredLRP(
 			{Name: "CF_INSTANCE_GUID", Value: lrpInstanceKey.InstanceGuid},
 			{Name: "CF_INSTANCE_INDEX", Value: strconv.Itoa(int(lrpKey.Index))},
 		}, executor.EnvironmentVariablesFromModel(desiredLRP.EnvironmentVariables)...),
+		TrustedSystemCertificatesPath: desiredLRP.TrustedSystemCertificatesPath,
 	}
 	tags := executor.Tags{}
 	return executor.NewRunRequest(containerGuid, &runInfo, tags), nil
