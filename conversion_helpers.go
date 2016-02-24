@@ -153,10 +153,11 @@ func NewRunRequestFromTask(task *models.Task) (executor.RunRequest, error) {
 		MetricsConfig: executor.MetricsConfig{
 			Guid: task.MetricsGuid,
 		},
-		CachedDependencies: ConvertCachedDependencies(task.CachedDependencies),
-		Action:             task.Action,
-		Env:                executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
-		EgressRules:        task.EgressRules,
+		CachedDependencies:            ConvertCachedDependencies(task.CachedDependencies),
+		Action:                        task.Action,
+		Env:                           executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
+		EgressRules:                   task.EgressRules,
+		TrustedSystemCertificatesPath: task.TrustedSystemCertificatesPath,
 	}
 	return executor.NewRunRequest(task.TaskGuid, &runInfo, tags), nil
 }

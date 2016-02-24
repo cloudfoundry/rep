@@ -351,9 +351,10 @@ var _ = Describe("Resources", func() {
 				MetricsConfig: executor.MetricsConfig{
 					Guid: task.MetricsGuid,
 				},
-				Action:      task.Action,
-				Env:         executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
-				EgressRules: task.EgressRules,
+				Action:                        task.Action,
+				Env:                           executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
+				EgressRules:                   task.EgressRules,
+				TrustedSystemCertificatesPath: "/etc/somepath",
 			}))
 		})
 
