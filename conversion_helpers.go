@@ -1,6 +1,7 @@
 package rep
 
 import (
+	"encoding/json"
 	"errors"
 	"net/url"
 	"strconv"
@@ -139,6 +140,11 @@ func NewRunRequestFromTask(task *models.Task) (executor.RunRequest, error) {
 		return executor.RunRequest{}, err
 	}
 
+	mounts, err := convertVolumeMounts(task.VolumeMounts)
+	if err != nil {
+		return executor.RunRequest{}, err
+	}
+
 	tags := executor.Tags{
 		ResultFileTag: task.ResultFile,
 	}
@@ -158,6 +164,7 @@ func NewRunRequestFromTask(task *models.Task) (executor.RunRequest, error) {
 		Env:                           executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
 		EgressRules:                   task.EgressRules,
 		TrustedSystemCertificatesPath: task.TrustedSystemCertificatesPath,
+		VolumeMounts:                  mounts,
 	}
 	return executor.NewRunRequest(task.TaskGuid, &runInfo, tags), nil
 }
@@ -178,6 +185,36 @@ func ConvertCachedDependency(modelDep *models.CachedDependency) executor.CachedD
 		CacheKey:  modelDep.CacheKey,
 		LogSource: modelDep.LogSource,
 	}
+}
+
+func convertVolumeMounts(volumeMounts []*models.VolumeMount) ([]executor.VolumeMount, error) {
+	execMnts := make([]executor.VolumeMount, len(volumeMounts))
+	for i := range volumeMounts {
+		var err error
+		execMnts[i], err = convertVolumeMount(volumeMounts[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return execMnts, nil
+}
+
+func convertVolumeMount(volumeMnt *models.VolumeMount) (executor.VolumeMount, error) {
+	var config map[string]interface{}
+	if len(volumeMnt.Config) > 0 {
+		err := json.Unmarshal(volumeMnt.Config, &config)
+		if err != nil {
+			return executor.VolumeMount{}, err
+		}
+	}
+
+	return executor.VolumeMount{
+		Driver:        volumeMnt.Driver,
+		VolumeId:      volumeMnt.VolumeId,
+		ContainerPath: volumeMnt.ContainerPath,
+		Mode:          executor.BindMountMode(volumeMnt.Mode),
+		Config:        config,
+	}, nil
 }
 
 func ConvertPortMappings(containerPorts []uint32) []executor.PortMapping {

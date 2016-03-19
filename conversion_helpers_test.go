@@ -355,6 +355,7 @@ var _ = Describe("Resources", func() {
 				Env:                           executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
 				EgressRules:                   task.EgressRules,
 				TrustedSystemCertificatesPath: "/etc/somepath",
+				VolumeMounts:                  []executor.VolumeMount{{Driver: "my-driver", VolumeId: "my-volume", ContainerPath: "/mnt/mypath", Mode: executor.BindMountModeRO}},
 			}))
 		})
 
@@ -367,6 +368,17 @@ var _ = Describe("Resources", func() {
 				runReq, err := rep.NewRunRequestFromTask(task)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.DiskScope).To(Equal(executor.TotalDiskLimit))
+			})
+		})
+
+		Context("when a volumeMount config is invalid", func() {
+			BeforeEach(func() {
+				task.VolumeMounts[0].Config = []byte("{{")
+			})
+
+			It("returns an error", func() {
+				_, err := rep.NewRunRequestFromTask(task)
+				Expect(err).To(HaveOccurred())
 			})
 		})
 	})

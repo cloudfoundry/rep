@@ -192,6 +192,12 @@ var trustedSystemCertificatesPath = flag.String(
 	"path to directory containing trusted system ca certs.",
 )
 
+var volmanDriverPath = flag.String(
+	"volmanDriverConfigDir",
+	executorinit.DefaultConfiguration.VolmanDriverPath,
+	"path to directory containing volume manager drivers",
+)
+
 func executorConfig(gardenHealthcheckRootFS string, gardenHealthcheckArgs, gardenHealthcheckEnv []string) executorinit.Configuration {
 	return executorinit.Configuration{
 		GardenNetwork:                      *gardenNetwork,
@@ -228,5 +234,6 @@ func executorConfig(gardenHealthcheckRootFS string, gardenHealthcheckArgs, garde
 		PostSetupHook:                      *postSetupHook,
 		PostSetupUser:                      *postSetupUser,
 		TrustedSystemCertificatesPath:      *trustedSystemCertificatesPath,
+		VolmanDriverPath:                   *volmanDriverPath,
 	}
 }
