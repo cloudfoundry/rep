@@ -21,9 +21,20 @@ type CellState struct {
 	StartingContainerCount int
 	Zone                   string
 	Evacuating             bool
+	VolumeDrivers          []string
 }
 
-func NewCellState(root RootFSProviders, avail Resources, total Resources, lrps []LRP, tasks []Task, zone string, startingContainerCount int, isEvac bool) CellState {
+func NewCellState(
+	root RootFSProviders,
+	avail Resources,
+	total Resources,
+	lrps []LRP,
+	tasks []Task,
+	zone string,
+	startingContainerCount int,
+	isEvac bool,
+	volumeDrivers []string,
+) CellState {
 	return CellState{
 		RootFSProviders:    root,
 		AvailableResources: avail,
@@ -33,15 +44,8 @@ func NewCellState(root RootFSProviders, avail Resources, total Resources, lrps [
 		Zone:               zone,
 		StartingContainerCount: startingContainerCount,
 		Evacuating:             isEvac,
+		VolumeDrivers:          volumeDrivers,
 	}
-}
-
-func (c *CellState) Copy() CellState {
-	lrps := make([]LRP, 0, len(c.LRPs))
-	copy(lrps, c.LRPs)
-	tasks := make([]Task, 0, len(c.Tasks))
-	copy(tasks, c.Tasks)
-	return NewCellState(c.RootFSProviders.Copy(), c.AvailableResources, c.TotalResources, lrps, tasks, c.Zone, c.StartingContainerCount, c.Evacuating)
 }
 
 func (c *CellState) AddLRP(lrp *LRP) {

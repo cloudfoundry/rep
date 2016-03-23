@@ -116,6 +116,12 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 		return rep.CellState{}, err
 	}
 
+	volumeDrivers, err := a.client.VolumeDrivers(logger)
+	if err != nil {
+		logger.Error("failed-to-get-volume-drivers", err)
+		return rep.CellState{}, err
+	}
+
 	var key *models.ActualLRPKey
 	var keyErr error
 	lrps := []rep.LRP{}
@@ -158,6 +164,7 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 		a.zone,
 		startingContainerCount,
 		a.evacuationReporter.Evacuating(),
+		volumeDrivers,
 	)
 
 	a.logger.Info("provided", lager.Data{

@@ -55,6 +55,7 @@ var _ = Describe("AuctionCellRep", func() {
 		var (
 			availableResources, totalResources executor.ExecutorResources
 			containers                         []executor.Container
+			volumeDrivers                      []string
 		)
 
 		BeforeEach(func() {
@@ -111,9 +112,12 @@ var _ = Describe("AuctionCellRep", func() {
 				},
 			}
 
+			volumeDrivers = []string{"lewis", "nico", "sebastian", "felipe"}
+
 			client.TotalResourcesReturns(totalResources, nil)
 			client.RemainingResourcesReturns(availableResources, nil)
 			client.ListContainersReturns(containers, nil)
+			client.VolumeDriversReturns(volumeDrivers, nil)
 		})
 
 		It("queries the client and returns state", func() {
@@ -148,6 +152,8 @@ var _ = Describe("AuctionCellRep", func() {
 			}))
 
 			Expect(state.StartingContainerCount).To(Equal(3))
+
+			Expect(state.VolumeDrivers).To(ConsistOf(volumeDrivers))
 		})
 
 		Context("when the cell is not healthy", func() {
