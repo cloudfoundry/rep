@@ -101,6 +101,11 @@ func NewRunRequestFromDesiredLRP(
 		return executor.RunRequest{}, err
 	}
 
+	mounts, err := convertVolumeMounts(desiredLRP.VolumeMounts)
+	if err != nil {
+		return executor.RunRequest{}, err
+	}
+
 	runInfo := executor.RunInfo{
 		CPUWeight: uint(desiredLRP.CpuWeight),
 		DiskScope: diskScope,
@@ -129,6 +134,7 @@ func NewRunRequestFromDesiredLRP(
 			{Name: "CF_INSTANCE_INDEX", Value: strconv.Itoa(int(lrpKey.Index))},
 		}, executor.EnvironmentVariablesFromModel(desiredLRP.EnvironmentVariables)...),
 		TrustedSystemCertificatesPath: desiredLRP.TrustedSystemCertificatesPath,
+		VolumeMounts:                  mounts,
 	}
 	tags := executor.Tags{}
 	return executor.NewRunRequest(containerGuid, &runInfo, tags), nil
