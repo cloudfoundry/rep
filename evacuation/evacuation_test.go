@@ -5,11 +5,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/evacuation"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
+	fake_metrics_sender "github.com/cloudfoundry/dropsonde/metric_sender/fake"
+	"github.com/cloudfoundry/dropsonde/metrics"
 	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -38,12 +41,15 @@ var _ = Describe("Evacuation", func() {
 
 		errChan chan error
 
-		TaskTags   map[string]string
-		LRPTags    map[string]string
-		containers []executor.Container
+		TaskTags         map[string]string
+		LRPTags          map[string]string
+		containers       []executor.Container
+		fakeMetricSender *fake_metrics_sender.FakeMetricSender
 	)
 
 	BeforeEach(func() {
+		fakeMetricSender = fake_metrics_sender.NewFakeMetricSender()
+		metrics.Initialize(fakeMetricSender, nil)
 		logger = lagertest.NewTestLogger("test")
 		fakeClock = fakeclock.NewFakeClock(time.Now())
 		executorClient = &fakes.FakeClient{}
@@ -51,6 +57,7 @@ var _ = Describe("Evacuation", func() {
 		evacuatable, _, evacuationNotifier = evacuation_context.New()
 
 		evacuator = evacuation.NewEvacuator(
+			fakeBBSClient,
 			logger,
 			fakeClock,
 			executorClient,
@@ -97,6 +104,22 @@ var _ = Describe("Evacuation", func() {
 		})
 
 		Context("when containers are present", func() {
+			var expectedActualLRPKey *models.ActualLRPKey
+			var expectedActualLRPInstanceKey *models.ActualLRPInstanceKey
+
+			BeforeEach(func() {
+				expectedActualLRPKey = &models.ActualLRPKey{ProcessGuid: "process-guid"}
+				expectedActualLRPInstanceKey = &models.ActualLRPInstanceKey{InstanceGuid: "guid-2", CellId: cellID}
+
+				evacuatingOnlyLRP := models.ActualLRP{ActualLRPKey: *expectedActualLRPKey, ActualLRPInstanceKey: *expectedActualLRPInstanceKey}
+
+				lrpGroups := []*models.ActualLRPGroup{
+					{Instance: nil, Evacuating: &evacuatingOnlyLRP},
+				}
+
+				fakeBBSClient.ActualLRPGroupsReturns(lrpGroups, nil)
+			})
+
 			Context("and are all destroyed before the timeout elapses", func() {
 				BeforeEach(func() {
 					containerResponses := [][]executor.Container{
@@ -110,16 +133,35 @@ var _ = Describe("Evacuation", func() {
 						index++
 						return containersToReturn, nil
 					}
+
 				})
 
-				It("waits for all the containers to go away and exits before evacuation timeout", func() {
-					fakeClock.Increment(pollingInterval)
-					Eventually(executorClient.ListContainersCallCount).Should(Equal(1))
+				Context("the client does not error", func() {
 
-					fakeClock.Increment(pollingInterval)
-					Eventually(executorClient.ListContainersCallCount).Should(Equal(2))
+					JustBeforeEach(func() {
+						fakeClock.Increment(pollingInterval)
+						Eventually(executorClient.ListContainersCallCount).Should(Equal(1))
 
-					Eventually(errChan).Should(Receive(BeNil()))
+						fakeClock.Increment(pollingInterval)
+						Eventually(executorClient.ListContainersCallCount).Should(Equal(2))
+					})
+
+					It("waits for all the containers to go away and exits before evacuation timeout", func() {
+						Eventually(errChan).Should(Receive(BeNil()))
+					})
+
+					It("Deletes any remaining evacuating ActualLRPs it has claimed", func() {
+						Eventually(fakeBBSClient.RemoveEvacuatingActualLRPCallCount()).Should(Equal(1))
+						actualLRPKey, actualLRPInstanceKey := fakeBBSClient.RemoveEvacuatingActualLRPArgsForCall(0)
+						Expect(actualLRPKey).To(Equal(expectedActualLRPKey))
+						Expect(actualLRPInstanceKey).To(Equal(expectedActualLRPInstanceKey))
+					})
+
+					It("emits a metric on the number of ActualLRPs removed", func() {
+						Eventually(func() float64 {
+							return fakeMetricSender.GetValue("StrandedEvacuatedActualLRPs").Value
+						}).Should(Equal(float64(1)))
+					})
 				})
 
 				Context("when the executor client returns an error", func() {
@@ -151,13 +193,30 @@ var _ = Describe("Evacuation", func() {
 					executorClient.ListContainersReturns(containers, nil)
 				})
 
-				It("exits after the evacuation timeout", func() {
+				JustBeforeEach(func() {
 					Eventually(fakeClock.WatcherCount).Should(Equal(2))
-
 					fakeClock.Increment(evacuationTimeout - time.Second)
 					Consistently(errChan).ShouldNot(Receive())
 					fakeClock.Increment(2 * time.Second)
+				})
+
+				It("exits after the evacuation timeout", func() {
 					Eventually(errChan).Should(Receive(BeNil()))
+				})
+
+				It("Deletes any remaining evacuating ActualLRPs it has claimed", func() {
+					Eventually(errChan).Should(Receive(BeNil()))
+
+					Eventually(fakeBBSClient.RemoveEvacuatingActualLRPCallCount()).Should(Equal(1))
+					actualLRPKey, actualLRPInstanceKey := fakeBBSClient.RemoveEvacuatingActualLRPArgsForCall(0)
+					Expect(actualLRPKey).To(Equal(expectedActualLRPKey))
+					Expect(actualLRPInstanceKey).To(Equal(expectedActualLRPInstanceKey))
+				})
+
+				It("emits a metric on the number of ActualLRPs removed", func() {
+					Eventually(errChan).Should(Receive(BeNil()))
+
+					Expect(fakeMetricSender.GetValue("StrandedEvacuatedActualLRPs").Value).To(Equal(float64(1)))
 				})
 
 				Context("when signaled", func() {

@@ -4,13 +4,21 @@ import (
 	"os"
 	"time"
 
+	"github.com/cloudfoundry-incubator/bbs"
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
+	"github.com/cloudfoundry-incubator/runtime-schema/metric"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 )
 
+var (
+	strandedEvacuatedActualLRPMetric = metric.Metric("StrandedEvacuatedActualLRPs")
+)
+
 type Evacuator struct {
+	bbsClient          bbs.Client
 	logger             lager.Logger
 	clock              clock.Clock
 	executorClient     executor.Client
@@ -21,6 +29,7 @@ type Evacuator struct {
 }
 
 func NewEvacuator(
+	bbsClient bbs.Client,
 	logger lager.Logger,
 	clock clock.Clock,
 	executorClient executor.Client,
@@ -30,6 +39,7 @@ func NewEvacuator(
 	pollingInterval time.Duration,
 ) *Evacuator {
 	return &Evacuator{
+		bbsClient:          bbsClient,
 		logger:             logger,
 		clock:              clock,
 		executorClient:     executorClient,
@@ -66,9 +76,11 @@ func (e *Evacuator) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	select {
 	case <-doneCh:
 		logger.Info("evacuation-complete")
+		e.removeEvacuatingActualLRPs(logger)
 		return nil
 	case <-timer.C():
 		logger.Error("failed-to-evacuate-before-timeout", nil)
+		e.removeEvacuatingActualLRPs(logger)
 		return nil
 	case signal := <-signals:
 		logger.Info("signaled", lager.Data{"signal": signal.String()})
@@ -76,6 +88,31 @@ func (e *Evacuator) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	}
 
 	return nil
+}
+
+func (e *Evacuator) removeEvacuatingActualLRPs(logger lager.Logger) {
+	logger = logger.Session("remove-evacuating-lrps")
+	logger.Info("started")
+	defer logger.Info("ended")
+
+	actualLRPGroups, err := e.bbsClient.ActualLRPGroups(models.ActualLRPFilter{CellID: e.cellID})
+	if err != nil {
+		e.logger.Error("failed-getting-actual-lrps", err)
+		return
+	}
+
+	count := 0
+	for _, actualLRPGroup := range actualLRPGroups {
+		actualLRP, evacuating := actualLRPGroup.Resolve()
+		if evacuating {
+			count++
+			err = e.bbsClient.RemoveEvacuatingActualLRP(&actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+		}
+	}
+	err = strandedEvacuatedActualLRPMetric.Send(count)
+	if err != nil {
+		logger.Error("failed-to-send-stranded-evacuated-lrps-metric", err)
+	}
 }
 
 func (e *Evacuator) evacuate(logger lager.Logger, doneCh chan<- struct{}) {

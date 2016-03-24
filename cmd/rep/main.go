@@ -261,8 +261,10 @@ func main() {
 
 	// only one outstanding operation per container is necessary
 	queue := operationq.NewSlidingQueue(1)
+	bbsClient := initializeBBSClient(logger)
 
 	evacuator := evacuation.NewEvacuator(
+		bbsClient,
 		logger,
 		clock,
 		executorClient,
@@ -272,7 +274,6 @@ func main() {
 		*evacuationPollingInterval,
 	)
 
-	bbsClient := initializeBBSClient(logger)
 	httpServer, address := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders)
 	opGenerator := generator.New(*cellID, bbsClient, executorClient, evacuationReporter, uint64(evacuationTimeout.Seconds()))
 
