@@ -15,9 +15,9 @@ var _ = Describe("Perform", func() {
 	Context("with valid JSON", func() {
 		var requestedWork, failedWork rep.Work
 		BeforeEach(func() {
-			resourceA := rep.NewResource(128, 256, "some-rootfs")
-			resourceB := rep.NewResource(256, 512, "some-rootfs")
-			resourceC := rep.NewResource(512, 1024, "some-rootfs")
+			resourceA := rep.NewResource(128, 256, "some-rootfs", nil)
+			resourceB := rep.NewResource(256, 512, "some-rootfs", nil)
+			resourceC := rep.NewResource(512, 1024, "some-rootfs", nil)
 
 			requestedWork = rep.Work{
 				Tasks: []rep.Task{

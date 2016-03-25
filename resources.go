@@ -91,6 +91,25 @@ func (c *CellState) MatchRootFS(rootfs string) bool {
 	return c.RootFSProviders.Match(*rootFSURL)
 }
 
+func (c *CellState) MatchVolumeDrivers(volumeDrivers []string) bool {
+	for _, requestedDriver := range volumeDrivers {
+		found := false
+
+		for _, actualDriver := range c.VolumeDrivers {
+			if requestedDriver == actualDriver {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return false
+		}
+	}
+
+	return true
+}
+
 type Resources struct {
 	MemoryMB   int32
 	DiskMB     int32
@@ -119,13 +138,14 @@ func (r *Resources) ComputeScore(total *Resources) float64 {
 }
 
 type Resource struct {
-	MemoryMB int32
-	DiskMB   int32
-	RootFs   string
+	MemoryMB      int32
+	DiskMB        int32
+	RootFs        string
+	VolumeDrivers []string
 }
 
-func NewResource(memoryMb, diskMb int32, rootfs string) Resource {
-	return Resource{memoryMb, diskMb, rootfs}
+func NewResource(memoryMb, diskMb int32, rootfs string, volumeDrivers []string) Resource {
+	return Resource{MemoryMB: memoryMb, DiskMB: diskMb, RootFs: rootfs, VolumeDrivers: volumeDrivers}
 }
 
 func (r *Resource) Empty() bool {
@@ -133,7 +153,7 @@ func (r *Resource) Empty() bool {
 }
 
 func (r *Resource) Copy() Resource {
-	return NewResource(r.MemoryMB, r.DiskMB, r.RootFs)
+	return NewResource(r.MemoryMB, r.DiskMB, r.RootFs, r.VolumeDrivers)
 }
 
 type LRP struct {
