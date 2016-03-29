@@ -78,6 +78,12 @@ var skipCertVerify = flag.Bool(
 	"skip SSL certificate verification",
 )
 
+var caCertBundle = flag.String(
+	"caCertBundle",
+	executorinit.DefaultConfiguration.CACertBundle,
+	"CA certificate bundle to be used when downloading",
+)
+
 var healthyMonitoringInterval = flag.Duration(
 	"healthyMonitoringInterval",
 	executorinit.DefaultConfiguration.HealthyMonitoringInterval,
@@ -207,6 +213,7 @@ func executorConfig(gardenHealthcheckRootFS string, gardenHealthcheckArgs, garde
 		CachePath:                          *cachePath,
 		MaxCacheSizeInBytes:                *maxCacheSizeInBytes,
 		SkipCertVerify:                     *skipCertVerify,
+		CACertBundle:                       *caCertBundle,
 		ExportNetworkEnvVars:               *exportNetworkEnvVars,
 		ContainerMaxCpuShares:              *containerMaxCpuShares,
 		ContainerInodeLimit:                *containerInodeLimit,
