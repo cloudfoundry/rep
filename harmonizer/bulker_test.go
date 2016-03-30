@@ -116,7 +116,7 @@ var _ = Describe("Bulker", func() {
 
 	Context("when the poll interval elapses", func() {
 		JustBeforeEach(func() {
-			fakeClock.Increment(pollInterval + 1)
+			fakeClock.WaitForWatcherAndIncrement(pollInterval + 1)
 		})
 
 		itPerformsBatchOperations()
@@ -132,7 +132,7 @@ var _ = Describe("Bulker", func() {
 
 	Context("when the poll interval has not elapsed", func() {
 		JustBeforeEach(func() {
-			fakeClock.Increment(pollInterval - 1)
+			fakeClock.WaitForWatcherAndIncrement(pollInterval - 1)
 		})
 
 		It("does not fetch batch operations", func() {
