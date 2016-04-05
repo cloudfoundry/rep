@@ -33,13 +33,11 @@ func (consumer *EventConsumer) Run(signals <-chan os.Signal, ready chan<- struct
 	logger.Info("starting")
 	defer logger.Info("finished")
 
-	logger.Info("subscribing-to-operation-stream")
-	stream, err := consumer.generator.OperationStream(logger)
+	stream, err := consumer.generator.OperationStream(consumer.logger)
 	if err != nil {
 		logger.Error("failed-subscribing-to-operation-stream", err)
 		return err
 	}
-	logger.Info("succeeded-subscribing-to-operation-stream")
 
 	close(ready)
 	logger.Info("started")
