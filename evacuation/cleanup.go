@@ -9,7 +9,7 @@ import (
 	"github.com/pivotal-golang/lager"
 )
 
-var strandedEvacuatedActualLRPs = metric.Metric("StrandedEvacuatedActualLRPs")
+var strandedEvacuatingActualLRPs = metric.Metric("StrandedEvacuatingActualLRPs")
 
 type EvacuationCleanup struct {
 	logger    lager.Logger
@@ -62,9 +62,9 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 		}
 	}
 
-	err = strandedEvacuatedActualLRPs.Send(strandedEvacuationCount)
+	err = strandedEvacuatingActualLRPs.Send(strandedEvacuationCount)
 	if err != nil {
-		logger.Error("failed-sending-stranded-evaucating-lrp-metric", err, lager.Data{"count": strandedEvacuationCount})
+		logger.Error("failed-sending-stranded-evacuating-lrp-metric", err, lager.Data{"count": strandedEvacuationCount})
 	}
 
 	return nil

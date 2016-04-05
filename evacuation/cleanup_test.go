@@ -111,9 +111,9 @@ var _ = Describe("EvacuationCleanup", func() {
 			Expect(*lrpInstanceKey).To(Equal(actualLRPGroup.Evacuating.ActualLRPInstanceKey))
 		})
 
-		It("emits a metrics for all stranded evacuating actual lrps", func() {
+		It("emits a metric for the number of stranded evacuating actual lrps", func() {
 			Eventually(errCh).Should(Receive(nil))
-			Expect(fakeMetricsSender.GetValue("StrandedEvacuatedActualLRPs").Value).To(BeEquivalentTo(2))
+			Expect(fakeMetricsSender.GetValue("StrandedEvacuatingActualLRPs").Value).To(BeEquivalentTo(2))
 		})
 
 		Describe("when fetching the actual lrp groups fails", func() {
