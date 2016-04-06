@@ -1,10 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
-	"log"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"strings"
@@ -227,32 +228,51 @@ func main() {
 	clock := clock.NewClock()
 	logger, reconfigurableSink := cf_lager.New(*sessionName)
 
-	var executorConfiguration executorinit.Configuration
-	var gardenHealthcheckRootFS string
+	var (
+		executorConfiguration   executorinit.Configuration
+		gardenHealthcheckRootFS string
+		certBytes               []byte
+		err                     error
+	)
+
 	if len(preloadedRootFSes) == 0 {
 		gardenHealthcheckRootFS = ""
 	} else {
 		gardenHealthcheckRootFS = stackMap[preloadedRootFSes[0]]
 	}
-	executorConfiguration = executorConfig(gardenHealthcheckRootFS, gardenHealthcheckArgs, gardenHealthcheckEnv)
+
+	if *pathToCACertsForDownloads != "" {
+		certBytes, err = ioutil.ReadFile(*pathToCACertsForDownloads)
+		if err != nil {
+			logger.Error("failed-to-open-ca-cert-file", err)
+			os.Exit(1)
+		}
+
+		certBytes = bytes.TrimSpace(certBytes)
+	}
+
+	executorConfiguration = executorConfig(certBytes, gardenHealthcheckRootFS, gardenHealthcheckArgs, gardenHealthcheckEnv)
 	if !executorConfiguration.Validate(logger) {
-		os.Exit(1)
+		logger.Fatal("", errors.New("failed-to-configure-executor"))
 	}
 
 	initializeDropsonde(logger)
 
 	if *cellID == "" {
-		log.Fatalf("-cellID must be specified")
+		logger.Error("invalid-cell-id", errors.New("-cellID must be specified"))
+		os.Exit(1)
 	}
 
 	executorClient, executorMembers, err := executorinit.Initialize(logger, executorConfiguration, clock)
 	if err != nil {
-		log.Fatalf("Failed to initialize executor: %s", err.Error())
+		logger.Error("failed-to-initialize-executor", err)
+		os.Exit(1)
 	}
 	defer executorClient.Cleanup(logger)
 
 	if err := validateBBSAddress(); err != nil {
-		logger.Fatal("invalid-bbs-address", err)
+		logger.Error("invalid-bbs-address", err)
+		os.Exit(1)
 	}
 
 	serviceClient := initializeServiceClient(logger)

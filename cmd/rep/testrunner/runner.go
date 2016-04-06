@@ -19,16 +19,17 @@ type Runner struct {
 }
 
 type Config struct {
-	PreloadedRootFSes []string
-	RootFSProviders   []string
-	CellID            string
-	BBSAddress        string
-	ServerPort        int
-	GardenAddr        string
-	LogLevel          string
-	ConsulCluster     string
-	PollingInterval   time.Duration
-	EvacuationTimeout time.Duration
+	PreloadedRootFSes   []string
+	RootFSProviders     []string
+	CACertsForDownloads string
+	CellID              string
+	BBSAddress          string
+	ServerPort          int
+	GardenAddr          string
+	LogLevel            string
+	ConsulCluster       string
+	PollingInterval     time.Duration
+	EvacuationTimeout   time.Duration
 }
 
 func New(binPath string, config Config) *Runner {
@@ -64,6 +65,9 @@ func (r *Runner) Start() {
 	}
 	for _, provider := range r.config.RootFSProviders {
 		args = append(args, "-rootFSProvider", provider)
+	}
+	if r.config.CACertsForDownloads != "" {
+		args = append(args, "-caCertsForDownloads", r.config.CACertsForDownloads)
 	}
 
 	repSession, err := gexec.Start(

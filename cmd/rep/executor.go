@@ -78,6 +78,12 @@ var skipCertVerify = flag.Bool(
 	"skip SSL certificate verification",
 )
 
+var pathToCACertsForDownloads = flag.String(
+	"caCertsForDownloads",
+	"",
+	"path to CA certificate bundle to be used when downloading assets",
+)
+
 var healthyMonitoringInterval = flag.Duration(
 	"healthyMonitoringInterval",
 	executorinit.DefaultConfiguration.HealthyMonitoringInterval,
@@ -198,7 +204,7 @@ var volmanDriverPath = flag.String(
 	"path to directory containing volume manager drivers",
 )
 
-func executorConfig(gardenHealthcheckRootFS string, gardenHealthcheckArgs, gardenHealthcheckEnv []string) executorinit.Configuration {
+func executorConfig(caCertsForDownloads []byte, gardenHealthcheckRootFS string, gardenHealthcheckArgs, gardenHealthcheckEnv []string) executorinit.Configuration {
 	return executorinit.Configuration{
 		GardenNetwork:                      *gardenNetwork,
 		GardenAddr:                         *gardenAddr,
@@ -207,6 +213,7 @@ func executorConfig(gardenHealthcheckRootFS string, gardenHealthcheckArgs, garde
 		CachePath:                          *cachePath,
 		MaxCacheSizeInBytes:                *maxCacheSizeInBytes,
 		SkipCertVerify:                     *skipCertVerify,
+		CACertsForDownloads:                caCertsForDownloads,
 		ExportNetworkEnvVars:               *exportNetworkEnvVars,
 		ContainerMaxCpuShares:              *containerMaxCpuShares,
 		ContainerInodeLimit:                *containerInodeLimit,
