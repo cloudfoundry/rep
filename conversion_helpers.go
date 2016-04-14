@@ -135,6 +135,7 @@ func NewRunRequestFromDesiredLRP(
 		}, executor.EnvironmentVariablesFromModel(desiredLRP.EnvironmentVariables)...),
 		TrustedSystemCertificatesPath: desiredLRP.TrustedSystemCertificatesPath,
 		VolumeMounts:                  mounts,
+		Properties:                    desiredLRP.Properties,
 	}
 	tags := executor.Tags{}
 	return executor.NewRunRequest(containerGuid, &runInfo, tags), nil
@@ -171,6 +172,7 @@ func NewRunRequestFromTask(task *models.Task) (executor.RunRequest, error) {
 		EgressRules:                   task.EgressRules,
 		TrustedSystemCertificatesPath: task.TrustedSystemCertificatesPath,
 		VolumeMounts:                  mounts,
+		Properties:                    task.Properties,
 	}
 	return executor.NewRunRequest(task.TaskGuid, &runInfo, tags), nil
 }
