@@ -307,7 +307,17 @@ var _ = Describe("Resources", func() {
 					{Name: "CF_INSTANCE_INDEX", Value: strconv.Itoa(int(actualLRP.Index))},
 				}, executor.EnvironmentVariablesFromModel(desiredLRP.EnvironmentVariables)...),
 				TrustedSystemCertificatesPath: "/etc/somepath",
-				VolumeMounts:                  []executor.VolumeMount{{Driver: "my-driver", VolumeId: "my-volume", ContainerPath: "/mnt/mypath", Mode: executor.BindMountModeRO}},
+				VolumeMounts: []executor.VolumeMount{{
+					Driver:        "my-driver",
+					VolumeId:      "my-volume",
+					ContainerPath: "/mnt/mypath",
+					Mode:          executor.BindMountModeRO,
+				}},
+
+				Properties: map[string]string{
+					"some-key":       "some-value",
+					"some-other-key": "some-other-value",
+				},
 			}))
 		})
 
@@ -367,7 +377,16 @@ var _ = Describe("Resources", func() {
 				Env:                           executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
 				EgressRules:                   task.EgressRules,
 				TrustedSystemCertificatesPath: "/etc/somepath",
-				VolumeMounts:                  []executor.VolumeMount{{Driver: "my-driver", VolumeId: "my-volume", ContainerPath: "/mnt/mypath", Mode: executor.BindMountModeRO}},
+				VolumeMounts: []executor.VolumeMount{{
+					Driver:        "my-driver",
+					VolumeId:      "my-volume",
+					ContainerPath: "/mnt/mypath",
+					Mode:          executor.BindMountModeRO},
+				},
+				Properties: map[string]string{
+					"some-key":       "some-value",
+					"some-other-key": "some-other-value",
+				},
 			}))
 		})
 
