@@ -314,7 +314,7 @@ var _ = Describe("Resources", func() {
 					Mode:          executor.BindMountModeRO,
 				}},
 
-				Properties: map[string]string{
+				NetworkProperties: map[string]string{
 					"some-key":       "some-value",
 					"some-other-key": "some-other-value",
 				},
@@ -383,7 +383,7 @@ var _ = Describe("Resources", func() {
 					ContainerPath: "/mnt/mypath",
 					Mode:          executor.BindMountModeRO},
 				},
-				Properties: map[string]string{
+				NetworkProperties: map[string]string{
 					"some-key":       "some-value",
 					"some-other-key": "some-other-value",
 				},
