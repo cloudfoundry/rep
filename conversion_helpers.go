@@ -135,7 +135,7 @@ func NewRunRequestFromDesiredLRP(
 		}, executor.EnvironmentVariablesFromModel(desiredLRP.EnvironmentVariables)...),
 		TrustedSystemCertificatesPath: desiredLRP.TrustedSystemCertificatesPath,
 		VolumeMounts:                  mounts,
-		NetworkProperties:             desiredLRP.NetworkProperties,
+		Network:                       convertNetwork(desiredLRP.Network),
 	}
 	tags := executor.Tags{}
 	return executor.NewRunRequest(containerGuid, &runInfo, tags), nil
@@ -172,7 +172,7 @@ func NewRunRequestFromTask(task *models.Task) (executor.RunRequest, error) {
 		EgressRules:                   task.EgressRules,
 		TrustedSystemCertificatesPath: task.TrustedSystemCertificatesPath,
 		VolumeMounts:                  mounts,
-		NetworkProperties:             task.NetworkProperties,
+		Network:                       convertNetwork(task.Network),
 	}
 	return executor.NewRunRequest(task.TaskGuid, &runInfo, tags), nil
 }
@@ -223,6 +223,16 @@ func convertVolumeMount(volumeMnt *models.VolumeMount) (executor.VolumeMount, er
 		Mode:          executor.BindMountMode(volumeMnt.Mode),
 		Config:        config,
 	}, nil
+}
+
+func convertNetwork(network *models.Network) *executor.Network {
+	if network == nil {
+		return nil
+	}
+
+	return &executor.Network{
+		Properties: network.Properties,
+	}
 }
 
 func ConvertPortMappings(containerPorts []uint32) []executor.PortMapping {

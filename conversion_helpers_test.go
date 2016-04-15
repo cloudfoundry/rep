@@ -314,11 +314,25 @@ var _ = Describe("Resources", func() {
 					Mode:          executor.BindMountModeRO,
 				}},
 
-				NetworkProperties: map[string]string{
-					"some-key":       "some-value",
-					"some-other-key": "some-other-value",
+				Network: &executor.Network{
+					Properties: map[string]string{
+						"some-key":       "some-value",
+						"some-other-key": "some-other-value",
+					},
 				},
 			}))
+		})
+
+		Context("when the network is nil", func() {
+			BeforeEach(func() {
+				desiredLRP.Network = nil
+			})
+
+			It("sets a nil network on the result", func() {
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.Network).To(BeNil())
+			})
 		})
 
 		Context("when a volumeMount config is invalid", func() {
@@ -383,11 +397,25 @@ var _ = Describe("Resources", func() {
 					ContainerPath: "/mnt/mypath",
 					Mode:          executor.BindMountModeRO},
 				},
-				NetworkProperties: map[string]string{
-					"some-key":       "some-value",
-					"some-other-key": "some-other-value",
+				Network: &executor.Network{
+					Properties: map[string]string{
+						"some-key":       "some-value",
+						"some-other-key": "some-other-value",
+					},
 				},
 			}))
+		})
+
+		Context("when the network is nil", func() {
+			BeforeEach(func() {
+				task.Network = nil
+			})
+
+			It("sets a nil network on the result", func() {
+				runReq, err := rep.NewRunRequestFromTask(task)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.Network).To(BeNil())
+			})
 		})
 
 		Context("when the rootfs is not preloaded", func() {
