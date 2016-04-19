@@ -34,7 +34,7 @@ var bbsBinPath string
 var bbsURL *url.URL
 var bbsRunner *ginkgomon.Runner
 var bbsProcess ifrit.Process
-var bbsClient bbs.Client
+var bbsClient bbs.InternalClient
 var auctioneerServer *ghttp.Server
 
 func TestRep(t *testing.T) {

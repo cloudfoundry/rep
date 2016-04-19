@@ -8,13 +8,13 @@ import (
 )
 
 type evacuationLRPProcessor struct {
-	bbsClient              bbs.Client
+	bbsClient              bbs.InternalClient
 	containerDelegate      ContainerDelegate
 	cellID                 string
 	evacuationTTLInSeconds uint64
 }
 
-func newEvacuationLRPProcessor(bbsClient bbs.Client, containerDelegate ContainerDelegate, cellID string, evacuationTTLInSeconds uint64) LRPProcessor {
+func newEvacuationLRPProcessor(bbsClient bbs.InternalClient, containerDelegate ContainerDelegate, cellID string, evacuationTTLInSeconds uint64) LRPProcessor {
 	return &evacuationLRPProcessor{
 		bbsClient:              bbsClient,
 		containerDelegate:      containerDelegate,

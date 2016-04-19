@@ -27,7 +27,7 @@ type Generator interface {
 
 type generator struct {
 	cellID            string
-	bbs               bbs.Client
+	bbs               bbs.InternalClient
 	executorClient    executor.Client
 	lrpProcessor      internal.LRPProcessor
 	taskProcessor     internal.TaskProcessor
@@ -36,7 +36,7 @@ type generator struct {
 
 func New(
 	cellID string,
-	bbs bbs.Client,
+	bbs bbs.InternalClient,
 	executorClient executor.Client,
 	evacuationReporter evacuation_context.EvacuationReporter,
 	evacuationTTLInSeconds uint64,

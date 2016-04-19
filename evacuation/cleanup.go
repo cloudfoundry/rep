@@ -14,13 +14,13 @@ var strandedEvacuatingActualLRPs = metric.Metric("StrandedEvacuatingActualLRPs")
 type EvacuationCleanup struct {
 	logger    lager.Logger
 	cellID    string
-	bbsClient bbs.Client
+	bbsClient bbs.InternalClient
 }
 
 func NewEvacuationCleanup(
 	logger lager.Logger,
 	cellID string,
-	bbsClient bbs.Client,
+	bbsClient bbs.InternalClient,
 ) *EvacuationCleanup {
 	return &EvacuationCleanup{
 		logger:    logger,

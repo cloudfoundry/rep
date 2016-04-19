@@ -23,7 +23,7 @@ var bbsArgs bbsrunner.Args
 var bbsBinPath string
 var bbsRunner *ginkgomon.Runner
 var bbsProcess ifrit.Process
-var bbsClient bbs.Client
+var bbsClient bbs.InternalClient
 
 func TestInternal(t *testing.T) {
 	RegisterFailHandler(Fail)

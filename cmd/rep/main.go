@@ -359,7 +359,7 @@ func initializeServiceClient(logger lager.Logger) bbs.ServiceClient {
 }
 
 func initializeServer(
-	bbsClient bbs.Client,
+	bbsClient bbs.InternalClient,
 	executorClient executor.Client,
 	evacuatable evacuation_context.Evacuatable,
 	evacuationReporter evacuation_context.EvacuationReporter,
@@ -402,7 +402,7 @@ func generateGuid() (string, error) {
 	return guid.String(), nil
 }
 
-func initializeBBSClient(logger lager.Logger) bbs.Client {
+func initializeBBSClient(logger lager.Logger) bbs.InternalClient {
 	bbsURL, err := url.Parse(*bbsAddress)
 	if err != nil {
 		logger.Fatal("Invalid BBS URL", err)

@@ -9,13 +9,13 @@ import (
 )
 
 type ordinaryLRPProcessor struct {
-	bbsClient         bbs.Client
+	bbsClient         bbs.InternalClient
 	containerDelegate ContainerDelegate
 	cellID            string
 }
 
 func newOrdinaryLRPProcessor(
-	bbsClient bbs.Client,
+	bbsClient bbs.InternalClient,
 	containerDelegate ContainerDelegate,
 	cellID string,
 ) LRPProcessor {

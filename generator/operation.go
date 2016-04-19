@@ -13,14 +13,14 @@ import (
 // ResidualInstanceLRPOperation processes an instance ActualLRP with no matching container.
 type ResidualInstanceLRPOperation struct {
 	logger            lager.Logger
-	bbsClient         bbs.Client
+	bbsClient         bbs.InternalClient
 	containerDelegate internal.ContainerDelegate
 	models.ActualLRPKey
 	models.ActualLRPInstanceKey
 }
 
 func NewResidualInstanceLRPOperation(logger lager.Logger,
-	bbsClient bbs.Client,
+	bbsClient bbs.InternalClient,
 	containerDelegate internal.ContainerDelegate,
 	lrpKey models.ActualLRPKey,
 	instanceKey models.ActualLRPInstanceKey,
@@ -58,14 +58,14 @@ func (o *ResidualInstanceLRPOperation) Execute() {
 // ResidualEvacuatingLRPOperation processes an evacuating ActualLRP with no matching container.
 type ResidualEvacuatingLRPOperation struct {
 	logger            lager.Logger
-	bbsClient         bbs.Client
+	bbsClient         bbs.InternalClient
 	containerDelegate internal.ContainerDelegate
 	models.ActualLRPKey
 	models.ActualLRPInstanceKey
 }
 
 func NewResidualEvacuatingLRPOperation(logger lager.Logger,
-	bbsClient bbs.Client,
+	bbsClient bbs.InternalClient,
 	containerDelegate internal.ContainerDelegate,
 	lrpKey models.ActualLRPKey,
 	instanceKey models.ActualLRPInstanceKey,
@@ -103,14 +103,14 @@ func (o *ResidualEvacuatingLRPOperation) Execute() {
 // ResidualJointLRPOperation processes an evacuating ActualLRP with no matching container.
 type ResidualJointLRPOperation struct {
 	logger            lager.Logger
-	bbsClient         bbs.Client
+	bbsClient         bbs.InternalClient
 	containerDelegate internal.ContainerDelegate
 	models.ActualLRPKey
 	models.ActualLRPInstanceKey
 }
 
 func NewResidualJointLRPOperation(logger lager.Logger,
-	bbsClient bbs.Client,
+	bbsClient bbs.InternalClient,
 	containerDelegate internal.ContainerDelegate,
 	lrpKey models.ActualLRPKey,
 	instanceKey models.ActualLRPInstanceKey,
@@ -152,14 +152,14 @@ func (o *ResidualJointLRPOperation) Execute() {
 type ResidualTaskOperation struct {
 	logger            lager.Logger
 	TaskGuid          string
-	bbsClient         bbs.Client
+	bbsClient         bbs.InternalClient
 	containerDelegate internal.ContainerDelegate
 }
 
 func NewResidualTaskOperation(
 	logger lager.Logger,
 	taskGuid string,
-	bbsClient bbs.Client,
+	bbsClient bbs.InternalClient,
 	containerDelegate internal.ContainerDelegate,
 ) *ResidualTaskOperation {
 	return &ResidualTaskOperation{

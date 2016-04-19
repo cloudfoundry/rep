@@ -21,12 +21,12 @@ type TaskProcessor interface {
 }
 
 type taskProcessor struct {
-	bbsClient         bbs.Client
+	bbsClient         bbs.InternalClient
 	containerDelegate ContainerDelegate
 	cellID            string
 }
 
-func NewTaskProcessor(bbs bbs.Client, containerDelegate ContainerDelegate, cellID string) TaskProcessor {
+func NewTaskProcessor(bbs bbs.InternalClient, containerDelegate ContainerDelegate, cellID string) TaskProcessor {
 	return &taskProcessor{
 		bbsClient:         bbs,
 		containerDelegate: containerDelegate,

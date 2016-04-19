@@ -35,7 +35,7 @@ type lrpProcessor struct {
 }
 
 func NewLRPProcessor(
-	bbsClient bbs.Client,
+	bbsClient bbs.InternalClient,
 	containerDelegate ContainerDelegate,
 	cellID string,
 	evacuationReporter evacuation_context.EvacuationReporter,
