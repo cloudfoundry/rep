@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	bbstestrunner "github.com/cloudfoundry-incubator/bbs/cmd/bbs/testrunner"
 	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
+	"github.com/cloudfoundry/storeadapter/storerunner/mysqlrunner"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -22,20 +24,26 @@ import (
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
 
-var cellID string
-var representativePath string
-var etcdRunner *etcdstorerunner.ETCDClusterRunner
-var etcdPort, natsPort int
-var serverPort int
-var consulRunner *consulrunner.ClusterRunner
+var (
+	cellID             string
+	representativePath string
+	etcdRunner         *etcdstorerunner.ETCDClusterRunner
+	etcdPort, natsPort int
+	serverPort         int
+	consulRunner       *consulrunner.ClusterRunner
 
-var bbsArgs bbstestrunner.Args
-var bbsBinPath string
-var bbsURL *url.URL
-var bbsRunner *ginkgomon.Runner
-var bbsProcess ifrit.Process
-var bbsClient bbs.InternalClient
-var auctioneerServer *ghttp.Server
+	bbsArgs          bbstestrunner.Args
+	bbsBinPath       string
+	bbsURL           *url.URL
+	bbsRunner        *ginkgomon.Runner
+	bbsProcess       ifrit.Process
+	bbsClient        bbs.InternalClient
+	auctioneerServer *ghttp.Server
+
+	mySQLProcess ifrit.Process
+	mySQLRunner  *mysqlrunner.MySQLRunner
+	useSQL       bool
+)
 
 func TestRep(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -51,6 +59,8 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	return []byte(strings.Join([]string{representative, bbsConfig}, ","))
 }, func(pathsByte []byte) {
+	useSQL = os.Getenv("USE_SQL") != ""
+
 	// tests here are fairly Eventually driven which tends to flake out under
 	// load (for insignificant reasons); bump the default a bit higher than the
 	// default (1 second)
@@ -66,6 +76,11 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	serverPort = 1800 + GinkgoParallelNode()
 
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1, nil)
+
+	if useSQL {
+		mySQLRunner = mysqlrunner.NewMySQLRunner(fmt.Sprintf("diego_%d", GinkgoParallelNode()))
+		mySQLProcess = ginkgomon.Invoke(mySQLRunner)
+	}
 
 	consulRunner = consulrunner.NewClusterRunner(
 		9001+config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength,
@@ -100,6 +115,11 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		EncryptionKeys: []string{"label:key"},
 		ActiveKeyLabel: "label",
 	}
+
+	if useSQL {
+		bbsArgs.DatabaseDriver = "mysql"
+		bbsArgs.DatabaseConnectionString = mySQLRunner.ConnectionString()
+	}
 })
 
 var _ = BeforeEach(func() {
@@ -113,12 +133,17 @@ var _ = BeforeEach(func() {
 })
 
 var _ = AfterEach(func() {
+	if useSQL {
+		mySQLRunner.Reset()
+	}
+
 	if bbsProcess != nil {
 		ginkgomon.Kill(bbsProcess)
 	}
 })
 
 var _ = SynchronizedAfterSuite(func() {
+	ginkgomon.Kill(mySQLProcess)
 	if etcdRunner != nil {
 		etcdRunner.KillWithFire()
 	}
