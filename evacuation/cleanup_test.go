@@ -22,7 +22,7 @@ var _ = Describe("EvacuationCleanup", func() {
 		logger *lagertest.TestLogger
 		cellID string
 
-		fakeBBSClient     *fake_bbs.FakeClient
+		fakeBBSClient     *fake_bbs.FakeInternalClient
 		fakeMetricsSender *fake_metrics_sender.FakeMetricSender
 
 		cleanup        *evacuation.EvacuationCleanup
@@ -36,7 +36,7 @@ var _ = Describe("EvacuationCleanup", func() {
 		cellID = "the-cell-id"
 		logger = lagertest.NewTestLogger("cleanup")
 
-		fakeBBSClient = &fake_bbs.FakeClient{}
+		fakeBBSClient = &fake_bbs.FakeInternalClient{}
 		fakeMetricsSender = fake_metrics_sender.NewFakeMetricSender()
 		metrics.Initialize(fakeMetricsSender, nil)
 

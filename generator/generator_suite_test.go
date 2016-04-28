@@ -16,10 +16,10 @@ func TestGenerator(t *testing.T) {
 
 var (
 	logger  *lagertest.TestLogger
-	fakeBBS *fake_bbs.FakeClient
+	fakeBBS *fake_bbs.FakeInternalClient
 )
 
 var _ = BeforeEach(func() {
 	logger = lagertest.NewTestLogger("test")
-	fakeBBS = new(fake_bbs.FakeClient)
+	fakeBBS = new(fake_bbs.FakeInternalClient)
 })

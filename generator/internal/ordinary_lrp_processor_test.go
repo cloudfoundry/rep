@@ -26,13 +26,13 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 	var (
 		processor          internal.LRPProcessor
 		logger             *lagertest.TestLogger
-		bbsClient          *fake_bbs.FakeClient
+		bbsClient          *fake_bbs.FakeInternalClient
 		containerDelegate  *fake_internal.FakeContainerDelegate
 		evacuationReporter *fake_evacuation_context.FakeEvacuationReporter
 	)
 
 	BeforeEach(func() {
-		bbsClient = new(fake_bbs.FakeClient)
+		bbsClient = new(fake_bbs.FakeInternalClient)
 		containerDelegate = new(fake_internal.FakeContainerDelegate)
 		evacuationReporter = &fake_evacuation_context.FakeEvacuationReporter{}
 		evacuationReporter.EvacuatingReturns(false)

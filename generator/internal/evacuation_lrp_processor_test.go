@@ -28,7 +28,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 		var (
 			logger                 *lagertest.TestLogger
-			fakeBBS                *fake_bbs.FakeClient
+			fakeBBS                *fake_bbs.FakeInternalClient
 			fakeContainerDelegate  *fake_internal.FakeContainerDelegate
 			fakeEvacuationReporter *fake_evacuation_context.FakeEvacuationReporter
 
@@ -47,7 +47,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 		BeforeEach(func() {
 			logger = lagertest.NewTestLogger("test")
 
-			fakeBBS = new(fake_bbs.FakeClient)
+			fakeBBS = new(fake_bbs.FakeInternalClient)
 
 			fakeContainerDelegate = &fake_internal.FakeContainerDelegate{}
 			fakeEvacuationReporter = &fake_evacuation_context.FakeEvacuationReporter{}
