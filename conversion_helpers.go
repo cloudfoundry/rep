@@ -87,7 +87,7 @@ func ActualLRPNetInfoFromContainer(container executor.Container) (*models.Actual
 }
 
 func LRPContainerGuid(processGuid, instanceGuid string) string {
-	return processGuid + "-" + instanceGuid
+	return instanceGuid
 }
 
 func NewRunRequestFromDesiredLRP(
