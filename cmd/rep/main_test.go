@@ -44,14 +44,18 @@ var _ = Describe("The Rep", func() {
 		flushEvents chan struct{}
 	)
 
-	var getActualLRPGroups = func() []*models.ActualLRPGroup {
-		actualLRPGroups, err := bbsClient.ActualLRPGroups(logger, models.ActualLRPFilter{})
-		Expect(err).NotTo(HaveOccurred())
-		return actualLRPGroups
+	var getActualLRPGroups = func(logger lager.Logger) func() []*models.ActualLRPGroup {
+		return func() []*models.ActualLRPGroup {
+			actualLRPGroups, err := bbsClient.ActualLRPGroups(logger, models.ActualLRPFilter{})
+			Expect(err).NotTo(HaveOccurred())
+			return actualLRPGroups
+		}
 	}
 
 	BeforeEach(func() {
-		Eventually(getActualLRPGroups, 5*pollingInterval).Should(BeEmpty())
+		logger = lagertest.NewTestLogger("test")
+
+		Eventually(getActualLRPGroups(logger), 5*pollingInterval).Should(BeEmpty())
 		flushEvents = make(chan struct{})
 		fakeGarden = ghttp.NewUnstartedServer()
 		// these tests only look for the start of a sequence of requests
@@ -77,8 +81,6 @@ var _ = Describe("The Rep", func() {
 			response := string(firstResponse) + string(secondResponse)
 			return ghttp.RespondWith(http.StatusOK, response, headers)
 		}())
-
-		logger = lagertest.NewTestLogger("test")
 
 		pollingInterval = 50 * time.Millisecond
 		evacuationTimeout = 200 * time.Millisecond
@@ -442,7 +444,7 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 			})
 
 			It("eventually reaps actual LRPs with no corresponding container", func() {
-				Eventually(getActualLRPGroups, 5*pollingInterval).Should(BeEmpty())
+				Eventually(getActualLRPGroups(logger), 5*pollingInterval).Should(BeEmpty())
 			})
 		})
 
