@@ -68,7 +68,7 @@ func (p *taskProcessor) processActiveContainer(logger lager.Logger, container ex
 		return
 	}
 
-	task, err := p.bbsClient.TaskByGuid(container.Guid)
+	task, err := p.bbsClient.TaskByGuid(logger, container.Guid)
 	if err != nil {
 		logger.Error("failed-fetching-task", err)
 		return
@@ -93,7 +93,7 @@ func (p *taskProcessor) processCompletedContainer(logger lager.Logger, container
 
 func (p *taskProcessor) startTask(logger lager.Logger, guid string) bool {
 	logger.Info("starting-task")
-	changed, err := p.bbsClient.StartTask(guid, p.cellID)
+	changed, err := p.bbsClient.StartTask(logger, guid, p.cellID)
 	if err != nil {
 		logger.Error("failed-starting-task", err)
 
@@ -128,7 +128,7 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 	}
 
 	logger.Info("completing-task")
-	err = p.bbsClient.CompleteTask(container.Guid, p.cellID, container.RunResult.Failed, container.RunResult.FailureReason, result)
+	err = p.bbsClient.CompleteTask(logger, container.Guid, p.cellID, container.RunResult.Failed, container.RunResult.FailureReason, result)
 	if err != nil {
 		logger.Error("failed-completing-task", err)
 
@@ -144,7 +144,7 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 
 func (p *taskProcessor) failTask(logger lager.Logger, guid string, reason string) {
 	logger.Info("failing-task")
-	err := p.bbsClient.FailTask(guid, reason)
+	err := p.bbsClient.FailTask(logger, guid, reason)
 	if err != nil {
 		logger.Error("failed-failing-task", err)
 		return

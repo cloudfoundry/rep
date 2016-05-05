@@ -72,7 +72,7 @@ func (p *ordinaryLRPProcessor) processReservedContainer(logger lager.Logger, lrp
 		return
 	}
 
-	desired, err := p.bbsClient.DesiredLRPByProcessGuid(lrpContainer.ProcessGuid)
+	desired, err := p.bbsClient.DesiredLRPByProcessGuid(logger, lrpContainer.ProcessGuid)
 	if err != nil {
 		logger.Error("failed-to-fetch-desired", err)
 		return
@@ -85,7 +85,7 @@ func (p *ordinaryLRPProcessor) processReservedContainer(logger lager.Logger, lrp
 	}
 	ok = p.containerDelegate.RunContainer(logger, &runReq)
 	if !ok {
-		p.bbsClient.RemoveActualLRP(lrpContainer.ProcessGuid, int(lrpContainer.Index))
+		p.bbsClient.RemoveActualLRP(logger, lrpContainer.ProcessGuid, int(lrpContainer.Index))
 		return
 	}
 }
@@ -112,7 +112,7 @@ func (p *ordinaryLRPProcessor) processRunningContainer(logger lager.Logger, lrpC
 	logger.Debug("succeeded-extracting-net-info-from-container")
 
 	logger.Info("bbs-start-actual-lrp", lager.Data{"net_info": netInfo})
-	err = p.bbsClient.StartActualLRP(lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo)
+	err = p.bbsClient.StartActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo)
 	bbsErr := models.ConvertError(err)
 	if bbsErr != nil && bbsErr.Type == models.Error_ActualLRPCannotBeStarted {
 		p.containerDelegate.StopContainer(logger, lrpContainer.Guid)
@@ -123,12 +123,12 @@ func (p *ordinaryLRPProcessor) processCompletedContainer(logger lager.Logger, lr
 	logger = logger.Session("process-completed-container")
 
 	if lrpContainer.RunResult.Stopped {
-		err := p.bbsClient.RemoveActualLRP(lrpContainer.ProcessGuid, int(lrpContainer.Index))
+		err := p.bbsClient.RemoveActualLRP(logger, lrpContainer.ProcessGuid, int(lrpContainer.Index))
 		if err != nil {
 			logger.Info("failed-to-remove-actual-lrp", lager.Data{"error": err})
 		}
 	} else {
-		err := p.bbsClient.CrashActualLRP(lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, lrpContainer.RunResult.FailureReason)
+		err := p.bbsClient.CrashActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, lrpContainer.RunResult.FailureReason)
 		if err != nil {
 			logger.Info("failed-to-crash-actual-lrp", lager.Data{"error": err})
 		}
@@ -143,7 +143,7 @@ func (p *ordinaryLRPProcessor) processInvalidContainer(logger lager.Logger, lrpC
 }
 
 func (p *ordinaryLRPProcessor) claimLRPContainer(logger lager.Logger, lrpContainer *lrpContainer) bool {
-	err := p.bbsClient.ClaimActualLRP(lrpContainer.ProcessGuid, int(lrpContainer.Index), lrpContainer.ActualLRPInstanceKey)
+	err := p.bbsClient.ClaimActualLRP(logger, lrpContainer.ProcessGuid, int(lrpContainer.Index), lrpContainer.ActualLRPInstanceKey)
 	bbsErr := models.ConvertError(err)
 	if err != nil {
 		if bbsErr.Type == models.Error_ActualLRPCannotBeClaimed {

@@ -55,13 +55,13 @@ var _ = Describe("Generator", func() {
 
 		It("retrieves all actual lrps for its cell id", func() {
 			Expect(fakeBBS.ActualLRPGroupsCallCount()).To(Equal(1))
-			actualFilter := fakeBBS.ActualLRPGroupsArgsForCall(0)
+			_, actualFilter := fakeBBS.ActualLRPGroupsArgsForCall(0)
 			Expect(actualFilter.CellID).To(Equal(cellID))
 		})
 
 		It("retrieves all tasks for its cell id", func() {
 			Expect(fakeBBS.TasksByCellIDCallCount()).To(Equal(1))
-			actualCellID := fakeBBS.TasksByCellIDArgsForCall(0)
+			_, actualCellID := fakeBBS.TasksByCellIDArgsForCall(0)
 			Expect(actualCellID).To(Equal(cellID))
 		})
 

@@ -97,16 +97,16 @@ var _ = Describe("EvacuationCleanup", func() {
 		It("removes all evacuating actual lrps associated with the cell", func() {
 			Eventually(errCh).Should(Receive(nil))
 			Expect(fakeBBSClient.ActualLRPGroupsCallCount()).To(Equal(1))
-			filter := fakeBBSClient.ActualLRPGroupsArgsForCall(0)
+			_, filter := fakeBBSClient.ActualLRPGroupsArgsForCall(0)
 			Expect(filter).To(Equal(models.ActualLRPFilter{CellID: cellID}))
 
 			Expect(fakeBBSClient.RemoveEvacuatingActualLRPCallCount()).To(Equal(2))
 
-			lrpKey, lrpInstanceKey := fakeBBSClient.RemoveEvacuatingActualLRPArgsForCall(0)
+			_, lrpKey, lrpInstanceKey := fakeBBSClient.RemoveEvacuatingActualLRPArgsForCall(0)
 			Expect(*lrpKey).To(Equal(evacuatingActualLRPGroup.Evacuating.ActualLRPKey))
 			Expect(*lrpInstanceKey).To(Equal(evacuatingActualLRPGroup.Evacuating.ActualLRPInstanceKey))
 
-			lrpKey, lrpInstanceKey = fakeBBSClient.RemoveEvacuatingActualLRPArgsForCall(1)
+			_, lrpKey, lrpInstanceKey = fakeBBSClient.RemoveEvacuatingActualLRPArgsForCall(1)
 			Expect(*lrpKey).To(Equal(actualLRPGroup.Evacuating.ActualLRPKey))
 			Expect(*lrpInstanceKey).To(Equal(actualLRPGroup.Evacuating.ActualLRPInstanceKey))
 		})

@@ -66,7 +66,7 @@ var _ = Describe("Operation", func() {
 
 				It("removes the actualLRP", func() {
 					Expect(fakeBBS.RemoveActualLRPCallCount()).To(Equal(1))
-					processGuid, index := fakeBBS.RemoveActualLRPArgsForCall(0)
+					_, processGuid, index := fakeBBS.RemoveActualLRPArgsForCall(0)
 
 					Expect(processGuid).To(Equal(lrpKey.ProcessGuid))
 					Expect(index).To(Equal(int(lrpKey.Index)))
@@ -142,7 +142,7 @@ var _ = Describe("Operation", func() {
 
 				It("removes the actualLRP", func() {
 					Expect(fakeBBS.RemoveEvacuatingActualLRPCallCount()).To(Equal(1))
-					actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveEvacuatingActualLRPArgsForCall(0)
+					_, actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveEvacuatingActualLRPArgsForCall(0)
 					Expect(*actualLRPKey).To(Equal(lrpKey))
 					Expect(*actualLRPContainerKey).To(Equal(instanceKey))
 				})
@@ -217,7 +217,7 @@ var _ = Describe("Operation", func() {
 
 				It("removes the instance actualLRP", func() {
 					Expect(fakeBBS.RemoveActualLRPCallCount()).To(Equal(1))
-					processGuid, index := fakeBBS.RemoveActualLRPArgsForCall(0)
+					_, processGuid, index := fakeBBS.RemoveActualLRPArgsForCall(0)
 
 					Expect(processGuid).To(Equal(lrpKey.ProcessGuid))
 					Expect(index).To(Equal(int(lrpKey.Index)))
@@ -225,7 +225,7 @@ var _ = Describe("Operation", func() {
 
 				It("removes the evacuating actualLRP", func() {
 					Expect(fakeBBS.RemoveEvacuatingActualLRPCallCount()).To(Equal(1))
-					actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveEvacuatingActualLRPArgsForCall(0)
+					_, actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveEvacuatingActualLRPArgsForCall(0)
 					Expect(*actualLRPKey).To(Equal(lrpKey))
 					Expect(*actualLRPContainerKey).To(Equal(instanceKey))
 				})
@@ -293,7 +293,7 @@ var _ = Describe("Operation", func() {
 
 				It("fails the task", func() {
 					Expect(fakeBBS.FailTaskCallCount()).To(Equal(1))
-					actualTaskGuid, actualFailureReason := fakeBBS.FailTaskArgsForCall(0)
+					_, actualTaskGuid, actualFailureReason := fakeBBS.FailTaskArgsForCall(0)
 					Expect(actualTaskGuid).To(Equal(taskGuid))
 					Expect(actualFailureReason).To(Equal(internal.TaskCompletionReasonMissingContainer))
 				})

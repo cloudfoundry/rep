@@ -52,7 +52,7 @@ func (o *ResidualInstanceLRPOperation) Execute() {
 		return
 	}
 
-	o.bbsClient.RemoveActualLRP(o.ProcessGuid, int(o.Index))
+	o.bbsClient.RemoveActualLRP(logger, o.ProcessGuid, int(o.Index))
 }
 
 // ResidualEvacuatingLRPOperation processes an evacuating ActualLRP with no matching container.
@@ -97,7 +97,7 @@ func (o *ResidualEvacuatingLRPOperation) Execute() {
 		return
 	}
 
-	o.bbsClient.RemoveEvacuatingActualLRP(&o.ActualLRPKey, &o.ActualLRPInstanceKey)
+	o.bbsClient.RemoveEvacuatingActualLRP(logger, &o.ActualLRPKey, &o.ActualLRPInstanceKey)
 }
 
 // ResidualJointLRPOperation processes an evacuating ActualLRP with no matching container.
@@ -144,8 +144,8 @@ func (o *ResidualJointLRPOperation) Execute() {
 
 	actualLRPKey := models.NewActualLRPKey(o.ProcessGuid, int32(o.Index), o.Domain)
 	actualLRPInstanceKey := models.NewActualLRPInstanceKey(o.InstanceGuid, o.CellId)
-	o.bbsClient.RemoveActualLRP(o.ProcessGuid, int(o.Index))
-	o.bbsClient.RemoveEvacuatingActualLRP(&actualLRPKey, &actualLRPInstanceKey)
+	o.bbsClient.RemoveActualLRP(logger, o.ProcessGuid, int(o.Index))
+	o.bbsClient.RemoveEvacuatingActualLRP(logger, &actualLRPKey, &actualLRPInstanceKey)
 }
 
 // ResidualTaskOperation processes a Task with no matching container.
@@ -187,7 +187,7 @@ func (o *ResidualTaskOperation) Execute() {
 		return
 	}
 
-	err := o.bbsClient.FailTask(o.TaskGuid, internal.TaskCompletionReasonMissingContainer)
+	err := o.bbsClient.FailTask(logger, o.TaskGuid, internal.TaskCompletionReasonMissingContainer)
 	if err != nil {
 		logger.Error("failed-to-fail-task", err)
 	}

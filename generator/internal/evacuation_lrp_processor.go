@@ -87,7 +87,7 @@ func (p *evacuationLRPProcessor) processRunningContainer(logger lager.Logger, lr
 	logger.Debug("succeeded-extracting-net-info-from-container")
 
 	logger.Info("bbs-evacuate-running-actual-lrp", lager.Data{"net_info": netInfo})
-	keepContainer, err := p.bbsClient.EvacuateRunningActualLRP(lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo, p.evacuationTTLInSeconds)
+	keepContainer, err := p.bbsClient.EvacuateRunningActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo, p.evacuationTTLInSeconds)
 	if keepContainer == false {
 		p.containerDelegate.DeleteContainer(logger, lrpContainer.Container.Guid)
 	} else if err != nil {
@@ -99,12 +99,12 @@ func (p *evacuationLRPProcessor) processCompletedContainer(logger lager.Logger, 
 	logger = logger.Session("process-completed-container")
 
 	if lrpContainer.RunResult.Stopped {
-		_, err := p.bbsClient.EvacuateStoppedActualLRP(lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
+		_, err := p.bbsClient.EvacuateStoppedActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
 		if err != nil {
 			logger.Error("failed-to-evacuate-stopped-actual-lrp", err, lager.Data{"lrp-key": lrpContainer.ActualLRPKey})
 		}
 	} else {
-		_, err := p.bbsClient.EvacuateCrashedActualLRP(lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, lrpContainer.RunResult.FailureReason)
+		_, err := p.bbsClient.EvacuateCrashedActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, lrpContainer.RunResult.FailureReason)
 		if err != nil {
 			logger.Error("failed-to-evacuate-crashed-actual-lrp", err, lager.Data{"lrp-key": lrpContainer.ActualLRPKey})
 		}
@@ -119,7 +119,7 @@ func (p *evacuationLRPProcessor) processInvalidContainer(logger lager.Logger, lr
 }
 
 func (p *evacuationLRPProcessor) evacuateClaimedLRPContainer(logger lager.Logger, lrpContainer *lrpContainer) {
-	_, err := p.bbsClient.EvacuateClaimedActualLRP(lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
+	_, err := p.bbsClient.EvacuateClaimedActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
 	if err != nil {
 		logger.Error("failed-to-unclaim-actual-lrp", err, lager.Data{"lrp-key": lrpContainer.ActualLRPKey})
 	}

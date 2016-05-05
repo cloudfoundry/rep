@@ -83,7 +83,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 
 	go func() {
 		filter := models.ActualLRPFilter{CellID: g.cellID}
-		groups, err := g.bbs.ActualLRPGroups(filter)
+		groups, err := g.bbs.ActualLRPGroups(logger, filter)
 		if err != nil {
 			logger.Error("failed-to-retrieve-lrp-groups", err)
 			err = fmt.Errorf("failed to retrieve lrps: %s", err.Error())
@@ -101,7 +101,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	}()
 
 	go func() {
-		foundTasks, err := g.bbs.TasksByCellID(g.cellID)
+		foundTasks, err := g.bbs.TasksByCellID(logger, g.cellID)
 		if err != nil {
 			logger.Error("failed-to-retrieve-tasks", err)
 			err = fmt.Errorf("failed to retrieve tasks: %s", err.Error())
