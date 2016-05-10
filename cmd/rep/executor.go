@@ -4,6 +4,7 @@ import (
 	"flag"
 
 	executorinit "github.com/cloudfoundry-incubator/executor/initializer"
+	"path/filepath"
 )
 
 var gardenNetwork = flag.String(
@@ -198,10 +199,10 @@ var trustedSystemCertificatesPath = flag.String(
 	"path to directory containing trusted system ca certs.",
 )
 
-var volmanDriverPath = flag.String(
-	"volmanDriverConfigDir",
-	executorinit.DefaultConfiguration.VolmanDriverPath,
-	"path to directory containing volume manager drivers",
+var volmanDriverPaths = flag.String(
+	"volmanDriverPaths",
+	"",
+	"path to directories that the volume manager uses to discover drivers.  May be an OS-specific path-separated set of paths; e.g. /path/to/a:/path/to/b",
 )
 
 func executorConfig(caCertsForDownloads []byte, gardenHealthcheckRootFS string, gardenHealthcheckArgs, gardenHealthcheckEnv []string) executorinit.Configuration {
@@ -241,6 +242,6 @@ func executorConfig(caCertsForDownloads []byte, gardenHealthcheckRootFS string, 
 		PostSetupHook:                      *postSetupHook,
 		PostSetupUser:                      *postSetupUser,
 		TrustedSystemCertificatesPath:      *trustedSystemCertificatesPath,
-		VolmanDriverPath:                   *volmanDriverPath,
+		VolmanDriverPaths:                  filepath.SplitList(*volmanDriverPaths),
 	}
 }
