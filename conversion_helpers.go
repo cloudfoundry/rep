@@ -120,7 +120,7 @@ func NewRunRequestFromDesiredLRP(
 			Guid:  desiredLRP.MetricsGuid,
 			Index: int(lrpKey.Index),
 		},
-		StartTimeoutMs:     uint(desiredLRP.StartTimeoutMs),
+		StartTimeout:       uint(desiredLRP.StartTimeout),
 		Privileged:         desiredLRP.Privileged,
 		CachedDependencies: ConvertCachedDependencies(desiredLRP.CachedDependencies),
 		Setup:              desiredLRP.Setup,
