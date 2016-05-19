@@ -291,8 +291,8 @@ var _ = Describe("Resources", func() {
 					Guid:  desiredLRP.MetricsGuid,
 					Index: int(actualLRP.Index),
 				},
-				StartTimeout: uint(desiredLRP.StartTimeout),
-				Privileged:   desiredLRP.Privileged,
+				StartTimeoutMs: uint(desiredLRP.StartTimeoutMs),
+				Privileged:     desiredLRP.Privileged,
 				CachedDependencies: []executor.CachedDependency{
 					{Name: "app bits", From: "blobstore.com/bits/app-bits", To: "/usr/local/app", CacheKey: "cache-key", LogSource: "log-source"},
 				},
