@@ -187,11 +187,13 @@ func ConvertCachedDependencies(modelDeps []*models.CachedDependency) []executor.
 
 func ConvertCachedDependency(modelDep *models.CachedDependency) executor.CachedDependency {
 	return executor.CachedDependency{
-		Name:      modelDep.Name,
-		From:      modelDep.From,
-		To:        modelDep.To,
-		CacheKey:  modelDep.CacheKey,
-		LogSource: modelDep.LogSource,
+		Name:              modelDep.Name,
+		From:              modelDep.From,
+		To:                modelDep.To,
+		CacheKey:          modelDep.CacheKey,
+		LogSource:         modelDep.LogSource,
+		ChecksumValue:     modelDep.ChecksumValue,
+		ChecksumAlgorithm: modelDep.ChecksumAlgorithm,
 	}
 }
 

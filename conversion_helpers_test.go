@@ -295,6 +295,7 @@ var _ = Describe("Resources", func() {
 				Privileged:     desiredLRP.Privileged,
 				CachedDependencies: []executor.CachedDependency{
 					{Name: "app bits", From: "blobstore.com/bits/app-bits", To: "/usr/local/app", CacheKey: "cache-key", LogSource: "log-source"},
+					{Name: "app bits with checksum", From: "blobstore.com/bits/app-bits-checksum", To: "/usr/local/app-checksum", CacheKey: "cache-key", LogSource: "log-source", ChecksumAlgorithm: "md5", ChecksumValue: "checksum-value"},
 				},
 				Setup:       desiredLRP.Setup,
 				Action:      desiredLRP.Action,
@@ -379,6 +380,7 @@ var _ = Describe("Resources", func() {
 				Privileged: task.Privileged,
 				CachedDependencies: []executor.CachedDependency{
 					{Name: "app bits", From: "blobstore.com/bits/app-bits", To: "/usr/local/app", CacheKey: "cache-key", LogSource: "log-source"},
+					{Name: "app bits with checksum", From: "blobstore.com/bits/app-bits-checksum", To: "/usr/local/app-checksum", CacheKey: "cache-key", LogSource: "log-source", ChecksumAlgorithm: "md5", ChecksumValue: "checksum-value"},
 				},
 				LogConfig: executor.LogConfig{
 					Guid:       task.LogGuid,
