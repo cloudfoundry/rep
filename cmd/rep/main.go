@@ -298,8 +298,8 @@ func main() {
 	cleanup := evacuation.NewEvacuationCleanup(logger, *cellID, bbsClient)
 
 	members := grouper.Members{
-		{"http_server", httpServer},
 		{"presence", initializeCellPresence(address, serviceClient, executorClient, logger, supportedProviders, preloadedRootFSes)},
+		{"http_server", httpServer},
 		{"evacuation-cleanup", cleanup},
 		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, *evacuationPollingInterval, evacuationNotifier, clock, opGenerator, queue)},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
