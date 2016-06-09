@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -12,9 +11,10 @@ import (
 
 	"github.com/cloudfoundry-incubator/bbs"
 	bbstestrunner "github.com/cloudfoundry-incubator/bbs/cmd/bbs/testrunner"
+	"github.com/cloudfoundry-incubator/bbs/test_helpers"
+	"github.com/cloudfoundry-incubator/bbs/test_helpers/sqlrunner"
 	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
-	"github.com/cloudfoundry/storeadapter/storerunner/mysqlrunner"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -40,9 +40,8 @@ var (
 	bbsClient        bbs.InternalClient
 	auctioneerServer *ghttp.Server
 
-	mySQLProcess ifrit.Process
-	mySQLRunner  *mysqlrunner.MySQLRunner
-	useSQL       bool
+	sqlProcess ifrit.Process
+	sqlRunner  sqlrunner.SQLRunner
 )
 
 func TestRep(t *testing.T) {
@@ -59,8 +58,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	return []byte(strings.Join([]string{representative, bbsConfig}, ","))
 }, func(pathsByte []byte) {
-	useSQL = os.Getenv("USE_SQL") != ""
-
 	// tests here are fairly Eventually driven which tends to flake out under
 	// load (for insignificant reasons); bump the default a bit higher than the
 	// default (1 second)
@@ -77,9 +74,10 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1, nil)
 
-	if useSQL {
-		mySQLRunner = mysqlrunner.NewMySQLRunner(fmt.Sprintf("diego_%d", GinkgoParallelNode()))
-		mySQLProcess = ginkgomon.Invoke(mySQLRunner)
+	if test_helpers.UseSQL() {
+		dbName := fmt.Sprintf("diego_%d", GinkgoParallelNode())
+		sqlRunner = test_helpers.NewSQLRunner(dbName)
+		sqlProcess = ginkgomon.Invoke(sqlRunner)
 	}
 
 	consulRunner = consulrunner.NewClusterRunner(
@@ -120,9 +118,9 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		ActiveKeyLabel: "label",
 	}
 
-	if useSQL {
-		bbsArgs.DatabaseDriver = "mysql"
-		bbsArgs.DatabaseConnectionString = mySQLRunner.ConnectionString()
+	if test_helpers.UseSQL() {
+		bbsArgs.DatabaseDriver = sqlRunner.DriverName()
+		bbsArgs.DatabaseConnectionString = sqlRunner.ConnectionString()
 	}
 })
 
@@ -137,8 +135,8 @@ var _ = BeforeEach(func() {
 })
 
 var _ = AfterEach(func() {
-	if useSQL {
-		mySQLRunner.Reset()
+	if test_helpers.UseSQL() {
+		sqlRunner.Reset()
 	}
 
 	if bbsProcess != nil {
@@ -147,7 +145,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = SynchronizedAfterSuite(func() {
-	ginkgomon.Kill(mySQLProcess)
+	ginkgomon.Kill(sqlProcess)
 	if etcdRunner != nil {
 		etcdRunner.KillWithFire()
 	}
