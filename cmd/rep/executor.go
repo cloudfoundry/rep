@@ -3,8 +3,9 @@ package main
 import (
 	"flag"
 
-	executorinit "github.com/cloudfoundry-incubator/executor/initializer"
 	"path/filepath"
+
+	executorinit "github.com/cloudfoundry-incubator/executor/initializer"
 )
 
 var gardenNetwork = flag.String(
@@ -151,6 +152,12 @@ var gardenHealthcheckInterval = flag.Duration(
 	"Frequency for healthchecking garden",
 )
 
+var gardenHealthcheckEmissionInterval = flag.Duration(
+	"gardenHealthcheckEmissionInterval",
+	executorinit.DefaultConfiguration.GardenHealthcheckEmissionInterval,
+	"Frequency for emitting UnhealthyCell metric",
+)
+
 var gardenHealthcheckTimeout = flag.Duration(
 	"gardenHealthcheckTimeout",
 	executorinit.DefaultConfiguration.GardenHealthcheckTimeout,
@@ -231,6 +238,7 @@ func executorConfig(caCertsForDownloads []byte, gardenHealthcheckRootFS string, 
 		DiskMB:                             *diskMBFlag,
 		MaxConcurrentDownloads:             *maxConcurrentDownloads,
 		GardenHealthcheckInterval:          *gardenHealthcheckInterval,
+		GardenHealthcheckEmissionInterval:  *gardenHealthcheckEmissionInterval,
 		GardenHealthcheckTimeout:           *gardenHealthcheckTimeout,
 		GardenHealthcheckCommandRetryPause: *gardenHealthcheckCommandRetryPause,
 		GardenHealthcheckRootFS:            gardenHealthcheckRootFS,
