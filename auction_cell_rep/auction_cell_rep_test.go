@@ -3,7 +3,7 @@ package auction_cell_rep_test
 import (
 	"errors"
 
-	"github.com/cloudfoundry-incubator/bbs/models"
+	"code.cloudfoundry.org/bbs/models"
 	executor "github.com/cloudfoundry-incubator/executor"
 	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
@@ -235,7 +235,6 @@ var _ = Describe("AuctionCellRep", func() {
 
 		Describe("performing starts", func() {
 			var lrpAuctionOne, lrpAuctionTwo rep.LRP
-			var securityRule *models.SecurityGroupRule
 			var expectedGuidOne = "instance-guid-1"
 			var expectedGuidTwo = "instance-guid-2"
 			var expectedIndexOne int32 = 1
@@ -250,15 +249,6 @@ var _ = Describe("AuctionCellRep", func() {
 
 				fakeGenerateContainerGuid = func() (string, error) {
 					return <-guidChan, nil
-				}
-
-				securityRule = &models.SecurityGroupRule{
-					Protocol:     "tcp",
-					Destinations: []string{"0.0.0.0/0"},
-					PortRange: &models.PortRange{
-						Start: 1,
-						End:   1024,
-					},
 				}
 
 				lrpAuctionOne = rep.NewLRP(

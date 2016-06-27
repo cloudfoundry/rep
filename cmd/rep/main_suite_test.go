@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cloudfoundry-incubator/bbs"
-	bbstestrunner "github.com/cloudfoundry-incubator/bbs/cmd/bbs/testrunner"
-	"github.com/cloudfoundry-incubator/bbs/test_helpers"
-	"github.com/cloudfoundry-incubator/bbs/test_helpers/sqlrunner"
+	"code.cloudfoundry.org/bbs"
+	bbstestrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
+	"code.cloudfoundry.org/bbs/test_helpers"
+	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
 	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
@@ -50,7 +50,7 @@ func TestRep(t *testing.T) {
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {
-	bbsConfig, err := gexec.Build("github.com/cloudfoundry-incubator/bbs/cmd/bbs", "-race")
+	bbsConfig, err := gexec.Build("code.cloudfoundry.org/bbs/cmd/bbs", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	representative, err := gexec.Build("github.com/cloudfoundry-incubator/rep/cmd/rep", "-race")

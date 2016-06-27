@@ -3,8 +3,8 @@ package internal_test
 import (
 	"fmt"
 
-	"github.com/cloudfoundry-incubator/bbs"
-	bbsrunner "github.com/cloudfoundry-incubator/bbs/cmd/bbs/testrunner"
+	"code.cloudfoundry.org/bbs"
+	bbsrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
 	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
@@ -31,7 +31,7 @@ func TestInternal(t *testing.T) {
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {
-	bbsBinPath, err := gexec.Build("github.com/cloudfoundry-incubator/bbs/cmd/bbs")
+	bbsBinPath, err := gexec.Build("code.cloudfoundry.org/bbs/cmd/bbs")
 	Expect(err).NotTo(HaveOccurred())
 	return []byte(bbsBinPath)
 }, func(payload []byte) {
