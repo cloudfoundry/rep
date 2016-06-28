@@ -13,6 +13,7 @@ import (
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/consuladapter"
+	"code.cloudfoundry.org/debugserver"
 	"code.cloudfoundry.org/executor"
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/locket"
@@ -24,7 +25,6 @@ import (
 	"code.cloudfoundry.org/rep/handlers"
 	"code.cloudfoundry.org/rep/harmonizer"
 	"code.cloudfoundry.org/rep/maintain"
-	"github.com/cloudfoundry-incubator/cf-debug-server"
 	cf_lager "github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry/dropsonde"
@@ -205,7 +205,7 @@ const (
 )
 
 func main() {
-	cf_debug_server.AddFlags(flag.CommandLine)
+	debugserver.AddFlags(flag.CommandLine)
 	cf_lager.AddFlags(flag.CommandLine)
 
 	stackMap := stackPathMap{}
@@ -308,9 +308,9 @@ func main() {
 
 	members = append(executorMembers, members...)
 
-	if dbgAddr := cf_debug_server.DebugAddress(flag.CommandLine); dbgAddr != "" {
+	if dbgAddr := debugserver.DebugAddress(flag.CommandLine); dbgAddr != "" {
 		members = append(grouper.Members{
-			{"debug-server", cf_debug_server.Runner(dbgAddr, reconfigurableSink)},
+			{"debug-server", debugserver.Runner(dbgAddr, reconfigurableSink)},
 		}, members...)
 	}
 
