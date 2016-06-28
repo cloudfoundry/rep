@@ -3,7 +3,7 @@ package harmonizer
 import (
 	"os"
 
-	"github.com/cloudfoundry-incubator/executor"
+	"code.cloudfoundry.org/executor"
 	"github.com/cloudfoundry-incubator/rep/generator"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/operationq"

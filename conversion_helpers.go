@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"code.cloudfoundry.org/bbs/models"
-	"github.com/cloudfoundry-incubator/executor"
+	"code.cloudfoundry.org/executor"
 )
 
 const (

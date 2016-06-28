@@ -6,7 +6,7 @@ import (
 	etcddb "code.cloudfoundry.org/bbs/db/etcd"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
-	"github.com/cloudfoundry-incubator/executor"
+	"code.cloudfoundry.org/executor"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"

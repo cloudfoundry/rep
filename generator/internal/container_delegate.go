@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cloudfoundry-incubator/executor"
+	"code.cloudfoundry.org/executor"
 	"github.com/pivotal-golang/lager"
 )
 

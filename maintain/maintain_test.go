@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/fake_bbs"
-	"github.com/cloudfoundry-incubator/executor"
-	fake_client "github.com/cloudfoundry-incubator/executor/fakes"
+	"code.cloudfoundry.org/executor"
+	fake_client "code.cloudfoundry.org/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep/maintain"
 	maintain_fakes "github.com/cloudfoundry-incubator/rep/maintain/fakes"
 	"github.com/pivotal-golang/clock/fakeclock"

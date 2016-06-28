@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"code.cloudfoundry.org/bbs/models"
-	"github.com/cloudfoundry-incubator/executor"
+	"code.cloudfoundry.org/executor"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/generator"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"

@@ -4,7 +4,7 @@ package fake_internal
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/executor"
+	"code.cloudfoundry.org/executor"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"
 	"github.com/pivotal-golang/lager"
 )

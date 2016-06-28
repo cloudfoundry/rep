@@ -4,8 +4,8 @@ import (
 	"errors"
 
 	"code.cloudfoundry.org/bbs/models"
-	"github.com/cloudfoundry-incubator/executor"
-	efakes "github.com/cloudfoundry-incubator/executor/fakes"
+	"code.cloudfoundry.org/executor"
+	efakes "code.cloudfoundry.org/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"github.com/cloudfoundry-incubator/rep/generator"

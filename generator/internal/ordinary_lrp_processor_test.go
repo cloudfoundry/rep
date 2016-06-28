@@ -8,7 +8,7 @@ import (
 	"code.cloudfoundry.org/bbs/fake_bbs"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
-	"github.com/cloudfoundry-incubator/executor"
+	"code.cloudfoundry.org/executor"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"github.com/cloudfoundry-incubator/rep/generator/internal"

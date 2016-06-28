@@ -5,7 +5,7 @@ import (
 
 	"path/filepath"
 
-	executorinit "github.com/cloudfoundry-incubator/executor/initializer"
+	executorinit "code.cloudfoundry.org/executor/initializer"
 )
 
 var gardenNetwork = flag.String(

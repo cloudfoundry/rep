@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 
-	executorfakes "github.com/cloudfoundry-incubator/executor/fakes"
+	executorfakes "code.cloudfoundry.org/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep/handlers"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"

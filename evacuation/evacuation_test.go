@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/cloudfoundry-incubator/executor"
-	"github.com/cloudfoundry-incubator/executor/fakes"
+	"code.cloudfoundry.org/executor"
+	"code.cloudfoundry.org/executor/fakes"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/rep/evacuation"
 	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"

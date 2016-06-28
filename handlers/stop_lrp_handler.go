@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/cloudfoundry-incubator/executor"
+	"code.cloudfoundry.org/executor"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/pivotal-golang/lager"
 )
