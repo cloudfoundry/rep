@@ -5,7 +5,7 @@ import (
 
 	"code.cloudfoundry.org/bbs"
 	bbsrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
-	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
+	"code.cloudfoundry.org/consuladapter/consulrunner"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
