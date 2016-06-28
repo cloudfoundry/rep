@@ -6,7 +6,7 @@ import (
 
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
 	"code.cloudfoundry.org/rep/generator"
-	"github.com/cloudfoundry-incubator/runtime-schema/metric"
+	"code.cloudfoundry.org/runtimeschema/metric"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/operationq"
