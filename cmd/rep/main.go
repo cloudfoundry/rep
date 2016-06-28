@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs"
+	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/cflager"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/debugserver"
@@ -26,7 +27,6 @@ import (
 	"code.cloudfoundry.org/rep/handlers"
 	"code.cloudfoundry.org/rep/harmonizer"
 	"code.cloudfoundry.org/rep/maintain"
-	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/clock"
@@ -223,7 +223,7 @@ func main() {
 		preloadedRootFSes = append(preloadedRootFSes, k)
 	}
 
-	cf_http.Initialize(*communicationTimeout)
+	cfhttp.Initialize(*communicationTimeout)
 
 	clock := clock.NewClock()
 	logger, reconfigurableSink := cflager.New(*sessionName)

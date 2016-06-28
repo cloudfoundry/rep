@@ -13,10 +13,10 @@ import (
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
+	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/executor/gardenhealth"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/cmd/rep/testrunner"
-	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/garden/transport"
 	"github.com/pivotal-golang/lager"
@@ -363,7 +363,7 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 				cellSet := models.NewCellSetFromList(cells)
 				Expect(err).NotTo(HaveOccurred())
 
-				client = rep.NewClient(http.DefaultClient, cf_http.NewCustomTimeoutClient(100*time.Millisecond), cellSet[cellID].RepAddress)
+				client = rep.NewClient(http.DefaultClient, cfhttp.NewCustomTimeoutClient(100*time.Millisecond), cellSet[cellID].RepAddress)
 			})
 
 			Context("Capacity with a container", func() {

@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/rep"
-	"github.com/cloudfoundry-incubator/cf_http"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -19,7 +19,7 @@ var _ = Describe("Client", func() {
 
 	BeforeEach(func() {
 		fakeServer = ghttp.NewServer()
-		client = rep.NewClient(cf_http.NewClient(), nil, fakeServer.URL())
+		client = rep.NewClient(cfhttp.NewClient(), nil, fakeServer.URL())
 	})
 
 	AfterEach(func() {

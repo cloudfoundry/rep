@@ -5,12 +5,12 @@ import (
 	"net/http/httptest"
 	"time"
 
+	"code.cloudfoundry.org/cfhttp"
 	executorfakes "code.cloudfoundry.org/executor/fakes"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"code.cloudfoundry.org/rep/handlers"
 	"code.cloudfoundry.org/rep/repfakes"
-	"github.com/cloudfoundry-incubator/cf_http"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
@@ -39,7 +39,7 @@ func TestRep(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	cfHttpTimeout = 1 * time.Second
-	cf_http.Initialize(cfHttpTimeout)
+	cfhttp.Initialize(cfHttpTimeout)
 })
 
 var _ = BeforeEach(func() {
