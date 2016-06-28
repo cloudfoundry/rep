@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/rep"
 	"github.com/cloudfoundry-incubator/cf_http"
-	"github.com/cloudfoundry-incubator/rep"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

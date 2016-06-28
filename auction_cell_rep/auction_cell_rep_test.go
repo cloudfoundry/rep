@@ -6,9 +6,9 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/executor"
 	fake_client "code.cloudfoundry.org/executor/fakes"
-	"github.com/cloudfoundry-incubator/rep"
-	"github.com/cloudfoundry-incubator/rep/auction_cell_rep"
-	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context/fake_evacuation_context"
+	"code.cloudfoundry.org/rep"
+	"code.cloudfoundry.org/rep/auction_cell_rep"
+	"code.cloudfoundry.org/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"

@@ -9,7 +9,7 @@ import (
 	"net/url"
 
 	executorfakes "code.cloudfoundry.org/executor/fakes"
-	"github.com/cloudfoundry-incubator/rep/handlers"
+	"code.cloudfoundry.org/rep/handlers"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 

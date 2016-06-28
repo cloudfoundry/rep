@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
-	"github.com/cloudfoundry-incubator/rep"
+	"code.cloudfoundry.org/rep"
 )
 
 type FakeClient struct {

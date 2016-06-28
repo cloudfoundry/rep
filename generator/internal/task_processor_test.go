@@ -7,9 +7,9 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
 	"code.cloudfoundry.org/executor"
-	"github.com/cloudfoundry-incubator/rep"
-	"github.com/cloudfoundry-incubator/rep/generator/internal"
-	"github.com/cloudfoundry-incubator/rep/generator/internal/fake_internal"
+	"code.cloudfoundry.org/rep"
+	"code.cloudfoundry.org/rep/generator/internal"
+	"code.cloudfoundry.org/rep/generator/internal/fake_internal"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 

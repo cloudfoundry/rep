@@ -5,8 +5,8 @@ import (
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
-	"github.com/cloudfoundry-incubator/rep"
-	"github.com/cloudfoundry-incubator/rep/generator/internal"
+	"code.cloudfoundry.org/rep"
+	"code.cloudfoundry.org/rep/generator/internal"
 	"github.com/pivotal-golang/lager"
 )
 

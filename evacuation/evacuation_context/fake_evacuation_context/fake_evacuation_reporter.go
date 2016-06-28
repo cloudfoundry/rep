@@ -4,7 +4,7 @@ package fake_evacuation_context
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
+	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
 )
 
 type FakeEvacuationReporter struct {

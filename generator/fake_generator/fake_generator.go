@@ -4,7 +4,7 @@ package fake_generator
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/rep/generator"
+	"code.cloudfoundry.org/rep/generator"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/operationq"
 )

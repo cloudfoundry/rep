@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
+	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
 	"github.com/pivotal-golang/lager"
 )
 

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"os"
 
-	"github.com/cloudfoundry-incubator/rep/generator/fake_generator"
-	"github.com/cloudfoundry-incubator/rep/harmonizer"
+	"code.cloudfoundry.org/rep/generator/fake_generator"
+	"code.cloudfoundry.org/rep/harmonizer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-golang/lager/lagertest"

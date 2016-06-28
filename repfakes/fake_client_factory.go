@@ -4,7 +4,7 @@ package repfakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/rep"
+	"code.cloudfoundry.org/rep"
 )
 
 type FakeClientFactory struct {

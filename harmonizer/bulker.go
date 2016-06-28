@@ -4,8 +4,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
-	"github.com/cloudfoundry-incubator/rep/generator"
+	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
+	"code.cloudfoundry.org/rep/generator"
 	"github.com/cloudfoundry-incubator/runtime-schema/metric"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"

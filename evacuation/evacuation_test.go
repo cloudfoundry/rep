@@ -7,9 +7,9 @@ import (
 
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/executor/fakes"
-	"github.com/cloudfoundry-incubator/rep"
-	"github.com/cloudfoundry-incubator/rep/evacuation"
-	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
+	"code.cloudfoundry.org/rep"
+	"code.cloudfoundry.org/rep/evacuation"
+	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
 	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"

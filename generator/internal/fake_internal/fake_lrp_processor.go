@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"code.cloudfoundry.org/executor"
-	"github.com/cloudfoundry-incubator/rep/generator/internal"
+	"code.cloudfoundry.org/rep/generator/internal"
 	"github.com/pivotal-golang/lager"
 )
 

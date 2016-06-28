@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/url"
 
-	"github.com/cloudfoundry-incubator/rep"
+	"code.cloudfoundry.org/rep"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

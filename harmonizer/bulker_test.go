@@ -5,9 +5,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
-	"github.com/cloudfoundry-incubator/rep/generator/fake_generator"
-	"github.com/cloudfoundry-incubator/rep/harmonizer"
+	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
+	"code.cloudfoundry.org/rep/generator/fake_generator"
+	"code.cloudfoundry.org/rep/harmonizer"
 	"github.com/cloudfoundry/dropsonde/metric_sender/fake"
 	"github.com/cloudfoundry/dropsonde/metrics"
 	. "github.com/onsi/ginkgo"

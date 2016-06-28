@@ -3,7 +3,7 @@ package internal
 import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/executor"
-	"github.com/cloudfoundry-incubator/rep"
+	"code.cloudfoundry.org/rep"
 
 	"code.cloudfoundry.org/bbs"
 	"github.com/pivotal-golang/lager"

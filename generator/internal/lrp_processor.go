@@ -4,7 +4,7 @@ import (
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/executor"
-	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
+	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
 	"github.com/pivotal-golang/lager"
 )
 

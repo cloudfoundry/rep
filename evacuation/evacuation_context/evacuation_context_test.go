@@ -4,7 +4,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/cloudfoundry-incubator/rep/evacuation/evacuation_context"
+	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

@@ -53,7 +53,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	bbsConfig, err := gexec.Build("code.cloudfoundry.org/bbs/cmd/bbs", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	representative, err := gexec.Build("github.com/cloudfoundry-incubator/rep/cmd/rep", "-race")
+	representative, err := gexec.Build("code.cloudfoundry.org/rep/cmd/rep", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	return []byte(strings.Join([]string{representative, bbsConfig}, ","))

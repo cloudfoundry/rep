@@ -6,7 +6,7 @@ import (
 
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/executor/fakes"
-	"github.com/cloudfoundry-incubator/rep/generator/internal"
+	"code.cloudfoundry.org/rep/generator/internal"
 	"github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/pivotal-golang/lager/lagertest"
 
