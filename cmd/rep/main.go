@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs"
+	"code.cloudfoundry.org/cflager"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/debugserver"
 	"code.cloudfoundry.org/executor"
@@ -25,7 +26,6 @@ import (
 	"code.cloudfoundry.org/rep/handlers"
 	"code.cloudfoundry.org/rep/harmonizer"
 	"code.cloudfoundry.org/rep/maintain"
-	cf_lager "github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf_http"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/nu7hatch/gouuid"
@@ -206,7 +206,7 @@ const (
 
 func main() {
 	debugserver.AddFlags(flag.CommandLine)
-	cf_lager.AddFlags(flag.CommandLine)
+	cflager.AddFlags(flag.CommandLine)
 
 	stackMap := stackPathMap{}
 	supportedProviders := providers{}
@@ -226,7 +226,7 @@ func main() {
 	cf_http.Initialize(*communicationTimeout)
 
 	clock := clock.NewClock()
-	logger, reconfigurableSink := cf_lager.New(*sessionName)
+	logger, reconfigurableSink := cflager.New(*sessionName)
 
 	var (
 		executorConfiguration   executorinit.Configuration
