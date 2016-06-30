@@ -5,12 +5,12 @@ import (
 	"os"
 	"time"
 
+	"code.cloudfoundry.org/clock/fakeclock"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/executor/fakes"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/evacuation"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
-	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"

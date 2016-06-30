@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/fake_bbs"
+	"code.cloudfoundry.org/clock/fakeclock"
 	"code.cloudfoundry.org/executor"
 	fake_client "code.cloudfoundry.org/executor/fakes"
 	"code.cloudfoundry.org/rep/maintain"
 	maintain_fakes "code.cloudfoundry.org/rep/maintain/fakes"
-	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
