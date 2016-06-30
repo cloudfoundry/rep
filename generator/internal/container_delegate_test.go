@@ -4,10 +4,10 @@ import (
 	"errors"
 	"strings"
 
+	"code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/executor/fakes"
 	"code.cloudfoundry.org/rep/generator/internal"
-	"github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
