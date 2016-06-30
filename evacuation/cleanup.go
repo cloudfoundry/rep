@@ -5,8 +5,8 @@ import (
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/runtimeschema/metric"
-	"github.com/pivotal-golang/lager"
 )
 
 var strandedEvacuatingActualLRPs = metric.Metric("StrandedEvacuatingActualLRPs")

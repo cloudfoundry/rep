@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
-	"github.com/pivotal-golang/lager"
 )
 
 type EvacuationHandler struct {

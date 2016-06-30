@@ -9,11 +9,11 @@ import (
 	"net/http/httptest"
 
 	executorfakes "code.cloudfoundry.org/executor/fakes"
+	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"code.cloudfoundry.org/rep/handlers"
 	"code.cloudfoundry.org/rep/repfakes"
-	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

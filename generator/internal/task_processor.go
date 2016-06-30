@@ -6,7 +6,7 @@ import (
 	"code.cloudfoundry.org/rep"
 
 	"code.cloudfoundry.org/bbs"
-	"github.com/pivotal-golang/lager"
+	"code.cloudfoundry.org/lager"
 )
 
 const TaskCompletionReasonMissingContainer = "task container does not exist"

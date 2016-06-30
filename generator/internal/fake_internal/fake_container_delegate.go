@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"code.cloudfoundry.org/executor"
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/rep/generator/internal"
-	"github.com/pivotal-golang/lager"
 )
 
 type FakeContainerDelegate struct {

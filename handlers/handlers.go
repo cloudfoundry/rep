@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"code.cloudfoundry.org/executor"
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
-	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
 )
 

@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"code.cloudfoundry.org/executor"
-	"github.com/pivotal-golang/lager"
+	"code.cloudfoundry.org/lager"
 )
 
 const MAX_RESULT_SIZE = 1024 * 10

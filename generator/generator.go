@@ -7,11 +7,11 @@ import (
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/executor"
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/operationq"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
 	"code.cloudfoundry.org/rep/generator/internal"
-	"github.com/pivotal-golang/lager"
 )
 
 //go:generate counterfeiter -o fake_generator/fake_generator.go . Generator

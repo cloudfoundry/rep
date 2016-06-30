@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock"
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/operationq"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
 	"code.cloudfoundry.org/rep/generator"
 	"code.cloudfoundry.org/runtimeschema/metric"
-	"github.com/pivotal-golang/lager"
 )
 
 const repBulkSyncDuration = metric.Duration("RepBulkSyncDuration")

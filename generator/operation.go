@@ -5,9 +5,9 @@ import (
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/generator/internal"
-	"github.com/pivotal-golang/lager"
 )
 
 // ResidualInstanceLRPOperation processes an instance ActualLRP with no matching container.

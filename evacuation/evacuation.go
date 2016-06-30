@@ -6,8 +6,8 @@ import (
 
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/executor"
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
-	"github.com/pivotal-golang/lager"
 )
 
 type Evacuator struct {

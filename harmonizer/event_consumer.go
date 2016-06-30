@@ -4,9 +4,9 @@ import (
 	"os"
 
 	"code.cloudfoundry.org/executor"
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/operationq"
 	"code.cloudfoundry.org/rep/generator"
-	"github.com/pivotal-golang/lager"
 )
 
 type EventConsumer struct {

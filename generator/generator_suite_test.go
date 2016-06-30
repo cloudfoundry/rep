@@ -2,9 +2,9 @@ package generator_test
 
 import (
 	"code.cloudfoundry.org/bbs/fake_bbs"
+	"code.cloudfoundry.org/lager/lagertest"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-golang/lager/lagertest"
 
 	"testing"
 )
