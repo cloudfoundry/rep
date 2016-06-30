@@ -4,13 +4,13 @@ import (
 	"errors"
 	"os"
 
+	"code.cloudfoundry.org/operationq"
+	"code.cloudfoundry.org/operationq/fake_operationq"
 	"code.cloudfoundry.org/rep/generator/fake_generator"
 	"code.cloudfoundry.org/rep/harmonizer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-golang/lager/lagertest"
-	"github.com/pivotal-golang/operationq"
-	"github.com/pivotal-golang/operationq/fake_operationq"
 	"github.com/tedsuo/ifrit"
 )
 

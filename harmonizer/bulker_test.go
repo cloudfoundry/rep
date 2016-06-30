@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
+	"code.cloudfoundry.org/operationq"
+	"code.cloudfoundry.org/operationq/fake_operationq"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
 	"code.cloudfoundry.org/rep/generator/fake_generator"
 	"code.cloudfoundry.org/rep/harmonizer"
@@ -16,8 +18,6 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
-	"github.com/pivotal-golang/operationq"
-	"github.com/pivotal-golang/operationq/fake_operationq"
 	"github.com/tedsuo/ifrit"
 )
 

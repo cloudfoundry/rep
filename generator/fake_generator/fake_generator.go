@@ -4,9 +4,9 @@ package fake_generator
 import (
 	"sync"
 
+	"code.cloudfoundry.org/operationq"
 	"code.cloudfoundry.org/rep/generator"
 	"github.com/pivotal-golang/lager"
-	"github.com/pivotal-golang/operationq"
 )
 
 type FakeGenerator struct {

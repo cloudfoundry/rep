@@ -6,10 +6,10 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/executor"
 	efakes "code.cloudfoundry.org/executor/fakes"
+	"code.cloudfoundry.org/operationq"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"code.cloudfoundry.org/rep/generator"
-	"github.com/pivotal-golang/operationq"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
