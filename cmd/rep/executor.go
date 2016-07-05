@@ -50,6 +50,12 @@ var containerReapInterval = flag.Duration(
 	"interval at which the executor reaps extra/missing containers",
 )
 
+var containerMetricsReportInterval = flag.Duration(
+	"containerMetricsReportInterval",
+	executorinit.DefaultConfiguration.ContainerMetricsReportInterval,
+	"interval at which the executor reports metrics from containers",
+)
+
 var containerInodeLimit = flag.Uint64(
 	"containerInodeLimit",
 	executorinit.DefaultConfiguration.ContainerInodeLimit,
@@ -251,5 +257,6 @@ func executorConfig(caCertsForDownloads []byte, gardenHealthcheckRootFS string, 
 		PostSetupUser:                      *postSetupUser,
 		TrustedSystemCertificatesPath:      *trustedSystemCertificatesPath,
 		VolmanDriverPaths:                  filepath.SplitList(*volmanDriverPaths),
+		ContainerMetricsReportInterval:     *containerMetricsReportInterval,
 	}
 }
