@@ -211,20 +211,49 @@ func convertVolumeMounts(volumeMounts []*models.VolumeMount) ([]executor.VolumeM
 
 func convertVolumeMount(volumeMnt *models.VolumeMount) (executor.VolumeMount, error) {
 	var config map[string]interface{}
-	if len(volumeMnt.Config) > 0 {
-		err := json.Unmarshal(volumeMnt.Config, &config)
-		if err != nil {
-			return executor.VolumeMount{}, err
-		}
-	}
 
-	return executor.VolumeMount{
-		Driver:        volumeMnt.Driver,
-		VolumeId:      volumeMnt.VolumeId,
-		ContainerPath: volumeMnt.ContainerPath,
-		Mode:          executor.BindMountMode(volumeMnt.Mode),
-		Config:        config,
-	}, nil
+	if (volumeMnt.Shared != nil) {
+		if len(volumeMnt.Shared.MountConfig) > 0 {
+			err := json.Unmarshal([]byte(volumeMnt.Shared.MountConfig), &config)
+			if err != nil {
+				return executor.VolumeMount{}, err
+			}
+		}
+
+		var mode executor.BindMountMode
+		switch volumeMnt.Mode {
+		case "r":
+			mode = executor.BindMountModeRO
+		case "rw":
+			mode = executor.BindMountModeRW
+		default:
+			return executor.VolumeMount{}, errors.New("unrecognized volume mount mode")
+		}
+
+		return executor.VolumeMount{
+			Driver:        volumeMnt.Driver,
+			VolumeId:      volumeMnt.Shared.VolumeId,
+			ContainerPath: volumeMnt.ContainerDir,
+			Mode:          mode,
+			Config:        config,
+		}, nil
+	} else {
+    // TODO TEMPORARY legacy support for CAPI v 2.9.  Remove this once 2.10 is supported end-to-end
+		if len(volumeMnt.DeprecatedConfig) > 0 {
+			err := json.Unmarshal(volumeMnt.DeprecatedConfig, &config)
+			if err != nil {
+				return executor.VolumeMount{}, err
+			}
+		}
+
+		return executor.VolumeMount{
+			Driver:        volumeMnt.Driver,
+			VolumeId:      volumeMnt.DeprecatedVolumeId,
+			ContainerPath: volumeMnt.ContainerDir,
+			Mode:          executor.BindMountMode(volumeMnt.DeprecatedMode),
+			Config:        config,
+		}, nil
+  }
 }
 
 func convertNetwork(network *models.Network) *executor.Network {
