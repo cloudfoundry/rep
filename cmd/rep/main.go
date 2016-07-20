@@ -298,7 +298,7 @@ func main() {
 	cleanup := evacuation.NewEvacuationCleanup(logger, *cellID, bbsClient)
 
 	members := grouper.Members{
-		{"presence", initializeCellPresence(address, serviceClient, executorClient, logger, supportedProviders, preloadedRootFSes, executorConfiguration.VolmanDriverPaths)},
+		{"presence", initializeCellPresence(address, serviceClient, executorClient, logger, supportedProviders, preloadedRootFSes)},
 		{"http_server", httpServer},
 		{"evacuation-cleanup", cleanup},
 		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, *evacuationPollingInterval, evacuationNotifier, clock, opGenerator, queue)},
@@ -337,7 +337,7 @@ func initializeDropsonde(logger lager.Logger) {
 	}
 }
 
-func initializeCellPresence(address string, serviceClient bbs.ServiceClient, executorClient executor.Client, logger lager.Logger, rootFSProviders, preloadedRootFSes, volumeDrivers []string) ifrit.Runner {
+func initializeCellPresence(address string, serviceClient bbs.ServiceClient, executorClient executor.Client, logger lager.Logger, rootFSProviders, preloadedRootFSes []string) ifrit.Runner {
 	config := maintain.Config{
 		CellID:            *cellID,
 		RepAddress:        address,
@@ -345,7 +345,6 @@ func initializeCellPresence(address string, serviceClient bbs.ServiceClient, exe
 		RetryInterval:     *lockRetryInterval,
 		RootFSProviders:   rootFSProviders,
 		PreloadedRootFSes: preloadedRootFSes,
-		VolumeDrivers:     volumeDrivers,
 	}
 	return maintain.New(logger, config, executorClient, serviceClient, *lockTTL, clock.NewClock())
 }
