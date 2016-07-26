@@ -313,12 +313,7 @@ var _ = Describe("Resources", func() {
 						Driver:        "my-driver",
 						VolumeId:      "my-volume",
 						ContainerPath: "/mnt/mypath",
-						Mode:          executor.BindMountModeRO,
-					},
-					{
-						Driver:        "my-driver",
-						VolumeId:      "my-volume",
-						ContainerPath: "/mnt/mypath",
+						Config:        map[string]interface{}{"foo": "bar"},
 						Mode:          executor.BindMountModeRO,
 					},
 				},
@@ -347,17 +342,6 @@ var _ = Describe("Resources", func() {
 		Context("when a volumeMount config is invalid", func() {
 			BeforeEach(func() {
 				desiredLRP.VolumeMounts[0].Shared.MountConfig = "{{"
-			})
-
-			It("returns an error", func() {
-				_, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
-				Expect(err).To(HaveOccurred())
-			})
-		})
-		// TODO - remove this test of deprecated code as soon as the code is removed...
-		Context("when a v 2.9 volumeMount config is invalid", func() {
-			BeforeEach(func() {
-				desiredLRP.VolumeMounts[1].DeprecatedConfig = []byte("{{")
 			})
 
 			It("returns an error", func() {
@@ -416,8 +400,9 @@ var _ = Describe("Resources", func() {
 					Driver:        "my-driver",
 					VolumeId:      "my-volume",
 					ContainerPath: "/mnt/mypath",
-					Mode:          executor.BindMountModeRO},
-				},
+					Config:        map[string]interface{}{"foo": "bar"},
+					Mode:          executor.BindMountModeRO,
+				}},
 				Network: &executor.Network{
 					Properties: map[string]string{
 						"some-key":       "some-value",
@@ -453,7 +438,7 @@ var _ = Describe("Resources", func() {
 
 		Context("when a volumeMount config is invalid", func() {
 			BeforeEach(func() {
-				task.VolumeMounts[0].DeprecatedConfig = []byte("{{")
+				task.VolumeMounts[0].Shared.MountConfig = "{{"
 			})
 
 			It("returns an error", func() {
