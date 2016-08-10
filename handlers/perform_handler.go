@@ -9,12 +9,11 @@ import (
 )
 
 type perform struct {
-	rep    rep.AuctionCellClient
-	logger lager.Logger
+	rep rep.AuctionCellClient
 }
 
-func (h *perform) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger := h.logger.Session("auction-perform-work")
+func (h *perform) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
+	logger = logger.Session("auction-perform-work")
 	logger.Info("handling")
 
 	var work rep.Work

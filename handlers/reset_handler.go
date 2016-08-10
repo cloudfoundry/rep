@@ -8,13 +8,11 @@ import (
 )
 
 type reset struct {
-	rep    rep.AuctionCellClient
-	logger lager.Logger
+	rep rep.AuctionCellClient
 }
 
-func (h *reset) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger := h.logger.Session("sim-reset")
-	logger.Info("handling")
+func (h *reset) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
+	logger = logger.Session("sim-reset")
 
 	simRep, ok := h.rep.(rep.SimClient)
 	if !ok {
@@ -29,5 +27,4 @@ func (h *reset) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		logger.Error("failed-to-reset", err)
 		return
 	}
-	logger.Info("success")
 }

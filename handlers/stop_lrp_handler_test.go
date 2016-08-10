@@ -18,19 +18,22 @@ import (
 )
 
 var _ = Describe("StopLRPInstanceHandler", func() {
-	var stopInstanceHandler *handlers.StopLRPInstanceHandler
-	var fakeClient *executorfakes.FakeClient
-	var resp *httptest.ResponseRecorder
-	var req *http.Request
+	var (
+		stopInstanceHandler *handlers.StopLRPInstanceHandler
+		fakeClient          *executorfakes.FakeClient
+		resp                *httptest.ResponseRecorder
+		req                 *http.Request
+		logger              *lagertest.TestLogger
+	)
 
 	BeforeEach(func() {
 		var err error
 		fakeClient = &executorfakes.FakeClient{}
 
-		logger := lagertest.NewTestLogger("test")
+		logger = lagertest.NewTestLogger("test")
 		logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 
-		stopInstanceHandler = handlers.NewStopLRPInstanceHandler(logger, fakeClient)
+		stopInstanceHandler = handlers.NewStopLRPInstanceHandler(fakeClient)
 
 		resp = httptest.NewRecorder()
 
@@ -39,7 +42,7 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 	})
 
 	JustBeforeEach(func() {
-		stopInstanceHandler.ServeHTTP(resp, req)
+		stopInstanceHandler.ServeHTTP(resp, req, logger)
 	})
 
 	Context("when the request is valid", func() {

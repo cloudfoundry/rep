@@ -8,21 +8,19 @@ import (
 )
 
 type CancelTaskHandler struct {
-	logger         lager.Logger
 	executorClient executor.Client
 }
 
-func NewCancelTaskHandler(logger lager.Logger, executorClient executor.Client) *CancelTaskHandler {
+func NewCancelTaskHandler(executorClient executor.Client) *CancelTaskHandler {
 	return &CancelTaskHandler{
-		logger:         logger,
 		executorClient: executorClient,
 	}
 }
 
-func (h CancelTaskHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h CancelTaskHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
 	taskGuid := r.FormValue(":task_guid")
 
-	logger := h.logger.Session("cancel-task", lager.Data{
+	logger = logger.Session("cancel-task", lager.Data{
 		"instance-guid": taskGuid,
 	})
 

@@ -32,9 +32,10 @@ var requestGenerator *rata.RequestGenerator
 var client *http.Client
 var fakeLocalRep *repfakes.FakeSimClient
 var repGuid string
+var logger *lagertest.TestLogger
 
 var _ = BeforeEach(func() {
-	logger := lagertest.NewTestLogger("handlers")
+	logger = lagertest.NewTestLogger("handlers")
 
 	fakeLocalRep = new(repfakes.FakeSimClient)
 	fakeExecutorClient := new(executorfakes.FakeClient)

@@ -9,12 +9,11 @@ import (
 )
 
 type state struct {
-	rep    rep.AuctionCellClient
-	logger lager.Logger
+	rep rep.AuctionCellClient
 }
 
-func (h *state) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger := h.logger.Session("auction-fetch-state")
+func (h *state) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
+	logger = logger.Session("auction-fetch-state")
 	logger.Info("handling")
 
 	state, err := h.rep.State()

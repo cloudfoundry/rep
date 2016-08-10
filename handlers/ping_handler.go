@@ -1,6 +1,10 @@
 package handlers
 
-import "net/http"
+import (
+	"net/http"
+
+	"code.cloudfoundry.org/lager"
+)
 
 type PingHandler struct{}
 
@@ -9,6 +13,6 @@ func NewPingHandler() *PingHandler {
 	return &PingHandler{}
 }
 
-func (h PingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h PingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
 	w.WriteHeader(http.StatusOK)
 }

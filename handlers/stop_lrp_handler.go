@@ -10,22 +10,20 @@ import (
 )
 
 type StopLRPInstanceHandler struct {
-	logger lager.Logger
 	client executor.Client
 }
 
-func NewStopLRPInstanceHandler(logger lager.Logger, client executor.Client) *StopLRPInstanceHandler {
+func NewStopLRPInstanceHandler(client executor.Client) *StopLRPInstanceHandler {
 	return &StopLRPInstanceHandler{
-		logger: logger,
 		client: client,
 	}
 }
 
-func (h StopLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h StopLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
 	processGuid := r.FormValue(":process_guid")
 	instanceGuid := r.FormValue(":instance_guid")
 
-	logger := h.logger.Session("handling-stop-lrp-instance", lager.Data{
+	logger = logger.Session("handling-stop-lrp-instance", lager.Data{
 		"process-guid":  processGuid,
 		"instance-guid": instanceGuid,
 	})
