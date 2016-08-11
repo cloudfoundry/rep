@@ -14,9 +14,8 @@ type state struct {
 
 func (h *state) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
 	logger = logger.Session("auction-fetch-state")
-	logger.Info("handling")
 
-	state, err := h.rep.State()
+	state, err := h.rep.State(logger)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		logger.Error("failed-to-fetch-state", err)
@@ -24,5 +23,4 @@ func (h *state) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.L
 	}
 
 	json.NewEncoder(w).Encode(state)
-	logger.Info("success")
 }

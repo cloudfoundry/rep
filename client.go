@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/lager"
 	"github.com/tedsuo/rata"
 )
 
@@ -32,8 +33,8 @@ func (factory *clientFactory) CreateClient(address string) Client {
 }
 
 type AuctionCellClient interface {
-	State() (CellState, error)
-	Perform(work Work) (Work, error)
+	State(logger lager.Logger) (CellState, error)
+	Perform(logger lager.Logger, work Work) (Work, error)
 }
 
 //go:generate counterfeiter -o repfakes/fake_client.go . Client
@@ -77,7 +78,7 @@ func (c *client) StateClientTimeout() time.Duration {
 	return c.stateClient.Timeout
 }
 
-func (c *client) State() (CellState, error) {
+func (c *client) State(logger lager.Logger) (CellState, error) {
 	req, err := c.requestGenerator.CreateRequest(StateRoute, nil, nil)
 	if err != nil {
 		return CellState{}, err
@@ -102,7 +103,7 @@ func (c *client) State() (CellState, error) {
 	return state, nil
 }
 
-func (c *client) Perform(work Work) (Work, error) {
+func (c *client) Perform(logger lager.Logger, work Work) (Work, error) {
 	body, err := json.Marshal(work)
 	if err != nil {
 		return Work{}, err

@@ -16,6 +16,8 @@ type FakeClientFactory struct {
 	createClientReturns struct {
 		result1 rep.Client
 	}
+	invocations      map[string][][]interface{}
+	invocationsMutex sync.RWMutex
 }
 
 func (fake *FakeClientFactory) CreateClient(address string) rep.Client {
@@ -23,6 +25,7 @@ func (fake *FakeClientFactory) CreateClient(address string) rep.Client {
 	fake.createClientArgsForCall = append(fake.createClientArgsForCall, struct {
 		address string
 	}{address})
+	fake.recordInvocation("CreateClient", []interface{}{address})
 	fake.createClientMutex.Unlock()
 	if fake.CreateClientStub != nil {
 		return fake.CreateClientStub(address)
@@ -48,6 +51,26 @@ func (fake *FakeClientFactory) CreateClientReturns(result1 rep.Client) {
 	fake.createClientReturns = struct {
 		result1 rep.Client
 	}{result1}
+}
+
+func (fake *FakeClientFactory) Invocations() map[string][][]interface{} {
+	fake.invocationsMutex.RLock()
+	defer fake.invocationsMutex.RUnlock()
+	fake.createClientMutex.RLock()
+	defer fake.createClientMutex.RUnlock()
+	return fake.invocations
+}
+
+func (fake *FakeClientFactory) recordInvocation(key string, args []interface{}) {
+	fake.invocationsMutex.Lock()
+	defer fake.invocationsMutex.Unlock()
+	if fake.invocations == nil {
+		fake.invocations = map[string][][]interface{}{}
+	}
+	if fake.invocations[key] == nil {
+		fake.invocations[key] = [][]interface{}{}
+	}
+	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
 var _ rep.ClientFactory = new(FakeClientFactory)

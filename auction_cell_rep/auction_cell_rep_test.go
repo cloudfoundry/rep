@@ -16,20 +16,23 @@ import (
 )
 
 var _ = Describe("AuctionCellRep", func() {
-	var cellRep rep.AuctionCellClient
-	var client *fake_client.FakeClient
-	var commonErr error
-	var logger *lagertest.TestLogger
-	var evacuationReporter *fake_evacuation_context.FakeEvacuationReporter
+	const (
+		expectedCellID = "some-cell-id"
+		linuxStack     = "linux"
+		linuxPath      = "/data/rootfs/linux"
+	)
 
-	const expectedCellID = "some-cell-id"
-	var expectedGuid string
-	var expectedGuidError error
-	var fakeGenerateContainerGuid func() (string, error)
+	var (
+		cellRep            rep.AuctionCellClient
+		client             *fake_client.FakeClient
+		logger             *lagertest.TestLogger
+		evacuationReporter *fake_evacuation_context.FakeEvacuationReporter
 
-	const linuxStack = "linux"
-	const linuxPath = "/data/rootfs/linux"
-	var linuxRootFSURL string
+		expectedGuid, linuxRootFSURL string
+		commonErr, expectedGuidError error
+
+		fakeGenerateContainerGuid func() (string, error)
+	)
 
 	BeforeEach(func() {
 		client = new(fake_client.FakeClient)
@@ -48,7 +51,7 @@ var _ = Describe("AuctionCellRep", func() {
 	})
 
 	JustBeforeEach(func() {
-		cellRep = auction_cell_rep.New(expectedCellID, rep.StackPathMap{linuxStack: linuxPath}, []string{"docker"}, "the-zone", fakeGenerateContainerGuid, client, evacuationReporter, logger)
+		cellRep = auction_cell_rep.New(expectedCellID, rep.StackPathMap{linuxStack: linuxPath}, []string{"docker"}, "the-zone", fakeGenerateContainerGuid, client, evacuationReporter)
 	})
 
 	Describe("State", func() {
@@ -121,7 +124,7 @@ var _ = Describe("AuctionCellRep", func() {
 		})
 
 		It("queries the client and returns state", func() {
-			state, err := cellRep.State()
+			state, err := cellRep.State(logger)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(state.Evacuating).To(BeTrue())
@@ -162,7 +165,7 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 
 			It("errors when reporting state", func() {
-				_, err := cellRep.State()
+				_, err := cellRep.State(logger)
 				Expect(err).To(MatchError(auction_cell_rep.ErrCellUnhealthy))
 			})
 		})
@@ -173,7 +176,7 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 
 			It("should return an error and no state", func() {
-				state, err := cellRep.State()
+				state, err := cellRep.State(logger)
 				Expect(state).To(BeZero())
 				Expect(err).To(MatchError(commonErr))
 			})
@@ -185,7 +188,7 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 
 			It("should return an error and no state", func() {
-				state, err := cellRep.State()
+				state, err := cellRep.State(logger)
 				Expect(state).To(BeZero())
 				Expect(err).To(MatchError(commonErr))
 			})
@@ -197,7 +200,7 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 
 			It("should return an error and no state", func() {
-				state, err := cellRep.State()
+				state, err := cellRep.State(logger)
 				Expect(state).To(BeZero())
 				Expect(err).To(MatchError(commonErr))
 			})
@@ -229,18 +232,23 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 
 			It("returns all work it was given", func() {
-				Expect(cellRep.Perform(work)).To(Equal(work))
+				Expect(cellRep.Perform(logger, work)).To(Equal(work))
 			})
 		})
 
 		Describe("performing starts", func() {
-			var lrpAuctionOne, lrpAuctionTwo rep.LRP
-			var expectedGuidOne = "instance-guid-1"
-			var expectedGuidTwo = "instance-guid-2"
-			var expectedIndexOne int32 = 1
-			var expectedIndexTwo int32 = 2
-			const expectedIndexOneString = "1"
-			const expectedIndexTwoString = "2"
+			const (
+				expectedIndexOneString = "1"
+				expectedIndexTwoString = "2"
+			)
+
+			var (
+				lrpAuctionOne, lrpAuctionTwo rep.LRP
+				expectedGuidOne                    = "instance-guid-1"
+				expectedGuidTwo                    = "instance-guid-2"
+				expectedIndexOne             int32 = 1
+				expectedIndexTwo             int32 = 2
+			)
 
 			BeforeEach(func() {
 				guidChan := make(chan string, 2)
@@ -268,7 +276,7 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 
 				It("makes the correct allocation requests for all LRP Auctions", func() {
-					_, err := cellRep.Perform(rep.Work{
+					_, err := cellRep.Perform(logger, rep.Work{
 						LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo},
 					})
 					Expect(err).NotTo(HaveOccurred())
@@ -307,7 +315,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("does not mark any LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
+						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork).To(BeZero())
 					})
@@ -328,7 +336,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("marks the corresponding LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
+						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.LRPs).To(ConsistOf(lrpAuctionOne))
 					})
@@ -342,7 +350,7 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 
 				It("only makes container allocation requests for the remaining LRP Auctions", func() {
-					_, err := cellRep.Perform(rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
+					_, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
@@ -363,7 +371,7 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 
 				It("marks the LRP Auction as failed", func() {
-					failedWork, err := cellRep.Perform(rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
+					failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
 					Expect(err).NotTo(HaveOccurred())
 					Expect(failedWork.LRPs).To(ContainElement(lrpAuctionTwo))
 				})
@@ -374,7 +382,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("does not mark any additional LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
+						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.LRPs).To(ConsistOf(lrpAuctionTwo))
 					})
@@ -395,7 +403,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("marks the corresponding LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
+						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.LRPs).To(ConsistOf(lrpAuctionOne, lrpAuctionTwo))
 					})
@@ -408,7 +416,7 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 
 				It("makes the correct allocation request for it, passing along the blank path to the executor client", func() {
-					_, err := cellRep.Perform(rep.Work{LRPs: []rep.LRP{lrpAuctionOne}})
+					_, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne}})
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
@@ -436,7 +444,7 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 
 				It("only makes container allocation requests for the remaining LRP Auctions", func() {
-					_, err := cellRep.Perform(rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
+					_, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
@@ -457,7 +465,7 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 
 				It("marks the LRP Auction as failed", func() {
-					failedWork, err := cellRep.Perform(rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
+					failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
 					Expect(err).NotTo(HaveOccurred())
 					Expect(failedWork.LRPs).To(ContainElement(lrpAuctionTwo))
 				})
@@ -468,7 +476,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("does not mark any additional LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
+						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.LRPs).To(ConsistOf(lrpAuctionTwo))
 					})
@@ -489,7 +497,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("marks the corresponding LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
+						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.LRPs).To(ConsistOf(lrpAuctionOne, lrpAuctionTwo))
 					})
@@ -517,7 +525,7 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 
 				It("makes the correct allocation requests for all Tasks", func() {
-					_, err := cellRep.Perform(rep.Work{Tasks: []rep.Task{task1, task2}})
+					_, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
@@ -534,7 +542,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("does not mark any Tasks as failed", func() {
-						failedWork, err := cellRep.Perform(rep.Work{Tasks: []rep.Task{task1, task2}})
+						failedWork, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork).To(BeZero())
 					})
@@ -554,7 +562,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("marks the corresponding Tasks as failed", func() {
-						failedWork, err := cellRep.Perform(rep.Work{Tasks: []rep.Task{task1, task2}})
+						failedWork, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.Tasks).To(ConsistOf(task1))
 					})
@@ -568,7 +576,7 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 
 				It("only makes container allocation requests for the remaining Tasks", func() {
-					_, err := cellRep.Perform(rep.Work{Tasks: []rep.Task{task1, task2}})
+					_, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
@@ -579,7 +587,7 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 
 				It("marks the Task as failed", func() {
-					failedWork, err := cellRep.Perform(rep.Work{Tasks: []rep.Task{task1, task2}})
+					failedWork, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
 					Expect(err).NotTo(HaveOccurred())
 					Expect(failedWork.Tasks).To(ContainElement(task2))
 				})
@@ -590,7 +598,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("does not mark any additional Tasks as failed", func() {
-						failedWork, err := cellRep.Perform(rep.Work{Tasks: []rep.Task{task1, task2}})
+						failedWork, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.Tasks).To(ConsistOf(task2))
 					})
@@ -604,7 +612,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("marks the corresponding Tasks as failed", func() {
-						failedWork, err := cellRep.Perform(rep.Work{Tasks: []rep.Task{task1, task2}})
+						failedWork, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.Tasks).To(ConsistOf(task1, task2))
 					})
@@ -617,7 +625,7 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 
 				It("makes the correct allocation request for it, passing along the blank path to the executor client", func() {
-					_, err := cellRep.Perform(rep.Work{Tasks: []rep.Task{task1}})
+					_, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1}})
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
@@ -635,7 +643,7 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 
 				It("only makes container allocation requests for the remaining Tasks", func() {
-					_, err := cellRep.Perform(rep.Work{Tasks: []rep.Task{task1, task2}})
+					_, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
@@ -646,7 +654,7 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 
 				It("marks the Task as failed", func() {
-					failedWork, err := cellRep.Perform(rep.Work{Tasks: []rep.Task{task1, task2}})
+					failedWork, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
 					Expect(err).NotTo(HaveOccurred())
 					Expect(failedWork.Tasks).To(ContainElement(task2))
 				})
@@ -657,7 +665,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("does not mark any additional LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(rep.Work{Tasks: []rep.Task{task1, task2}})
+						failedWork, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.Tasks).To(ConsistOf(task2))
 					})
@@ -671,7 +679,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("marks the corresponding Tasks as failed", func() {
-						failedWork, err := cellRep.Perform(rep.Work{Tasks: []rep.Task{task1, task2}})
+						failedWork, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.Tasks).To(ConsistOf(task1, task2))
 					})

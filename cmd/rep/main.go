@@ -367,8 +367,7 @@ func initializeServer(
 	stackMap rep.StackPathMap,
 	supportedProviders []string,
 ) (ifrit.Runner, string) {
-
-	auctionCellRep := auction_cell_rep.New(*cellID, stackMap, supportedProviders, *zone, generateGuid, executorClient, evacuationReporter, logger)
+	auctionCellRep := auction_cell_rep.New(*cellID, stackMap, supportedProviders, *zone, generateGuid, executorClient, evacuationReporter)
 	handlers := handlers.New(auctionCellRep, executorClient, evacuatable, logger)
 
 	router, err := rata.NewRouter(rep.Routes, handlers)

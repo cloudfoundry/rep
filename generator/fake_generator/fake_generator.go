@@ -28,6 +28,8 @@ type FakeGenerator struct {
 		result1 <-chan operationq.Operation
 		result2 error
 	}
+	invocations      map[string][][]interface{}
+	invocationsMutex sync.RWMutex
 }
 
 func (fake *FakeGenerator) BatchOperations(arg1 lager.Logger) (map[string]operationq.Operation, error) {
@@ -35,6 +37,7 @@ func (fake *FakeGenerator) BatchOperations(arg1 lager.Logger) (map[string]operat
 	fake.batchOperationsArgsForCall = append(fake.batchOperationsArgsForCall, struct {
 		arg1 lager.Logger
 	}{arg1})
+	fake.recordInvocation("BatchOperations", []interface{}{arg1})
 	fake.batchOperationsMutex.Unlock()
 	if fake.BatchOperationsStub != nil {
 		return fake.BatchOperationsStub(arg1)
@@ -68,6 +71,7 @@ func (fake *FakeGenerator) OperationStream(arg1 lager.Logger) (<-chan operationq
 	fake.operationStreamArgsForCall = append(fake.operationStreamArgsForCall, struct {
 		arg1 lager.Logger
 	}{arg1})
+	fake.recordInvocation("OperationStream", []interface{}{arg1})
 	fake.operationStreamMutex.Unlock()
 	if fake.OperationStreamStub != nil {
 		return fake.OperationStreamStub(arg1)
@@ -94,6 +98,28 @@ func (fake *FakeGenerator) OperationStreamReturns(result1 <-chan operationq.Oper
 		result1 <-chan operationq.Operation
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *FakeGenerator) Invocations() map[string][][]interface{} {
+	fake.invocationsMutex.RLock()
+	defer fake.invocationsMutex.RUnlock()
+	fake.batchOperationsMutex.RLock()
+	defer fake.batchOperationsMutex.RUnlock()
+	fake.operationStreamMutex.RLock()
+	defer fake.operationStreamMutex.RUnlock()
+	return fake.invocations
+}
+
+func (fake *FakeGenerator) recordInvocation(key string, args []interface{}) {
+	fake.invocationsMutex.Lock()
+	defer fake.invocationsMutex.Unlock()
+	if fake.invocations == nil {
+		fake.invocations = map[string][][]interface{}{}
+	}
+	if fake.invocations[key] == nil {
+		fake.invocations[key] = [][]interface{}{}
+	}
+	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
 var _ generator.Generator = new(FakeGenerator)

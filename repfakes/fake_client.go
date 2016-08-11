@@ -7,21 +7,25 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/rep"
 )
 
 type FakeClient struct {
-	StateStub        func() (rep.CellState, error)
+	StateStub        func(logger lager.Logger) (rep.CellState, error)
 	stateMutex       sync.RWMutex
-	stateArgsForCall []struct{}
-	stateReturns     struct {
+	stateArgsForCall []struct {
+		logger lager.Logger
+	}
+	stateReturns struct {
 		result1 rep.CellState
 		result2 error
 	}
-	PerformStub        func(work rep.Work) (rep.Work, error)
+	PerformStub        func(logger lager.Logger, work rep.Work) (rep.Work, error)
 	performMutex       sync.RWMutex
 	performArgsForCall []struct {
-		work rep.Work
+		logger lager.Logger
+		work   rep.Work
 	}
 	performReturns struct {
 		result1 rep.Work
@@ -55,14 +59,19 @@ type FakeClient struct {
 	stateClientTimeoutReturns     struct {
 		result1 time.Duration
 	}
+	invocations      map[string][][]interface{}
+	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeClient) State() (rep.CellState, error) {
+func (fake *FakeClient) State(logger lager.Logger) (rep.CellState, error) {
 	fake.stateMutex.Lock()
-	fake.stateArgsForCall = append(fake.stateArgsForCall, struct{}{})
+	fake.stateArgsForCall = append(fake.stateArgsForCall, struct {
+		logger lager.Logger
+	}{logger})
+	fake.recordInvocation("State", []interface{}{logger})
 	fake.stateMutex.Unlock()
 	if fake.StateStub != nil {
-		return fake.StateStub()
+		return fake.StateStub(logger)
 	} else {
 		return fake.stateReturns.result1, fake.stateReturns.result2
 	}
@@ -74,6 +83,12 @@ func (fake *FakeClient) StateCallCount() int {
 	return len(fake.stateArgsForCall)
 }
 
+func (fake *FakeClient) StateArgsForCall(i int) lager.Logger {
+	fake.stateMutex.RLock()
+	defer fake.stateMutex.RUnlock()
+	return fake.stateArgsForCall[i].logger
+}
+
 func (fake *FakeClient) StateReturns(result1 rep.CellState, result2 error) {
 	fake.StateStub = nil
 	fake.stateReturns = struct {
@@ -82,14 +97,16 @@ func (fake *FakeClient) StateReturns(result1 rep.CellState, result2 error) {
 	}{result1, result2}
 }
 
-func (fake *FakeClient) Perform(work rep.Work) (rep.Work, error) {
+func (fake *FakeClient) Perform(logger lager.Logger, work rep.Work) (rep.Work, error) {
 	fake.performMutex.Lock()
 	fake.performArgsForCall = append(fake.performArgsForCall, struct {
-		work rep.Work
-	}{work})
+		logger lager.Logger
+		work   rep.Work
+	}{logger, work})
+	fake.recordInvocation("Perform", []interface{}{logger, work})
 	fake.performMutex.Unlock()
 	if fake.PerformStub != nil {
-		return fake.PerformStub(work)
+		return fake.PerformStub(logger, work)
 	} else {
 		return fake.performReturns.result1, fake.performReturns.result2
 	}
@@ -101,10 +118,10 @@ func (fake *FakeClient) PerformCallCount() int {
 	return len(fake.performArgsForCall)
 }
 
-func (fake *FakeClient) PerformArgsForCall(i int) rep.Work {
+func (fake *FakeClient) PerformArgsForCall(i int) (lager.Logger, rep.Work) {
 	fake.performMutex.RLock()
 	defer fake.performMutex.RUnlock()
-	return fake.performArgsForCall[i].work
+	return fake.performArgsForCall[i].logger, fake.performArgsForCall[i].work
 }
 
 func (fake *FakeClient) PerformReturns(result1 rep.Work, result2 error) {
@@ -121,6 +138,7 @@ func (fake *FakeClient) StopLRPInstance(key models.ActualLRPKey, instanceKey mod
 		key         models.ActualLRPKey
 		instanceKey models.ActualLRPInstanceKey
 	}{key, instanceKey})
+	fake.recordInvocation("StopLRPInstance", []interface{}{key, instanceKey})
 	fake.stopLRPInstanceMutex.Unlock()
 	if fake.StopLRPInstanceStub != nil {
 		return fake.StopLRPInstanceStub(key, instanceKey)
@@ -153,6 +171,7 @@ func (fake *FakeClient) CancelTask(taskGuid string) error {
 	fake.cancelTaskArgsForCall = append(fake.cancelTaskArgsForCall, struct {
 		taskGuid string
 	}{taskGuid})
+	fake.recordInvocation("CancelTask", []interface{}{taskGuid})
 	fake.cancelTaskMutex.Unlock()
 	if fake.CancelTaskStub != nil {
 		return fake.CancelTaskStub(taskGuid)
@@ -185,6 +204,7 @@ func (fake *FakeClient) SetStateClient(stateClient *http.Client) {
 	fake.setStateClientArgsForCall = append(fake.setStateClientArgsForCall, struct {
 		stateClient *http.Client
 	}{stateClient})
+	fake.recordInvocation("SetStateClient", []interface{}{stateClient})
 	fake.setStateClientMutex.Unlock()
 	if fake.SetStateClientStub != nil {
 		fake.SetStateClientStub(stateClient)
@@ -206,6 +226,7 @@ func (fake *FakeClient) SetStateClientArgsForCall(i int) *http.Client {
 func (fake *FakeClient) StateClientTimeout() time.Duration {
 	fake.stateClientTimeoutMutex.Lock()
 	fake.stateClientTimeoutArgsForCall = append(fake.stateClientTimeoutArgsForCall, struct{}{})
+	fake.recordInvocation("StateClientTimeout", []interface{}{})
 	fake.stateClientTimeoutMutex.Unlock()
 	if fake.StateClientTimeoutStub != nil {
 		return fake.StateClientTimeoutStub()
@@ -225,6 +246,36 @@ func (fake *FakeClient) StateClientTimeoutReturns(result1 time.Duration) {
 	fake.stateClientTimeoutReturns = struct {
 		result1 time.Duration
 	}{result1}
+}
+
+func (fake *FakeClient) Invocations() map[string][][]interface{} {
+	fake.invocationsMutex.RLock()
+	defer fake.invocationsMutex.RUnlock()
+	fake.stateMutex.RLock()
+	defer fake.stateMutex.RUnlock()
+	fake.performMutex.RLock()
+	defer fake.performMutex.RUnlock()
+	fake.stopLRPInstanceMutex.RLock()
+	defer fake.stopLRPInstanceMutex.RUnlock()
+	fake.cancelTaskMutex.RLock()
+	defer fake.cancelTaskMutex.RUnlock()
+	fake.setStateClientMutex.RLock()
+	defer fake.setStateClientMutex.RUnlock()
+	fake.stateClientTimeoutMutex.RLock()
+	defer fake.stateClientTimeoutMutex.RUnlock()
+	return fake.invocations
+}
+
+func (fake *FakeClient) recordInvocation(key string, args []interface{}) {
+	fake.invocationsMutex.Lock()
+	defer fake.invocationsMutex.Unlock()
+	if fake.invocations == nil {
+		fake.invocations = map[string][][]interface{}{}
+	}
+	if fake.invocations[key] == nil {
+		fake.invocations[key] = [][]interface{}{}
+	}
+	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
 var _ rep.Client = new(FakeClient)

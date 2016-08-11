@@ -24,7 +24,6 @@ type AuctionCellRep struct {
 	generateInstanceGuid func() (string, error)
 	client               executor.Client
 	evacuationReporter   evacuation_context.EvacuationReporter
-	logger               lager.Logger
 }
 
 func New(
@@ -35,7 +34,6 @@ func New(
 	generateInstanceGuid func() (string, error),
 	client executor.Client,
 	evacuationReporter evacuation_context.EvacuationReporter,
-	logger lager.Logger,
 ) *AuctionCellRep {
 	return &AuctionCellRep{
 		cellID:               cellID,
@@ -45,7 +43,6 @@ func New(
 		generateInstanceGuid: generateInstanceGuid,
 		client:               client,
 		evacuationReporter:   evacuationReporter,
-		logger:               logger.Session("auction-delegate"),
 	}
 }
 
@@ -87,8 +84,8 @@ func PathForRootFS(rootFS string, stackPathMap rep.StackPathMap) (string, error)
 
 // State currently does not return tasks or lrp rootfs, because the
 // auctioneer currently does not need them.
-func (a *AuctionCellRep) State() (rep.CellState, error) {
-	logger := a.logger.Session("auction-state")
+func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, error) {
+	logger = logger.Session("auction-state")
 	logger.Info("providing")
 
 	// Fail quickly if cached internal health is sick
@@ -167,7 +164,7 @@ func (a *AuctionCellRep) State() (rep.CellState, error) {
 		volumeDrivers,
 	)
 
-	a.logger.Info("provided", lager.Data{
+	logger.Info("provided", lager.Data{
 		"available-resources": state.AvailableResources,
 		"total-resources":     state.TotalResources,
 		"num-lrps":            len(state.LRPs),
@@ -184,10 +181,10 @@ func containerIsStarting(container *executor.Container) bool {
 		container.State == executor.StateCreated
 }
 
-func (a *AuctionCellRep) Perform(work rep.Work) (rep.Work, error) {
+func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, error) {
 	var failedWork = rep.Work{}
 
-	logger := a.logger.Session("auction-work", lager.Data{
+	logger = logger.Session("auction-work", lager.Data{
 		"lrp-starts": len(work.LRPs),
 		"tasks":      len(work.Tasks),
 	})

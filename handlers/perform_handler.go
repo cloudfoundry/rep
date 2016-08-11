@@ -14,8 +14,6 @@ type perform struct {
 
 func (h *perform) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
 	logger = logger.Session("auction-perform-work")
-	logger.Info("handling")
-
 	var work rep.Work
 	err := json.NewDecoder(r.Body).Decode(&work)
 
@@ -25,7 +23,7 @@ func (h *perform) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager
 		return
 	}
 
-	failedWork, err := h.rep.Perform(work)
+	failedWork, err := h.rep.Perform(logger, work)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		logger.Error("failed-to-perform-work", err)
@@ -33,5 +31,4 @@ func (h *perform) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager
 	}
 
 	json.NewEncoder(w).Encode(failedWork)
-	logger.Info("success")
 }

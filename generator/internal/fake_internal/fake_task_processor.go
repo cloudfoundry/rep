@@ -16,6 +16,8 @@ type FakeTaskProcessor struct {
 		arg1 lager.Logger
 		arg2 executor.Container
 	}
+	invocations      map[string][][]interface{}
+	invocationsMutex sync.RWMutex
 }
 
 func (fake *FakeTaskProcessor) Process(arg1 lager.Logger, arg2 executor.Container) {
@@ -24,6 +26,7 @@ func (fake *FakeTaskProcessor) Process(arg1 lager.Logger, arg2 executor.Containe
 		arg1 lager.Logger
 		arg2 executor.Container
 	}{arg1, arg2})
+	fake.recordInvocation("Process", []interface{}{arg1, arg2})
 	fake.processMutex.Unlock()
 	if fake.ProcessStub != nil {
 		fake.ProcessStub(arg1, arg2)
@@ -40,6 +43,26 @@ func (fake *FakeTaskProcessor) ProcessArgsForCall(i int) (lager.Logger, executor
 	fake.processMutex.RLock()
 	defer fake.processMutex.RUnlock()
 	return fake.processArgsForCall[i].arg1, fake.processArgsForCall[i].arg2
+}
+
+func (fake *FakeTaskProcessor) Invocations() map[string][][]interface{} {
+	fake.invocationsMutex.RLock()
+	defer fake.invocationsMutex.RUnlock()
+	fake.processMutex.RLock()
+	defer fake.processMutex.RUnlock()
+	return fake.invocations
+}
+
+func (fake *FakeTaskProcessor) recordInvocation(key string, args []interface{}) {
+	fake.invocationsMutex.Lock()
+	defer fake.invocationsMutex.Unlock()
+	if fake.invocations == nil {
+		fake.invocations = map[string][][]interface{}{}
+	}
+	if fake.invocations[key] == nil {
+		fake.invocations[key] = [][]interface{}{}
+	}
+	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
 var _ internal.TaskProcessor = new(FakeTaskProcessor)

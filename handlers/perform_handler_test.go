@@ -46,7 +46,8 @@ var _ = Describe("Perform", func() {
 				Expect(body).To(MatchJSON(JSONFor(failedWork)))
 
 				Expect(fakeLocalRep.PerformCallCount()).To(Equal(1))
-				Expect(fakeLocalRep.PerformArgsForCall(0)).To(Equal(requestedWork))
+				_, actualWork := fakeLocalRep.PerformArgsForCall(0)
+				Expect(actualWork).To(Equal(requestedWork))
 			})
 		})
 
@@ -63,7 +64,8 @@ var _ = Describe("Perform", func() {
 				Expect(body).To(BeEmpty())
 
 				Expect(fakeLocalRep.PerformCallCount()).To(Equal(1))
-				Expect(fakeLocalRep.PerformArgsForCall(0)).To(Equal(requestedWork))
+				_, actualWork := fakeLocalRep.PerformArgsForCall(0)
+				Expect(actualWork).To(Equal(requestedWork))
 			})
 		})
 	})

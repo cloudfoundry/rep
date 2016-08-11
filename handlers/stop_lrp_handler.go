@@ -29,15 +29,13 @@ func (h StopLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	})
 
 	if processGuid == "" {
-		err := errors.New("process_guid missing from request")
-		logger.Error("missing-process-guid", err)
+		logger.Error("missing-process-guid", errors.New("process_guid missing from request"))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	if instanceGuid == "" {
-		err := errors.New("instance_guid missing from request")
-		logger.Error("missing-instance-guid", err)
+		logger.Error("missing-instance-guid", errors.New("instance_guid missing from request"))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

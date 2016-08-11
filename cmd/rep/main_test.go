@@ -368,7 +368,7 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 
 			Context("Capacity with a container", func() {
 				It("returns total capacity", func() {
-					state, err := client.State()
+					state, err := client.State(logger)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(state.TotalResources).To(Equal(rep.Resources{
 						MemoryMB:   1024,
@@ -383,7 +383,7 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 						fakeGarden.RouteToHandler("GET", "/containers/bulk_info", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 
 						Eventually(func() rep.Resources {
-							state, err := client.State()
+							state, err := client.State(logger)
 							Expect(err).NotTo(HaveOccurred())
 							return state.AvailableResources
 						}).Should(Equal(rep.Resources{

@@ -58,6 +58,8 @@ type FakeContainerDelegate struct {
 		result1 string
 		result2 error
 	}
+	invocations      map[string][][]interface{}
+	invocationsMutex sync.RWMutex
 }
 
 func (fake *FakeContainerDelegate) GetContainer(logger lager.Logger, guid string) (executor.Container, bool) {
@@ -66,6 +68,7 @@ func (fake *FakeContainerDelegate) GetContainer(logger lager.Logger, guid string
 		logger lager.Logger
 		guid   string
 	}{logger, guid})
+	fake.recordInvocation("GetContainer", []interface{}{logger, guid})
 	fake.getContainerMutex.Unlock()
 	if fake.GetContainerStub != nil {
 		return fake.GetContainerStub(logger, guid)
@@ -100,6 +103,7 @@ func (fake *FakeContainerDelegate) RunContainer(logger lager.Logger, req *execut
 		logger lager.Logger
 		req    *executor.RunRequest
 	}{logger, req})
+	fake.recordInvocation("RunContainer", []interface{}{logger, req})
 	fake.runContainerMutex.Unlock()
 	if fake.RunContainerStub != nil {
 		return fake.RunContainerStub(logger, req)
@@ -133,6 +137,7 @@ func (fake *FakeContainerDelegate) StopContainer(logger lager.Logger, guid strin
 		logger lager.Logger
 		guid   string
 	}{logger, guid})
+	fake.recordInvocation("StopContainer", []interface{}{logger, guid})
 	fake.stopContainerMutex.Unlock()
 	if fake.StopContainerStub != nil {
 		return fake.StopContainerStub(logger, guid)
@@ -166,6 +171,7 @@ func (fake *FakeContainerDelegate) DeleteContainer(logger lager.Logger, guid str
 		logger lager.Logger
 		guid   string
 	}{logger, guid})
+	fake.recordInvocation("DeleteContainer", []interface{}{logger, guid})
 	fake.deleteContainerMutex.Unlock()
 	if fake.DeleteContainerStub != nil {
 		return fake.DeleteContainerStub(logger, guid)
@@ -200,6 +206,7 @@ func (fake *FakeContainerDelegate) FetchContainerResultFile(logger lager.Logger,
 		guid     string
 		filename string
 	}{logger, guid, filename})
+	fake.recordInvocation("FetchContainerResultFile", []interface{}{logger, guid, filename})
 	fake.fetchContainerResultFileMutex.Unlock()
 	if fake.FetchContainerResultFileStub != nil {
 		return fake.FetchContainerResultFileStub(logger, guid, filename)
@@ -226,6 +233,34 @@ func (fake *FakeContainerDelegate) FetchContainerResultFileReturns(result1 strin
 		result1 string
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *FakeContainerDelegate) Invocations() map[string][][]interface{} {
+	fake.invocationsMutex.RLock()
+	defer fake.invocationsMutex.RUnlock()
+	fake.getContainerMutex.RLock()
+	defer fake.getContainerMutex.RUnlock()
+	fake.runContainerMutex.RLock()
+	defer fake.runContainerMutex.RUnlock()
+	fake.stopContainerMutex.RLock()
+	defer fake.stopContainerMutex.RUnlock()
+	fake.deleteContainerMutex.RLock()
+	defer fake.deleteContainerMutex.RUnlock()
+	fake.fetchContainerResultFileMutex.RLock()
+	defer fake.fetchContainerResultFileMutex.RUnlock()
+	return fake.invocations
+}
+
+func (fake *FakeContainerDelegate) recordInvocation(key string, args []interface{}) {
+	fake.invocationsMutex.Lock()
+	defer fake.invocationsMutex.Unlock()
+	if fake.invocations == nil {
+		fake.invocations = map[string][][]interface{}{}
+	}
+	if fake.invocations[key] == nil {
+		fake.invocations[key] = [][]interface{}{}
+	}
+	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
 var _ internal.ContainerDelegate = new(FakeContainerDelegate)
