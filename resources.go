@@ -88,15 +88,16 @@ type InsufficientResourcesError struct {
 }
 
 func (i InsufficientResourcesError) Error() string {
-	if len(i.Problems) > 0 {
-		keys := []string{}
-		for key, _ := range i.Problems {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		return fmt.Sprintf("insufficient resources: %s", strings.Join(keys, ", "))
+	if len(i.Problems) == 0 {
+		return "insufficient resources"
 	}
-	return "insufficient resources"
+
+	keys := []string{}
+	for key, _ := range i.Problems {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return fmt.Sprintf("insufficient resources: %s", strings.Join(keys, ", "))
 }
 
 func (c CellState) ComputeScore(res *Resource, startingContainerWeight float64) float64 {
