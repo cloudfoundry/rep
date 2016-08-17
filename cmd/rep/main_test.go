@@ -373,7 +373,7 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 					Expect(state.TotalResources).To(Equal(rep.Resources{
 						MemoryMB:   1024,
 						DiskMB:     2048,
-						Containers: 4,
+						Containers: 3,
 					}))
 				})
 
@@ -389,7 +389,7 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 						}).Should(Equal(rep.Resources{
 							MemoryMB:   1024,
 							DiskMB:     2048,
-							Containers: 4,
+							Containers: 3,
 						}))
 					})
 				})
