@@ -5,6 +5,7 @@ import (
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/runtimeschema/metric"
 )
@@ -12,20 +13,23 @@ import (
 var strandedEvacuatingActualLRPs = metric.Metric("StrandedEvacuatingActualLRPs")
 
 type EvacuationCleanup struct {
-	logger    lager.Logger
-	cellID    string
-	bbsClient bbs.InternalClient
+	logger         lager.Logger
+	cellID         string
+	bbsClient      bbs.InternalClient
+	executorClient executor.Client
 }
 
 func NewEvacuationCleanup(
 	logger lager.Logger,
 	cellID string,
 	bbsClient bbs.InternalClient,
+	executorClient executor.Client,
 ) *EvacuationCleanup {
 	return &EvacuationCleanup{
-		logger:    logger,
-		cellID:    cellID,
-		bbsClient: bbsClient,
+		logger:         logger,
+		cellID:         cellID,
+		bbsClient:      bbsClient,
+		executorClient: executorClient,
 	}
 }
 
@@ -65,6 +69,11 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 	err = strandedEvacuatingActualLRPs.Send(strandedEvacuationCount)
 	if err != nil {
 		logger.Error("failed-sending-stranded-evacuating-lrp-metric", err, lager.Data{"count": strandedEvacuationCount})
+	}
+
+	containers, _ := e.executorClient.ListContainers(logger)
+	for _, container := range containers {
+		e.executorClient.StopContainer(logger, container.Guid)
 	}
 
 	return nil

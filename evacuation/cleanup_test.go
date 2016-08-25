@@ -7,6 +7,9 @@ import (
 	"code.cloudfoundry.org/bbs/fake_bbs"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
+	"code.cloudfoundry.org/executor"
+	"code.cloudfoundry.org/executor/fakes"
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep/evacuation"
 	fake_metrics_sender "github.com/cloudfoundry/dropsonde/metric_sender/fake"
@@ -22,8 +25,9 @@ var _ = Describe("EvacuationCleanup", func() {
 		logger *lagertest.TestLogger
 		cellID string
 
-		fakeBBSClient     *fake_bbs.FakeInternalClient
-		fakeMetricsSender *fake_metrics_sender.FakeMetricSender
+		fakeBBSClient      *fake_bbs.FakeInternalClient
+		fakeExecutorClient *fakes.FakeClient
+		fakeMetricsSender  *fake_metrics_sender.FakeMetricSender
 
 		cleanup        *evacuation.EvacuationCleanup
 		cleanupProcess ifrit.Process
@@ -37,12 +41,13 @@ var _ = Describe("EvacuationCleanup", func() {
 		logger = lagertest.NewTestLogger("cleanup")
 
 		fakeBBSClient = &fake_bbs.FakeInternalClient{}
+		fakeExecutorClient = &fakes.FakeClient{}
 		fakeMetricsSender = fake_metrics_sender.NewFakeMetricSender()
 		metrics.Initialize(fakeMetricsSender, nil)
 
 		errCh = make(chan error, 1)
 		doneCh = make(chan struct{})
-		cleanup = evacuation.NewEvacuationCleanup(logger, cellID, fakeBBSClient)
+		cleanup = evacuation.NewEvacuationCleanup(logger, cellID, fakeBBSClient, fakeExecutorClient)
 	})
 
 	JustBeforeEach(func() {
@@ -88,6 +93,20 @@ var _ = Describe("EvacuationCleanup", func() {
 			}
 
 			fakeBBSClient.ActualLRPGroupsReturns(actualLRPGroups, nil)
+
+			fakeExecutorClient.ListContainersStub = func(lager.Logger) ([]executor.Container, error) {
+				if fakeExecutorClient.ListContainersCallCount() == 1 {
+					return []executor.Container{
+						{Guid: "container1", State: executor.StateRunning},
+						{Guid: "container2", State: executor.StateRunning},
+					}, nil
+				} else {
+					return []executor.Container{
+						{Guid: "container1", State: executor.StateCompleted},
+						{Guid: "container2", State: executor.StateCompleted},
+					}, nil
+				}
+			}
 		})
 
 		JustBeforeEach(func() {
@@ -114,6 +133,37 @@ var _ = Describe("EvacuationCleanup", func() {
 		It("emits a metric for the number of stranded evacuating actual lrps", func() {
 			Eventually(errCh).Should(Receive(nil))
 			Expect(fakeMetricsSender.GetValue("StrandedEvacuatingActualLRPs").Value).To(BeEquivalentTo(2))
+		})
+
+		Describe("stopping running containers", func() {
+			It("should stop all of the containers that still running", func() {
+				Eventually(errCh).Should(Receive(nil))
+				Expect(fakeExecutorClient.ListContainersCallCount()).To(Equal(2))
+				Expect(fakeExecutorClient.StopContainerCallCount()).To(Equal(2))
+
+				_, guid := fakeExecutorClient.StopContainerArgsForCall(0)
+				Expect(guid).To(Equal("container1"))
+
+				_, guid = fakeExecutorClient.StopContainerArgsForCall(1)
+				Expect(guid).To(Equal("container2"))
+			})
+
+			Context("when the containers do not stop in time", func() {
+				BeforeEach(func() {
+					fakeExecutorClient.ListContainersStub = func(lager.Logger) ([]executor.Container, error) {
+						return []executor.Container{
+							{Guid: "container1", State: executor.StateRunning},
+							{Guid: "container2", State: executor.StateRunning},
+						}, nil
+					}
+				})
+
+				It("gives up after 15 seconds", func() {
+					Eventually(fakeExecutorClient.ListContainersCallCount).Should(BeNumerically(">", 2))
+					Expect(fakeExecutorClient.StopContainerCallCount()).To(Equal(2))
+					Consistently(errCh).ShouldNot(Receive())
+				})
+			})
 		})
 
 		Describe("when fetching the actual lrp groups fails", func() {
