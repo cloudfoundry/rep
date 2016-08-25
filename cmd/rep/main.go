@@ -295,7 +295,7 @@ func main() {
 	bbsClient := initializeBBSClient(logger)
 	httpServer, address := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders)
 	opGenerator := generator.New(*cellID, bbsClient, executorClient, evacuationReporter, uint64(evacuationTimeout.Seconds()))
-	cleanup := evacuation.NewEvacuationCleanup(logger, *cellID, bbsClient)
+	cleanup := evacuation.NewEvacuationCleanup(logger, *cellID, bbsClient, executorClient, clock)
 
 	members := grouper.Members{
 		{"presence", initializeCellPresence(address, serviceClient, executorClient, logger, supportedProviders, preloadedRootFSes)},

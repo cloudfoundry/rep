@@ -2,17 +2,24 @@ package evacuation
 
 import (
 	"os"
+	"time"
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/runtimeschema/metric"
 )
 
+const (
+	ExitTimeout = 15 * time.Second
+)
+
 var strandedEvacuatingActualLRPs = metric.Metric("StrandedEvacuatingActualLRPs")
 
 type EvacuationCleanup struct {
+	clock          clock.Clock
 	logger         lager.Logger
 	cellID         string
 	bbsClient      bbs.InternalClient
@@ -24,12 +31,14 @@ func NewEvacuationCleanup(
 	cellID string,
 	bbsClient bbs.InternalClient,
 	executorClient executor.Client,
+	clock clock.Clock,
 ) *EvacuationCleanup {
 	return &EvacuationCleanup{
 		logger:         logger,
 		cellID:         cellID,
 		bbsClient:      bbsClient,
 		executorClient: executorClient,
+		clock:          clock,
 	}
 }
 
@@ -71,10 +80,36 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 		logger.Error("failed-sending-stranded-evacuating-lrp-metric", err, lager.Data{"count": strandedEvacuationCount})
 	}
 
+	timer := e.clock.NewTimer(ExitTimeout)
+
+	e.stopRunningContainers(logger)
+
+	for e.hasRunningContainers(logger) {
+		select {
+		case <-timer.C():
+			// exit after ExitTimeout has passed
+			return nil
+		default:
+		}
+	}
+
+	return nil
+}
+
+func (e *EvacuationCleanup) hasRunningContainers(logger lager.Logger) bool {
+	containers, _ := e.executorClient.ListContainers(logger)
+	for _, container := range containers {
+		if container.State == executor.StateRunning {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (e *EvacuationCleanup) stopRunningContainers(logger lager.Logger) {
 	containers, _ := e.executorClient.ListContainers(logger)
 	for _, container := range containers {
 		e.executorClient.StopContainer(logger, container.Guid)
 	}
-
-	return nil
 }

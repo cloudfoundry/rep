@@ -3,10 +3,12 @@ package evacuation_test
 import (
 	"errors"
 	"os"
+	"time"
 
 	"code.cloudfoundry.org/bbs/fake_bbs"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
+	"code.cloudfoundry.org/clock/fakeclock"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/executor/fakes"
 	"code.cloudfoundry.org/lager"
@@ -25,6 +27,7 @@ var _ = Describe("EvacuationCleanup", func() {
 		logger *lagertest.TestLogger
 		cellID string
 
+		fakeClock          *fakeclock.FakeClock
 		fakeBBSClient      *fake_bbs.FakeInternalClient
 		fakeExecutorClient *fakes.FakeClient
 		fakeMetricsSender  *fake_metrics_sender.FakeMetricSender
@@ -40,6 +43,7 @@ var _ = Describe("EvacuationCleanup", func() {
 		cellID = "the-cell-id"
 		logger = lagertest.NewTestLogger("cleanup")
 
+		fakeClock = fakeclock.NewFakeClock(time.Now())
 		fakeBBSClient = &fake_bbs.FakeInternalClient{}
 		fakeExecutorClient = &fakes.FakeClient{}
 		fakeMetricsSender = fake_metrics_sender.NewFakeMetricSender()
@@ -47,7 +51,7 @@ var _ = Describe("EvacuationCleanup", func() {
 
 		errCh = make(chan error, 1)
 		doneCh = make(chan struct{})
-		cleanup = evacuation.NewEvacuationCleanup(logger, cellID, fakeBBSClient, fakeExecutorClient)
+		cleanup = evacuation.NewEvacuationCleanup(logger, cellID, fakeBBSClient, fakeExecutorClient, fakeClock)
 	})
 
 	JustBeforeEach(func() {
@@ -61,6 +65,7 @@ var _ = Describe("EvacuationCleanup", func() {
 
 	AfterEach(func() {
 		cleanupProcess.Signal(os.Interrupt)
+		fakeClock.Increment(15 * time.Second)
 		Eventually(doneCh).Should(BeClosed())
 	})
 
@@ -148,6 +153,10 @@ var _ = Describe("EvacuationCleanup", func() {
 				Expect(guid).To(Equal("container2"))
 			})
 
+			Describe("when ListContainers fails", func() {
+				XIt("should log and exit")
+			})
+
 			Context("when the containers do not stop in time", func() {
 				BeforeEach(func() {
 					fakeExecutorClient.ListContainersStub = func(lager.Logger) ([]executor.Container, error) {
@@ -159,7 +168,7 @@ var _ = Describe("EvacuationCleanup", func() {
 				})
 
 				It("gives up after 15 seconds", func() {
-					Eventually(fakeExecutorClient.ListContainersCallCount).Should(BeNumerically(">", 2))
+					Eventually(fakeExecutorClient.ListContainersCallCount).Should(BeNumerically(">=", 2))
 					Expect(fakeExecutorClient.StopContainerCallCount()).To(Equal(2))
 					Consistently(errCh).ShouldNot(Receive())
 				})
