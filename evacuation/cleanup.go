@@ -2,30 +2,43 @@ package evacuation
 
 import (
 	"os"
+	"time"
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/clock"
+	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/runtimeschema/metric"
+)
+
+const (
+	ExitTimeout = 15 * time.Second
 )
 
 var strandedEvacuatingActualLRPs = metric.Metric("StrandedEvacuatingActualLRPs")
 
 type EvacuationCleanup struct {
-	logger    lager.Logger
-	cellID    string
-	bbsClient bbs.InternalClient
+	clock          clock.Clock
+	logger         lager.Logger
+	cellID         string
+	bbsClient      bbs.InternalClient
+	executorClient executor.Client
 }
 
 func NewEvacuationCleanup(
 	logger lager.Logger,
 	cellID string,
 	bbsClient bbs.InternalClient,
+	executorClient executor.Client,
+	clock clock.Clock,
 ) *EvacuationCleanup {
 	return &EvacuationCleanup{
-		logger:    logger,
-		cellID:    cellID,
-		bbsClient: bbsClient,
+		logger:         logger,
+		cellID:         cellID,
+		bbsClient:      bbsClient,
+		executorClient: executorClient,
+		clock:          clock,
 	}
 }
 
@@ -67,5 +80,54 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 		logger.Error("failed-sending-stranded-evacuating-lrp-metric", err, lager.Data{"count": strandedEvacuationCount})
 	}
 
+	logger.Info("stopping-all-containers")
+
+	exitTimer := e.clock.NewTimer(ExitTimeout)
+	checkRunningContainersTimer := e.clock.NewTimer(1 * time.Second)
+
+	e.stopRunningContainers(logger)
+
+	logger.Info("sent-signal-to-containers")
+
+	for e.hasRunningContainers(logger) {
+		select {
+		case <-exitTimer.C():
+			logger.Info("stopping-containers-timedout")
+			// exit after ExitTimeout has passed
+			return nil
+		case <-checkRunningContainersTimer.C():
+			continue
+		}
+	}
+
+	logger.Info("stopped-containers-successfully")
 	return nil
+}
+
+func (e *EvacuationCleanup) hasRunningContainers(logger lager.Logger) bool {
+	containers, err := e.executorClient.ListContainers(logger)
+	if err != nil {
+		logger.Error("failed-listing-containers", err)
+		return false
+	}
+
+	for _, container := range containers {
+		if container.State == executor.StateRunning {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (e *EvacuationCleanup) stopRunningContainers(logger lager.Logger) {
+	containers, err := e.executorClient.ListContainers(logger)
+	if err != nil {
+		logger.Error("failed-listing-containers", err)
+		return
+	}
+
+	for _, container := range containers {
+		e.executorClient.StopContainer(logger, container.Guid)
+	}
 }
