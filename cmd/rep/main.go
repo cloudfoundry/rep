@@ -21,7 +21,6 @@ import (
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/localip"
-	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/operationq"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/auction_cell_rep"
@@ -40,168 +39,9 @@ import (
 	"github.com/tedsuo/rata"
 )
 
-var sessionName = flag.String(
-	"sessionName",
-	"rep",
-	"consul session name",
-)
-
-var consulCluster = flag.String(
-	"consulCluster",
-	"",
-	"comma-separated list of consul server URLs (scheme://ip:port)",
-)
-
-var lockTTL = flag.Duration(
-	"lockTTL",
-	locket.LockTTL,
-	"TTL for service lock",
-)
-
-var lockRetryInterval = flag.Duration(
-	"lockRetryInterval",
-	locket.RetryInterval,
-	"interval to wait before retrying a failed lock acquisition",
-)
-
-var listenAddr = flag.String(
-	"listenAddr",
-	"0.0.0.0:1800",
-	"host:port to serve auction and LRP stop requests on",
-)
-
-var cellID = flag.String(
-	"cellID",
-	"",
-	"the ID used by the rep to identify itself to external systems - must be specified",
-)
-
-var zone = flag.String(
-	"zone",
-	"",
-	"the availability zone associated with the rep",
-)
-
-var pollingInterval = flag.Duration(
-	"pollingInterval",
-	30*time.Second,
-	"the interval on which to scan the executor",
-)
-
-var dropsondePort = flag.Int(
-	"dropsondePort",
-	3457,
-	"port the local metron agent is listening on",
-)
-
-var communicationTimeout = flag.Duration(
-	"communicationTimeout",
-	10*time.Second,
-	"Timeout applied to all HTTP requests.",
-)
-
-var evacuationTimeout = flag.Duration(
-	"evacuationTimeout",
-	10*time.Minute,
-	"Timeout to wait for evacuation to complete",
-)
-
-var evacuationPollingInterval = flag.Duration(
-	"evacuationPollingInterval",
-	10*time.Second,
-	"the interval on which to scan the executor during evacuation",
-)
-
-var bbsAddress = flag.String(
-	"bbsAddress",
-	"",
-	"Address to the BBS Server",
-)
-
-var bbsCACert = flag.String(
-	"bbsCACert",
-	"",
-	"path to certificate authority cert used for mutually authenticated TLS BBS communication",
-)
-
-var bbsClientCert = flag.String(
-	"bbsClientCert",
-	"",
-	"path to client cert used for mutually authenticated TLS BBS communication",
-)
-
-var bbsClientKey = flag.String(
-	"bbsClientKey",
-	"",
-	"path to client key used for mutually authenticated TLS BBS communication",
-)
-
-var bbsClientSessionCacheSize = flag.Int(
-	"bbsClientSessionCacheSize",
-	0,
-	"Capacity of the ClientSessionCache option on the TLS configuration. If zero, golang's default will be used",
-)
-
-var bbsMaxIdleConnsPerHost = flag.Int(
-	"bbsMaxIdleConnsPerHost",
-	0,
-	"Controls the maximum number of idle (keep-alive) connctions per host. If zero, golang's default will be used",
-)
-
-type stackPathMap rep.StackPathMap
-
-func (s *stackPathMap) String() string {
-	return fmt.Sprintf("%v", *s)
-}
-
-func (s *stackPathMap) Set(value string) error {
-	parts := strings.SplitN(value, ":", 2)
-	if len(parts) != 2 {
-		return errors.New("Invalid preloaded RootFS value: not of the form 'stack-name:path'")
-	}
-
-	if parts[0] == "" {
-		return errors.New("Invalid preloaded RootFS value: blank stack")
-	}
-
-	if parts[1] == "" {
-		return errors.New("Invalid preloaded RootFS value: blank path")
-	}
-
-	(*s)[parts[0]] = parts[1]
-	return nil
-}
-
-type providers []string
-
-func (p *providers) String() string {
-	return fmt.Sprintf("%v", *p)
-}
-
-func (p *providers) Set(value string) error {
-	if value == "" {
-		return errors.New("Cannot set blank value for RootFS provider")
-	}
-
-	*p = append(*p, value)
-	return nil
-}
-
-type argList []string
-
-func (a *argList) String() string {
-	return fmt.Sprintf("%v", *a)
-}
-
-func (a *argList) Set(value string) error {
-	*a = strings.Split(value, ",")
-	return nil
-}
-
 const (
 	dropsondeOrigin = "rep"
-
-	bbsPingTimeout = 5 * time.Minute
+	bbsPingTimeout  = 5 * time.Minute
 )
 
 func main() {
@@ -209,13 +49,20 @@ func main() {
 	cflager.AddFlags(flag.CommandLine)
 
 	stackMap := stackPathMap{}
-	supportedProviders := providers{}
-	gardenHealthcheckEnv := argList{}
-	gardenHealthcheckArgs := argList{}
 	flag.Var(&stackMap, "preloadedRootFS", "List of preloaded RootFSes")
+
+	supportedProviders := multiArgList{}
 	flag.Var(&supportedProviders, "rootFSProvider", "List of RootFS providers")
-	flag.Var(&gardenHealthcheckArgs, "gardenHealthcheckProcessArgs", "List of command line args to pass to the garden health check process")
+
+	gardenHealthcheckEnv := commaSeparatedArgList{}
 	flag.Var(&gardenHealthcheckEnv, "gardenHealthcheckProcessEnv", "Environment variables to use when running the garden health check")
+
+	gardenHealthcheckArgs := commaSeparatedArgList{}
+	flag.Var(&gardenHealthcheckArgs, "gardenHealthcheckProcessArgs", "List of command line args to pass to the garden health check process")
+
+	placementTags := multiArgList{}
+	flag.Var(&placementTags, "placementTag", "Placement tags used for scheduling Tasks and LRPs")
+
 	flag.Parse()
 
 	preloadedRootFSes := []string{}
@@ -298,7 +145,7 @@ func main() {
 	cleanup := evacuation.NewEvacuationCleanup(logger, *cellID, bbsClient, executorClient, clock)
 
 	members := grouper.Members{
-		{"presence", initializeCellPresence(address, serviceClient, executorClient, logger, supportedProviders, preloadedRootFSes)},
+		{"presence", initializeCellPresence(address, serviceClient, executorClient, logger, supportedProviders, preloadedRootFSes, placementTags)},
 		{"http_server", httpServer},
 		{"evacuation-cleanup", cleanup},
 		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, *evacuationPollingInterval, evacuationNotifier, clock, opGenerator, queue)},
@@ -337,7 +184,15 @@ func initializeDropsonde(logger lager.Logger) {
 	}
 }
 
-func initializeCellPresence(address string, serviceClient bbs.ServiceClient, executorClient executor.Client, logger lager.Logger, rootFSProviders, preloadedRootFSes []string) ifrit.Runner {
+func initializeCellPresence(
+	address string,
+	serviceClient bbs.ServiceClient,
+	executorClient executor.Client,
+	logger lager.Logger,
+	rootFSProviders,
+	preloadedRootFSes,
+	placementTags []string,
+) ifrit.Runner {
 	config := maintain.Config{
 		CellID:            *cellID,
 		RepAddress:        address,
@@ -345,6 +200,7 @@ func initializeCellPresence(address string, serviceClient bbs.ServiceClient, exe
 		RetryInterval:     *lockRetryInterval,
 		RootFSProviders:   rootFSProviders,
 		PreloadedRootFSes: preloadedRootFSes,
+		PlacementTags:     placementTags,
 	}
 	return maintain.New(logger, config, executorClient, serviceClient, *lockTTL, clock.NewClock())
 }

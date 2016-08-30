@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/fake_bbs"
+	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/clock/fakeclock"
 	"code.cloudfoundry.org/executor"
 	fake_client "code.cloudfoundry.org/executor/fakes"
@@ -80,6 +81,7 @@ var _ = Describe("Maintain Presence", func() {
 			Zone:            "az1",
 			RetryInterval:   1 * time.Second,
 			RootFSProviders: []string{"provider-1", "provider-2"},
+			PlacementTags:   []string{"test-tag-1", "test-tag-2"},
 		}
 		maintainer = maintain.New(logger, config, fakeClient, serviceClient, 10*time.Second, clock)
 	})
@@ -178,6 +180,22 @@ var _ = Describe("Maintain Presence", func() {
 
 			It("starts maintaining presence", func() {
 				Expect(serviceClient.NewCellPresenceRunnerCallCount()).To(Equal(1))
+
+				expectedPresence := models.NewCellPresence(
+					"cell-id",
+					"1.2.3.4",
+					"az1",
+					models.NewCellCapacity(128, 1024, 6),
+					[]string{"provider-1", "provider-2"},
+					[]string{},
+					[]string{"test-tag-1", "test-tag-2"},
+				)
+
+				_, presence, retryInterval, lockTTL := serviceClient.NewCellPresenceRunnerArgsForCall(0)
+				Expect(*presence).To(Equal(expectedPresence))
+				Expect(retryInterval).To(Equal(1 * time.Second))
+				Expect(lockTTL).To(Equal(10 * time.Second))
+
 				Eventually(fakeHeartbeater.RunCallCount).Should(Equal(1))
 			})
 

@@ -92,6 +92,7 @@ var _ = Describe("The Rep", func() {
 		config = testrunner.Config{
 			PreloadedRootFSes: []string{rootFSArg},
 			RootFSProviders:   []string{"docker"},
+			PlacementTags:     []string{"test"},
 			CellID:            cellID,
 			BBSAddress:        bbsURL.String(),
 			ServerPort:        serverPort,
@@ -346,11 +347,15 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 		Describe("maintaining presence", func() {
 			It("should maintain presence", func() {
 				Eventually(fetchCells(logger)).Should(HaveLen(1))
+
 				cells, err := bbsClient.Cells(logger)
-				cellSet := models.NewCellSetFromList(cells)
 				Expect(err).NotTo(HaveOccurred())
+
+				cellSet := models.NewCellSetFromList(cells)
+
 				cellPresence := cellSet[cellID]
 				Expect(cellPresence.CellId).To(Equal(cellID))
+				Expect(cellPresence.PlacementTags).To(Equal([]string{"test"}))
 			})
 		})
 

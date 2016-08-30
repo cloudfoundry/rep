@@ -21,6 +21,7 @@ type Runner struct {
 type Config struct {
 	PreloadedRootFSes   []string
 	RootFSProviders     []string
+	PlacementTags       []string
 	CACertsForDownloads string
 	CellID              string
 	BBSAddress          string
@@ -65,6 +66,9 @@ func (r *Runner) Start() {
 	}
 	for _, provider := range r.config.RootFSProviders {
 		args = append(args, "-rootFSProvider", provider)
+	}
+	for _, tag := range r.config.PlacementTags {
+		args = append(args, "-placementTag", tag)
 	}
 	if r.config.CACertsForDownloads != "" {
 		args = append(args, "-caCertsForDownloads", r.config.CACertsForDownloads)
