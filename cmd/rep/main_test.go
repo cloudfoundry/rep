@@ -372,7 +372,7 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 			})
 
 			Context("Capacity with a container", func() {
-				It("returns total capacity", func() {
+				It("returns total capacity and state information", func() {
 					state, err := client.State(logger)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(state.TotalResources).To(Equal(rep.Resources{
@@ -380,6 +380,7 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 						DiskMB:     2048,
 						Containers: 3,
 					}))
+					Expect(state.PlacementTags).To(Equal([]string{"test"}))
 				})
 
 				Context("when the container is removed", func() {

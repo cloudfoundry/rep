@@ -22,6 +22,7 @@ type CellState struct {
 	Zone                   string
 	Evacuating             bool
 	VolumeDrivers          []string
+	PlacementTags          []string
 }
 
 func NewCellState(
@@ -34,6 +35,7 @@ func NewCellState(
 	startingContainerCount int,
 	isEvac bool,
 	volumeDrivers []string,
+	placementTags []string,
 ) CellState {
 	return CellState{
 		RootFSProviders:    root,
@@ -45,6 +47,7 @@ func NewCellState(
 		StartingContainerCount: startingContainerCount,
 		Evacuating:             isEvac,
 		VolumeDrivers:          volumeDrivers,
+		PlacementTags:          placementTags,
 	}
 }
 

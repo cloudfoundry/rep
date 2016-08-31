@@ -32,6 +32,8 @@ var _ = Describe("AuctionCellRep", func() {
 		commonErr, expectedGuidError error
 
 		fakeGenerateContainerGuid func() (string, error)
+
+		placementTags []string
 	)
 
 	BeforeEach(func() {
@@ -51,7 +53,16 @@ var _ = Describe("AuctionCellRep", func() {
 	})
 
 	JustBeforeEach(func() {
-		cellRep = auction_cell_rep.New(expectedCellID, rep.StackPathMap{linuxStack: linuxPath}, []string{"docker"}, "the-zone", fakeGenerateContainerGuid, client, evacuationReporter)
+		cellRep = auction_cell_rep.New(
+			expectedCellID,
+			rep.StackPathMap{linuxStack: linuxPath},
+			[]string{"docker"},
+			"the-zone",
+			fakeGenerateContainerGuid,
+			client,
+			evacuationReporter,
+			placementTags,
+		)
 	})
 
 	Describe("State", func() {
@@ -116,6 +127,7 @@ var _ = Describe("AuctionCellRep", func() {
 			}
 
 			volumeDrivers = []string{"lewis", "nico", "sebastian", "felipe"}
+			placementTags = []string{}
 
 			client.TotalResourcesReturns(totalResources, nil)
 			client.RemainingResourcesReturns(availableResources, nil)
@@ -203,6 +215,18 @@ var _ = Describe("AuctionCellRep", func() {
 				state, err := cellRep.State(logger)
 				Expect(state).To(BeZero())
 				Expect(err).To(MatchError(commonErr))
+			})
+		})
+
+		Context("when placement tags have been set", func() {
+			BeforeEach(func() {
+				placementTags = []string{"quack", "oink"}
+			})
+
+			It("returns the tags as part of the state", func() {
+				state, err := cellRep.State(logger)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(state.PlacementTags).To(ConsistOf(placementTags))
 			})
 		})
 	})

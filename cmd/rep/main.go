@@ -140,7 +140,7 @@ func main() {
 	)
 
 	bbsClient := initializeBBSClient(logger)
-	httpServer, address := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders)
+	httpServer, address := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders, placementTags)
 	opGenerator := generator.New(*cellID, bbsClient, executorClient, evacuationReporter, uint64(evacuationTimeout.Seconds()))
 	cleanup := evacuation.NewEvacuationCleanup(logger, *cellID, bbsClient, executorClient, clock)
 
@@ -222,8 +222,10 @@ func initializeServer(
 	logger lager.Logger,
 	stackMap rep.StackPathMap,
 	supportedProviders []string,
+	placementTags []string,
 ) (ifrit.Runner, string) {
-	auctionCellRep := auction_cell_rep.New(*cellID, stackMap, supportedProviders, *zone, generateGuid, executorClient, evacuationReporter)
+	auctionCellRep := auction_cell_rep.New(*cellID, stackMap, supportedProviders, *zone, generateGuid, executorClient, evacuationReporter, placementTags)
+
 	handlers := handlers.New(auctionCellRep, executorClient, evacuatable, logger)
 
 	router, err := rata.NewRouter(rep.Routes, handlers)

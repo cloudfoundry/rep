@@ -24,6 +24,7 @@ type AuctionCellRep struct {
 	generateInstanceGuid func() (string, error)
 	client               executor.Client
 	evacuationReporter   evacuation_context.EvacuationReporter
+	placementTags        []string
 }
 
 func New(
@@ -34,6 +35,7 @@ func New(
 	generateInstanceGuid func() (string, error),
 	client executor.Client,
 	evacuationReporter evacuation_context.EvacuationReporter,
+	placementTags []string,
 ) *AuctionCellRep {
 	return &AuctionCellRep{
 		cellID:               cellID,
@@ -43,6 +45,7 @@ func New(
 		generateInstanceGuid: generateInstanceGuid,
 		client:               client,
 		evacuationReporter:   evacuationReporter,
+		placementTags:        placementTags,
 	}
 }
 
@@ -162,6 +165,7 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, error) {
 		startingContainerCount,
 		a.evacuationReporter.Evacuating(),
 		volumeDrivers,
+		a.placementTags,
 	)
 
 	logger.Info("provided", lager.Data{
