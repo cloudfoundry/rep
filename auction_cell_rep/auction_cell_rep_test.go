@@ -158,12 +158,25 @@ var _ = Describe("AuctionCellRep", func() {
 			}))
 
 			Expect(state.LRPs).To(ConsistOf([]rep.LRP{
-				rep.NewLRP(models.NewActualLRPKey("the-first-app-guid", 17, "domain"), rep.NewResource(20, 10, "", nil)),
-				rep.NewLRP(models.NewActualLRPKey("the-second-app-guid", 92, "domain"), rep.NewResource(40, 30, "", nil)),
+				rep.NewLRP(
+					models.NewActualLRPKey("the-first-app-guid", 17, "domain"),
+					rep.NewResource(20, 10),
+					rep.NewPlacementConstraint("", nil, nil),
+				),
+				rep.NewLRP(
+					models.NewActualLRPKey("the-second-app-guid", 92, "domain"),
+					rep.NewResource(40, 30),
+					rep.NewPlacementConstraint("", nil, nil),
+				),
 			}))
 
 			Expect(state.Tasks).To(ConsistOf([]rep.Task{
-				rep.NewTask("da-task", "domain", rep.NewResource(40, 30, "", nil)),
+				rep.NewTask(
+					"da-task",
+					"domain",
+					rep.NewResource(40, 30),
+					rep.NewPlacementConstraint("", nil, nil),
+				),
 			}))
 
 			Expect(state.StartingContainerCount).To(Equal(3))
@@ -245,9 +258,16 @@ var _ = Describe("AuctionCellRep", func() {
 
 				lrp := rep.NewLRP(
 					models.NewActualLRPKey("process-guid", int32(expectedIndex), "tests"),
-					rep.NewResource(2048, 1024, linuxRootFSURL, []string{}),
+					rep.NewResource(2048, 1024),
+					rep.NewPlacementConstraint(linuxRootFSURL, nil, []string{}),
 				)
-				task := rep.NewTask("the-task-guid", "tests", rep.NewResource(2048, 1024, linuxRootFSURL, []string{}))
+
+				task := rep.NewTask(
+					"the-task-guid",
+					"tests",
+					rep.NewResource(2048, 1024),
+					rep.NewPlacementConstraint(linuxRootFSURL, nil, []string{}),
+				)
 
 				work = rep.Work{
 					LRPs:  []rep.LRP{lrp},
@@ -285,11 +305,13 @@ var _ = Describe("AuctionCellRep", func() {
 
 				lrpAuctionOne = rep.NewLRP(
 					models.NewActualLRPKey("process-guid", expectedIndexOne, "tests"),
-					rep.NewResource(2048, 1024, "rootfs", []string{}),
+					rep.NewResource(2048, 1024),
+					rep.NewPlacementConstraint("rootfs", nil, []string{}),
 				)
 				lrpAuctionTwo = rep.NewLRP(
 					models.NewActualLRPKey("process-guid", expectedIndexTwo, "tests"),
-					rep.NewResource(2048, 1024, "rootfs", []string{}),
+					rep.NewResource(2048, 1024),
+					rep.NewPlacementConstraint("rootfs", nil, []string{}),
 				)
 			})
 
@@ -533,11 +555,13 @@ var _ = Describe("AuctionCellRep", func() {
 			var task1, task2 rep.Task
 
 			BeforeEach(func() {
-				resource1 := rep.NewResource(256, 512, "linux", []string{})
-				task1 = rep.NewTask("the-task-guid-1", "tests", resource1)
+				resource1 := rep.NewResource(256, 512)
+				placement1 := rep.NewPlacementConstraint("tests", nil, []string{})
+				task1 = rep.NewTask("the-task-guid-1", "tests", resource1, placement1)
 
-				resource2 := rep.NewResource(512, 1024, "linux", []string{})
-				task2 = rep.NewTask("the-task-guid-2", "tests", resource2)
+				resource2 := rep.NewResource(512, 1024)
+				placement2 := rep.NewPlacementConstraint("linux", nil, []string{})
+				task2 = rep.NewTask("the-task-guid-2", "tests", resource2, placement2)
 
 				work = rep.Work{Tasks: []rep.Task{task}}
 			})

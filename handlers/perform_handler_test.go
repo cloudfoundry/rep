@@ -15,20 +15,23 @@ var _ = Describe("Perform", func() {
 	Context("with valid JSON", func() {
 		var requestedWork, failedWork rep.Work
 		BeforeEach(func() {
-			resourceA := rep.NewResource(128, 256, "some-rootfs", nil)
-			resourceB := rep.NewResource(256, 512, "some-rootfs", nil)
-			resourceC := rep.NewResource(512, 1024, "some-rootfs", nil)
+			resourceA := rep.NewResource(128, 256)
+			placementContraintA := rep.NewPlacementConstraint("some-rootfs", nil, nil)
+			resourceB := rep.NewResource(256, 512)
+			placementContraintB := rep.NewPlacementConstraint("some-rootfs", nil, nil)
+			resourceC := rep.NewResource(512, 1024)
+			placementContraintC := rep.NewPlacementConstraint("some-rootfs", nil, nil)
 
 			requestedWork = rep.Work{
 				Tasks: []rep.Task{
-					rep.NewTask("a", "domain", resourceA),
-					rep.NewTask("b", "domain", resourceB),
+					rep.NewTask("a", "domain", resourceA, placementContraintA),
+					rep.NewTask("b", "domain", resourceB, placementContraintB),
 				},
 			}
 
 			failedWork = rep.Work{
 				Tasks: []rep.Task{
-					rep.NewTask("c", "domain", resourceC),
+					rep.NewTask("c", "domain", resourceC, placementContraintC),
 				},
 			}
 		})

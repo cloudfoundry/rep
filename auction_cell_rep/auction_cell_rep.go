@@ -130,7 +130,6 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, error) {
 
 	for i := range containers {
 		container := &containers[i]
-		resource := rep.Resource{MemoryMB: int32(container.MemoryMB), DiskMB: int32(container.DiskMB)}
 
 		if containerIsStarting(container) {
 			startingContainerCount++
@@ -141,6 +140,9 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, error) {
 			continue
 		}
 
+		resource := rep.Resource{MemoryMB: int32(container.MemoryMB), DiskMB: int32(container.DiskMB)}
+		placementConstraint := rep.PlacementConstraint{}
+
 		switch container.Tags[rep.LifecycleTag] {
 		case rep.LRPLifecycle:
 			key, keyErr = rep.ActualLRPKeyFromTags(container.Tags)
@@ -148,10 +150,10 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, error) {
 				logger.Error("failed-to-extract-key", keyErr)
 				continue
 			}
-			lrps = append(lrps, rep.NewLRP(*key, resource))
+			lrps = append(lrps, rep.NewLRP(*key, resource, placementConstraint))
 		case rep.TaskLifecycle:
 			domain := container.Tags[rep.DomainTag]
-			tasks = append(tasks, rep.NewTask(container.Guid, domain, resource))
+			tasks = append(tasks, rep.NewTask(container.Guid, domain, resource, placementConstraint))
 		}
 	}
 
