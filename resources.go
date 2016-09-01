@@ -63,9 +63,9 @@ func (c *CellState) AddTask(task *Task) {
 	c.Tasks = append(c.Tasks, *task)
 }
 
-func (c *CellState) ResourceMatch(res *Resource) error {
+func (c *CellState) ResourceMatch(res *Resource, pc *PlacementConstraint) error {
 	switch {
-	case !c.MatchRootFS(res.RootFs):
+	case !c.MatchRootFS(pc.RootFs):
 		return ErrorIncompatibleRootfs
 	case c.AvailableResources.MemoryMB < res.MemoryMB:
 		return ErrorInsufficientResources
@@ -141,31 +141,44 @@ func (r *Resources) ComputeScore(total *Resources) float64 {
 }
 
 type Resource struct {
-	MemoryMB      int32
-	DiskMB        int32
-	RootFs        string
-	VolumeDrivers []string
+	MemoryMB int32
+	DiskMB   int32
 }
 
-func NewResource(memoryMb, diskMb int32, rootfs string, volumeDrivers []string) Resource {
-	return Resource{MemoryMB: memoryMb, DiskMB: diskMb, RootFs: rootfs, VolumeDrivers: volumeDrivers}
+func NewResource(memoryMb, diskMb int32) Resource {
+	return Resource{MemoryMB: memoryMb, DiskMB: diskMb}
 }
 
 func (r *Resource) Empty() bool {
-	return r.DiskMB == 0 && r.MemoryMB == 0 && r.RootFs == ""
+	return r.DiskMB == 0 && r.MemoryMB == 0
 }
 
 func (r *Resource) Copy() Resource {
-	return NewResource(r.MemoryMB, r.DiskMB, r.RootFs, r.VolumeDrivers)
+	return NewResource(r.MemoryMB, r.DiskMB)
+}
+
+type PlacementConstraint struct {
+	PlacementTags []string
+	VolumeDrivers []string
+	RootFs        string
+}
+
+func NewPlacementConstraint(placementTags, volumeDrivers []string, rootFs string) PlacementConstraint {
+	return PlacementConstraint{PlacementTags: placementTags, VolumeDrivers: volumeDrivers, RootFs: rootFs}
+}
+
+func (p *PlacementConstraint) Empty() bool {
+	return p.RootFs == ""
 }
 
 type LRP struct {
 	models.ActualLRPKey
+	PlacementConstraint
 	Resource
 }
 
-func NewLRP(key models.ActualLRPKey, res Resource) LRP {
-	return LRP{key, res}
+func NewLRP(key models.ActualLRPKey, pc PlacementConstraint, res Resource) LRP {
+	return LRP{key, pc, res}
 }
 
 func (lrp *LRP) Identifier() string {
@@ -173,17 +186,18 @@ func (lrp *LRP) Identifier() string {
 }
 
 func (lrp *LRP) Copy() LRP {
-	return NewLRP(lrp.ActualLRPKey, lrp.Resource)
+	return NewLRP(lrp.ActualLRPKey, lrp.PlacementConstraint, lrp.Resource)
 }
 
 type Task struct {
 	TaskGuid string
 	Domain   string
+	PlacementConstraint
 	Resource
 }
 
-func NewTask(guid string, domain string, res Resource) Task {
-	return Task{guid, domain, res}
+func NewTask(guid string, domain string, pc PlacementConstraint, res Resource) Task {
+	return Task{guid, domain, pc, res}
 }
 
 func (task *Task) Identifier() string {
