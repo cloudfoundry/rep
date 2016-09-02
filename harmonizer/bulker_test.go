@@ -64,7 +64,7 @@ var _ = Describe("Bulker", func() {
 		Eventually(process.Wait()).Should(Receive())
 	})
 
-	itPerformsBatchOperations := func() {
+	itPerformsBatchOperations := func(expectedQueueLength int) {
 		Context("when generating the batch operations succeeds", func() {
 			var (
 				operation1 *fake_operationq.FakeOperation
@@ -82,17 +82,17 @@ var _ = Describe("Bulker", func() {
 			})
 
 			It("pushes them onto the queue", func() {
-				Eventually(fakeQueue.PushCallCount).Should(Equal(2))
+				Eventually(fakeQueue.PushCallCount).Should(Equal(expectedQueueLength))
 
 				enqueuedOperations := make([]operationq.Operation, 0, 2)
-				enqueuedOperations = append(enqueuedOperations, fakeQueue.PushArgsForCall(0))
-				enqueuedOperations = append(enqueuedOperations, fakeQueue.PushArgsForCall(1))
+				enqueuedOperations = append(enqueuedOperations, fakeQueue.PushArgsForCall(expectedQueueLength-2))
+				enqueuedOperations = append(enqueuedOperations, fakeQueue.PushArgsForCall(expectedQueueLength-1))
 
 				Expect(enqueuedOperations).To(ConsistOf(operation1, operation2))
 			})
 
 			It("emits the duration it took to generate the batch operations", func() {
-				Eventually(fakeQueue.PushCallCount).Should(Equal(2))
+				Eventually(fakeQueue.PushCallCount).Should(Equal(expectedQueueLength))
 
 				reportedDuration := sender.GetValue("RepBulkSyncDuration")
 				Expect(reportedDuration.Unit).To(Equal("nanos"))
@@ -119,14 +119,14 @@ var _ = Describe("Bulker", func() {
 			fakeClock.WaitForWatcherAndIncrement(pollInterval + 1)
 		})
 
-		itPerformsBatchOperations()
+		itPerformsBatchOperations(2)
 
 		Context("and elapses again", func() {
-			BeforeEach(func() {
-				fakeClock.Increment(pollInterval)
+			JustBeforeEach(func() {
+				fakeClock.WaitForWatcherAndIncrement(pollInterval + 1)
 			})
 
-			itPerformsBatchOperations()
+			itPerformsBatchOperations(4)
 		})
 	})
 
@@ -145,7 +145,7 @@ var _ = Describe("Bulker", func() {
 			evacuatable.Evacuate()
 		})
 
-		itPerformsBatchOperations()
+		itPerformsBatchOperations(2)
 
 		It("batches operations only once", func() {
 			Eventually(fakeGenerator.BatchOperationsCallCount).Should(Equal(1))
