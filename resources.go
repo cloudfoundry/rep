@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"sort"
 
 	"code.cloudfoundry.org/bbs/models"
 )
@@ -63,10 +64,8 @@ func (c *CellState) AddTask(task *Task) {
 	c.Tasks = append(c.Tasks, *task)
 }
 
-func (c *CellState) ResourceMatch(res *Resource, pc *PlacementConstraint) error {
+func (c *CellState) ResourceMatch(res *Resource) error {
 	switch {
-	case !c.MatchRootFS(pc.RootFs):
-		return ErrorIncompatibleRootfs
 	case c.AvailableResources.MemoryMB < res.MemoryMB:
 		return ErrorInsufficientResources
 	case c.AvailableResources.DiskMB < res.DiskMB:
@@ -113,6 +112,23 @@ func (c *CellState) MatchVolumeDrivers(volumeDrivers []string) bool {
 	return true
 }
 
+func (c *CellState) MatchPlacementTags(placementTags []string) bool {
+	if len(c.PlacementTags) != len(placementTags) {
+		return false
+	}
+
+	sort.Strings(placementTags)
+	sort.Strings(c.PlacementTags)
+
+	for i, v := range placementTags {
+		if c.PlacementTags[i] != v {
+			return false
+		}
+	}
+
+	return true
+}
+
 type Resources struct {
 	MemoryMB   int32
 	DiskMB     int32
@@ -149,8 +165,8 @@ func NewResource(memoryMb, diskMb int32) Resource {
 	return Resource{MemoryMB: memoryMb, DiskMB: diskMb}
 }
 
-func (r *Resource) Empty() bool {
-	return r.DiskMB == 0 && r.MemoryMB == 0
+func (r *Resource) Valid() bool {
+	return r.DiskMB >= 0 && r.MemoryMB >= 0
 }
 
 func (r *Resource) Copy() Resource {
@@ -167,8 +183,8 @@ func NewPlacementConstraint(rootFs string, placementTags, volumeDrivers []string
 	return PlacementConstraint{PlacementTags: placementTags, VolumeDrivers: volumeDrivers, RootFs: rootFs}
 }
 
-func (p *PlacementConstraint) Empty() bool {
-	return p.RootFs == ""
+func (p *PlacementConstraint) Valid() bool {
+	return p.RootFs != ""
 }
 
 type LRP struct {
