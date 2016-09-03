@@ -203,7 +203,7 @@ var _ = Describe("EvacuationCleanup", func() {
 					}
 				})
 
-				FIt("gives up after 15 seconds", func() {
+				It("gives up after 15 seconds", func() {
 					Eventually(fakeExecutorClient.ListContainersCallCount).Should(Equal(2))
 					Expect(fakeExecutorClient.StopContainerCallCount()).To(Equal(2))
 					Consistently(errCh).ShouldNot(Receive())
