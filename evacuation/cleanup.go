@@ -1,6 +1,7 @@
 package evacuation
 
 import (
+	"errors"
 	"os"
 	"time"
 
@@ -83,7 +84,7 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 	logger.Info("stopping-all-containers")
 
 	exitTimer := e.clock.NewTimer(ExitTimeout)
-	checkRunningContainersTimer := e.clock.NewTimer(1 * time.Second)
+	checkRunningContainersTimer := e.clock.NewTicker(1 * time.Second)
 
 	e.stopRunningContainers(logger)
 
@@ -92,9 +93,8 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 	for e.hasRunningContainers(logger) {
 		select {
 		case <-exitTimer.C():
-			logger.Info("stopping-containers-timedout")
 			// exit after ExitTimeout has passed
-			return nil
+			return errors.New("failed-to-cleanup-all-containers")
 		case <-checkRunningContainersTimer.C():
 			continue
 		}

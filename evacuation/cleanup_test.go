@@ -203,10 +203,19 @@ var _ = Describe("EvacuationCleanup", func() {
 					}
 				})
 
-				It("gives up after 15 seconds", func() {
-					Eventually(fakeExecutorClient.ListContainersCallCount).Should(BeNumerically(">=", 2))
+				FIt("gives up after 15 seconds", func() {
+					Eventually(fakeExecutorClient.ListContainersCallCount).Should(Equal(2))
 					Expect(fakeExecutorClient.StopContainerCallCount()).To(Equal(2))
 					Consistently(errCh).ShouldNot(Receive())
+
+					for i := 0; i < 14; i++ {
+						fakeClock.WaitForNWatchersAndIncrement(1*time.Second, 2)
+						Eventually(fakeExecutorClient.ListContainersCallCount).Should(Equal(i + 3))
+					}
+
+					Consistently(errCh).ShouldNot(Receive())
+					fakeClock.WaitForNWatchersAndIncrement(1*time.Second, 2)
+					Eventually(errCh).Should(Receive(HaveOccurred()))
 				})
 			})
 		})
