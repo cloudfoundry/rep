@@ -33,7 +33,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 		fakeGenerateContainerGuid func() (string, error)
 
-		placementTags []string
+		placementTags, optionalPlacementTags []string
 	)
 
 	BeforeEach(func() {
@@ -62,6 +62,7 @@ var _ = Describe("AuctionCellRep", func() {
 			client,
 			evacuationReporter,
 			placementTags,
+			optionalPlacementTags,
 		)
 	})
 
@@ -128,6 +129,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 			volumeDrivers = []string{"lewis", "nico", "sebastian", "felipe"}
 			placementTags = []string{}
+			optionalPlacementTags = []string{}
 
 			client.TotalResourcesReturns(totalResources, nil)
 			client.RemainingResourcesReturns(availableResources, nil)
@@ -240,6 +242,18 @@ var _ = Describe("AuctionCellRep", func() {
 				state, err := cellRep.State(logger)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(state.PlacementTags).To(ConsistOf(placementTags))
+			})
+		})
+
+		Context("when optional placement tags have been set", func() {
+			BeforeEach(func() {
+				optionalPlacementTags = []string{"baa", "cluck"}
+			})
+
+			It("returns the tags as part of the state", func() {
+				state, err := cellRep.State(logger)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(state.OptionalPlacementTags).To(ConsistOf(optionalPlacementTags))
 			})
 		})
 	})

@@ -63,6 +63,9 @@ func main() {
 	placementTags := multiArgList{}
 	flag.Var(&placementTags, "placementTag", "Placement tags used for scheduling Tasks and LRPs")
 
+	optionalPlacementTags := multiArgList{}
+	flag.Var(&optionalPlacementTags, "optionalPlacementTag", "Optional Placement tags used for scheduling Tasks and LRPs")
+
 	flag.Parse()
 
 	preloadedRootFSes := []string{}
@@ -140,12 +143,12 @@ func main() {
 	)
 
 	bbsClient := initializeBBSClient(logger)
-	httpServer, address := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders, placementTags)
+	httpServer, address := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders, placementTags, optionalPlacementTags)
 	opGenerator := generator.New(*cellID, bbsClient, executorClient, evacuationReporter, uint64(evacuationTimeout.Seconds()))
 	cleanup := evacuation.NewEvacuationCleanup(logger, *cellID, bbsClient, executorClient, clock)
 
 	members := grouper.Members{
-		{"presence", initializeCellPresence(address, serviceClient, executorClient, logger, supportedProviders, preloadedRootFSes, placementTags)},
+		{"presence", initializeCellPresence(address, serviceClient, executorClient, logger, supportedProviders, preloadedRootFSes, placementTags, optionalPlacementTags)},
 		{"http_server", httpServer},
 		{"evacuation-cleanup", cleanup},
 		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, *evacuationPollingInterval, evacuationNotifier, clock, opGenerator, queue)},
@@ -192,15 +195,17 @@ func initializeCellPresence(
 	rootFSProviders,
 	preloadedRootFSes,
 	placementTags []string,
+	optionalPlacementTags []string,
 ) ifrit.Runner {
 	config := maintain.Config{
-		CellID:            *cellID,
-		RepAddress:        address,
-		Zone:              *zone,
-		RetryInterval:     *lockRetryInterval,
-		RootFSProviders:   rootFSProviders,
-		PreloadedRootFSes: preloadedRootFSes,
-		PlacementTags:     placementTags,
+		CellID:                *cellID,
+		RepAddress:            address,
+		Zone:                  *zone,
+		RetryInterval:         *lockRetryInterval,
+		RootFSProviders:       rootFSProviders,
+		PreloadedRootFSes:     preloadedRootFSes,
+		PlacementTags:         placementTags,
+		OptionalPlacementTags: optionalPlacementTags,
 	}
 	return maintain.New(logger, config, executorClient, serviceClient, *lockTTL, clock.NewClock())
 }
@@ -223,8 +228,9 @@ func initializeServer(
 	stackMap rep.StackPathMap,
 	supportedProviders []string,
 	placementTags []string,
+	optionalPlacementTags []string,
 ) (ifrit.Runner, string) {
-	auctionCellRep := auction_cell_rep.New(*cellID, stackMap, supportedProviders, *zone, generateGuid, executorClient, evacuationReporter, placementTags)
+	auctionCellRep := auction_cell_rep.New(*cellID, stackMap, supportedProviders, *zone, generateGuid, executorClient, evacuationReporter, placementTags, optionalPlacementTags)
 
 	handlers := handlers.New(auctionCellRep, executorClient, evacuatable, logger)
 
