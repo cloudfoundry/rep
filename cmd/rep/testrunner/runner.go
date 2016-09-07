@@ -19,18 +19,19 @@ type Runner struct {
 }
 
 type Config struct {
-	PreloadedRootFSes   []string
-	RootFSProviders     []string
-	PlacementTags       []string
-	CACertsForDownloads string
-	CellID              string
-	BBSAddress          string
-	ServerPort          int
-	GardenAddr          string
-	LogLevel            string
-	ConsulCluster       string
-	PollingInterval     time.Duration
-	EvacuationTimeout   time.Duration
+	PreloadedRootFSes     []string
+	RootFSProviders       []string
+	PlacementTags         []string
+	OptionalPlacementTags []string
+	CACertsForDownloads   string
+	CellID                string
+	BBSAddress            string
+	ServerPort            int
+	GardenAddr            string
+	LogLevel              string
+	ConsulCluster         string
+	PollingInterval       time.Duration
+	EvacuationTimeout     time.Duration
 }
 
 func New(binPath string, config Config) *Runner {
@@ -69,6 +70,9 @@ func (r *Runner) Start() {
 	}
 	for _, tag := range r.config.PlacementTags {
 		args = append(args, "-placementTag", tag)
+	}
+	for _, tag := range r.config.OptionalPlacementTags {
+		args = append(args, "-optionalPlacementTag", tag)
 	}
 	if r.config.CACertsForDownloads != "" {
 		args = append(args, "-caCertsForDownloads", r.config.CACertsForDownloads)

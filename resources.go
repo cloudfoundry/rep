@@ -24,6 +24,7 @@ type CellState struct {
 	Evacuating             bool
 	VolumeDrivers          []string
 	PlacementTags          []string
+	OptionalPlacementTags  []string
 }
 
 func NewCellState(
@@ -37,6 +38,7 @@ func NewCellState(
 	isEvac bool,
 	volumeDrivers []string,
 	placementTags []string,
+	optionalPlacementTags []string,
 ) CellState {
 	return CellState{
 		RootFSProviders:    root,
@@ -49,6 +51,7 @@ func NewCellState(
 		Evacuating:             isEvac,
 		VolumeDrivers:          volumeDrivers,
 		PlacementTags:          placementTags,
+		OptionalPlacementTags:  optionalPlacementTags,
 	}
 }
 
@@ -113,20 +116,55 @@ func (c *CellState) MatchVolumeDrivers(volumeDrivers []string) bool {
 }
 
 func (c *CellState) MatchPlacementTags(placementTags []string) bool {
-	if len(c.PlacementTags) != len(placementTags) {
+	nRequiredTags := len(c.PlacementTags)
+	nOptionalTags := len(c.OptionalPlacementTags)
+	nDesiredTags := len(placementTags)
+	cellRequiredIndex := 0
+	cellOptionalIndex := 0
+	desiredIndex := 0
+
+	if nDesiredTags > (nRequiredTags + nOptionalTags) {
 		return false
 	}
 
 	sort.Strings(placementTags)
 	sort.Strings(c.PlacementTags)
+	sort.Strings(c.OptionalPlacementTags)
 
-	for i, v := range placementTags {
-		if c.PlacementTags[i] != v {
-			return false
+	// fmt.Printf("Required [%#v] Optional [%#v] Desired [%#v]\n",
+	// 	c.PlacementTags, c.OptionalPlacementTags, placementTags)
+
+	for {
+		if desiredIndex == nDesiredTags {
+			//		fmt.Println("End of DesiredTags")
+			break
+		}
+		if cellOptionalIndex == nOptionalTags && cellRequiredIndex == nRequiredTags {
+			//		fmt.Println("End of cell Tags")
+			break
+		}
+		if cellRequiredIndex < nRequiredTags &&
+			placementTags[desiredIndex] == c.PlacementTags[cellRequiredIndex] {
+			//		fmt.Println("Match a required tag")
+			cellRequiredIndex++
+			desiredIndex++
+		} else if cellOptionalIndex < nOptionalTags &&
+			placementTags[desiredIndex] == c.OptionalPlacementTags[cellOptionalIndex] {
+			//		fmt.Println("Match a optional tag")
+			cellOptionalIndex++
+			desiredIndex++
+		} else {
+			fmt.Println("Increment optional")
+			if cellOptionalIndex < nOptionalTags {
+				cellOptionalIndex++
+			} else {
+				break
+			}
 		}
 	}
 
-	return true
+	//	fmt.Printf("Going to Return %v\n", desiredIndex == nDesiredTags && cellRequiredIndex == nRequiredTags)
+	return desiredIndex == nDesiredTags && cellRequiredIndex == nRequiredTags
 }
 
 type Resources struct {

@@ -76,12 +76,13 @@ var _ = Describe("Maintain Presence", func() {
 		serviceClient.NewCellPresenceRunnerReturns(fakeHeartbeater)
 
 		config = maintain.Config{
-			CellID:          "cell-id",
-			RepAddress:      "1.2.3.4",
-			Zone:            "az1",
-			RetryInterval:   1 * time.Second,
-			RootFSProviders: []string{"provider-1", "provider-2"},
-			PlacementTags:   []string{"test-tag-1", "test-tag-2"},
+			CellID:                "cell-id",
+			RepAddress:            "1.2.3.4",
+			Zone:                  "az1",
+			RetryInterval:         1 * time.Second,
+			RootFSProviders:       []string{"provider-1", "provider-2"},
+			PlacementTags:         []string{"test-tag-1", "test-tag-2"},
+			OptionalPlacementTags: []string{"optional-test-tag-1", "optional-test-tag-2"},
 		}
 		maintainer = maintain.New(logger, config, fakeClient, serviceClient, 10*time.Second, clock)
 	})
@@ -189,6 +190,7 @@ var _ = Describe("Maintain Presence", func() {
 					[]string{"provider-1", "provider-2"},
 					[]string{},
 					[]string{"test-tag-1", "test-tag-2"},
+					[]string{"optional-test-tag-1", "optional-test-tag-2"},
 				)
 
 				_, presence, retryInterval, lockTTL := serviceClient.NewCellPresenceRunnerArgsForCall(0)

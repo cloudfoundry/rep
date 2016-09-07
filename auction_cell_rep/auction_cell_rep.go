@@ -16,15 +16,16 @@ var ErrPreloadedRootFSNotFound = errors.New("preloaded rootfs path not found")
 var ErrCellUnhealthy = errors.New("internal cell healthcheck failed")
 
 type AuctionCellRep struct {
-	cellID               string
-	stackPathMap         rep.StackPathMap
-	rootFSProviders      rep.RootFSProviders
-	stack                string
-	zone                 string
-	generateInstanceGuid func() (string, error)
-	client               executor.Client
-	evacuationReporter   evacuation_context.EvacuationReporter
-	placementTags        []string
+	cellID                string
+	stackPathMap          rep.StackPathMap
+	rootFSProviders       rep.RootFSProviders
+	stack                 string
+	zone                  string
+	generateInstanceGuid  func() (string, error)
+	client                executor.Client
+	evacuationReporter    evacuation_context.EvacuationReporter
+	placementTags         []string
+	optionalPlacementTags []string
 }
 
 func New(
@@ -36,16 +37,18 @@ func New(
 	client executor.Client,
 	evacuationReporter evacuation_context.EvacuationReporter,
 	placementTags []string,
+	optionalPlacementTags []string,
 ) *AuctionCellRep {
 	return &AuctionCellRep{
-		cellID:               cellID,
-		stackPathMap:         preloadedStackPathMap,
-		rootFSProviders:      rootFSProviders(preloadedStackPathMap, arbitraryRootFSes),
-		zone:                 zone,
-		generateInstanceGuid: generateInstanceGuid,
-		client:               client,
-		evacuationReporter:   evacuationReporter,
-		placementTags:        placementTags,
+		cellID:                cellID,
+		stackPathMap:          preloadedStackPathMap,
+		rootFSProviders:       rootFSProviders(preloadedStackPathMap, arbitraryRootFSes),
+		zone:                  zone,
+		generateInstanceGuid:  generateInstanceGuid,
+		client:                client,
+		evacuationReporter:    evacuationReporter,
+		placementTags:         placementTags,
+		optionalPlacementTags: optionalPlacementTags,
 	}
 }
 
@@ -168,6 +171,7 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, error) {
 		a.evacuationReporter.Evacuating(),
 		volumeDrivers,
 		a.placementTags,
+		a.optionalPlacementTags,
 	)
 
 	logger.Info("provided", lager.Data{

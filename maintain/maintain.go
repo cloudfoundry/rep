@@ -23,13 +23,14 @@ type Maintainer struct {
 }
 
 type Config struct {
-	CellID            string
-	RepAddress        string
-	Zone              string
-	RetryInterval     time.Duration
-	RootFSProviders   []string
-	PreloadedRootFSes []string
-	PlacementTags     []string
+	CellID                string
+	RepAddress            string
+	Zone                  string
+	RetryInterval         time.Duration
+	RootFSProviders       []string
+	PreloadedRootFSes     []string
+	PlacementTags         []string
+	OptionalPlacementTags []string
 }
 
 func New(
@@ -105,7 +106,7 @@ func (m *Maintainer) createHeartbeater() (ifrit.Runner, error) {
 	}
 
 	cellCapacity := models.NewCellCapacity(int32(resources.MemoryMB), int32(resources.DiskMB), int32(resources.Containers))
-	cellPresence := models.NewCellPresence(m.CellID, m.RepAddress, m.Zone, cellCapacity, m.RootFSProviders, m.PreloadedRootFSes, m.PlacementTags)
+	cellPresence := models.NewCellPresence(m.CellID, m.RepAddress, m.Zone, cellCapacity, m.RootFSProviders, m.PreloadedRootFSes, m.PlacementTags, m.OptionalPlacementTags)
 	return m.serviceClient.NewCellPresenceRunner(m.logger, &cellPresence, m.RetryInterval, m.lockTTL), nil
 }
 

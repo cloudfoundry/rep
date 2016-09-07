@@ -90,17 +90,18 @@ var _ = Describe("The Rep", func() {
 		rootFSArg := fmt.Sprintf("%s:%s", rootFSName, rootFSPath)
 
 		config = testrunner.Config{
-			PreloadedRootFSes: []string{rootFSArg},
-			RootFSProviders:   []string{"docker"},
-			PlacementTags:     []string{"test"},
-			CellID:            cellID,
-			BBSAddress:        bbsURL.String(),
-			ServerPort:        serverPort,
-			GardenAddr:        fakeGarden.HTTPTestServer.Listener.Addr().String(),
-			LogLevel:          "debug",
-			ConsulCluster:     consulRunner.ConsulCluster(),
-			PollingInterval:   pollingInterval,
-			EvacuationTimeout: evacuationTimeout,
+			PreloadedRootFSes:     []string{rootFSArg},
+			RootFSProviders:       []string{"docker"},
+			PlacementTags:         []string{"test"},
+			OptionalPlacementTags: []string{"optional_tag"},
+			CellID:                cellID,
+			BBSAddress:            bbsURL.String(),
+			ServerPort:            serverPort,
+			GardenAddr:            fakeGarden.HTTPTestServer.Listener.Addr().String(),
+			LogLevel:              "debug",
+			ConsulCluster:         consulRunner.ConsulCluster(),
+			PollingInterval:       pollingInterval,
+			EvacuationTimeout:     evacuationTimeout,
 		}
 
 		runner = testrunner.New(
@@ -356,6 +357,7 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 				cellPresence := cellSet[cellID]
 				Expect(cellPresence.CellId).To(Equal(cellID))
 				Expect(cellPresence.PlacementTags).To(Equal([]string{"test"}))
+				Expect(cellPresence.OptionalPlacementTags).To(Equal([]string{"optional_tag"}))
 			})
 		})
 
@@ -381,6 +383,7 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 						Containers: 3,
 					}))
 					Expect(state.PlacementTags).To(Equal([]string{"test"}))
+					Expect(state.OptionalPlacementTags).To(Equal([]string{"optional_tag"}))
 				})
 
 				Context("when the container is removed", func() {
