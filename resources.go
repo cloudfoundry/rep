@@ -67,10 +67,13 @@ func (c *CellState) AddTask(task *Task) {
 func (c *CellState) ResourceMatch(res *Resource) error {
 	switch {
 	case c.AvailableResources.MemoryMB < res.MemoryMB:
+		fmt.Printf("################ insufficient memory: available: %d, requested: %d\n", c.AvailableResources.MemoryMB, res.MemoryMB)
 		return ErrorInsufficientResources
 	case c.AvailableResources.DiskMB < res.DiskMB:
+		fmt.Printf("################ insufficient disk: available: %d, requested: %d\n", c.AvailableResources.DiskMB, res.DiskMB)
 		return ErrorInsufficientResources
 	case c.AvailableResources.Containers < 1:
+		fmt.Printf("################ insufficient containers, available: %d\n", c.AvailableResources.Containers)
 		return ErrorInsufficientResources
 	default:
 		return nil
