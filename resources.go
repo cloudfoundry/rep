@@ -131,30 +131,22 @@ func (c *CellState) MatchPlacementTags(placementTags []string) bool {
 	sort.Strings(c.PlacementTags)
 	sort.Strings(c.OptionalPlacementTags)
 
-	// fmt.Printf("Required [%#v] Optional [%#v] Desired [%#v]\n",
-	// 	c.PlacementTags, c.OptionalPlacementTags, placementTags)
-
 	for {
 		if desiredIndex == nDesiredTags {
-			//		fmt.Println("End of DesiredTags")
 			break
 		}
 		if cellOptionalIndex == nOptionalTags && cellRequiredIndex == nRequiredTags {
-			//		fmt.Println("End of cell Tags")
 			break
 		}
 		if cellRequiredIndex < nRequiredTags &&
 			placementTags[desiredIndex] == c.PlacementTags[cellRequiredIndex] {
-			//		fmt.Println("Match a required tag")
 			cellRequiredIndex++
 			desiredIndex++
 		} else if cellOptionalIndex < nOptionalTags &&
 			placementTags[desiredIndex] == c.OptionalPlacementTags[cellOptionalIndex] {
-			//		fmt.Println("Match a optional tag")
 			cellOptionalIndex++
 			desiredIndex++
 		} else {
-			fmt.Println("Increment optional")
 			if cellOptionalIndex < nOptionalTags {
 				cellOptionalIndex++
 			} else {
@@ -163,7 +155,6 @@ func (c *CellState) MatchPlacementTags(placementTags []string) bool {
 		}
 	}
 
-	//	fmt.Printf("Going to Return %v\n", desiredIndex == nDesiredTags && cellRequiredIndex == nRequiredTags)
 	return desiredIndex == nDesiredTags && cellRequiredIndex == nRequiredTags
 }
 
