@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"net/url"
 	"sort"
+	"strings"
 
 	"code.cloudfoundry.org/bbs/models"
 )
 
 var ErrorIncompatibleRootfs = errors.New("rootfs not found")
-var ErrorInsufficientResources = errors.New("insufficient resources")
 
 type CellState struct {
 	RootFSProviders        RootFSProviders
@@ -68,16 +68,39 @@ func (c *CellState) AddTask(task *Task) {
 }
 
 func (c *CellState) ResourceMatch(res *Resource) error {
-	switch {
-	case c.AvailableResources.MemoryMB < res.MemoryMB:
-		return ErrorInsufficientResources
-	case c.AvailableResources.DiskMB < res.DiskMB:
-		return ErrorInsufficientResources
-	case c.AvailableResources.Containers < 1:
-		return ErrorInsufficientResources
-	default:
+	problems := map[string]struct{}{}
+
+	if c.AvailableResources.DiskMB < res.DiskMB {
+		problems["disk"] = struct{}{}
+	}
+	if c.AvailableResources.MemoryMB < res.MemoryMB {
+		problems["memory"] = struct{}{}
+	}
+	if c.AvailableResources.Containers < 1 {
+		problems["containers"] = struct{}{}
+	}
+	if len(problems) == 0 {
 		return nil
 	}
+
+	return InsufficientResourcesError{Problems: problems}
+}
+
+type InsufficientResourcesError struct {
+	Problems map[string]struct{}
+}
+
+func (i InsufficientResourcesError) Error() string {
+	if len(i.Problems) == 0 {
+		return "insufficient resources"
+	}
+
+	keys := []string{}
+	for key, _ := range i.Problems {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return fmt.Sprintf("insufficient resources: %s", strings.Join(keys, ", "))
 }
 
 func (c CellState) ComputeScore(res *Resource, startingContainerWeight float64) float64 {
