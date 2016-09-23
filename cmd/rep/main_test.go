@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"strings"
 	"time"
 
 	"code.cloudfoundry.org/bbs"
@@ -22,6 +23,7 @@ import (
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/cmd/rep/testrunner"
 
+	"github.com/hashicorp/consul/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -488,6 +490,38 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 				resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusOK))
+			})
+		})
+
+		Describe("ServiceRegistration", func() {
+			It("registers itself with consul", func() {
+				consulClient := consulRunner.NewClient()
+				services, err := consulClient.Agent().Services()
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(services).To(HaveKeyWithValue("cell",
+					&api.AgentService{
+						Service: "cell",
+						ID:      "cell",
+						Port:    serverPort,
+						Tags:    []string{strings.Replace(cellID, "_", "-", -1)},
+					}))
+			})
+
+			It("registers a TTL healthcheck", func() {
+				consulClient := consulRunner.NewClient()
+				checks, err := consulClient.Agent().Checks()
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(checks).To(HaveKeyWithValue("service:cell",
+					&api.AgentCheck{
+						Node:        "0",
+						CheckID:     "service:cell",
+						Name:        "Service 'cell' check",
+						Status:      "passing",
+						ServiceID:   "cell",
+						ServiceName: "cell",
+					}))
 			})
 		})
 	})

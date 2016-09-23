@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/url"
 	"os"
 	"strings"
@@ -21,6 +22,7 @@ import (
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/localip"
+	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/operationq"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/auction_cell_rep"
@@ -31,6 +33,7 @@ import (
 	"code.cloudfoundry.org/rep/harmonizer"
 	"code.cloudfoundry.org/rep/maintain"
 	"github.com/cloudfoundry/dropsonde"
+	"github.com/hashicorp/consul/api"
 	"github.com/nu7hatch/gouuid"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
@@ -125,7 +128,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	serviceClient := initializeServiceClient(logger)
+	consulClient, err := consuladapter.NewClientFromUrl(*consulCluster)
+	if err != nil {
+		logger.Fatal("new-client-failed", err)
+	}
+
+	serviceClient := bbs.NewServiceClient(consulClient, clock)
 
 	evacuatable, evacuationReporter, evacuationNotifier := evacuation_context.New()
 
@@ -147,6 +155,17 @@ func main() {
 	opGenerator := generator.New(*cellID, bbsClient, executorClient, evacuationReporter, uint64(evacuationTimeout.Seconds()))
 	cleanup := evacuation.NewEvacuationCleanup(logger, *cellID, bbsClient, executorClient, clock)
 
+	_, portString, err := net.SplitHostPort(*listenAddr)
+	if err != nil {
+		logger.Fatal("failed-invalid-server-address", err)
+	}
+	portNum, err := net.LookupPort("tcp", portString)
+	if err != nil {
+		logger.Fatal("failed-invalid-server-port", err)
+	}
+
+	registrationRunner := initializeRegistrationRunner(logger, consulClient, portNum, clock)
+
 	members := grouper.Members{
 		{"presence", initializeCellPresence(address, serviceClient, executorClient, logger, supportedProviders, preloadedRootFSes, placementTags, optionalPlacementTags)},
 		{"http_server", httpServer},
@@ -154,6 +173,7 @@ func main() {
 		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, *evacuationPollingInterval, evacuationNotifier, clock, opGenerator, queue)},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 		{"evacuator", evacuator},
+		{"registration-runner", registrationRunner},
 	}
 
 	members = append(executorMembers, members...)
@@ -208,15 +228,6 @@ func initializeCellPresence(
 		OptionalPlacementTags: optionalPlacementTags,
 	}
 	return maintain.New(logger, config, executorClient, serviceClient, *lockTTL, clock.NewClock())
-}
-
-func initializeServiceClient(logger lager.Logger) bbs.ServiceClient {
-	consulClient, err := consuladapter.NewClientFromUrl(*consulCluster)
-	if err != nil {
-		logger.Fatal("new-client-failed", err)
-	}
-
-	return bbs.NewServiceClient(consulClient, clock.NewClock())
 }
 
 func initializeServer(
@@ -280,4 +291,20 @@ func initializeBBSClient(logger lager.Logger) bbs.InternalClient {
 		logger.Fatal("Failed to configure secure BBS client", err)
 	}
 	return bbsClient
+}
+
+func initializeRegistrationRunner(
+	logger lager.Logger,
+	consulClient consuladapter.Client,
+	port int,
+	clock clock.Clock) ifrit.Runner {
+	registration := &api.AgentServiceRegistration{
+		Name: "cell",
+		Port: port,
+		Check: &api.AgentServiceCheck{
+			TTL: "3s",
+		},
+		Tags: []string{strings.Replace(*cellID, "_", "-", -1)},
+	}
+	return locket.NewRegistrationRunner(logger, registration, consulClient, locket.RetryInterval, clock)
 }

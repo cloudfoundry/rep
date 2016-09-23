@@ -67,7 +67,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	representativePath = strings.Split(path, ",")[0]
 	bbsBinPath = strings.Split(path, ",")[1]
 
-	cellID = "the-rep-id-" + strconv.Itoa(GinkgoParallelNode())
+	cellID = "the_rep_id-" + strconv.Itoa(GinkgoParallelNode())
 
 	etcdPort = 4001 + GinkgoParallelNode()
 	serverPort = 1800 + GinkgoParallelNode()
