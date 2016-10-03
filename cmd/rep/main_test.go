@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path"
 	"regexp"
 	"runtime"
 	"strings"
@@ -42,6 +43,7 @@ var _ = Describe("The Rep", func() {
 		rootFSName        string
 		rootFSPath        string
 		logger            *lagertest.TestLogger
+		basePath          string
 
 		flushEvents chan struct{}
 	)
@@ -56,6 +58,8 @@ var _ = Describe("The Rep", func() {
 
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
+
+		basePath = path.Join(os.Getenv("GOPATH"), "src/code.cloudfoundry.org/rep/cmd/rep/fixtures")
 
 		Eventually(getActualLRPGroups(logger), 5*pollingInterval).Should(BeEmpty())
 		flushEvents = make(chan struct{})
@@ -99,6 +103,11 @@ var _ = Describe("The Rep", func() {
 			CellID:                cellID,
 			BBSAddress:            bbsURL.String(),
 			ServerPort:            serverPort,
+			ServerPortSecurable:   serverPortSecurable,
+			RequireTLS:            false,
+			CaCert:                path.Join(basePath, "green-certs", "server-ca.crt"),
+			ServerCert:            path.Join(basePath, "green-certs", "server.crt"),
+			ServerKey:             path.Join(basePath, "green-certs", "server.key"),
 			GardenAddr:            fakeGarden.HTTPTestServer.Listener.Addr().String(),
 			LogLevel:              "debug",
 			ConsulCluster:         consulRunner.ConsulCluster(),
@@ -522,6 +531,24 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 						ServiceID:   "cell",
 						ServiceName: "cell",
 					}))
+			})
+		})
+
+		Describe("Secure Server", func() {
+			Context("When requireTLS is set to false", func() {
+				It("creates an insecure server", func() {
+					_, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d", serverPortSecurable))
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+			Context("When requireTLS is set to true", func() {
+				It("creates a secure server", func() {
+					config.RequireTLS = false
+					runner = testrunner.New(
+						representativePath,
+						config,
+					)
+				})
 			})
 		})
 	})

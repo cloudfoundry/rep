@@ -16,6 +16,10 @@ const (
 )
 
 var Routes = rata.Routes{
+	// These routes are called by the rep ctl and drain scripts
+	{Path: "/ping", Method: "GET", Name: PingRoute},
+	{Path: "/evacuate", Method: "POST", Name: EvacuateRoute},
+
 	{Path: "/state", Method: "GET", Name: StateRoute},
 	{Path: "/work", Method: "POST", Name: PerformRoute},
 
@@ -23,8 +27,20 @@ var Routes = rata.Routes{
 	{Path: "/v1/tasks/:task_guid/cancel", Method: "POST", Name: CancelTaskRoute},
 
 	{Path: "/sim/reset", Method: "POST", Name: Sim_ResetRoute},
+}
 
+var RoutesInsecure = rata.Routes{
 	// These routes are called by the rep ctl and drain scripts
 	{Path: "/ping", Method: "GET", Name: PingRoute},
 	{Path: "/evacuate", Method: "POST", Name: EvacuateRoute},
+}
+
+var RoutesSecure = rata.Routes{
+	{Path: "/state", Method: "GET", Name: StateRoute},
+	{Path: "/work", Method: "POST", Name: PerformRoute},
+
+	{Path: "/v1/lrps/:process_guid/instances/:instance_guid/stop", Method: "POST", Name: StopLRPInstanceRoute},
+	{Path: "/v1/tasks/:task_guid/cancel", Method: "POST", Name: CancelTaskRoute},
+
+	{Path: "/sim/reset", Method: "POST", Name: Sim_ResetRoute},
 }

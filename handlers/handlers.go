@@ -39,6 +39,23 @@ func New(
 	return handlers
 }
 
+func NewHandlersInsecure(
+	localCellClient rep.AuctionCellClient,
+	executorClient executor.Client,
+	evacuatable evacuation_context.Evacuatable,
+	logger lager.Logger,
+) rata.Handlers {
+	pingHandler := NewPingHandler()
+	evacuationHandler := NewEvacuationHandler(evacuatable)
+
+	handlers := rata.Handlers{
+		rep.PingRoute:     logWrap(pingHandler.ServeHTTP, logger),
+		rep.EvacuateRoute: logWrap(evacuationHandler.ServeHTTP, logger),
+	}
+
+	return handlers
+}
+
 func logWrap(loggable func(http.ResponseWriter, *http.Request, lager.Logger), logger lager.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestLog := logger.Session("request", lager.Data{

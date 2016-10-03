@@ -151,7 +151,8 @@ func main() {
 	)
 
 	bbsClient := initializeBBSClient(logger)
-	httpServer, address := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders, placementTags, optionalPlacementTags)
+	httpServer, _ := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders, placementTags, optionalPlacementTags)
+	httpsServer, address := initializeServerSecurable(bbsClient, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders, placementTags, optionalPlacementTags)
 	opGenerator := generator.New(*cellID, bbsClient, executorClient, evacuationReporter, uint64(evacuationTimeout.Seconds()))
 	cleanup := evacuation.NewEvacuationCleanup(logger, *cellID, bbsClient, executorClient, clock)
 
@@ -169,6 +170,7 @@ func main() {
 	members := grouper.Members{
 		{"presence", initializeCellPresence(address, serviceClient, executorClient, logger, supportedProviders, preloadedRootFSes, placementTags, optionalPlacementTags)},
 		{"http_server", httpServer},
+		{"https_server", httpsServer},
 		{"evacuation-cleanup", cleanup},
 		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, *evacuationPollingInterval, evacuationNotifier, clock, opGenerator, queue)},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
@@ -243,9 +245,9 @@ func initializeServer(
 ) (ifrit.Runner, string) {
 	auctionCellRep := auction_cell_rep.New(*cellID, stackMap, supportedProviders, *zone, generateGuid, executorClient, evacuationReporter, placementTags, optionalPlacementTags)
 
-	handlers := handlers.New(auctionCellRep, executorClient, evacuatable, logger)
+	handlers := handlers.NewHandlersInsecure(auctionCellRep, executorClient, evacuatable, logger)
 
-	router, err := rata.NewRouter(rep.Routes, handlers)
+	router, err := rata.NewRouter(rep.RoutesInsecure, handlers)
 	if err != nil {
 		logger.Fatal("failed-to-construct-router", err)
 	}
@@ -259,6 +261,44 @@ func initializeServer(
 	address := fmt.Sprintf("http://%s:%s", ip, port)
 
 	return http_server.New(*listenAddr, router), address
+}
+
+func initializeServerSecurable(
+	bbsClient bbs.InternalClient,
+	executorClient executor.Client,
+	evacuatable evacuation_context.Evacuatable,
+	evacuationReporter evacuation_context.EvacuationReporter,
+	logger lager.Logger,
+	stackMap rep.StackPathMap,
+	supportedProviders []string,
+	placementTags []string,
+	optionalPlacementTags []string,
+) (ifrit.Runner, string) {
+	auctionCellRep := auction_cell_rep.New(*cellID, stackMap, supportedProviders, *zone, generateGuid, executorClient, evacuationReporter, placementTags, optionalPlacementTags)
+
+	handlers := handlers.NewHandlersSecure(auctionCellRep, executorClient, evacuatable, logger)
+
+	router, err := rata.NewRouter(rep.RoutesSecure, handlers)
+	if err != nil {
+		logger.Fatal("failed-to-construct-router", err)
+	}
+
+	ip, err := localip.LocalIP()
+	if err != nil {
+		logger.Fatal("failed-to-fetch-ip", err)
+	}
+
+	port := strings.Split(*listenAddrSecurable, ":")[1]
+
+	if *requireTLS {
+		tlsConfig, err := cfhttp.NewTLSConfig(*serverCert, *serverKey, *caCert)
+		if err != nil {
+			logger.Fatal("tls-configuration-failed", err)
+		}
+		return http_server.NewTLSServer(*listenAddrSecurable, router, tlsConfig), fmt.Sprintf("https://%s:%s", ip, port)
+	}
+
+	return http_server.New(*listenAddrSecurable, router), fmt.Sprintf("http://%s:%s", ip, port)
 }
 
 func validateBBSAddress() error {
