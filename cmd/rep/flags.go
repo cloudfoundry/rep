@@ -41,6 +41,36 @@ var listenAddr = flag.String(
 	"host:port to serve auction and LRP stop requests on",
 )
 
+var listenAddrSecurable = flag.String(
+	"listenAddrSecurable",
+	"0.0.0.0:1801",
+	"host:port to serve auction and LRP stop requests on",
+)
+
+var requireTLS = flag.Bool(
+	"requireTLS",
+	true,
+	"Whether to require mutual TLS for communication to the securable rep API server",
+)
+
+var caFile = flag.String(
+	"caFile",
+	"",
+	"the certificate authority public key file to use with tls authentication",
+)
+
+var certFile = flag.String(
+	"certFile",
+	"",
+	"the public key file to use with tls authentication",
+)
+
+var keyFile = flag.String(
+	"keyFile",
+	"",
+	"the private key file to use with ssl authentication",
+)
+
 var cellID = flag.String(
 	"cellID",
 	"",

@@ -3,6 +3,7 @@ package testrunner
 import (
 	"fmt"
 	"os/exec"
+	"strconv"
 	"time"
 
 	"github.com/onsi/ginkgo"
@@ -27,6 +28,11 @@ type Config struct {
 	CellID                string
 	BBSAddress            string
 	ServerPort            int
+	ServerPortSecurable   int
+	RequireTLS            bool
+	CaFile                string
+	CertFile              string
+	KeyFile               string
 	GardenAddr            string
 	LogLevel              string
 	ConsulCluster         string
@@ -50,6 +56,7 @@ func (r *Runner) Start() {
 	args := []string{
 		"-cellID", r.config.CellID,
 		"-listenAddr", fmt.Sprintf("0.0.0.0:%d", r.config.ServerPort),
+		"-listenAddrSecurable", fmt.Sprintf("0.0.0.0:%d", r.config.ServerPortSecurable),
 		"-bbsAddress", r.config.BBSAddress,
 		"-logLevel", r.config.LogLevel,
 		"-pollingInterval", r.config.PollingInterval.String(),
@@ -61,7 +68,14 @@ func (r *Runner) Start() {
 		"-gardenAddr", r.config.GardenAddr,
 		"-gardenHealthcheckProcessUser", "me",
 		"-gardenHealthcheckProcessPath", "ls",
+		"-requireTLS=" + strconv.FormatBool(r.config.RequireTLS),
 	}
+	if r.config.RequireTLS {
+		args = append(args, "-caFile", r.config.CaFile)
+		args = append(args, "-certFile", r.config.CertFile)
+		args = append(args, "-keyFile", r.config.KeyFile)
+	}
+
 	for _, rootfs := range r.config.PreloadedRootFSes {
 		args = append(args, "-preloadedRootFS", rootfs)
 	}

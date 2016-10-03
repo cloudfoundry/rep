@@ -15,6 +15,7 @@ func New(
 	executorClient executor.Client,
 	evacuatable evacuation_context.Evacuatable,
 	logger lager.Logger,
+	secure bool,
 ) rata.Handlers {
 	stateHandler := &state{rep: localCellClient}
 	performHandler := &perform{rep: localCellClient}
@@ -31,9 +32,10 @@ func New(
 
 		rep.StopLRPInstanceRoute: logWrap(stopLrpHandler.ServeHTTP, logger),
 		rep.CancelTaskRoute:      logWrap(cancelTaskHandler.ServeHTTP, logger),
-
-		rep.PingRoute:     logWrap(pingHandler.ServeHTTP, logger),
-		rep.EvacuateRoute: logWrap(evacuationHandler.ServeHTTP, logger),
+	}
+	if !secure {
+		handlers[rep.PingRoute] = logWrap(pingHandler.ServeHTTP, logger)
+		handlers[rep.EvacuateRoute] = logWrap(evacuationHandler.ServeHTTP, logger)
 	}
 
 	return handlers

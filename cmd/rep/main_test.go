@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path"
 	"regexp"
 	"runtime"
 	"strings"
@@ -42,6 +43,7 @@ var _ = Describe("The Rep", func() {
 		rootFSName        string
 		rootFSPath        string
 		logger            *lagertest.TestLogger
+		basePath          string
 
 		flushEvents chan struct{}
 	)
@@ -56,6 +58,8 @@ var _ = Describe("The Rep", func() {
 
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
+
+		basePath = path.Join(os.Getenv("GOPATH"), "src/code.cloudfoundry.org/rep/cmd/rep/fixtures")
 
 		Eventually(getActualLRPGroups(logger), 5*pollingInterval).Should(BeEmpty())
 		flushEvents = make(chan struct{})
@@ -99,6 +103,8 @@ var _ = Describe("The Rep", func() {
 			CellID:                cellID,
 			BBSAddress:            bbsURL.String(),
 			ServerPort:            serverPort,
+			ServerPortSecurable:   serverPortSecurable,
+			RequireTLS:            false,
 			GardenAddr:            fakeGarden.HTTPTestServer.Listener.Addr().String(),
 			LogLevel:              "debug",
 			ConsulCluster:         consulRunner.ConsulCluster(),
@@ -522,6 +528,77 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 						ServiceID:   "cell",
 						ServiceName: "cell",
 					}))
+			})
+		})
+
+		Describe("Secure Server", func() {
+			Context("when requireTLS is set to false", func() {
+				It("creates an insecure server", func() {
+					_, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d", serverPortSecurable))
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+			Context("when requireTLS is set to true", func() {
+				BeforeEach(func() {
+					config.RequireTLS = true
+				})
+				Context("when empty-string values for certificates are supplied", func() {
+					BeforeEach(func() {
+						config.CaFile = ""
+						config.CertFile = ""
+						config.KeyFile = ""
+						runner = testrunner.New(
+							representativePath,
+							config,
+						)
+						runner.StartCheck = ""
+					})
+					It("fails to start secure server", func() {
+						Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
+						Eventually(runner.Session.ExitCode).Should(Equal(2))
+					})
+				})
+				Context("when an incorrect server key is supplied", func() {
+					BeforeEach(func() {
+						config.CaFile = path.Join(basePath, "green-certs", "server-ca.crt")
+						config.CertFile = path.Join(basePath, "green-certs", "server.crt")
+						config.KeyFile = path.Join(basePath, "blue-certs", "server.key")
+						runner = testrunner.New(
+							representativePath,
+							config,
+						)
+						runner.StartCheck = ""
+					})
+					It("fails to start secure server", func() {
+						Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
+						Eventually(runner.Session.ExitCode).Should(Equal(2))
+					})
+				})
+				Context("when a correct server cert and key are supplied", func() {
+					BeforeEach(func() {
+						config.CaFile = path.Join(basePath, "green-certs", "server-ca.crt")
+						config.CertFile = path.Join(basePath, "green-certs", "server.crt")
+						config.KeyFile = path.Join(basePath, "green-certs", "server.key")
+						runner = testrunner.New(
+							representativePath,
+							config,
+						)
+					})
+
+					It("runs secure server", func() {
+						Eventually(runner.Session.Buffer()).ShouldNot(gbytes.Say("tls-configuration-failed"))
+					})
+
+					It("leaves the existing unsecurable rep server", func() {
+						resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
+						Expect(err).NotTo(HaveOccurred())
+						Expect(resp.StatusCode).To(Equal(http.StatusOK))
+
+						resp, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d/state", serverPort))
+						Expect(err).NotTo(HaveOccurred())
+						Expect(resp.StatusCode).To(Equal(http.StatusOK))
+					})
+				})
 			})
 		})
 	})

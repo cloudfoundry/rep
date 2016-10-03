@@ -49,7 +49,7 @@ var _ = BeforeEach(func() {
 	fakeExecutorClient = &executorfakes.FakeClient{}
 	fakeEvacuatable = &fake_evacuation_context.FakeEvacuatable{}
 
-	handler, err := rata.NewRouter(rep.Routes, handlers.New(auctionRep, fakeExecutorClient, fakeEvacuatable, logger))
+	handler, err := rata.NewRouter(rep.Routes, handlers.New(auctionRep, fakeExecutorClient, fakeEvacuatable, logger, false))
 	Expect(err).NotTo(HaveOccurred())
 	server = httptest.NewServer(handler)
 

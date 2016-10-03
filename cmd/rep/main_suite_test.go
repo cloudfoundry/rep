@@ -25,12 +25,13 @@ import (
 )
 
 var (
-	cellID             string
-	representativePath string
-	etcdRunner         *etcdstorerunner.ETCDClusterRunner
-	etcdPort, natsPort int
-	serverPort         int
-	consulRunner       *consulrunner.ClusterRunner
+	cellID              string
+	representativePath  string
+	etcdRunner          *etcdstorerunner.ETCDClusterRunner
+	etcdPort, natsPort  int
+	serverPort          int
+	serverPortSecurable int
+	consulRunner        *consulrunner.ClusterRunner
 
 	bbsArgs          bbstestrunner.Args
 	bbsBinPath       string
@@ -71,6 +72,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	etcdPort = 4001 + GinkgoParallelNode()
 	serverPort = 1800 + GinkgoParallelNode()
+	serverPortSecurable = 1901 + GinkgoParallelNode()
 
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1, nil)
 
