@@ -53,22 +53,22 @@ var requireTLS = flag.Bool(
 	"Whether to require mutual TLS for communication to the securable rep API server",
 )
 
-var caCert = flag.String(
-	"caCert",
+var caFile = flag.String(
+	"caFile",
 	"",
-	"PEM-encoded CA certificate",
+	"the certificate authority public key file to use with tls authentication",
 )
 
-var serverCert = flag.String(
-	"serverCert",
+var certFile = flag.String(
+	"certFile",
 	"",
-	"PEM-encoded server certificate",
+	"the public key file to use with tls authentication",
 )
 
-var serverKey = flag.String(
-	"serverKey",
+var keyFile = flag.String(
+	"keyFile",
 	"",
-	"PEM-encoded server key",
+	"the private key file to use with ssl authentication",
 )
 
 var cellID = flag.String(

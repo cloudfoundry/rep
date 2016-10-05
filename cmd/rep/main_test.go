@@ -105,14 +105,11 @@ var _ = Describe("The Rep", func() {
 			ServerPort:            serverPort,
 			ServerPortSecurable:   serverPortSecurable,
 			RequireTLS:            false,
-			// CaCert:                "",
-			// ServerCert:            "",
-			// ServerKey:             "",
-			GardenAddr:        fakeGarden.HTTPTestServer.Listener.Addr().String(),
-			LogLevel:          "debug",
-			ConsulCluster:     consulRunner.ConsulCluster(),
-			PollingInterval:   pollingInterval,
-			EvacuationTimeout: evacuationTimeout,
+			GardenAddr:            fakeGarden.HTTPTestServer.Listener.Addr().String(),
+			LogLevel:              "debug",
+			ConsulCluster:         consulRunner.ConsulCluster(),
+			PollingInterval:       pollingInterval,
+			EvacuationTimeout:     evacuationTimeout,
 		}
 
 		runner = testrunner.New(
@@ -547,9 +544,9 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 				})
 				Context("when empty-string values for certificates are supplied", func() {
 					BeforeEach(func() {
-						config.CaCert = ""
-						config.ServerCert = ""
-						config.ServerKey = ""
+						config.CaFile = ""
+						config.CertFile = ""
+						config.KeyFile = ""
 						runner = testrunner.New(
 							representativePath,
 							config,
@@ -563,9 +560,9 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 				})
 				Context("when an incorrect server key is supplied", func() {
 					BeforeEach(func() {
-						config.CaCert = path.Join(basePath, "green-certs", "server-ca.crt")
-						config.ServerCert = path.Join(basePath, "green-certs", "server.crt")
-						config.ServerKey = path.Join(basePath, "blue-certs", "server.key")
+						config.CaFile = path.Join(basePath, "green-certs", "server-ca.crt")
+						config.CertFile = path.Join(basePath, "green-certs", "server.crt")
+						config.KeyFile = path.Join(basePath, "blue-certs", "server.key")
 						runner = testrunner.New(
 							representativePath,
 							config,
@@ -579,9 +576,9 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 				})
 				Context("when a correct server cert and key are supplied", func() {
 					BeforeEach(func() {
-						config.CaCert = path.Join(basePath, "green-certs", "server-ca.crt")
-						config.ServerCert = path.Join(basePath, "green-certs", "server.crt")
-						config.ServerKey = path.Join(basePath, "green-certs", "server.key")
+						config.CaFile = path.Join(basePath, "green-certs", "server-ca.crt")
+						config.CertFile = path.Join(basePath, "green-certs", "server.crt")
+						config.KeyFile = path.Join(basePath, "green-certs", "server.key")
 						runner = testrunner.New(
 							representativePath,
 							config,

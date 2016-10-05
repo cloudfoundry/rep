@@ -30,9 +30,9 @@ type Config struct {
 	ServerPort            int
 	ServerPortSecurable   int
 	RequireTLS            bool
-	CaCert                string
-	ServerCert            string
-	ServerKey             string
+	CaFile                string
+	CertFile              string
+	KeyFile               string
 	GardenAddr            string
 	LogLevel              string
 	ConsulCluster         string
@@ -71,9 +71,9 @@ func (r *Runner) Start() {
 		"-requireTLS=" + strconv.FormatBool(r.config.RequireTLS),
 	}
 	if r.config.RequireTLS {
-		args = append(args, "-caCert", r.config.CaCert)
-		args = append(args, "-serverCert", r.config.ServerCert)
-		args = append(args, "-serverKey", r.config.ServerKey)
+		args = append(args, "-caFile", r.config.CaFile)
+		args = append(args, "-certFile", r.config.CertFile)
+		args = append(args, "-keyFile", r.config.KeyFile)
 	}
 
 	for _, rootfs := range r.config.PreloadedRootFSes {

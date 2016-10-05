@@ -291,7 +291,7 @@ func initializeServerSecurable(
 	port := strings.Split(*listenAddrSecurable, ":")[1]
 
 	if *requireTLS {
-		tlsConfig, err := cfhttp.NewTLSConfig(*serverCert, *serverKey, *caCert)
+		tlsConfig, err := cfhttp.NewTLSConfig(*certFile, *keyFile, *caFile)
 		if err != nil {
 			logger.Fatal("tls-configuration-failed", err)
 		}
