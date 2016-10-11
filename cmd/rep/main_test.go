@@ -364,6 +364,7 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 
 				cellPresence := cellSet[cellID]
 				Expect(cellPresence.CellId).To(Equal(cellID))
+				Expect(cellPresence.RepAddress).To(MatchRegexp(fmt.Sprintf(`http\:\/\/.*\:%d`, serverPort)))
 				Expect(cellPresence.PlacementTags).To(Equal([]string{"test"}))
 				Expect(cellPresence.OptionalPlacementTags).To(Equal([]string{"optional_tag"}))
 			})

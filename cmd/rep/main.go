@@ -151,8 +151,8 @@ func main() {
 	)
 
 	bbsClient := initializeBBSClient(logger)
-	httpServer, _ := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders, placementTags, optionalPlacementTags, false)
-	httpsServer, address := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders, placementTags, optionalPlacementTags, true)
+	httpServer, address := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders, placementTags, optionalPlacementTags, false)
+	httpsServer, _ := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders, placementTags, optionalPlacementTags, true)
 	opGenerator := generator.New(*cellID, bbsClient, executorClient, evacuationReporter, uint64(evacuationTimeout.Seconds()))
 	cleanup := evacuation.NewEvacuationCleanup(logger, *cellID, bbsClient, executorClient, clock)
 
