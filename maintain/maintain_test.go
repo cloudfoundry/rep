@@ -78,6 +78,7 @@ var _ = Describe("Maintain Presence", func() {
 		config = maintain.Config{
 			CellID:                "cell-id",
 			RepAddress:            "1.2.3.4",
+			RepUrl:                "https://cell-id.service.cf.internal",
 			Zone:                  "az1",
 			RetryInterval:         1 * time.Second,
 			RootFSProviders:       []string{"provider-1", "provider-2"},
@@ -185,6 +186,7 @@ var _ = Describe("Maintain Presence", func() {
 				expectedPresence := models.NewCellPresence(
 					"cell-id",
 					"1.2.3.4",
+					"https://cell-id.service.cf.internal",
 					"az1",
 					models.NewCellCapacity(128, 1024, 6),
 					[]string{"provider-1", "provider-2"},
