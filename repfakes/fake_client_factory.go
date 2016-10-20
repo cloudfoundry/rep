@@ -8,29 +8,32 @@ import (
 )
 
 type FakeClientFactory struct {
-	CreateClientStub        func(address string) rep.Client
+	CreateClientStub        func(address, url string) (rep.Client, error)
 	createClientMutex       sync.RWMutex
 	createClientArgsForCall []struct {
 		address string
+		url     string
 	}
 	createClientReturns struct {
 		result1 rep.Client
+		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeClientFactory) CreateClient(address string) rep.Client {
+func (fake *FakeClientFactory) CreateClient(address string, url string) (rep.Client, error) {
 	fake.createClientMutex.Lock()
 	fake.createClientArgsForCall = append(fake.createClientArgsForCall, struct {
 		address string
-	}{address})
-	fake.recordInvocation("CreateClient", []interface{}{address})
+		url     string
+	}{address, url})
+	fake.recordInvocation("CreateClient", []interface{}{address, url})
 	fake.createClientMutex.Unlock()
 	if fake.CreateClientStub != nil {
-		return fake.CreateClientStub(address)
+		return fake.CreateClientStub(address, url)
 	} else {
-		return fake.createClientReturns.result1
+		return fake.createClientReturns.result1, fake.createClientReturns.result2
 	}
 }
 
@@ -40,17 +43,18 @@ func (fake *FakeClientFactory) CreateClientCallCount() int {
 	return len(fake.createClientArgsForCall)
 }
 
-func (fake *FakeClientFactory) CreateClientArgsForCall(i int) string {
+func (fake *FakeClientFactory) CreateClientArgsForCall(i int) (string, string) {
 	fake.createClientMutex.RLock()
 	defer fake.createClientMutex.RUnlock()
-	return fake.createClientArgsForCall[i].address
+	return fake.createClientArgsForCall[i].address, fake.createClientArgsForCall[i].url
 }
 
-func (fake *FakeClientFactory) CreateClientReturns(result1 rep.Client) {
+func (fake *FakeClientFactory) CreateClientReturns(result1 rep.Client, result2 error) {
 	fake.CreateClientStub = nil
 	fake.createClientReturns = struct {
 		result1 rep.Client
-	}{result1}
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeClientFactory) Invocations() map[string][][]interface{} {

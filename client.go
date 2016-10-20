@@ -2,13 +2,17 @@ package rep
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/lager"
 	"github.com/tedsuo/rata"
 )
@@ -16,20 +20,116 @@ import (
 //go:generate counterfeiter -o repfakes/fake_client_factory.go . ClientFactory
 
 type ClientFactory interface {
-	CreateClient(address string) Client
+	CreateClient(address, url string) (Client, error)
+}
+
+// capture the behavior described in the comment of this story
+// https://www.pivotaltracker.com/story/show/130664747/comments/152863773
+type TLSConfig struct {
+	RequireTLS                    bool
+	CertFile, KeyFile, CaCertFile string
+	ClientCacheSize               int // the tls client cache size, 0 means use golang default value
+}
+
+// return true if all the certs files are set in the struct, i.e. not ""
+func (config *TLSConfig) hasCreds() bool {
+	return config.CaCertFile != "" &&
+		config.KeyFile != "" &&
+		config.CertFile != ""
+}
+
+// pick either the old address or the new rep_url depending on the announced
+// addresses and the tls config
+func (config *TLSConfig) pickURL(address, repURL string) (string, error) {
+	secure := false
+	if repURL != "" {
+		url, err := url.Parse(repURL)
+		if err != nil {
+			return "", err
+		}
+
+		if url.Scheme == "https" {
+			secure = true
+		}
+	}
+
+	if !config.RequireTLS && !config.hasCreds() {
+		// cannot use tls
+		if secure {
+			return "", errors.New("https scheme not supported since certificates aren't provided")
+		}
+		// prefer repURL
+		if repURL != "" {
+			return repURL, nil
+		}
+		return address, nil
+	} else if !config.RequireTLS {
+		// prefer tls but don't require it
+		if repURL != "" {
+			return repURL, nil
+		}
+		return address, nil
+	} else {
+		// must use tls
+		if !secure {
+			return "", errors.New("https scheme is required but none of the addresses support it")
+		}
+		return repURL, nil
+	}
+}
+
+func (tlsConfig *TLSConfig) modifyTransport(client *http.Client) error {
+	if !tlsConfig.hasCreds() {
+		return nil
+	}
+
+	if transport, ok := client.Transport.(*http.Transport); ok {
+		config, err := cfhttp.NewTLSConfig(tlsConfig.CertFile, tlsConfig.KeyFile, tlsConfig.CaCertFile)
+		if err != nil {
+			return err
+		}
+
+		config.ClientSessionCache = tls.NewLRUClientSessionCache(tlsConfig.ClientCacheSize)
+
+		transport.TLSClientConfig = config
+	}
+	return nil
 }
 
 type clientFactory struct {
 	httpClient  *http.Client
 	stateClient *http.Client
+	tlsConfig   *TLSConfig
 }
 
-func NewClientFactory(httpClient, stateClient *http.Client) ClientFactory {
-	return &clientFactory{httpClient, stateClient}
+func NewClientFactory(httpClient, stateClient *http.Client, tlsConfig *TLSConfig) (ClientFactory, error) {
+	if tlsConfig == nil {
+		// zero values tls config
+		tlsConfig = &TLSConfig{}
+	}
+
+	if err := tlsConfig.modifyTransport(httpClient); err != nil {
+		return nil, err
+	}
+
+	if err := tlsConfig.modifyTransport(stateClient); err != nil {
+		return nil, err
+	}
+
+	return &clientFactory{
+		httpClient:  httpClient,
+		stateClient: stateClient,
+		tlsConfig:   tlsConfig,
+	}, nil
 }
 
-func (factory *clientFactory) CreateClient(address string) Client {
-	return NewClient(factory.httpClient, factory.stateClient, address)
+func (factory *clientFactory) CreateClient(address, url string) (Client, error) {
+	urlToUse, err := factory.tlsConfig.pickURL(address, url)
+	if err != nil {
+		return nil, err
+	}
+
+	return newClient(factory.httpClient, factory.stateClient, urlToUse), nil
 }
 
 type AuctionCellClient interface {
@@ -61,7 +161,7 @@ type client struct {
 	requestGenerator *rata.RequestGenerator
 }
 
-func NewClient(httpClient, stateClient *http.Client, address string) Client {
+func newClient(httpClient, stateClient *http.Client, address string) Client {
 	return &client{
 		client:           httpClient,
 		stateClient:      stateClient,

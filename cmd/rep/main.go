@@ -168,7 +168,7 @@ func main() {
 	registrationRunner := initializeRegistrationRunner(logger, consulClient, portNum, clock)
 
 	members := grouper.Members{
-		{"presence", initializeCellPresence(address, serviceClient, executorClient, logger, supportedProviders, preloadedRootFSes, placementTags, optionalPlacementTags)},
+		{"presence", initializeCellPresence(address, serviceClient, executorClient, logger, supportedProviders, preloadedRootFSes, placementTags, optionalPlacementTags, true)},
 		{"http_server", httpServer},
 		{"https_server", httpsServer},
 		{"evacuation-cleanup", cleanup},
@@ -218,10 +218,21 @@ func initializeCellPresence(
 	preloadedRootFSes,
 	placementTags []string,
 	optionalPlacementTags []string,
+	secure bool,
 ) ifrit.Runner {
+
+	var repUrl string
+	port := strings.Split(*listenAddrSecurable, ":")[1]
+	if secure && *requireTLS {
+		repUrl = fmt.Sprintf("https://%s:%s", repURL(), port)
+	} else {
+		repUrl = fmt.Sprintf("http://%s:%s", repURL(), port)
+	}
+
 	config := maintain.Config{
 		CellID:                *cellID,
 		RepAddress:            address,
+		RepUrl:                repUrl,
 		Zone:                  *zone,
 		RetryInterval:         *lockRetryInterval,
 		RootFSProviders:       rootFSProviders,
@@ -229,6 +240,7 @@ func initializeCellPresence(
 		PlacementTags:         placementTags,
 		OptionalPlacementTags: optionalPlacementTags,
 	}
+
 	return maintain.New(logger, config, executorClient, serviceClient, *lockTTL, clock.NewClock())
 }
 
@@ -310,18 +322,30 @@ func initializeBBSClient(logger lager.Logger) bbs.InternalClient {
 	return bbsClient
 }
 
+func repHost() string {
+	return strings.Replace(*cellID, "_", "-", -1)
+}
+
+func repBaseHostName() string {
+	return strings.Split(*advertiseDomain, ".")[0]
+}
+
+func repURL() string {
+	return repHost() + "." + *advertiseDomain
+}
+
 func initializeRegistrationRunner(
 	logger lager.Logger,
 	consulClient consuladapter.Client,
 	port int,
 	clock clock.Clock) ifrit.Runner {
 	registration := &api.AgentServiceRegistration{
-		Name: "cell",
+		Name: repBaseHostName(),
 		Port: port,
 		Check: &api.AgentServiceCheck{
 			TTL: "3s",
 		},
-		Tags: []string{strings.Replace(*cellID, "_", "-", -1)},
+		Tags: []string{repHost()},
 	}
 	return locket.NewRegistrationRunner(logger, registration, consulClient, locket.RetryInterval, clock)
 }

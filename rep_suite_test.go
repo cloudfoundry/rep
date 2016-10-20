@@ -25,6 +25,7 @@ var (
 	auctionRep       *repfakes.FakeClient
 	server           *httptest.Server
 	serverThatErrors *ghttp.Server
+	factory          rep.ClientFactory
 
 	client, clientForServerThatErrors rep.Client
 
@@ -53,7 +54,12 @@ var _ = BeforeEach(func() {
 	Expect(err).NotTo(HaveOccurred())
 	server = httptest.NewServer(handler)
 
-	client = rep.NewClient(&http.Client{}, &http.Client{}, server.URL)
+	httpClient := cfhttp.NewClient()
+	factory, err = rep.NewClientFactory(httpClient, httpClient, nil)
+	Expect(err).NotTo(HaveOccurred())
+
+	client, err = factory.CreateClient(server.URL, "")
+	Expect(err).NotTo(HaveOccurred())
 
 	serverThatErrors = ghttp.NewServer()
 	erroringHandler := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
@@ -62,7 +68,8 @@ var _ = BeforeEach(func() {
 	//5 erroringHandlers should be more than enough: none of the individual tests should make more than 5 requests to this server
 	serverThatErrors.AppendHandlers(erroringHandler, erroringHandler, erroringHandler, erroringHandler, erroringHandler)
 
-	clientForServerThatErrors = rep.NewClient(&http.Client{}, &http.Client{}, serverThatErrors.URL())
+	clientForServerThatErrors, err = factory.CreateClient(serverThatErrors.URL(), "")
+	Expect(err).NotTo(HaveOccurred())
 })
 
 var _ = AfterEach(func() {

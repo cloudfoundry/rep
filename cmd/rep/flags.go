@@ -119,6 +119,12 @@ var bbsAddress = flag.String(
 	"Address to the BBS Server",
 )
 
+var advertiseDomain = flag.String(
+	"advertiseDomain",
+	"cell.service.cf.internal",
+	"base domain at which the rep advertises its secure domain api",
+)
+
 var bbsCACert = flag.String(
 	"bbsCACert",
 	"",
