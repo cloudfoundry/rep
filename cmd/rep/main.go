@@ -14,13 +14,13 @@ import (
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/cfhttp"
-	"code.cloudfoundry.org/cflager"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/debugserver"
 	"code.cloudfoundry.org/executor"
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/operationq"
@@ -49,7 +49,7 @@ const (
 
 func main() {
 	debugserver.AddFlags(flag.CommandLine)
-	cflager.AddFlags(flag.CommandLine)
+	lagerflags.AddFlags(flag.CommandLine)
 
 	stackMap := stackPathMap{}
 	flag.Var(&stackMap, "preloadedRootFS", "List of preloaded RootFSes")
@@ -79,7 +79,7 @@ func main() {
 	cfhttp.Initialize(*communicationTimeout)
 
 	clock := clock.NewClock()
-	logger, reconfigurableSink := cflager.New(*sessionName)
+	logger, reconfigurableSink := lagerflags.New(*sessionName)
 
 	var (
 		executorConfiguration   executorinit.Configuration
