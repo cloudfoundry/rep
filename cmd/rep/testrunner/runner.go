@@ -20,24 +20,25 @@ type Runner struct {
 }
 
 type Config struct {
-	PreloadedRootFSes     []string
-	RootFSProviders       []string
-	PlacementTags         []string
-	OptionalPlacementTags []string
-	CACertsForDownloads   string
-	CellID                string
-	BBSAddress            string
-	ServerPort            int
-	ServerPortSecurable   int
-	RequireTLS            bool
-	CaFile                string
-	CertFile              string
-	KeyFile               string
-	GardenAddr            string
-	LogLevel              string
-	ConsulCluster         string
-	PollingInterval       time.Duration
-	EvacuationTimeout     time.Duration
+	PreloadedRootFSes          []string
+	RootFSProviders            []string
+	PlacementTags              []string
+	OptionalPlacementTags      []string
+	CACertsForDownloads        string
+	CellID                     string
+	BBSAddress                 string
+	ServerPort                 int
+	ServerPortSecurable        int
+	RequireTLS                 bool
+	CaFile                     string
+	CertFile                   string
+	KeyFile                    string
+	GardenAddr                 string
+	LogLevel                   string
+	ConsulCluster              string
+	PollingInterval            time.Duration
+	EvacuationTimeout          time.Duration
+	EnableInsecurableApiServer bool
 }
 
 func New(binPath string, config Config) *Runner {
@@ -69,6 +70,7 @@ func (r *Runner) Start() {
 		"-gardenHealthcheckProcessUser", "me",
 		"-gardenHealthcheckProcessPath", "ls",
 		"-requireTLS=" + strconv.FormatBool(r.config.RequireTLS),
+		"-enableInsecurableApiServer=" + strconv.FormatBool(r.config.EnableInsecurableApiServer),
 	}
 	if r.config.RequireTLS {
 		args = append(args, "-caFile", r.config.CaFile)

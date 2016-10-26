@@ -125,6 +125,12 @@ var advertiseDomain = flag.String(
 	"base domain at which the rep advertises its secure domain api",
 )
 
+var enableInsecurableApiServer = flag.Bool(
+	"enableInsecurableApiServer",
+	true,
+	"Whether to enable the auction, LRP, and Task endpoints on the legacy, insecurable API server",
+)
+
 var bbsCACert = flag.String(
 	"bbsCACert",
 	"",

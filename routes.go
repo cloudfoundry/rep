@@ -16,14 +16,18 @@ const (
 )
 
 func NewRoutes(secure bool) rata.Routes {
-	routes := rata.Routes{
-		{Path: "/state", Method: "GET", Name: StateRoute},
-		{Path: "/work", Method: "POST", Name: PerformRoute},
+	var routes rata.Routes
 
-		{Path: "/v1/lrps/:process_guid/instances/:instance_guid/stop", Method: "POST", Name: StopLRPInstanceRoute},
-		{Path: "/v1/tasks/:task_guid/cancel", Method: "POST", Name: CancelTaskRoute},
+	if secure {
+		routes = append(routes,
+			rata.Route{Path: "/state", Method: "GET", Name: StateRoute},
+			rata.Route{Path: "/work", Method: "POST", Name: PerformRoute},
 
-		{Path: "/sim/reset", Method: "POST", Name: Sim_ResetRoute},
+			rata.Route{Path: "/v1/lrps/:process_guid/instances/:instance_guid/stop", Method: "POST", Name: StopLRPInstanceRoute},
+			rata.Route{Path: "/v1/tasks/:task_guid/cancel", Method: "POST", Name: CancelTaskRoute},
+
+			rata.Route{Path: "/sim/reset", Method: "POST", Name: Sim_ResetRoute},
+		)
 	}
 
 	if !secure {
@@ -36,5 +40,6 @@ func NewRoutes(secure bool) rata.Routes {
 
 }
 
-var Routes = NewRoutes(false)
+var RoutesInsecure = NewRoutes(false)
 var RoutesSecure = NewRoutes(true)
+var Routes = append(RoutesInsecure, RoutesSecure...)

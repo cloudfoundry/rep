@@ -96,20 +96,21 @@ var _ = Describe("The Rep", func() {
 		rootFSArg := fmt.Sprintf("%s:%s", rootFSName, rootFSPath)
 
 		config = testrunner.Config{
-			PreloadedRootFSes:     []string{rootFSArg},
-			RootFSProviders:       []string{"docker"},
-			PlacementTags:         []string{"test"},
-			OptionalPlacementTags: []string{"optional_tag"},
-			CellID:                cellID,
-			BBSAddress:            bbsURL.String(),
-			ServerPort:            serverPort,
-			ServerPortSecurable:   serverPortSecurable,
-			RequireTLS:            false,
-			GardenAddr:            fakeGarden.HTTPTestServer.Listener.Addr().String(),
-			LogLevel:              "debug",
-			ConsulCluster:         consulRunner.ConsulCluster(),
-			PollingInterval:       pollingInterval,
-			EvacuationTimeout:     evacuationTimeout,
+			PreloadedRootFSes:          []string{rootFSArg},
+			RootFSProviders:            []string{"docker"},
+			PlacementTags:              []string{"test"},
+			OptionalPlacementTags:      []string{"optional_tag"},
+			CellID:                     cellID,
+			BBSAddress:                 bbsURL.String(),
+			ServerPort:                 serverPort,
+			ServerPortSecurable:        serverPortSecurable,
+			RequireTLS:                 false,
+			GardenAddr:                 fakeGarden.HTTPTestServer.Listener.Addr().String(),
+			LogLevel:                   "debug",
+			ConsulCluster:              consulRunner.ConsulCluster(),
+			PollingInterval:            pollingInterval,
+			EvacuationTimeout:          evacuationTimeout,
+			EnableInsecurableApiServer: true,
 		}
 
 		runner = testrunner.New(
@@ -672,14 +673,100 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 						Eventually(runner.Session.Buffer()).ShouldNot(gbytes.Say("tls-configuration-failed"))
 					})
 
-					It("leaves the existing unsecurable rep server", func() {
-						resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
-						Expect(err).NotTo(HaveOccurred())
-						Expect(resp.StatusCode).To(Equal(http.StatusOK))
+					Context("when server is insecurable", func() {
+						BeforeEach(func() {
+							config.EnableInsecurableApiServer = true
 
-						resp, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d/state", serverPort))
-						Expect(err).NotTo(HaveOccurred())
-						Expect(resp.StatusCode).To(Equal(http.StatusOK))
+							runner = testrunner.New(
+								representativePath,
+								config,
+							)
+						})
+
+						Context("for the secure server", func() {
+							var client *http.Client
+							BeforeEach(func() {
+								tlsConfig = &rep.TLSConfig{
+									RequireTLS: true,
+									CaCertFile: caFile,
+									KeyFile:    clientKeyFile,
+									CertFile:   clientCertFile,
+								}
+								config, err := cfhttp.NewTLSConfig(tlsConfig.CertFile, tlsConfig.KeyFile, tlsConfig.CaCertFile)
+								Expect(err).NotTo(HaveOccurred())
+								client = &http.Client{Transport: &http.Transport{TLSClientConfig: config}}
+							})
+
+							It("does not have unsecured routes on the secure server", func() {
+								resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPortSecurable))
+								Expect(err).NotTo(HaveOccurred())
+								Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
+							})
+
+							It("has secured routes on the secure server", func() {
+								resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/state", serverPortSecurable))
+								Expect(err).NotTo(HaveOccurred())
+								Expect(resp.StatusCode).To(Equal(http.StatusOK))
+							})
+						})
+
+						It("has all secure and insecure routes on the unsecured server", func() {
+							resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
+							Expect(err).NotTo(HaveOccurred())
+							Expect(resp.StatusCode).To(Equal(http.StatusOK))
+
+							resp, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d/state", serverPort))
+							Expect(err).NotTo(HaveOccurred())
+							Expect(resp.StatusCode).To(Equal(http.StatusOK))
+						})
+					})
+
+					Context("when server is not insecurable", func() {
+						BeforeEach(func() {
+							config.EnableInsecurableApiServer = false
+
+							runner = testrunner.New(
+								representativePath,
+								config,
+							)
+						})
+
+						Context("for the secure server", func() {
+							var client *http.Client
+							BeforeEach(func() {
+								tlsConfig = &rep.TLSConfig{
+									RequireTLS: true,
+									CaCertFile: caFile,
+									KeyFile:    clientKeyFile,
+									CertFile:   clientCertFile,
+								}
+								config, err := cfhttp.NewTLSConfig(tlsConfig.CertFile, tlsConfig.KeyFile, tlsConfig.CaCertFile)
+								Expect(err).NotTo(HaveOccurred())
+								client = &http.Client{Transport: &http.Transport{TLSClientConfig: config}}
+							})
+
+							It("does not have insecure routes on the secure server", func() {
+								resp, _ := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPortSecurable))
+								Expect(err).NotTo(HaveOccurred())
+								Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
+							})
+
+							It("has secure routes on the secure server", func() {
+								resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/state", serverPortSecurable))
+								Expect(err).NotTo(HaveOccurred())
+								Expect(resp.StatusCode).To(Equal(http.StatusOK))
+							})
+						})
+
+						It("has only insecure routes on the unsecured server", func() {
+							resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
+							Expect(err).NotTo(HaveOccurred())
+							Expect(resp.StatusCode).To(Equal(http.StatusOK))
+
+							resp, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d/state", serverPort))
+							Expect(err).NotTo(HaveOccurred())
+							Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
+						})
 					})
 
 					Context("ClientFactory", func() {

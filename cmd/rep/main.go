@@ -258,8 +258,8 @@ func initializeServer(
 ) (ifrit.Runner, string) {
 	auctionCellRep := auction_cell_rep.New(*cellID, stackMap, supportedProviders, *zone, generateGuid, executorClient, evacuationReporter, placementTags, optionalPlacementTags)
 
-	handlers := handlers.New(auctionCellRep, executorClient, evacuatable, logger, secure)
-	routes := rep.NewRoutes(secure)
+	handlers := getHandlers(auctionCellRep, executorClient, evacuatable, logger, secure)
+	routes := getRoutes(secure)
 	router, err := rata.NewRouter(routes, handlers)
 
 	if err != nil {
@@ -303,6 +303,26 @@ func generateGuid() (string, error) {
 		return "", err
 	}
 	return guid.String(), nil
+}
+
+func getHandlers(
+	auctionCellRep rep.AuctionCellClient,
+	executorClient executor.Client,
+	evacuatable evacuation_context.Evacuatable,
+	logger lager.Logger,
+	isSecureServer bool) rata.Handlers {
+
+	if *enableInsecurableApiServer && !isSecureServer {
+		return handlers.NewLegacy(auctionCellRep, executorClient, evacuatable, logger)
+	}
+	return handlers.New(auctionCellRep, executorClient, evacuatable, logger, isSecureServer)
+}
+
+func getRoutes(isSecureServer bool) rata.Routes {
+	if *enableInsecurableApiServer && !isSecureServer {
+		return rep.Routes
+	}
+	return rep.NewRoutes(isSecureServer)
 }
 
 func initializeBBSClient(logger lager.Logger) bbs.InternalClient {
