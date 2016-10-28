@@ -70,7 +70,7 @@ func (r *Runner) Start() {
 		"-gardenHealthcheckProcessUser", "me",
 		"-gardenHealthcheckProcessPath", "ls",
 		"-requireTLS=" + strconv.FormatBool(r.config.RequireTLS),
-		"-enableInsecurableApiServer=" + strconv.FormatBool(r.config.EnableInsecurableApiServer),
+		"-enableLegacyApiServer=" + strconv.FormatBool(r.config.EnableInsecurableApiServer),
 	}
 	if r.config.RequireTLS {
 		args = append(args, "-caFile", r.config.CaFile)
