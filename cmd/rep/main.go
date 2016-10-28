@@ -312,14 +312,14 @@ func getHandlers(
 	logger lager.Logger,
 	isSecureServer bool) rata.Handlers {
 
-	if *enableInsecurableApiServer && !isSecureServer {
+	if *enableLegacyApiServer && !isSecureServer {
 		return handlers.NewLegacy(auctionCellRep, executorClient, evacuatable, logger)
 	}
 	return handlers.New(auctionCellRep, executorClient, evacuatable, logger, isSecureServer)
 }
 
 func getRoutes(isSecureServer bool) rata.Routes {
-	if *enableInsecurableApiServer && !isSecureServer {
+	if *enableLegacyApiServer && !isSecureServer {
 		return rep.Routes
 	}
 	return rep.NewRoutes(isSecureServer)
