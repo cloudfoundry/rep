@@ -267,7 +267,7 @@ var _ = Describe("Maintain Presence", func() {
 					for i := 2; i < 6; i++ {
 						pingErrors <- nil
 						Eventually(fakeClient.PingCallCount).Should(Equal(i))
-						clock.Increment(1 * time.Second)
+						clock.WaitForWatcherAndIncrement(1 * time.Second)
 					}
 				})
 
