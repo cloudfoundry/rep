@@ -154,6 +154,21 @@ var _ = Describe("EvacuationCleanup", func() {
 				Expect(guid).To(Equal("container2"))
 			})
 
+			// https://www.pivotaltracker.com/story/show/133061923
+			Describe("when StopContainer hangs", func() {
+				BeforeEach(func() {
+					fakeExecutorClient.StopContainerStub = func(lager.Logger, string) error {
+						time.Sleep(time.Minute)
+						return nil
+					}
+				})
+
+				It("gives up after 15 seconds", func() {
+					fakeClock.WaitForNWatchersAndIncrement(15*time.Second, 2)
+					Eventually(doneCh).Should(BeClosed())
+				})
+			})
+
 			Describe("when ListContainers fails the first time", func() {
 				BeforeEach(func() {
 					fakeExecutorClient.ListContainersStub = func(lager.Logger) ([]executor.Container, error) {

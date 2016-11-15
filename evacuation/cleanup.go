@@ -85,49 +85,71 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 
 	exitTimer := e.clock.NewTimer(ExitTimeout)
 	checkRunningContainersTimer := e.clock.NewTicker(1 * time.Second)
+	containersSignalled := make(chan struct{})
+	containersStopped := make(chan struct{})
+	go e.signalRunningContainers(logger, containersSignalled)
+	go e.checkRunningContainers(logger, checkRunningContainersTimer.C(), containersSignalled, containersStopped)
 
-	e.stopRunningContainers(logger)
-
-	logger.Info("sent-signal-to-containers")
-
-	for e.hasRunningContainers(logger) {
-		select {
-		case <-exitTimer.C():
-			// exit after ExitTimeout has passed
-			return errors.New("failed-to-cleanup-all-containers")
-		case <-checkRunningContainersTimer.C():
-			continue
-		}
+	select {
+	case <-exitTimer.C():
+		// exit after ExitTimeout has passed
+		logger.Info("failed-to-cleanup-all-containers")
+		return errors.New("failed-to-cleanup-all-containers")
+	case <-containersStopped:
+		logger.Info("stopped-containers-successfully")
+		return nil
 	}
-
-	logger.Info("stopped-containers-successfully")
-	return nil
 }
 
-func (e *EvacuationCleanup) hasRunningContainers(logger lager.Logger) bool {
-	containers, err := e.executorClient.ListContainers(logger)
-	if err != nil {
-		logger.Error("failed-listing-containers", err)
+func (e *EvacuationCleanup) checkRunningContainers(
+	logger lager.Logger,
+	ticker <-chan time.Time,
+	containersSignalled <-chan struct{},
+	containersStopped chan<- struct{},
+) {
+	hasRunningContainers := func() bool {
+		containers, err := e.executorClient.ListContainers(logger)
+		if err != nil {
+			logger.Error("failed-listing-containers", err)
+			// assume no container is running if we can't list them
+			return false
+		}
+
+		for _, container := range containers {
+			if container.State == executor.StateRunning {
+				return true
+			}
+		}
+
 		return false
 	}
 
-	for _, container := range containers {
-		if container.State == executor.StateRunning {
-			return true
-		}
-	}
+	defer close(containersStopped)
 
-	return false
+	// wait for all containers to be signalled, this only makes the tests easier
+	// to write since they depend on the signalling and checking to happen
+	// sequentially, but isn't necessary for the operation of the cleanup
+	<-containersSignalled
+	for hasRunningContainers() {
+		logger.Info("waiting-for-containers-to-stop")
+		<-ticker
+	}
 }
 
-func (e *EvacuationCleanup) stopRunningContainers(logger lager.Logger) {
+func (e *EvacuationCleanup) signalRunningContainers(logger lager.Logger, containersSignalled chan<- struct{}) {
+	defer close(containersSignalled)
+
 	containers, err := e.executorClient.ListContainers(logger)
 	if err != nil {
 		logger.Error("failed-listing-containers", err)
 		return
 	}
 
+	logger.Info("sending-signal-to-containers")
+
 	for _, container := range containers {
 		e.executorClient.StopContainer(logger, container.Guid)
 	}
+
+	logger.Info("sent-signal-to-containers")
 }
