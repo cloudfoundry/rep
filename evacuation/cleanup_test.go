@@ -106,12 +106,12 @@ var _ = Describe("EvacuationCleanup", func() {
 						{Guid: "container1", State: executor.StateRunning},
 						{Guid: "container2", State: executor.StateRunning},
 					}, nil
-				} else {
-					return []executor.Container{
-						{Guid: "container1", State: executor.StateCompleted},
-						{Guid: "container2", State: executor.StateCompleted},
-					}, nil
 				}
+
+				return []executor.Container{
+					{Guid: "container1", State: executor.StateCompleted},
+					{Guid: "container2", State: executor.StateCompleted},
+				}, nil
 			}
 		})
 
