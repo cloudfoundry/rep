@@ -152,7 +152,7 @@ var _ = SynchronizedAfterSuite(func() {
 		etcdRunner.KillWithFire()
 	}
 	if consulRunner != nil {
-		consulRunner.Stop()
+		consulRunner.KillWithFire()
 	}
 	if runner != nil {
 		runner.KillWithFire()
