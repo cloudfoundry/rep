@@ -13,6 +13,8 @@ import (
 	"code.cloudfoundry.org/rep/generator/internal"
 	"code.cloudfoundry.org/rep/generator/internal/fake_internal"
 
+	fake_metrics_sender "github.com/cloudfoundry/dropsonde/metric_sender/fake"
+	"github.com/cloudfoundry/dropsonde/metrics"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -21,6 +23,7 @@ var processor internal.TaskProcessor
 
 var _ = Describe("Task <-> Container table", func() {
 	var containerDelegate *fake_internal.FakeContainerDelegate
+	var fakeMetricSender *fake_metrics_sender.FakeMetricSender
 
 	const (
 		taskGuid      = "my-guid"
@@ -37,6 +40,9 @@ var _ = Describe("Task <-> Container table", func() {
 		containerDelegate.DeleteContainerReturns(true)
 		containerDelegate.StopContainerReturns(true)
 		containerDelegate.RunContainerReturns(true)
+
+		fakeMetricSender = fake_metrics_sender.NewFakeMetricSender()
+		metrics.Initialize(fakeMetricSender, nil)
 	})
 
 	itDeletesTheContainer := func(logger *lagertest.TestLogger) {
@@ -56,6 +62,7 @@ var _ = Describe("Task <-> Container table", func() {
 				Expect(task.State).To(Equal(models.Task_Completed))
 				Expect(task.Failed).To(BeTrue())
 				Expect(task.FailureReason).To(Equal(reason))
+				Expect(fakeMetricSender.GetCounter("CellTasksFailed")).To(BeEquivalentTo(1))
 			})
 		}
 	}
@@ -89,6 +96,7 @@ var _ = Describe("Task <-> Container table", func() {
 				Expect(guid).To(Equal(taskGuid))
 				Expect(filename).To(Equal("some-result-filename"))
 				Expect(task.Result).To(Equal("some-result"))
+				Expect(fakeMetricSender.GetCounter("CellTasksFailed")).To(BeEquivalentTo(0))
 			})
 
 			itDeletesTheContainer(logger)

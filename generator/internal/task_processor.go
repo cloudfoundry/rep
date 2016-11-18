@@ -4,6 +4,7 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/rep"
+	"code.cloudfoundry.org/runtimeschema/metric"
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/lager"
@@ -13,6 +14,8 @@ const TaskCompletionReasonMissingContainer = "task container does not exist"
 const TaskCompletionReasonFailedToRunContainer = "failed to run container"
 const TaskCompletionReasonInvalidTransition = "invalid state transition"
 const TaskCompletionReasonFailedToFetchResult = "failed to fetch result"
+
+var TasksFailed = metric.Counter("CellTasksFailed")
 
 //go:generate counterfeiter -o fake_internal/fake_task_processor.go task_processor.go TaskProcessor
 
@@ -119,6 +122,7 @@ func (p *taskProcessor) startTask(logger lager.Logger, guid string) bool {
 func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Container) {
 	var result string
 	var err error
+
 	if !container.RunResult.Failed {
 		result, err = p.containerDelegate.FetchContainerResultFile(logger, container.Guid, container.Tags[rep.ResultFileTag])
 		if err != nil {
@@ -137,6 +141,10 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 			p.failTask(logger, container.Guid, TaskCompletionReasonInvalidTransition)
 		}
 		return
+	} else if container.RunResult.Failed {
+		// When we have done BBS.CompleteTask on a failed Task increment the counter
+		// It will be incremented on every call to FailTask in the p.failTask() method
+		TasksFailed.Increment()
 	}
 
 	logger.Info("succeeded-completing-task")
@@ -150,5 +158,6 @@ func (p *taskProcessor) failTask(logger lager.Logger, guid string, reason string
 		return
 	}
 
+	TasksFailed.Increment()
 	logger.Info("succeeded-failing-task")
 }
