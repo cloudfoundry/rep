@@ -63,6 +63,7 @@ var _ = Describe("Task <-> Container table", func() {
 				Expect(task.Failed).To(BeTrue())
 				Expect(task.FailureReason).To(Equal(reason))
 				Expect(fakeMetricSender.GetCounter("CellTasksFailed")).To(BeEquivalentTo(1))
+				Expect(fakeMetricSender.GetCounter("CellTasksSucceeded")).To(BeEquivalentTo(0))
 			})
 		}
 	}
@@ -97,6 +98,7 @@ var _ = Describe("Task <-> Container table", func() {
 				Expect(filename).To(Equal("some-result-filename"))
 				Expect(task.Result).To(Equal("some-result"))
 				Expect(fakeMetricSender.GetCounter("CellTasksFailed")).To(BeEquivalentTo(0))
+				Expect(fakeMetricSender.GetCounter("CellTasksSucceeded")).To(BeEquivalentTo(1))
 			})
 
 			itDeletesTheContainer(logger)
@@ -136,6 +138,8 @@ var _ = Describe("Task <-> Container table", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(task.State).To(Equal(models.Task_Running))
+
+			Expect(fakeMetricSender.GetCounter("CellTasksStarted")).To(BeEquivalentTo(1))
 		})
 	}
 

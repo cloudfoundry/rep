@@ -16,6 +16,8 @@ const TaskCompletionReasonInvalidTransition = "invalid state transition"
 const TaskCompletionReasonFailedToFetchResult = "failed to fetch result"
 
 var TasksFailed = metric.Counter("CellTasksFailed")
+var TasksStarted = metric.Counter("CellTasksStarted")
+var TasksSucceeded = metric.Counter("CellTasksSucceeded")
 
 //go:generate counterfeiter -o fake_internal/fake_task_processor.go task_processor.go TaskProcessor
 
@@ -87,6 +89,7 @@ func (p *taskProcessor) processActiveContainer(logger lager.Logger, container ex
 	if !ok {
 		p.failTask(logger, container.Guid, TaskCompletionReasonFailedToRunContainer)
 	}
+	TasksStarted.Increment()
 }
 
 func (p *taskProcessor) processCompletedContainer(logger lager.Logger, container executor.Container) {
@@ -129,6 +132,7 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 			p.failTask(logger, container.Guid, TaskCompletionReasonFailedToFetchResult)
 			return
 		}
+		TasksSucceeded.Increment()
 	}
 
 	logger.Info("completing-task")
