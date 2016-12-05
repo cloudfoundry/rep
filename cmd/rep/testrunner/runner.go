@@ -1,10 +1,14 @@
 package testrunner
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"os/exec"
-	"strconv"
 	"time"
+
+	"code.cloudfoundry.org/rep/cmd/rep/config"
 
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,40 +17,25 @@ import (
 )
 
 type Runner struct {
-	binPath    string
-	Session    *gexec.Session
-	StartCheck string
-	config     Config
+	binPath           string
+	Session           *gexec.Session
+	StartCheck        string
+	repConfig         config.RepConfig
+	repConfigFilePath string
 }
+type Duration time.Duration
 
-type Config struct {
-	PreloadedRootFSes          []string
-	RootFSProviders            []string
-	PlacementTags              []string
-	OptionalPlacementTags      []string
-	CACertsForDownloads        string
-	CellID                     string
-	BBSAddress                 string
-	ServerPort                 int
-	ServerPortSecurable        int
-	RequireTLS                 bool
-	CaFile                     string
-	CertFile                   string
-	KeyFile                    string
-	GardenAddr                 string
-	LogLevel                   string
-	ConsulCluster              string
-	PollingInterval            time.Duration
-	EvacuationTimeout          time.Duration
-	EnableInsecurableApiServer bool
-}
-
-func New(binPath string, config Config) *Runner {
+func New(binPath string, repConfig config.RepConfig) *Runner {
 	return &Runner{
 		binPath:    binPath,
 		StartCheck: "rep.started",
-		config:     config,
+		repConfig:  repConfig,
 	}
+}
+
+func (d *Duration) MarshalJSON() ([]byte, error) {
+	t := time.Duration(*d)
+	return []byte(fmt.Sprintf(`"%s"`, t.String())), nil
 }
 
 func (r *Runner) Start() {
@@ -54,44 +43,18 @@ func (r *Runner) Start() {
 		panic("starting more than one rep!!!")
 	}
 
-	args := []string{
-		"-cellID", r.config.CellID,
-		"-listenAddr", fmt.Sprintf("0.0.0.0:%d", r.config.ServerPort),
-		"-listenAddrSecurable", fmt.Sprintf("0.0.0.0:%d", r.config.ServerPortSecurable),
-		"-bbsAddress", r.config.BBSAddress,
-		"-logLevel", r.config.LogLevel,
-		"-pollingInterval", r.config.PollingInterval.String(),
-		"-evacuationTimeout", r.config.EvacuationTimeout.String(),
-		"-lockRetryInterval", "1s",
-		"-consulCluster", r.config.ConsulCluster,
-		"-containerMaxCpuShares", "1024",
-		"-gardenNetwork", "tcp",
-		"-gardenAddr", r.config.GardenAddr,
-		"-gardenHealthcheckProcessUser", "me",
-		"-gardenHealthcheckProcessPath", "ls",
-		"-requireTLS=" + strconv.FormatBool(r.config.RequireTLS),
-		"-enableLegacyApiServer=" + strconv.FormatBool(r.config.EnableInsecurableApiServer),
-	}
-	if r.config.RequireTLS {
-		args = append(args, "-caFile", r.config.CaFile)
-		args = append(args, "-certFile", r.config.CertFile)
-		args = append(args, "-keyFile", r.config.KeyFile)
-	}
+	f, err := ioutil.TempFile("", "rep")
+	Expect(err).NotTo(HaveOccurred())
 
-	for _, rootfs := range r.config.PreloadedRootFSes {
-		args = append(args, "-preloadedRootFS", rootfs)
-	}
-	for _, provider := range r.config.RootFSProviders {
-		args = append(args, "-rootFSProvider", provider)
-	}
-	for _, tag := range r.config.PlacementTags {
-		args = append(args, "-placementTag", tag)
-	}
-	for _, tag := range r.config.OptionalPlacementTags {
-		args = append(args, "-optionalPlacementTag", tag)
-	}
-	if r.config.CACertsForDownloads != "" {
-		args = append(args, "-caCertsForDownloads", r.config.CACertsForDownloads)
+	encoder := json.NewEncoder(f)
+
+	err = encoder.Encode(r.repConfig)
+	Expect(err).NotTo(HaveOccurred())
+
+	r.repConfigFilePath = f.Name()
+
+	args := []string{
+		"--config", r.repConfigFilePath,
 	}
 
 	repSession, err := gexec.Start(
@@ -110,12 +73,18 @@ func (r *Runner) Start() {
 }
 
 func (r *Runner) Stop() {
+	err := os.RemoveAll(r.repConfigFilePath)
+	Expect(err).NotTo(HaveOccurred())
+
 	if r.Session != nil {
 		r.Session.Interrupt().Wait(5 * time.Second)
 	}
 }
 
 func (r *Runner) KillWithFire() {
+	err := os.RemoveAll(r.repConfigFilePath)
+	Expect(err).NotTo(HaveOccurred())
+
 	if r.Session != nil {
 		r.Session.Kill().Wait(5 * time.Second)
 	}

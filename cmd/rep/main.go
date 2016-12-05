@@ -26,6 +26,7 @@ import (
 	"code.cloudfoundry.org/operationq"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/auction_cell_rep"
+	"code.cloudfoundry.org/rep/cmd/rep/config"
 	"code.cloudfoundry.org/rep/evacuation"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
 	"code.cloudfoundry.org/rep/generator"
@@ -47,55 +48,43 @@ const (
 	bbsPingTimeout  = 5 * time.Minute
 )
 
+var configFilePath = flag.String(
+	"config",
+	"",
+	"The path to the JSON configuration file.",
+)
+
 func main() {
-	debugserver.AddFlags(flag.CommandLine)
-	lagerflags.AddFlags(flag.CommandLine)
-
-	stackMap := stackPathMap{}
-	flag.Var(&stackMap, "preloadedRootFS", "List of preloaded RootFSes")
-
-	supportedProviders := multiArgList{}
-	flag.Var(&supportedProviders, "rootFSProvider", "List of RootFS providers")
-
-	gardenHealthcheckEnv := commaSeparatedArgList{}
-	flag.Var(&gardenHealthcheckEnv, "gardenHealthcheckProcessEnv", "Environment variables to use when running the garden health check")
-
-	gardenHealthcheckArgs := commaSeparatedArgList{}
-	flag.Var(&gardenHealthcheckArgs, "gardenHealthcheckProcessArgs", "List of command line args to pass to the garden health check process")
-
-	placementTags := multiArgList{}
-	flag.Var(&placementTags, "placementTag", "Placement tags used for scheduling Tasks and LRPs")
-
-	optionalPlacementTags := multiArgList{}
-	flag.Var(&optionalPlacementTags, "optionalPlacementTag", "Optional Placement tags used for scheduling Tasks and LRPs")
-
 	flag.Parse()
 
+	repConfig, err := config.NewRepConfig(*configFilePath)
+	if err != nil {
+		panic(err.Error())
+	}
+
 	preloadedRootFSes := []string{}
-	for k := range stackMap {
+	for k := range repConfig.PreloadedRootFS {
 		preloadedRootFSes = append(preloadedRootFSes, k)
 	}
 
-	cfhttp.Initialize(*communicationTimeout)
+	cfhttp.Initialize(time.Duration(repConfig.CommunicationTimeout))
 
 	clock := clock.NewClock()
-	logger, reconfigurableSink := lagerflags.New(*sessionName)
+	logger, reconfigurableSink := lagerflags.NewFromConfig(repConfig.SessionName, repConfig.LagerConfig)
 
 	var (
 		executorConfiguration   executorinit.Configuration
 		gardenHealthcheckRootFS string
 		certBytes               []byte
-		err                     error
 	)
 
 	if len(preloadedRootFSes) == 0 {
 		gardenHealthcheckRootFS = ""
 	} else {
-		gardenHealthcheckRootFS = stackMap[preloadedRootFSes[0]]
+		gardenHealthcheckRootFS = repConfig.PreloadedRootFS[preloadedRootFSes[0]]
 	}
-
-	if *pathToCACertsForDownloads != "" {
-		certBytes, err = ioutil.ReadFile(*pathToCACertsForDownloads)
+	if repConfig.PathToCACertsForDownloads != "" {
+		certBytes, err = ioutil.ReadFile(repConfig.PathToCACertsForDownloads)
 		if err != nil {
 			logger.Error("failed-to-open-ca-cert-file", err)
 			os.Exit(1)
@@ -103,15 +92,14 @@ func main() {
 
 		certBytes = bytes.TrimSpace(certBytes)
 	}
-
-	executorConfiguration = executorConfig(certBytes, gardenHealthcheckRootFS, gardenHealthcheckArgs, gardenHealthcheckEnv)
+	executorConfiguration = executorConfig(&repConfig.ExecutorConfig, certBytes, gardenHealthcheckRootFS)
 	if !executorConfiguration.Validate(logger) {
 		logger.Fatal("", errors.New("failed-to-configure-executor"))
 	}
 
-	initializeDropsonde(logger)
+	initializeDropsonde(logger, repConfig.DropsondePort)
 
-	if *cellID == "" {
+	if repConfig.CellID == "" {
 		logger.Error("invalid-cell-id", errors.New("-cellID must be specified"))
 		os.Exit(1)
 	}
@@ -123,12 +111,7 @@ func main() {
 	}
 	defer executorClient.Cleanup(logger)
 
-	if err := validateBBSAddress(); err != nil {
-		logger.Error("invalid-bbs-address", err)
-		os.Exit(1)
-	}
-
-	consulClient, err := consuladapter.NewClientFromUrl(*consulCluster)
+	consulClient, err := consuladapter.NewClientFromUrl(repConfig.ConsulCluster)
 	if err != nil {
 		logger.Fatal("new-client-failed", err)
 	}
@@ -145,18 +128,24 @@ func main() {
 		clock,
 		executorClient,
 		evacuationNotifier,
-		*cellID,
-		*evacuationTimeout,
-		*evacuationPollingInterval,
+		repConfig.CellID,
+		time.Duration(repConfig.EvacuationTimeout),
+		time.Duration(repConfig.EvacuationPollingInterval),
 	)
 
-	bbsClient := initializeBBSClient(logger)
-	httpServer, address := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders, placementTags, optionalPlacementTags, false)
-	httpsServer, _ := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, rep.StackPathMap(stackMap), supportedProviders, placementTags, optionalPlacementTags, true)
-	opGenerator := generator.New(*cellID, bbsClient, executorClient, evacuationReporter, uint64(evacuationTimeout.Seconds()))
-	cleanup := evacuation.NewEvacuationCleanup(logger, *cellID, bbsClient, executorClient, clock)
+	bbsClient := initializeBBSClient(logger, repConfig)
+	httpServer, address := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, repConfig, false)
+	httpsServer, _ := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, repConfig, true)
+	opGenerator := generator.New(
+		repConfig.CellID,
+		bbsClient,
+		executorClient,
+		evacuationReporter,
+		uint64(time.Duration(repConfig.EvacuationTimeout).Seconds()),
+	)
+	cleanup := evacuation.NewEvacuationCleanup(logger, repConfig.CellID, bbsClient, executorClient, clock)
 
-	_, portString, err := net.SplitHostPort(*listenAddr)
+	_, portString, err := net.SplitHostPort(repConfig.ListenAddr)
 	if err != nil {
 		logger.Fatal("failed-invalid-server-address", err)
 	}
@@ -165,14 +154,24 @@ func main() {
 		logger.Fatal("failed-invalid-server-port", err)
 	}
 
-	registrationRunner := initializeRegistrationRunner(logger, consulClient, portNum, clock)
+	registrationRunner := initializeRegistrationRunner(logger, consulClient, repConfig, portNum, clock)
+
+	bulker := harmonizer.NewBulker(
+		logger,
+		time.Duration(repConfig.PollingInterval),
+		time.Duration(repConfig.EvacuationPollingInterval),
+		evacuationNotifier,
+		clock,
+		opGenerator,
+		queue,
+	)
 
 	members := grouper.Members{
-		{"presence", initializeCellPresence(address, serviceClient, executorClient, logger, supportedProviders, preloadedRootFSes, placementTags, optionalPlacementTags, true)},
+		{"presence", initializeCellPresence(address, serviceClient, executorClient, logger, repConfig, preloadedRootFSes, true)},
 		{"http_server", httpServer},
 		{"https_server", httpsServer},
 		{"evacuation-cleanup", cleanup},
-		{"bulker", harmonizer.NewBulker(logger, *pollingInterval, *evacuationPollingInterval, evacuationNotifier, clock, opGenerator, queue)},
+		{"bulker", bulker},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 		{"evacuator", evacuator},
 		{"registration-runner", registrationRunner},
@@ -190,7 +189,7 @@ func main() {
 
 	monitor := ifrit.Invoke(sigmon.New(group))
 
-	logger.Info("started", lager.Data{"cell-id": *cellID})
+	logger.Info("started", lager.Data{"cell-id": repConfig.CellID})
 
 	err = <-monitor.Wait()
 	if err != nil {
@@ -201,8 +200,8 @@ func main() {
 	logger.Info("exited")
 }
 
-func initializeDropsonde(logger lager.Logger) {
-	dropsondeDestination := fmt.Sprint("localhost:", *dropsondePort)
+func initializeDropsonde(logger lager.Logger, dropsondePort int) {
+	dropsondeDestination := fmt.Sprint("localhost:", dropsondePort)
 	err := dropsonde.Initialize(dropsondeDestination, dropsondeOrigin)
 	if err != nil {
 		logger.Error("failed to initialize dropsonde: %v", err)
@@ -214,34 +213,39 @@ func initializeCellPresence(
 	serviceClient bbs.ServiceClient,
 	executorClient executor.Client,
 	logger lager.Logger,
-	rootFSProviders,
-	preloadedRootFSes,
-	placementTags []string,
-	optionalPlacementTags []string,
+	repConfig config.RepConfig,
+	preloadedRootFSes []string,
 	secure bool,
 ) ifrit.Runner {
 
 	var repUrl string
-	port := strings.Split(*listenAddrSecurable, ":")[1]
-	if secure && *requireTLS {
-		repUrl = fmt.Sprintf("https://%s:%s", repURL(), port)
+	port := strings.Split(repConfig.ListenAddrSecurable, ":")[1]
+	if secure && repConfig.RequireTLS {
+		repUrl = fmt.Sprintf("https://%s:%s", repURL(repConfig.CellID, repConfig.AdvertiseDomain), port)
 	} else {
-		repUrl = fmt.Sprintf("http://%s:%s", repURL(), port)
+		repUrl = fmt.Sprintf("http://%s:%s", repURL(repConfig.CellID, repConfig.AdvertiseDomain), port)
 	}
 
 	config := maintain.Config{
-		CellID:                *cellID,
+		CellID:                repConfig.CellID,
 		RepAddress:            address,
 		RepUrl:                repUrl,
-		Zone:                  *zone,
-		RetryInterval:         *lockRetryInterval,
-		RootFSProviders:       rootFSProviders,
+		Zone:                  repConfig.Zone,
+		RetryInterval:         time.Duration(repConfig.LockRetryInterval),
+		RootFSProviders:       repConfig.SupportedProviders,
 		PreloadedRootFSes:     preloadedRootFSes,
-		PlacementTags:         placementTags,
-		OptionalPlacementTags: optionalPlacementTags,
+		PlacementTags:         repConfig.PlacementTags,
+		OptionalPlacementTags: repConfig.OptionalPlacementTags,
 	}
 
-	return maintain.New(logger, config, executorClient, serviceClient, *lockTTL, clock.NewClock())
+	return maintain.New(
+		logger,
+		config,
+		executorClient,
+		serviceClient,
+		time.Duration(repConfig.LockTTL),
+		clock.NewClock(),
+	)
 }
 
 func initializeServer(
@@ -250,16 +254,23 @@ func initializeServer(
 	evacuatable evacuation_context.Evacuatable,
 	evacuationReporter evacuation_context.EvacuationReporter,
 	logger lager.Logger,
-	stackMap rep.StackPathMap,
-	supportedProviders []string,
-	placementTags []string,
-	optionalPlacementTags []string,
+	repConfig config.RepConfig,
 	secure bool,
 ) (ifrit.Runner, string) {
-	auctionCellRep := auction_cell_rep.New(*cellID, stackMap, supportedProviders, *zone, generateGuid, executorClient, evacuationReporter, placementTags, optionalPlacementTags)
+	auctionCellRep := auction_cell_rep.New(
+		repConfig.CellID,
+		rep.StackPathMap(repConfig.PreloadedRootFS),
+		repConfig.SupportedProviders,
+		repConfig.Zone,
+		generateGuid,
+		executorClient,
+		evacuationReporter,
+		repConfig.PlacementTags,
+		repConfig.OptionalPlacementTags,
+	)
 
-	handlers := getHandlers(auctionCellRep, executorClient, evacuatable, logger, secure)
-	routes := getRoutes(secure)
+	handlers := getHandlers(logger, auctionCellRep, executorClient, evacuatable, repConfig.EnableLegacyAPIServer, secure)
+	routes := getRoutes(repConfig.EnableLegacyAPIServer, secure)
 	router, err := rata.NewRouter(routes, handlers)
 
 	if err != nil {
@@ -271,15 +282,15 @@ func initializeServer(
 		logger.Fatal("failed-to-fetch-ip", err)
 	}
 
-	listenAddress := *listenAddr
+	listenAddress := repConfig.ListenAddr
 	if secure {
-		listenAddress = *listenAddrSecurable
+		listenAddress = repConfig.ListenAddrSecurable
 	}
 	port := strings.Split(listenAddress, ":")[1]
 	address := fmt.Sprintf("http://%s:%s", ip, port)
 
-	if secure && *requireTLS {
-		tlsConfig, err := cfhttp.NewTLSConfig(*certFile, *keyFile, *caFile)
+	if secure && repConfig.RequireTLS {
+		tlsConfig, err := cfhttp.NewTLSConfig(repConfig.ServerCert, repConfig.ServerKey, repConfig.CaCert)
 		if err != nil {
 			logger.Fatal("tls-configuration-failed", err)
 		}
@@ -288,13 +299,6 @@ func initializeServer(
 	}
 
 	return http_server.New(listenAddress, router), address
-}
-
-func validateBBSAddress() error {
-	if *bbsAddress == "" {
-		return errors.New("bbsAddress is required")
-	}
-	return nil
 }
 
 func generateGuid() (string, error) {
@@ -306,66 +310,80 @@ func generateGuid() (string, error) {
 }
 
 func getHandlers(
+	logger lager.Logger,
 	auctionCellRep rep.AuctionCellClient,
 	executorClient executor.Client,
 	evacuatable evacuation_context.Evacuatable,
-	logger lager.Logger,
-	isSecureServer bool) rata.Handlers {
+	enableLegacyAPIServer bool,
+	isSecureServer bool,
+) rata.Handlers {
 
-	if *enableLegacyApiServer && !isSecureServer {
+	if enableLegacyAPIServer && !isSecureServer {
 		return handlers.NewLegacy(auctionCellRep, executorClient, evacuatable, logger)
 	}
 	return handlers.New(auctionCellRep, executorClient, evacuatable, logger, isSecureServer)
 }
 
-func getRoutes(isSecureServer bool) rata.Routes {
-	if *enableLegacyApiServer && !isSecureServer {
+func getRoutes(enableLegacyAPIServer, isSecureServer bool) rata.Routes {
+	if enableLegacyAPIServer && !isSecureServer {
 		return rep.Routes
 	}
 	return rep.NewRoutes(isSecureServer)
 }
 
-func initializeBBSClient(logger lager.Logger) bbs.InternalClient {
-	bbsURL, err := url.Parse(*bbsAddress)
+func initializeBBSClient(
+	logger lager.Logger,
+	repConfig config.RepConfig,
+) bbs.InternalClient {
+	bbsURL, err := url.Parse(repConfig.BBSAddress)
 	if err != nil {
 		logger.Fatal("Invalid BBS URL", err)
 	}
 
 	if bbsURL.Scheme != "https" {
-		return bbs.NewClient(*bbsAddress)
+		return bbs.NewClient(repConfig.BBSAddress)
 	}
 
-	bbsClient, err := bbs.NewSecureClient(*bbsAddress, *bbsCACert, *bbsClientCert, *bbsClientKey, *bbsClientSessionCacheSize, *bbsMaxIdleConnsPerHost)
+	bbsClient, err := bbs.NewSecureClient(
+		repConfig.BBSAddress,
+		repConfig.BBSCACert,
+		repConfig.BBSClientCert,
+		repConfig.BBSClientKey,
+		repConfig.BBSClientSessionCacheSize,
+		repConfig.BBSMaxIdleConnsPerHost,
+	)
 	if err != nil {
 		logger.Fatal("Failed to configure secure BBS client", err)
 	}
 	return bbsClient
 }
 
-func repHost() string {
-	return strings.Replace(*cellID, "_", "-", -1)
+func repHost(cellID string) string {
+	return strings.Replace(cellID, "_", "-", -1)
 }
 
-func repBaseHostName() string {
-	return strings.Split(*advertiseDomain, ".")[0]
+func repBaseHostName(advertiseDomain string) string {
+	return strings.Split(advertiseDomain, ".")[0]
 }
 
-func repURL() string {
-	return repHost() + "." + *advertiseDomain
+func repURL(cellID, advertiseDomain string) string {
+	return repHost(cellID) + "." + advertiseDomain
 }
 
 func initializeRegistrationRunner(
 	logger lager.Logger,
 	consulClient consuladapter.Client,
+	repConfig config.RepConfig,
 	port int,
-	clock clock.Clock) ifrit.Runner {
+	clock clock.Clock,
+) ifrit.Runner {
 	registration := &api.AgentServiceRegistration{
-		Name: repBaseHostName(),
+		Name: repBaseHostName(repConfig.AdvertiseDomain),
 		Port: port,
 		Check: &api.AgentServiceCheck{
 			TTL: "3s",
 		},
-		Tags: []string{repHost()},
+		Tags: []string{repHost(repConfig.CellID)},
 	}
 	return locket.NewRegistrationRunner(logger, registration, consulClient, locket.RetryInterval, clock)
 }
