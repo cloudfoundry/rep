@@ -3,7 +3,6 @@ package internal_test
 import (
 	"errors"
 
-	etcddb "code.cloudfoundry.org/bbs/db/etcd"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
 	"code.cloudfoundry.org/executor"
@@ -30,7 +29,7 @@ var _ = Describe("Task <-> Container table", func() {
 	)
 
 	BeforeEach(func() {
-		etcdRunner.ResetAllBut(etcddb.VersionKey)
+		sqlRunner.Reset()
 		containerDelegate = new(fake_internal.FakeContainerDelegate)
 		processor = internal.NewTaskProcessor(bbsClient, containerDelegate, localCellID)
 
@@ -175,7 +174,7 @@ var _ = Describe("Task <-> Container table", func() {
 		Logger:      lagertest.NewTestLogger(sessionPrefix),
 		Rows: []Row{
 			// container reserved
-			ConceivableTaskScenario( // task deleted? (operator/etcd?)
+			ConceivableTaskScenario( // task deleted?
 				NewContainer(taskGuid, executor.StateReserved),
 				nil,
 				itDeletesTheContainer,
@@ -217,7 +216,7 @@ var _ = Describe("Task <-> Container table", func() {
 			),
 
 			// container initializing
-			ConceivableTaskScenario( // task deleted? (operator/etcd?)
+			ConceivableTaskScenario( // task deleted?
 				NewContainer(taskGuid, executor.StateInitializing),
 				nil,
 				itDeletesTheContainer,
@@ -259,7 +258,7 @@ var _ = Describe("Task <-> Container table", func() {
 			),
 
 			// container created
-			ConceivableTaskScenario( // task deleted? (operator/etcd?)
+			ConceivableTaskScenario( // task deleted?
 				NewContainer(taskGuid, executor.StateCreated),
 				nil,
 				itDeletesTheContainer,
@@ -301,7 +300,7 @@ var _ = Describe("Task <-> Container table", func() {
 			),
 
 			// container running
-			ConceivableTaskScenario( // task deleted? (operator/etcd?)
+			ConceivableTaskScenario( // task deleted?
 				NewContainer(taskGuid, executor.StateRunning),
 				nil,
 				itDeletesTheContainer,
@@ -343,7 +342,7 @@ var _ = Describe("Task <-> Container table", func() {
 			),
 
 			// container completed
-			ConceivableTaskScenario( // task deleted? (operator/etcd?)
+			ConceivableTaskScenario( // task deleted?
 				NewCompletedContainer(taskGuid, failedRunResult),
 				nil,
 				itDeletesTheContainer,

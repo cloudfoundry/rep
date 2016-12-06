@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs"
+	bbstestrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
 	"code.cloudfoundry.org/cfhttp"
@@ -30,6 +31,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/ghttp"
+	"github.com/tedsuo/ifrit/ginkgomon"
 )
 
 var runner *testrunner.Runner
@@ -305,13 +307,14 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 			})
 		})
 
-		Context("when etcd is down", func() {
+		Context("when the bbs is down", func() {
 			BeforeEach(func() {
-				etcdRunner.KillWithFire()
+				ginkgomon.Interrupt(bbsProcess)
 			})
 
 			AfterEach(func() {
-				etcdRunner.Start()
+				bbsRunner = bbstestrunner.New(bbsBinPath, bbsArgs)
+				bbsProcess = ginkgomon.Invoke(bbsRunner)
 			})
 
 			It("starts", func() {

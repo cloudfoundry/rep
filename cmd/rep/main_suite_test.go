@@ -14,7 +14,6 @@ import (
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
-	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -27,8 +26,7 @@ import (
 var (
 	cellID              string
 	representativePath  string
-	etcdRunner          *etcdstorerunner.ETCDClusterRunner
-	etcdPort, natsPort  int
+	natsPort            int
 	serverPort          int
 	serverPortSecurable int
 	consulRunner        *consulrunner.ClusterRunner
@@ -70,17 +68,13 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	cellID = "the_rep_id-" + strconv.Itoa(GinkgoParallelNode())
 
-	etcdPort = 4001 + GinkgoParallelNode()
 	serverPort = 1800 + GinkgoParallelNode()
 	serverPortSecurable = 1901 + GinkgoParallelNode()
 
-	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1, nil)
+	dbName := fmt.Sprintf("diego_%d", GinkgoParallelNode())
 
-	if test_helpers.UseSQL() {
-		dbName := fmt.Sprintf("diego_%d", GinkgoParallelNode())
-		sqlRunner = test_helpers.NewSQLRunner(dbName)
-		sqlProcess = ginkgomon.Invoke(sqlRunner)
-	}
+	sqlRunner = test_helpers.NewSQLRunner(dbName)
+	sqlProcess = ginkgomon.Invoke(sqlRunner)
 
 	consulRunner = consulrunner.NewClusterRunner(
 		9001+config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength,
@@ -88,7 +82,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		"http",
 	)
 
-	etcdRunner.Start()
 	consulRunner.Start()
 
 	bbsPort := 13000 + GinkgoParallelNode()*2
@@ -107,22 +100,17 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	auctioneerServer.UnhandledRequestStatusCode = http.StatusAccepted
 	auctioneerServer.AllowUnhandledRequests = true
 
-	etcdUrl := fmt.Sprintf("http://127.0.0.1:%d", etcdPort)
 	bbsArgs = bbstestrunner.Args{
-		Address:           bbsAddress,
-		AdvertiseURL:      bbsURL.String(),
-		AuctioneerAddress: auctioneerServer.URL(),
-		EtcdCluster:       etcdUrl,
-		ConsulCluster:     consulRunner.ConsulCluster(),
-		HealthAddress:     healthAddress,
+		Address:                  bbsAddress,
+		AdvertiseURL:             bbsURL.String(),
+		AuctioneerAddress:        auctioneerServer.URL(),
+		DatabaseDriver:           sqlRunner.DriverName(),
+		DatabaseConnectionString: sqlRunner.ConnectionString(),
+		ConsulCluster:            consulRunner.ConsulCluster(),
+		HealthAddress:            healthAddress,
 
 		EncryptionKeys: []string{"label:key"},
 		ActiveKeyLabel: "label",
-	}
-
-	if test_helpers.UseSQL() {
-		bbsArgs.DatabaseDriver = sqlRunner.DriverName()
-		bbsArgs.DatabaseConnectionString = sqlRunner.ConnectionString()
 	}
 })
 
@@ -130,27 +118,18 @@ var _ = BeforeEach(func() {
 	consulRunner.WaitUntilReady()
 	consulRunner.Reset()
 
-	etcdRunner.Reset()
-
 	bbsRunner = bbstestrunner.New(bbsBinPath, bbsArgs)
 	bbsProcess = ginkgomon.Invoke(bbsRunner)
 })
 
 var _ = AfterEach(func() {
-	if test_helpers.UseSQL() {
-		sqlRunner.Reset()
-	}
+	sqlRunner.Reset()
 
-	if bbsProcess != nil {
-		ginkgomon.Kill(bbsProcess)
-	}
+	ginkgomon.Kill(bbsProcess)
 })
 
 var _ = SynchronizedAfterSuite(func() {
 	ginkgomon.Kill(sqlProcess)
-	if etcdRunner != nil {
-		etcdRunner.KillWithFire()
-	}
 	if consulRunner != nil {
 		consulRunner.Stop()
 	}

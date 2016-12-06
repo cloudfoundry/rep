@@ -5,8 +5,9 @@ import (
 
 	"code.cloudfoundry.org/bbs"
 	bbsrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
+	"code.cloudfoundry.org/bbs/test_helpers"
+	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
-	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -17,13 +18,16 @@ import (
 	"testing"
 )
 
-var etcdRunner *etcdstorerunner.ETCDClusterRunner
-var consulRunner *consulrunner.ClusterRunner
-var bbsArgs bbsrunner.Args
-var bbsBinPath string
-var bbsRunner *ginkgomon.Runner
-var bbsProcess ifrit.Process
-var bbsClient bbs.InternalClient
+var (
+	sqlRunner    sqlrunner.SQLRunner
+	sqlProcess   ifrit.Process
+	consulRunner *consulrunner.ClusterRunner
+	bbsArgs      bbsrunner.Args
+	bbsBinPath   string
+	bbsRunner    *ginkgomon.Runner
+	bbsProcess   ifrit.Process
+	bbsClient    bbs.InternalClient
+)
 
 func TestInternal(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -35,7 +39,9 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	Expect(err).NotTo(HaveOccurred())
 	return []byte(bbsBinPath)
 }, func(payload []byte) {
-	etcdRunner = etcdstorerunner.NewETCDClusterRunner(5001+config.GinkgoConfig.ParallelNode, 1, nil)
+	dbName := fmt.Sprintf("diego_%d", GinkgoParallelNode())
+	sqlRunner = test_helpers.NewSQLRunner(dbName)
+	sqlProcess = ginkgomon.Invoke(sqlRunner)
 
 	consulRunner = consulrunner.NewClusterRunner(
 		9001+config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength,
@@ -48,15 +54,15 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	bbsAddress := fmt.Sprintf("127.0.0.1:%d", bbsPort)
 	healthAddress := fmt.Sprintf("127.0.0.1:%d", healthPort)
 
-	etcdRunner.Start()
 	bbsBinPath = string(payload)
 	bbsArgs = bbsrunner.Args{
-		Address:           bbsAddress,
-		AdvertiseURL:      "http://" + bbsAddress,
-		AuctioneerAddress: "some-address",
-		EtcdCluster:       etcdRunner.NodeURLS()[0],
-		ConsulCluster:     consulRunner.ConsulCluster(),
-		HealthAddress:     healthAddress,
+		Address:                  bbsAddress,
+		AdvertiseURL:             "http://" + bbsAddress,
+		AuctioneerAddress:        "some-address",
+		DatabaseDriver:           sqlRunner.DriverName(),
+		DatabaseConnectionString: sqlRunner.ConnectionString(),
+		ConsulCluster:            consulRunner.ConsulCluster(),
+		HealthAddress:            healthAddress,
 
 		EncryptionKeys: []string{"label:key"},
 		ActiveKeyLabel: "label",
@@ -69,7 +75,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 var _ = SynchronizedAfterSuite(func() {
 	consulRunner.Stop()
-	etcdRunner.KillWithFire()
+	ginkgomon.Kill(sqlProcess)
 }, func() {
 	gexec.CleanupBuildArtifacts()
 })
