@@ -21,8 +21,10 @@ import (
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/garden/transport"
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep"
+	"code.cloudfoundry.org/rep/cmd/rep/config"
 	"code.cloudfoundry.org/rep/cmd/rep/testrunner"
 
 	"github.com/hashicorp/consul/api"
@@ -38,7 +40,7 @@ var runner *testrunner.Runner
 
 var _ = Describe("The Rep", func() {
 	var (
-		config            testrunner.Config
+		repConfig         config.RepConfig
 		fakeGarden        *ghttp.Server
 		pollingInterval   time.Duration
 		evacuationTimeout time.Duration
@@ -95,29 +97,37 @@ var _ = Describe("The Rep", func() {
 
 		rootFSName = "the-rootfs"
 		rootFSPath = "/path/to/rootfs"
-		rootFSArg := fmt.Sprintf("%s:%s", rootFSName, rootFSPath)
 
-		config = testrunner.Config{
-			PreloadedRootFSes:          []string{rootFSArg},
-			RootFSProviders:            []string{"docker"},
-			PlacementTags:              []string{"test"},
-			OptionalPlacementTags:      []string{"optional_tag"},
-			CellID:                     cellID,
-			BBSAddress:                 bbsURL.String(),
-			ServerPort:                 serverPort,
-			ServerPortSecurable:        serverPortSecurable,
-			RequireTLS:                 false,
-			GardenAddr:                 fakeGarden.HTTPTestServer.Listener.Addr().String(),
-			LogLevel:                   "debug",
-			ConsulCluster:              consulRunner.ConsulCluster(),
-			PollingInterval:            pollingInterval,
-			EvacuationTimeout:          evacuationTimeout,
-			EnableInsecurableApiServer: true,
+		repConfig = config.RepConfig{
+			PreloadedRootFS:       map[string]string{rootFSName: rootFSPath},
+			SupportedProviders:    []string{"docker"},
+			PlacementTags:         []string{"test"},
+			OptionalPlacementTags: []string{"optional_tag"},
+			CellID:                cellID,
+			BBSAddress:            bbsURL.String(),
+			ListenAddr:            fmt.Sprintf("0.0.0.0:%d", serverPort),
+			ListenAddrSecurable:   fmt.Sprintf("0.0.0.0:%d", serverPortSecurable),
+			RequireTLS:            false,
+			LockRetryInterval:     config.Duration(1 * time.Second),
+			ExecutorConfig: config.ExecutorConfig{
+				GardenAddr:                   fakeGarden.HTTPTestServer.Listener.Addr().String(),
+				GardenNetwork:                "tcp",
+				GardenHealthcheckProcessUser: "me",
+				GardenHealthcheckProcessPath: "ls",
+				ContainerMaxCpuShares:        1024,
+			},
+			LagerConfig: lagerflags.LagerConfig{
+				LogLevel: "debug",
+			},
+			ConsulCluster:         consulRunner.ConsulCluster(),
+			PollingInterval:       config.Duration(pollingInterval),
+			EvacuationTimeout:     config.Duration(evacuationTimeout),
+			EnableLegacyAPIServer: true,
 		}
 
 		runner = testrunner.New(
 			representativePath,
-			config,
+			repConfig,
 		)
 	})
 
@@ -152,10 +162,10 @@ var _ = Describe("The Rep", func() {
 
 			Context("when the file is empty", func() {
 				BeforeEach(func() {
-					config.CACertsForDownloads = certFile.Name()
+					repConfig.PathToCACertsForDownloads = certFile.Name()
 					runner = testrunner.New(
 						representativePath,
-						config,
+						repConfig,
 					)
 
 					runner.StartCheck = "started"
@@ -210,11 +220,10 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 
 					err := ioutil.WriteFile(certFile.Name(), fileContents, os.ModePerm)
 					Expect(err).NotTo(HaveOccurred())
-
-					config.CACertsForDownloads = certFile.Name()
+					repConfig.PathToCACertsForDownloads = certFile.Name()
 					runner = testrunner.New(
 						representativePath,
-						config,
+						repConfig,
 					)
 
 					runner.StartCheck = "started"
@@ -244,10 +253,10 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 					err := ioutil.WriteFile(certFile.Name(), fileContents, os.ModePerm)
 					Expect(err).NotTo(HaveOccurred())
 
-					config.CACertsForDownloads = certFile.Name()
+					repConfig.PathToCACertsForDownloads = certFile.Name()
 					runner = testrunner.New(
 						representativePath,
-						config,
+						repConfig,
 					)
 				})
 
@@ -261,10 +270,10 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 					err := ioutil.WriteFile(certFile.Name(), []byte("invalid cert bundle"), os.ModePerm)
 					Expect(err).NotTo(HaveOccurred())
 
-					config.CACertsForDownloads = certFile.Name()
+					repConfig.PathToCACertsForDownloads = certFile.Name()
 					runner = testrunner.New(
 						representativePath,
-						config,
+						repConfig,
 					)
 
 					runner.StartCheck = ""
@@ -278,10 +287,10 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 
 			Context("when the file does not exist", func() {
 				BeforeEach(func() {
-					config.CACertsForDownloads = "does-not-exist"
+					repConfig.PathToCACertsForDownloads = "does-not-exist"
 					runner = testrunner.New(
 						representativePath,
-						config,
+						repConfig,
 					)
 
 					runner.StartCheck = ""
@@ -622,17 +631,17 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 
 			Context("when requireTLS is set to true", func() {
 				BeforeEach(func() {
-					config.RequireTLS = true
+					repConfig.RequireTLS = true
 				})
 
 				Context("when invalid values for certificates are supplied", func() {
 					BeforeEach(func() {
-						config.CaFile = ""
-						config.CertFile = ""
-						config.KeyFile = ""
+						repConfig.CaCertFile = ""
+						repConfig.ServerCertFile = ""
+						repConfig.ServerKeyFile = ""
 						runner = testrunner.New(
 							representativePath,
-							config,
+							repConfig,
 						)
 						runner.StartCheck = ""
 					})
@@ -645,12 +654,12 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 
 				Context("when an incorrect server key is supplied", func() {
 					BeforeEach(func() {
-						config.CaFile = path.Join(basePath, "green-certs", "server-ca.crt")
-						config.CertFile = path.Join(basePath, "green-certs", "server.crt")
-						config.KeyFile = path.Join(basePath, "blue-certs", "server.key")
+						repConfig.CaCertFile = path.Join(basePath, "green-certs", "server-ca.crt")
+						repConfig.ServerCertFile = path.Join(basePath, "green-certs", "server.crt")
+						repConfig.ServerKeyFile = path.Join(basePath, "blue-certs", "server.key")
 						runner = testrunner.New(
 							representativePath,
-							config,
+							repConfig,
 						)
 						runner.StartCheck = ""
 					})
@@ -663,12 +672,12 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 
 				Context("when correct server cert and key are supplied", func() {
 					BeforeEach(func() {
-						config.CaFile = caFile
-						config.CertFile = certFile
-						config.KeyFile = keyFile
+						repConfig.CaCertFile = caFile
+						repConfig.ServerCertFile = certFile
+						repConfig.ServerKeyFile = keyFile
 						runner = testrunner.New(
 							representativePath,
-							config,
+							repConfig,
 						)
 					})
 
@@ -678,11 +687,11 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 
 					Context("when server is insecurable", func() {
 						BeforeEach(func() {
-							config.EnableInsecurableApiServer = true
+							repConfig.EnableLegacyAPIServer = true
 
 							runner = testrunner.New(
 								representativePath,
-								config,
+								repConfig,
 							)
 						})
 
@@ -726,11 +735,11 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 
 					Context("when server is not insecurable", func() {
 						BeforeEach(func() {
-							config.EnableInsecurableApiServer = false
+							repConfig.EnableLegacyAPIServer = false
 
 							runner = testrunner.New(
 								representativePath,
-								config,
+								repConfig,
 							)
 						})
 
