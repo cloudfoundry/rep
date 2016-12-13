@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/debugserver"
-	"code.cloudfoundry.org/executor/initializer/configuration"
+	"code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
 )
@@ -113,48 +113,7 @@ type RepConfig struct {
 	Zone                      string   `json:"zone"`
 	debugserver.DebugServerConfig
 	lagerflags.LagerConfig
-	ExecutorConfig
-}
-
-type ExecutorConfig struct {
-	CachePath                          string   `json:"cache_path,omitempty"`
-	ContainerInodeLimit                uint64   `json:"container_inode_limit,omitempty"`
-	ContainerMaxCpuShares              uint64   `json:"container_max_cpu_shares,omitempty"`
-	ContainerMetricsReportInterval     Duration `json:"container_metrics_report_interval,omitempty"`
-	ContainerOwnerName                 string   `json:"container_owner_name,omitempty"`
-	ContainerReapInterval              Duration `json:"container_reap_interval,omitempty"`
-	CreateWorkPoolSize                 int      `json:"create_work_pool_size,omitempty"`
-	DeleteWorkPoolSize                 int      `json:"delete_work_pool_size,omitempty"`
-	DiskMB                             string   `json:"disk_mb,omitempty"`
-	ExportNetworkEnvVars               bool     `json:"export_network_env_vars,omitempty"`
-	GardenAddr                         string   `json:"garden_addr,omitempty"`
-	GardenHealthcheckCommandRetryPause Duration `json:"garden_healthcheck_command_retry_pause,omitempty"`
-	GardenHealthcheckEmissionInterval  Duration `json:"garden_healthcheck_emission_interval,omitempty"`
-	GardenHealthcheckInterval          Duration `json:"garden_healthcheck_interval,omitempty"`
-	GardenHealthcheckProcessArgs       []string `json:"garden_healthcheck_process_args,omitempty"`
-	GardenHealthcheckProcessDir        string   `json:"garden_healthcheck_process_dir"`
-	GardenHealthcheckProcessEnv        []string `json:"garden_healthcheck_process_env,omitempty"`
-	GardenHealthcheckProcessPath       string   `json:"garden_healthcheck_process_path"`
-	GardenHealthcheckProcessUser       string   `json:"garden_healthcheck_process_user"`
-	GardenHealthcheckTimeout           Duration `json:"garden_healthcheck_timeout,omitempty"`
-	GardenNetwork                      string   `json:"garden_network,omitempty"`
-	HealthCheckContainerOwnerName      string   `json:"healthcheck_container_owner_name,omitempty"`
-	HealthCheckWorkPoolSize            int      `json:"healthcheck_work_pool_size,omitempty"`
-	HealthyMonitoringInterval          Duration `json:"healthy_monitoring_interval,omitempty"`
-	MaxCacheSizeInBytes                uint64   `json:"max_cache_size_in_bytes,omitempty"`
-	MaxConcurrentDownloads             int      `json:"max_concurrent_downloads,omitempty"`
-	MemoryMB                           string   `json:"memory_mb,omitempty"`
-	MetricsWorkPoolSize                int      `json:"metrics_work_pool_size,omitempty"`
-	PathToCACertsForDownloads          string   `json:"path_to_ca_certs_for_downloads"`
-	PostSetupHook                      string   `json:"post_setup_hook"`
-	PostSetupUser                      string   `json:"post_setup_user"`
-	ReadWorkPoolSize                   int      `json:"read_work_pool_size,omitempty"`
-	ReservedExpirationTime             Duration `json:"reserved_expiration_time,omitempty"`
-	SkipCertVerify                     bool     `json:"skip_cert_verify,omitempty"`
-	TempDir                            string   `json:"temp_dir,omitempty"`
-	TrustedSystemCertificatesPath      string   `json:"trusted_system_certificates_path"`
-	UnhealthyMonitoringInterval        Duration `json:"unhealthy_monitoring_interval,omitempty"`
-	VolmanDriverPaths                  string   `json:"volman_driver_paths"`
+	initializer.Configuration
 }
 
 func defaultConfig() RepConfig {
@@ -175,38 +134,7 @@ func defaultConfig() RepConfig {
 		PollingInterval:           Duration(30 * time.Second),
 		RequireTLS:                true,
 		SessionName:               "rep",
-		ExecutorConfig: ExecutorConfig{
-			CachePath:                          "/tmp/cache",
-			ContainerInodeLimit:                200000,
-			ContainerMaxCpuShares:              0,
-			ContainerMetricsReportInterval:     Duration(15 * time.Second),
-			ContainerOwnerName:                 "executor",
-			ContainerReapInterval:              Duration(time.Minute),
-			CreateWorkPoolSize:                 32,
-			DeleteWorkPoolSize:                 32,
-			DiskMB:                             configuration.Automatic,
-			ExportNetworkEnvVars:               false,
-			GardenAddr:                         "/tmp/garden.sock",
-			GardenHealthcheckCommandRetryPause: Duration(1 * time.Second),
-			GardenHealthcheckEmissionInterval:  Duration(30 * time.Second),
-			GardenHealthcheckInterval:          Duration(10 * time.Minute),
-			GardenHealthcheckProcessArgs:       []string{},
-			GardenHealthcheckProcessEnv:        []string{},
-			GardenHealthcheckTimeout:           Duration(10 * time.Minute),
-			GardenNetwork:                      "unix",
-			HealthCheckContainerOwnerName:      "executor-health-check",
-			HealthCheckWorkPoolSize:            64,
-			HealthyMonitoringInterval:          Duration(30 * time.Second),
-			MaxCacheSizeInBytes:                10 * 1024 * 1024 * 1024,
-			MaxConcurrentDownloads:             5,
-			MemoryMB:                           configuration.Automatic,
-			MetricsWorkPoolSize:                8,
-			ReadWorkPoolSize:                   64,
-			ReservedExpirationTime:             Duration(time.Minute),
-			SkipCertVerify:                     false,
-			TempDir:                            "/tmp",
-			UnhealthyMonitoringInterval:        Duration(500 * time.Millisecond),
-		},
+		Configuration:             initializer.DefaultConfiguration,
 	}
 }
 

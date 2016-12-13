@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/url"
 	"os"
@@ -83,26 +81,16 @@ func main() {
 	logger, reconfigurableSink := lagerflags.NewFromConfig(repConfig.SessionName, repConfig.LagerConfig)
 
 	var (
-		executorConfiguration   executorinit.Configuration
-		gardenHealthcheckRootFS string
-		certBytes               []byte
+		executorConfiguration executorinit.Configuration
+		//	gardenHealthcheckRootFS string
 	)
 
-	if len(preloadedRootFSes) == 0 {
-		gardenHealthcheckRootFS = ""
-	} else {
-		gardenHealthcheckRootFS = repConfig.PreloadedRootFS[preloadedRootFSes[0]]
-	}
-	if repConfig.PathToCACertsForDownloads != "" {
-		certBytes, err = ioutil.ReadFile(repConfig.PathToCACertsForDownloads)
-		if err != nil {
-			logger.Error("failed-to-open-ca-cert-file", err)
-			os.Exit(1)
-		}
-
-		certBytes = bytes.TrimSpace(certBytes)
-	}
-	executorConfiguration = executorConfig(&repConfig.ExecutorConfig, certBytes, gardenHealthcheckRootFS)
+	// if len(preloadedRootFSes) == 0 {
+	// 	gardenHealthcheckRootFS = ""
+	// } else {
+	// 	gardenHealthcheckRootFS = repConfig.PreloadedRootFS[preloadedRootFSes[0]]
+	// }
+	executorConfiguration = repConfig.Configuration
 	if !executorConfiguration.Validate(logger) {
 		logger.Fatal("", errors.New("failed-to-configure-executor"))
 	}

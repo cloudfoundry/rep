@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/debugserver"
+	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/executor/initializer/configuration"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
@@ -45,7 +46,6 @@ var _ = Describe("RepConfig", func() {
 			"metrics_work_pool_size": 5,
 			"reserved_expiration_time": "10s",
 			"container_reap_interval": "11s",
-			"garden_healthcheck_rootfs": "test-rootfs",
 			"healthy_monitoring_interval": "5s",
 			"garden_healthcheck_interval": "12s",
 			"garden_healthcheck_emission_interval": "13s",
@@ -122,7 +122,7 @@ var _ = Describe("RepConfig", func() {
 			DebugServerConfig: debugserver.DebugServerConfig{
 				DebugAddress: "5.5.5.5:9090",
 			},
-			ExecutorConfig: config.ExecutorConfig{
+			Configuration: executorinit.Configuration{
 				GardenNetwork:                 "test-network",
 				GardenAddr:                    "100.0.0.1",
 				ContainerOwnerName:            "vcap",
@@ -249,21 +249,21 @@ var _ = Describe("RepConfig", func() {
 				BBSClientSessionCacheSize: 0,
 				EvacuationTimeout:         config.Duration(10 * time.Minute),
 				LagerConfig:               lagerflags.DefaultLagerConfig(),
-				ExecutorConfig: config.ExecutorConfig{
+				Configuration: executorinit.Configuration{
 					GardenNetwork:                      "unix",
 					GardenAddr:                         "/tmp/garden.sock",
 					MemoryMB:                           configuration.Automatic,
 					DiskMB:                             configuration.Automatic,
 					TempDir:                            "/tmp",
-					ReservedExpirationTime:             config.Duration(time.Minute),
-					ContainerReapInterval:              config.Duration(time.Minute),
+					ReservedExpirationTime:             executorinit.Duration(time.Minute),
+					ContainerReapInterval:              executorinit.Duration(time.Minute),
 					ContainerInodeLimit:                200000,
 					ContainerMaxCpuShares:              0,
 					CachePath:                          "/tmp/cache",
 					MaxCacheSizeInBytes:                10 * 1024 * 1024 * 1024,
 					SkipCertVerify:                     false,
-					HealthyMonitoringInterval:          config.Duration(30 * time.Second),
-					UnhealthyMonitoringInterval:        config.Duration(500 * time.Millisecond),
+					HealthyMonitoringInterval:          executorinit.Duration(30 * time.Second),
+					UnhealthyMonitoringInterval:        executorinit.Duration(500 * time.Millisecond),
 					ExportNetworkEnvVars:               false,
 					ContainerOwnerName:                 "executor",
 					HealthCheckContainerOwnerName:      "executor-health-check",
@@ -273,13 +273,13 @@ var _ = Describe("RepConfig", func() {
 					MetricsWorkPoolSize:                8,
 					HealthCheckWorkPoolSize:            64,
 					MaxConcurrentDownloads:             5,
-					GardenHealthcheckInterval:          config.Duration(10 * time.Minute),
-					GardenHealthcheckEmissionInterval:  config.Duration(30 * time.Second),
-					GardenHealthcheckTimeout:           config.Duration(10 * time.Minute),
-					GardenHealthcheckCommandRetryPause: config.Duration(1 * time.Second),
+					GardenHealthcheckInterval:          executorinit.Duration(10 * time.Minute),
+					GardenHealthcheckEmissionInterval:  executorinit.Duration(30 * time.Second),
+					GardenHealthcheckTimeout:           executorinit.Duration(10 * time.Minute),
+					GardenHealthcheckCommandRetryPause: executorinit.Duration(1 * time.Second),
 					GardenHealthcheckProcessArgs:       []string{},
 					GardenHealthcheckProcessEnv:        []string{},
-					ContainerMetricsReportInterval:     config.Duration(15 * time.Second),
+					ContainerMetricsReportInterval:     executorinit.Duration(15 * time.Second),
 				},
 			}))
 		})
