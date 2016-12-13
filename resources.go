@@ -211,10 +211,11 @@ func (r *Resources) ComputeScore(total *Resources) float64 {
 type Resource struct {
 	MemoryMB int32
 	DiskMB   int32
+	MaxPids  int32
 }
 
-func NewResource(memoryMb, diskMb int32) Resource {
-	return Resource{MemoryMB: memoryMb, DiskMB: diskMb}
+func NewResource(memoryMb, diskMb int32, maxPids int32) Resource {
+	return Resource{MemoryMB: memoryMb, DiskMB: diskMb, MaxPids: maxPids}
 }
 
 func (r *Resource) Valid() bool {
@@ -222,7 +223,7 @@ func (r *Resource) Valid() bool {
 }
 
 func (r *Resource) Copy() Resource {
-	return NewResource(r.MemoryMB, r.DiskMB)
+	return NewResource(r.MemoryMB, r.DiskMB, r.MaxPids)
 }
 
 type PlacementConstraint struct {

@@ -90,7 +90,7 @@ var _ = Describe("AuctionCellRep", func() {
 			containers = []executor.Container{
 				{
 					Guid:     "first",
-					Resource: executor.NewResource(20, 10, "rootfs"),
+					Resource: executor.NewResource(20, 10, 100, "rootfs"),
 					Tags: executor.Tags{
 						rep.LifecycleTag:    rep.LRPLifecycle,
 						rep.ProcessGuidTag:  "the-first-app-guid",
@@ -101,7 +101,7 @@ var _ = Describe("AuctionCellRep", func() {
 				},
 				{
 					Guid:     "second",
-					Resource: executor.NewResource(40, 30, "rootfs"),
+					Resource: executor.NewResource(40, 30, 100, "rootfs"),
 					Tags: executor.Tags{
 						rep.LifecycleTag:    rep.LRPLifecycle,
 						rep.ProcessGuidTag:  "the-second-app-guid",
@@ -112,7 +112,7 @@ var _ = Describe("AuctionCellRep", func() {
 				},
 				{
 					Guid:     "da-task",
-					Resource: executor.NewResource(40, 30, "rootfs"),
+					Resource: executor.NewResource(40, 30, 100, "rootfs"),
 					Tags: executor.Tags{
 						rep.LifecycleTag: rep.TaskLifecycle,
 						rep.DomainTag:    "domain",
@@ -121,7 +121,7 @@ var _ = Describe("AuctionCellRep", func() {
 				},
 				{
 					Guid:     "other-task",
-					Resource: executor.NewResource(40, 30, "rootfs"),
+					Resource: executor.NewResource(40, 30, 100, "rootfs"),
 					Tags:     nil,
 					State:    executor.StateRunning,
 				},
@@ -162,12 +162,12 @@ var _ = Describe("AuctionCellRep", func() {
 			Expect(state.LRPs).To(ConsistOf([]rep.LRP{
 				rep.NewLRP(
 					models.NewActualLRPKey("the-first-app-guid", 17, "domain"),
-					rep.NewResource(20, 10),
+					rep.NewResource(20, 10, 0),
 					rep.NewPlacementConstraint("", nil, nil),
 				),
 				rep.NewLRP(
 					models.NewActualLRPKey("the-second-app-guid", 92, "domain"),
-					rep.NewResource(40, 30),
+					rep.NewResource(40, 30, 0),
 					rep.NewPlacementConstraint("", nil, nil),
 				),
 			}))
@@ -176,7 +176,7 @@ var _ = Describe("AuctionCellRep", func() {
 				rep.NewTask(
 					"da-task",
 					"domain",
-					rep.NewResource(40, 30),
+					rep.NewResource(40, 30, 0),
 					rep.NewPlacementConstraint("", nil, nil),
 				),
 			}))
@@ -272,14 +272,14 @@ var _ = Describe("AuctionCellRep", func() {
 
 				lrp := rep.NewLRP(
 					models.NewActualLRPKey("process-guid", int32(expectedIndex), "tests"),
-					rep.NewResource(2048, 1024),
+					rep.NewResource(2048, 1024, 100),
 					rep.NewPlacementConstraint(linuxRootFSURL, nil, []string{}),
 				)
 
 				task := rep.NewTask(
 					"the-task-guid",
 					"tests",
-					rep.NewResource(2048, 1024),
+					rep.NewResource(2048, 1024, 100),
 					rep.NewPlacementConstraint(linuxRootFSURL, nil, []string{}),
 				)
 
@@ -319,12 +319,12 @@ var _ = Describe("AuctionCellRep", func() {
 
 				lrpAuctionOne = rep.NewLRP(
 					models.NewActualLRPKey("process-guid", expectedIndexOne, "tests"),
-					rep.NewResource(2048, 1024),
+					rep.NewResource(2048, 1024, 100),
 					rep.NewPlacementConstraint("rootfs", nil, []string{}),
 				)
 				lrpAuctionTwo = rep.NewLRP(
 					models.NewActualLRPKey("process-guid", expectedIndexTwo, "tests"),
-					rep.NewResource(2048, 1024),
+					rep.NewResource(2048, 1024, 100),
 					rep.NewPlacementConstraint("rootfs", nil, []string{}),
 				)
 			})
@@ -353,7 +353,7 @@ var _ = Describe("AuctionCellRep", func() {
 								rep.InstanceGuidTag: expectedGuidOne,
 								rep.ProcessIndexTag: expectedIndexOneString,
 							},
-							Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), linuxPath),
+							Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), linuxPath),
 						},
 						executor.AllocationRequest{
 							Guid: rep.LRPContainerGuid(lrpAuctionTwo.ProcessGuid, expectedGuidTwo),
@@ -364,7 +364,7 @@ var _ = Describe("AuctionCellRep", func() {
 								rep.InstanceGuidTag: expectedGuidTwo,
 								rep.ProcessIndexTag: expectedIndexTwoString,
 							},
-							Resource: executor.NewResource(int(lrpAuctionTwo.MemoryMB), int(lrpAuctionTwo.DiskMB), "unsupported-arbitrary://still-goes-through"),
+							Resource: executor.NewResource(int(lrpAuctionTwo.MemoryMB), int(lrpAuctionTwo.DiskMB), int(lrpAuctionTwo.MaxPids), "unsupported-arbitrary://still-goes-through"),
 						},
 					))
 				})
@@ -383,7 +383,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 				Context("when a container fails to be allocated", func() {
 					BeforeEach(func() {
-						resource := executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), "rootfs")
+						resource := executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), "rootfs")
 						tags := executor.Tags{}
 						tags[rep.ProcessGuidTag] = lrpAuctionOne.ProcessGuid
 						allocationRequest := executor.NewAllocationRequest(
@@ -425,7 +425,7 @@ var _ = Describe("AuctionCellRep", func() {
 								rep.InstanceGuidTag: expectedGuidOne,
 								rep.ProcessIndexTag: expectedIndexOneString,
 							},
-							Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), linuxPath),
+							Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), linuxPath),
 						},
 					))
 				})
@@ -450,7 +450,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 				Context("when a remaining container fails to be allocated", func() {
 					BeforeEach(func() {
-						resource := executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), "rootfs")
+						resource := executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), "rootfs")
 						tags := executor.Tags{}
 						tags[rep.ProcessGuidTag] = lrpAuctionOne.ProcessGuid
 						allocationRequest := executor.NewAllocationRequest(
@@ -491,7 +491,7 @@ var _ = Describe("AuctionCellRep", func() {
 								rep.InstanceGuidTag: expectedGuidOne,
 								rep.ProcessIndexTag: expectedIndexOneString,
 							},
-							Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), ""),
+							Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), ""),
 						},
 					))
 				})
@@ -519,7 +519,7 @@ var _ = Describe("AuctionCellRep", func() {
 								rep.InstanceGuidTag: expectedGuidOne,
 								rep.ProcessIndexTag: expectedIndexOneString,
 							},
-							Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), linuxPath),
+							Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), linuxPath),
 						},
 					))
 				})
@@ -544,7 +544,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 				Context("when a remaining container fails to be allocated", func() {
 					BeforeEach(func() {
-						resource := executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), "rootfs")
+						resource := executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), "rootfs")
 						tags := executor.Tags{}
 						tags[rep.ProcessGuidTag] = lrpAuctionOne.ProcessGuid
 						allocationRequest := executor.NewAllocationRequest(
@@ -569,11 +569,11 @@ var _ = Describe("AuctionCellRep", func() {
 			var task1, task2 rep.Task
 
 			BeforeEach(func() {
-				resource1 := rep.NewResource(256, 512)
+				resource1 := rep.NewResource(256, 512, 256)
 				placement1 := rep.NewPlacementConstraint("tests", nil, []string{})
 				task1 = rep.NewTask("the-task-guid-1", "tests", resource1, placement1)
 
-				resource2 := rep.NewResource(512, 1024)
+				resource2 := rep.NewResource(512, 1024, 256)
 				placement2 := rep.NewPlacementConstraint("linux", nil, []string{})
 				task2 = rep.NewTask("the-task-guid-2", "tests", resource2, placement2)
 
@@ -612,7 +612,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 				Context("when a container fails to be allocated", func() {
 					BeforeEach(func() {
-						resource := executor.NewResource(int(task1.MemoryMB), int(task1.DiskMB), "linux")
+						resource := executor.NewResource(int(task1.MemoryMB), int(task1.DiskMB), int(task1.MaxPids), "linux")
 						tags := executor.Tags{}
 						allocationRequest := executor.NewAllocationRequest(
 							task1.TaskGuid,
@@ -752,7 +752,7 @@ var _ = Describe("AuctionCellRep", func() {
 })
 
 func allocationRequestFromTask(task rep.Task, rootFSPath string) executor.AllocationRequest {
-	resource := executor.NewResource(int(task.MemoryMB), int(task.DiskMB), rootFSPath)
+	resource := executor.NewResource(int(task.MemoryMB), int(task.DiskMB), int(task.MaxPids), rootFSPath)
 	return executor.NewAllocationRequest(
 		task.TaskGuid,
 		&resource,

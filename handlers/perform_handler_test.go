@@ -15,11 +15,11 @@ var _ = Describe("Perform", func() {
 	Context("with valid JSON", func() {
 		var requestedWork, failedWork rep.Work
 		BeforeEach(func() {
-			resourceA := rep.NewResource(128, 256)
+			resourceA := rep.NewResource(128, 256, 256)
 			placementContraintA := rep.NewPlacementConstraint("some-rootfs", nil, nil)
-			resourceB := rep.NewResource(256, 512)
+			resourceB := rep.NewResource(256, 512, 256)
 			placementContraintB := rep.NewPlacementConstraint("some-rootfs", nil, nil)
-			resourceC := rep.NewResource(512, 1024)
+			resourceC := rep.NewResource(512, 1024, 256)
 			placementContraintC := rep.NewPlacementConstraint("some-rootfs", nil, nil)
 
 			requestedWork = rep.Work{

@@ -287,7 +287,7 @@ func (a *AuctionCellRep) lrpsToAllocationRequest(lrps []rep.LRP) ([]executor.All
 		containerGuid := rep.LRPContainerGuid(lrp.ProcessGuid, instanceGuid)
 		lrpMap[containerGuid] = lrp
 
-		resource := executor.NewResource(int(lrp.MemoryMB), int(lrp.DiskMB), rootFSPath)
+		resource := executor.NewResource(int(lrp.MemoryMB), int(lrp.DiskMB), int(lrp.MaxPids), rootFSPath)
 		requests = append(requests, executor.NewAllocationRequest(containerGuid, &resource, tags))
 	}
 
@@ -311,7 +311,7 @@ func (a *AuctionCellRep) tasksToAllocationRequests(tasks []rep.Task) ([]executor
 		tags[rep.LifecycleTag] = rep.TaskLifecycle
 		tags[rep.DomainTag] = task.Domain
 
-		resource := executor.NewResource(int(task.MemoryMB), int(task.DiskMB), rootFSPath)
+		resource := executor.NewResource(int(task.MemoryMB), int(task.DiskMB), int(task.MaxPids), rootFSPath)
 		requests = append(requests, executor.NewAllocationRequest(task.TaskGuid, &resource, tags))
 	}
 

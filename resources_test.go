@@ -20,16 +20,16 @@ var _ = Describe("Resources", func() {
 		linuxRootFSURL = models.PreloadedRootFS("linux")
 
 		lrps := []rep.LRP{
-			*BuildLRP("pg-1", "domain", 0, linuxRootFSURL, 10, 20),
-			*BuildLRP("pg-1", "domain", 1, linuxRootFSURL, 10, 20),
-			*BuildLRP("pg-2", "domain", 0, linuxRootFSURL, 10, 20),
-			*BuildLRP("pg-3", "domain", 0, linuxRootFSURL, 10, 20),
-			*BuildLRP("pg-4", "domain", 0, linuxRootFSURL, 10, 20),
+			*BuildLRP("pg-1", "domain", 0, linuxRootFSURL, 10, 20, 30),
+			*BuildLRP("pg-1", "domain", 1, linuxRootFSURL, 10, 20, 30),
+			*BuildLRP("pg-2", "domain", 0, linuxRootFSURL, 10, 20, 30),
+			*BuildLRP("pg-3", "domain", 0, linuxRootFSURL, 10, 20, 30),
+			*BuildLRP("pg-4", "domain", 0, linuxRootFSURL, 10, 20, 30),
 		}
 
 		tasks := []rep.Task{
-			*BuildTask("tg-big", "domain", linuxRootFSURL, 20, 10, []string{}),
-			*BuildTask("tg-small", "domain", linuxRootFSURL, 10, 10, []string{}),
+			*BuildTask("tg-big", "domain", linuxRootFSURL, 20, 10, 10, []string{}),
+			*BuildTask("tg-small", "domain", linuxRootFSURL, 10, 10, 10, []string{}),
 		}
 
 		cellState = rep.NewCellState(linuxOnlyRootFSProviders,
@@ -50,7 +50,7 @@ var _ = Describe("Resources", func() {
 		var requiredResource rep.Resource
 		var err error
 		BeforeEach(func() {
-			requiredResource = rep.NewResource(10, 10)
+			requiredResource = rep.NewResource(10, 10, 10)
 		})
 
 		JustBeforeEach(func() {
@@ -123,13 +123,13 @@ var _ = Describe("Resources", func() {
 	})
 })
 
-func BuildLRP(guid, domain string, index int, rootFS string, memoryMB, diskMB int32) *rep.LRP {
+func BuildLRP(guid, domain string, index int, rootFS string, memoryMB, diskMB, maxPids int32) *rep.LRP {
 	lrpKey := models.NewActualLRPKey(guid, int32(index), domain)
-	lrp := rep.NewLRP(lrpKey, rep.NewResource(memoryMB, diskMB), rep.PlacementConstraint{RootFs: rootFS})
+	lrp := rep.NewLRP(lrpKey, rep.NewResource(memoryMB, diskMB, maxPids), rep.PlacementConstraint{RootFs: rootFS})
 	return &lrp
 }
 
-func BuildTask(taskGuid, domain, rootFS string, memoryMB, diskMB int32, volumeDrivers []string) *rep.Task {
-	task := rep.NewTask(taskGuid, domain, rep.NewResource(memoryMB, diskMB), rep.PlacementConstraint{RootFs: rootFS, VolumeDrivers: volumeDrivers})
+func BuildTask(taskGuid, domain, rootFS string, memoryMB, diskMB, maxPids int32, volumeDrivers []string) *rep.Task {
+	task := rep.NewTask(taskGuid, domain, rep.NewResource(memoryMB, diskMB, maxPids), rep.PlacementConstraint{RootFs: rootFS, VolumeDrivers: volumeDrivers})
 	return &task
 }
