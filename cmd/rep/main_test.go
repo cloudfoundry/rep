@@ -18,6 +18,7 @@ import (
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
 	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/executor/gardenhealth"
+	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/garden/transport"
 	"code.cloudfoundry.org/lager"
@@ -40,14 +41,15 @@ var runner *testrunner.Runner
 
 var _ = Describe("The Rep", func() {
 	var (
-		repConfig         config.RepConfig
-		fakeGarden        *ghttp.Server
-		pollingInterval   time.Duration
-		evacuationTimeout time.Duration
-		rootFSName        string
-		rootFSPath        string
-		logger            *lagertest.TestLogger
-		basePath          string
+		repConfig                           config.RepConfig
+		fakeGarden                          *ghttp.Server
+		pollingInterval                     time.Duration
+		evacuationTimeout                   time.Duration
+		rootFSName                          string
+		rootFSPath                          string
+		logger                              *lagertest.TestLogger
+		basePath                            string
+		respondWithSuccessToCreateContainer bool
 
 		flushEvents chan struct{}
 	)
@@ -63,6 +65,8 @@ var _ = Describe("The Rep", func() {
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
 
+		respondWithSuccessToCreateContainer = true
+
 		basePath = path.Join(os.Getenv("GOPATH"), "src/code.cloudfoundry.org/rep/cmd/rep/fixtures")
 
 		Eventually(getActualLRPGroups(logger), 5*pollingInterval).Should(BeEmpty())
@@ -77,7 +81,6 @@ var _ = Describe("The Rep", func() {
 		fakeGarden.RouteToHandler("GET", "/containers/bulk_info", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 
 		// The following handlers are needed to fake out the healthcheck containers
-		fakeGarden.RouteToHandler("POST", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{"handle": "healthcheck-container"}))
 		fakeGarden.RouteToHandler("DELETE", regexp.MustCompile("/containers/executor-healthcheck-[-a-f0-9]+"), ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 		fakeGarden.RouteToHandler("POST", "/containers/healthcheck-container/processes", func() http.HandlerFunc {
 			firstResponse, err := json.Marshal(transport.ProcessPayload{})
@@ -109,7 +112,7 @@ var _ = Describe("The Rep", func() {
 			ListenAddrSecurable:   fmt.Sprintf("0.0.0.0:%d", serverPortSecurable),
 			RequireTLS:            false,
 			LockRetryInterval:     config.Duration(1 * time.Second),
-			ExecutorConfig: config.ExecutorConfig{
+			ExecutorConfig: executorinit.ExecutorConfig{
 				GardenAddr:                   fakeGarden.HTTPTestServer.Listener.Addr().String(),
 				GardenNetwork:                "tcp",
 				GardenHealthcheckProcessUser: "me",
@@ -132,6 +135,10 @@ var _ = Describe("The Rep", func() {
 	})
 
 	JustBeforeEach(func() {
+		if respondWithSuccessToCreateContainer {
+			fakeGarden.RouteToHandler("POST", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{"handle": "healthcheck-container"}))
+		}
+
 		runner.Start()
 	})
 
@@ -158,22 +165,6 @@ var _ = Describe("The Rep", func() {
 
 			AfterEach(func() {
 				os.Remove(certFile.Name())
-			})
-
-			Context("when the file is empty", func() {
-				BeforeEach(func() {
-					repConfig.PathToCACertsForDownloads = certFile.Name()
-					runner = testrunner.New(
-						representativePath,
-						repConfig,
-					)
-
-					runner.StartCheck = "started"
-				})
-
-				It("should start", func() {
-					Consistently(runner.Session).ShouldNot(Exit())
-				})
 			})
 
 			Context("when the file has a valid cert bundle", func() {
@@ -231,73 +222,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 
 				It("should start", func() {
 					Consistently(runner.Session).ShouldNot(Exit())
-				})
-			})
-
-			Context("when the file has extra whitespace", func() {
-				BeforeEach(func() {
-					fileContents := []byte(`
-	
-						-----BEGIN CERTIFICATE-----
-MIIBdzCCASOgAwIBAgIBADALBgkqhkiG9w0BAQUwEjEQMA4GA1UEChMHQWNtZSBD
-bzAeFw03MDAxMDEwMDAwMDBaFw00OTEyMzEyMzU5NTlaMBIxEDAOBgNVBAoTB0Fj
-bWUgQ28wWjALBgkqhkiG9w0BAQEDSwAwSAJBAN55NcYKZeInyTuhcCwFMhDHCmwa
-IUSdtXdcbItRB/yfXGBhiex00IaLXQnSU+QZPRZWYqeTEbFSgihqi1PUDy8CAwEA
-AaNoMGYwDgYDVR0PAQH/BAQDAgCkMBMGA1UdJQQMMAoGCCsGAQUFBwMBMA8GA1Ud
-EwEB/wQFMAMBAf8wLgYDVR0RBCcwJYILZXhhbXBsZS5jb22HBH8AAAGHEAAAAAAA
-AAAAAAAAAAAAAAEwCwYJKoZIhvcNAQEFA0EAAoQn/ytgqpiLcZu9XKbCJsJcvkgk
-Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
------END CERTIFICATE-----
-
-`)
-					err := ioutil.WriteFile(certFile.Name(), fileContents, os.ModePerm)
-					Expect(err).NotTo(HaveOccurred())
-
-					repConfig.PathToCACertsForDownloads = certFile.Name()
-					runner = testrunner.New(
-						representativePath,
-						repConfig,
-					)
-				})
-
-				It("should start", func() {
-					Consistently(runner.Session).ShouldNot(Exit())
-				})
-			})
-
-			Context("when the cert bundle is invalid", func() {
-				BeforeEach(func() {
-					err := ioutil.WriteFile(certFile.Name(), []byte("invalid cert bundle"), os.ModePerm)
-					Expect(err).NotTo(HaveOccurred())
-
-					repConfig.PathToCACertsForDownloads = certFile.Name()
-					runner = testrunner.New(
-						representativePath,
-						repConfig,
-					)
-
-					runner.StartCheck = ""
-				})
-
-				It("should not start", func() {
-					Eventually(runner.Session.Buffer()).Should(gbytes.Say("unable to load CA certificate"))
-					Eventually(runner.Session.ExitCode).Should(Equal(1))
-				})
-			})
-
-			Context("when the file does not exist", func() {
-				BeforeEach(func() {
-					repConfig.PathToCACertsForDownloads = "does-not-exist"
-					runner = testrunner.New(
-						representativePath,
-						repConfig,
-					)
-
-					runner.StartCheck = ""
-				})
-				It("should not start", func() {
-					Eventually(runner.Session.Buffer()).Should(gbytes.Say("failed-to-open-ca-cert-file"))
-					Eventually(runner.Session.ExitCode).Should(Equal(1))
 				})
 			})
 		})
@@ -840,6 +764,35 @@ Se6AbGXgSlq+ZCEVo0qIwSgeBqmsJxUu7NCSOwVJLYNEBO2DtIxoYVk+MA==
 						})
 					})
 				})
+			})
+		})
+
+		Describe("RootFS for garden healthcheck", func() {
+			var createRequestReceived chan struct{}
+
+			BeforeEach(func() {
+				respondWithSuccessToCreateContainer = false
+				createRequestReceived = make(chan struct{})
+				fakeGarden.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/containers", ""),
+						func(w http.ResponseWriter, req *http.Request) {
+							body, err := ioutil.ReadAll(req.Body)
+							req.Body.Close()
+							Expect(err).ShouldNot(HaveOccurred())
+							Expect(string(body)).Should(ContainSubstring(`executor-healthcheck`))
+							Expect(string(body)).Should(ContainSubstring(`"rootfs":"/path/to/rootfs"`))
+							createRequestReceived <- struct{}{}
+						},
+					),
+				)
+
+				fakeGarden.AllowUnhandledRequests = true
+				runner.StartCheck = ""
+			})
+
+			It("sends the correct rootfs when creating the container", func() {
+				Eventually(createRequestReceived).Should(Receive())
 			})
 		})
 	})
