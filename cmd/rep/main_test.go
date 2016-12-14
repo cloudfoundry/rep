@@ -41,14 +41,15 @@ var runner *testrunner.Runner
 
 var _ = Describe("The Rep", func() {
 	var (
-		repConfig         config.RepConfig
-		fakeGarden        *ghttp.Server
-		pollingInterval   time.Duration
-		evacuationTimeout time.Duration
-		rootFSName        string
-		rootFSPath        string
-		logger            *lagertest.TestLogger
-		basePath          string
+		repConfig                           config.RepConfig
+		fakeGarden                          *ghttp.Server
+		pollingInterval                     time.Duration
+		evacuationTimeout                   time.Duration
+		rootFSName                          string
+		rootFSPath                          string
+		logger                              *lagertest.TestLogger
+		basePath                            string
+		respondWithSuccessToCreateContainer bool
 
 		flushEvents chan struct{}
 	)
@@ -64,6 +65,8 @@ var _ = Describe("The Rep", func() {
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
 
+		respondWithSuccessToCreateContainer = true
+
 		basePath = path.Join(os.Getenv("GOPATH"), "src/code.cloudfoundry.org/rep/cmd/rep/fixtures")
 
 		Eventually(getActualLRPGroups(logger), 5*pollingInterval).Should(BeEmpty())
@@ -78,7 +81,6 @@ var _ = Describe("The Rep", func() {
 		fakeGarden.RouteToHandler("GET", "/containers/bulk_info", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 
 		// The following handlers are needed to fake out the healthcheck containers
-		fakeGarden.RouteToHandler("POST", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{"handle": "healthcheck-container"}))
 		fakeGarden.RouteToHandler("DELETE", regexp.MustCompile("/containers/executor-healthcheck-[-a-f0-9]+"), ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 		fakeGarden.RouteToHandler("POST", "/containers/healthcheck-container/processes", func() http.HandlerFunc {
 			firstResponse, err := json.Marshal(transport.ProcessPayload{})
@@ -133,6 +135,10 @@ var _ = Describe("The Rep", func() {
 	})
 
 	JustBeforeEach(func() {
+		if respondWithSuccessToCreateContainer {
+			fakeGarden.RouteToHandler("POST", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{"handle": "healthcheck-container"}))
+		}
+
 		runner.Start()
 	})
 
@@ -758,6 +764,35 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 						})
 					})
 				})
+			})
+		})
+
+		Describe("RootFS for garden healthcheck", func() {
+			var createRequestReceived bool
+
+			BeforeEach(func() {
+				respondWithSuccessToCreateContainer = false
+				createRequestReceived = false
+				fakeGarden.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", "/containers", ""),
+						func(w http.ResponseWriter, req *http.Request) {
+							body, err := ioutil.ReadAll(req.Body)
+							req.Body.Close()
+							Expect(err).ShouldNot(HaveOccurred())
+							Expect(string(body)).Should(ContainSubstring(`executor-healthcheck`))
+							Expect(string(body)).Should(ContainSubstring(`"rootfs":"/path/to/rootfs"`))
+							createRequestReceived = true
+						},
+					),
+				)
+
+				fakeGarden.AllowUnhandledRequests = true
+				runner.StartCheck = ""
+			})
+
+			It("sends the correct rootfs when creating the container", func() {
+				Eventually(func() bool { return createRequestReceived }).Should(BeTrue())
 			})
 		})
 	})
