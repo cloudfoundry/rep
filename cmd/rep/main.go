@@ -80,18 +80,14 @@ func main() {
 	clock := clock.NewClock()
 	logger, reconfigurableSink := lagerflags.NewFromConfig(repConfig.SessionName, repConfig.LagerConfig)
 
-	var (
-		executorConfiguration   executorinit.Configuration
-		gardenHealthcheckRootFS string
-	)
+	var gardenHealthcheckRootFS string
 
 	if len(preloadedRootFSes) == 0 {
 		gardenHealthcheckRootFS = ""
 	} else {
 		gardenHealthcheckRootFS = repConfig.PreloadedRootFS[preloadedRootFSes[0]]
 	}
-	executorConfiguration = repConfig.Configuration
-	if !executorConfiguration.Validate(logger) {
+	if !repConfig.ExecutorConfig.Validate(logger) {
 		logger.Fatal("", errors.New("failed-to-configure-executor"))
 	}
 
@@ -102,7 +98,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	executorClient, executorMembers, err := executorinit.Initialize(logger, executorConfiguration, gardenHealthcheckRootFS, clock)
+	executorClient, executorMembers, err := executorinit.Initialize(logger, repConfig.ExecutorConfig, gardenHealthcheckRootFS, clock)
 	if err != nil {
 		logger.Error("failed-to-initialize-executor", err)
 		os.Exit(1)

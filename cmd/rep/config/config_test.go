@@ -122,7 +122,7 @@ var _ = Describe("RepConfig", func() {
 			DebugServerConfig: debugserver.DebugServerConfig{
 				DebugAddress: "5.5.5.5:9090",
 			},
-			Configuration: executorinit.Configuration{
+			ExecutorConfig: executorinit.ExecutorConfig{
 				GardenNetwork:                 "test-network",
 				GardenAddr:                    "100.0.0.1",
 				ContainerOwnerName:            "vcap",
@@ -249,7 +249,7 @@ var _ = Describe("RepConfig", func() {
 				BBSClientSessionCacheSize: 0,
 				EvacuationTimeout:         config.Duration(10 * time.Minute),
 				LagerConfig:               lagerflags.DefaultLagerConfig(),
-				Configuration: executorinit.Configuration{
+				ExecutorConfig: executorinit.ExecutorConfig{
 					GardenNetwork:                      "unix",
 					GardenAddr:                         "/tmp/garden.sock",
 					MemoryMB:                           configuration.Automatic,

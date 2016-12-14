@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/debugserver"
-	"code.cloudfoundry.org/executor/initializer"
+	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
 )
@@ -113,7 +113,7 @@ type RepConfig struct {
 	Zone                      string   `json:"zone"`
 	debugserver.DebugServerConfig
 	lagerflags.LagerConfig
-	initializer.Configuration
+	executorinit.ExecutorConfig
 }
 
 func defaultConfig() RepConfig {
@@ -134,7 +134,7 @@ func defaultConfig() RepConfig {
 		PollingInterval:           Duration(30 * time.Second),
 		RequireTLS:                true,
 		SessionName:               "rep",
-		Configuration:             initializer.DefaultConfiguration,
+		ExecutorConfig:            executorinit.DefaultConfiguration,
 	}
 }
 

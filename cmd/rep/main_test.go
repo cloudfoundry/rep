@@ -112,7 +112,7 @@ var _ = Describe("The Rep", func() {
 			ListenAddrSecurable:   fmt.Sprintf("0.0.0.0:%d", serverPortSecurable),
 			RequireTLS:            false,
 			LockRetryInterval:     config.Duration(1 * time.Second),
-			Configuration: executorinit.Configuration{
+			ExecutorConfig: executorinit.ExecutorConfig{
 				GardenAddr:                   fakeGarden.HTTPTestServer.Listener.Addr().String(),
 				GardenNetwork:                "tcp",
 				GardenHealthcheckProcessUser: "me",
