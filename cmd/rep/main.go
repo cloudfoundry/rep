@@ -173,7 +173,7 @@ func main() {
 
 	members = append(executorMembers, members...)
 
-	if dbgAddr := debugserver.DebugAddress(flag.CommandLine); dbgAddr != "" {
+	if dbgAddr := repConfig.DebugAddress; dbgAddr != "" {
 		members = append(grouper.Members{
 			{"debug-server", debugserver.Runner(dbgAddr, reconfigurableSink)},
 		}, members...)
