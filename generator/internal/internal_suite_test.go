@@ -2,6 +2,7 @@ package internal_test
 
 import (
 	"fmt"
+	"time"
 
 	"code.cloudfoundry.org/bbs"
 	bbsrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
@@ -75,7 +76,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 var _ = SynchronizedAfterSuite(func() {
 	consulRunner.Stop()
-	ginkgomon.Kill(sqlProcess)
+	ginkgomon.Kill(sqlProcess, 5*time.Second)
 }, func() {
 	gexec.CleanupBuildArtifacts()
 })
