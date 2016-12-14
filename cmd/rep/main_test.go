@@ -768,11 +768,11 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 		})
 
 		Describe("RootFS for garden healthcheck", func() {
-			var createRequestReceived bool
+			var createRequestReceived chan struct{}
 
 			BeforeEach(func() {
 				respondWithSuccessToCreateContainer = false
-				createRequestReceived = false
+				createRequestReceived = make(chan struct{})
 				fakeGarden.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("POST", "/containers", ""),
@@ -782,7 +782,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 							Expect(err).ShouldNot(HaveOccurred())
 							Expect(string(body)).Should(ContainSubstring(`executor-healthcheck`))
 							Expect(string(body)).Should(ContainSubstring(`"rootfs":"/path/to/rootfs"`))
-							createRequestReceived = true
+							createRequestReceived <- struct{}{}
 						},
 					),
 				)
@@ -792,7 +792,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 			})
 
 			It("sends the correct rootfs when creating the container", func() {
-				Eventually(func() bool { return createRequestReceived }).Should(BeTrue())
+				Eventually(createRequestReceived).Should(Receive())
 			})
 		})
 	})
