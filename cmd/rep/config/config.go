@@ -62,7 +62,6 @@ func (d *Duration) UnmarshalJSON(data []byte) error {
 	var s string
 	err := json.Unmarshal(data, &s)
 	if err != nil {
-		fmt.Printf("data: %#v", data)
 		return err
 	}
 
