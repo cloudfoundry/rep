@@ -2,7 +2,6 @@ package testrunner
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -23,7 +22,6 @@ type Runner struct {
 	repConfig         config.RepConfig
 	repConfigFilePath string
 }
-type Duration time.Duration
 
 func New(binPath string, repConfig config.RepConfig) *Runner {
 	return &Runner{
@@ -31,11 +29,6 @@ func New(binPath string, repConfig config.RepConfig) *Runner {
 		StartCheck: "rep.started",
 		repConfig:  repConfig,
 	}
-}
-
-func (d *Duration) MarshalJSON() ([]byte, error) {
-	t := time.Duration(*d)
-	return []byte(fmt.Sprintf(`"%s"`, t.String())), nil
 }
 
 func (r *Runner) Start() {
