@@ -246,7 +246,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 			})
 
 			AfterEach(func() {
-				bbsRunner = bbstestrunner.New(bbsBinPath, bbsArgs)
+				bbsRunner = bbstestrunner.New(bbsBinPath, bbsConfig)
 				bbsProcess = ginkgomon.Invoke(bbsRunner)
 			})
 
