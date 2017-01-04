@@ -91,6 +91,9 @@ type RepConfig struct {
 	CellID                    string   `json:"cell_id"`
 	CommunicationTimeout      Duration `json:"communication_timeout,omitempty"`
 	ConsulCluster             string   `json:"consul_cluster"`
+	ConsulCACert              string   `json:"consul_ca_cert"`
+	ConsulClientCert          string   `json:"consul_client_cert"`
+	ConsulClientKey           string   `json:"consul_client_key"`
 	DropsondePort             int      `json:"dropsonde_port,omitempty"`
 	EnableLegacyAPIServer     bool     `json:"enable_legacy_api_endpoints"`
 	EvacuationPollingInterval Duration `json:"evacuation_polling_interval,omitempty"`

@@ -105,10 +105,7 @@ func main() {
 	}
 	defer executorClient.Cleanup(logger)
 
-	consulClient, err := consuladapter.NewClientFromUrl(repConfig.ConsulCluster)
-	if err != nil {
-		logger.Fatal("new-client-failed", err)
-	}
+	consulClient := initializeConsulClient(logger, repConfig)
 
 	serviceClient := bbs.NewServiceClient(consulClient, clock)
 
@@ -350,6 +347,35 @@ func initializeBBSClient(
 		logger.Fatal("Failed to configure secure BBS client", err)
 	}
 	return bbsClient
+}
+
+func initializeConsulClient(
+	logger lager.Logger,
+	repConfig config.RepConfig,
+) consuladapter.Client {
+	var consulClient consuladapter.Client
+
+	scheme, _, err := consuladapter.Parse(repConfig.ConsulCluster)
+	if err != nil {
+		logger.Fatal("parse-consul-cluster-failed", err)
+	}
+
+	if scheme == "https" {
+		consulClient, err = consuladapter.NewTLSClientFromUrl(
+			repConfig.ConsulCluster,
+			repConfig.ConsulCACert,
+			repConfig.ConsulClientCert,
+			repConfig.ConsulClientKey,
+		)
+	} else {
+		consulClient, err = consuladapter.NewClientFromUrl(repConfig.ConsulCluster)
+	}
+
+	if err != nil {
+		logger.Fatal("new-client-failed", err)
+	}
+
+	return consulClient
 }
 
 func repHost(cellID string) string {
