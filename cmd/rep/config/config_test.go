@@ -62,9 +62,12 @@ var _ = Describe("RepConfig", func() {
 			"container_metrics_report_interval": "16s",
 			"session_name": "test",
 			"consul_cluster": "test cluster",
+			"consul_ca_cert": "/tmp/consul_ca_cert",
+			"consul_client_cert": "/tmp/consul_client_cert",
+			"consul_client_key": "/tmp/consul_client_key",
 			"lock_ttl": "5s",
 			"lock_retry_interval": "5s",
-      "listen_addr": "0.0.0.0:8080",
+			"listen_addr": "0.0.0.0:8080",
 			"listen_addr_securable": "0.0.0.0:8081",
 			"listen_addr_admin": "0.0.0.1:8081",
 			"require_tls": true,
@@ -86,12 +89,12 @@ var _ = Describe("RepConfig", func() {
 			"bbs_client_key_file": "/tmp/bbs_client_key",
 			"bbs_client_session_cache_size": 100,
 			"bbs_max_idle_conns_per_host": 10,
-      "preloaded_root_fs": ["test:value", "test2:value2"],
-      "supported_providers": ["provider1", "provider2"],
-      "garden_healthcheck_process_env": ["env1", "env2"],
-      "garden_healthcheck_process_args": ["arg1", "arg2"],
-      "placement_tags": ["tag1", "tag2"],
-      "optional_placement_tags": ["otag1", "otag2"]
+			"preloaded_root_fs": ["test:value", "test2:value2"],
+			"supported_providers": ["provider1", "provider2"],
+			"garden_healthcheck_process_env": ["env1", "env2"],
+			"garden_healthcheck_process_args": ["arg1", "arg2"],
+			"placement_tags": ["tag1", "tag2"],
+			"optional_placement_tags": ["otag1", "otag2"]
 		}`
 	})
 
@@ -164,6 +167,9 @@ var _ = Describe("RepConfig", func() {
 			},
 			SessionName:               "test",
 			ConsulCluster:             "test cluster",
+			ConsulCACert:              "/tmp/consul_ca_cert",
+			ConsulClientCert:          "/tmp/consul_client_cert",
+			ConsulClientKey:           "/tmp/consul_client_key",
 			LockTTL:                   config.Duration(5 * time.Second),
 			LockRetryInterval:         config.Duration(5 * time.Second),
 			ListenAddr:                "0.0.0.0:8080",
