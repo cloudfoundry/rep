@@ -170,9 +170,9 @@ func main() {
 
 	members = append(executorMembers, members...)
 
-	if dbgAddr := repConfig.DebugAddress; dbgAddr != "" {
+	if repConfig.DebugAddress != "" {
 		members = append(grouper.Members{
-			{"debug-server", debugserver.Runner(dbgAddr, reconfigurableSink)},
+			{"debug-server", debugserver.Runner(repConfig.DebugAddress, reconfigurableSink)},
 		}, members...)
 	}
 
