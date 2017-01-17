@@ -82,7 +82,7 @@ var _ = Describe("RepConfig", func() {
 			"communication_timeout": "11s",
 			"evacuation_timeout" : "12s",
 			"evacuation_polling_interval" : "13s",
-			"bbs_api_url": "1.1.1.1:9091",
+			"bbs_address": "1.1.1.1:9091",
 			"advertise_domain": "test-domain",
 			"enable_legacy_api_endpoints": true,
 			"bbs_ca_cert_file": "/tmp/bbs_ca_cert",

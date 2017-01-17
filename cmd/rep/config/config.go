@@ -59,7 +59,7 @@ func (m StackMap) MarshalJSON() (b []byte, err error) {
 
 type RepConfig struct {
 	AdvertiseDomain           string                `json:"advertise_domain,omitempty"`
-	BBSAddress                string                `json:"bbs_api_url"`
+	BBSAddress                string                `json:"bbs_address"`
 	BBSCACertFile             string                `json:"bbs_ca_cert_file"`
 	BBSClientCertFile         string                `json:"bbs_client_cert_file"`
 	BBSClientKeyFile          string                `json:"bbs_client_key_file"`
