@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/debugserver"
+	"code.cloudfoundry.org/durationjson"
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/executor/initializer/configuration"
 	"code.cloudfoundry.org/lager/lagerflags"
@@ -170,8 +171,8 @@ var _ = Describe("RepConfig", func() {
 			ConsulCACert:              "/tmp/consul_ca_cert",
 			ConsulClientCert:          "/tmp/consul_client_cert",
 			ConsulClientKey:           "/tmp/consul_client_key",
-			LockTTL:                   config.Duration(5 * time.Second),
-			LockRetryInterval:         config.Duration(5 * time.Second),
+			LockTTL:                   durationjson.Duration(5 * time.Second),
+			LockRetryInterval:         durationjson.Duration(5 * time.Second),
 			ListenAddr:                "0.0.0.0:8080",
 			ListenAddrSecurable:       "0.0.0.0:8081",
 			ListenAddrAdmin:           "0.0.0.1:8081",
@@ -181,11 +182,11 @@ var _ = Describe("RepConfig", func() {
 			ServerKeyFile:             "/tmp/server_key",
 			CellID:                    "cell_z1/10",
 			Zone:                      "test-zone",
-			PollingInterval:           config.Duration(10 * time.Second),
+			PollingInterval:           durationjson.Duration(10 * time.Second),
 			DropsondePort:             8082,
-			CommunicationTimeout:      config.Duration(11 * time.Second),
-			EvacuationTimeout:         config.Duration(12 * time.Second),
-			EvacuationPollingInterval: config.Duration(13 * time.Second),
+			CommunicationTimeout:      durationjson.Duration(11 * time.Second),
+			EvacuationTimeout:         durationjson.Duration(12 * time.Second),
+			EvacuationPollingInterval: durationjson.Duration(13 * time.Second),
 			BBSAddress:                "1.1.1.1:9091",
 			AdvertiseDomain:           "test-domain",
 			EnableLegacyAPIServer:     true,
@@ -241,19 +242,19 @@ var _ = Describe("RepConfig", func() {
 
 			Expect(repConfig).To(Equal(config.RepConfig{
 				SessionName:               "rep",
-				LockTTL:                   config.Duration(locket.DefaultSessionTTL),
-				LockRetryInterval:         config.Duration(locket.RetryInterval),
+				LockTTL:                   durationjson.Duration(locket.DefaultSessionTTL),
+				LockRetryInterval:         durationjson.Duration(locket.RetryInterval),
 				ListenAddr:                "0.0.0.0:1800",
 				ListenAddrSecurable:       "0.0.0.0:1801",
 				RequireTLS:                true,
-				PollingInterval:           config.Duration(30 * time.Second),
+				PollingInterval:           durationjson.Duration(30 * time.Second),
 				DropsondePort:             3457,
-				CommunicationTimeout:      config.Duration(10 * time.Second),
-				EvacuationPollingInterval: config.Duration(10 * time.Second),
+				CommunicationTimeout:      durationjson.Duration(10 * time.Second),
+				EvacuationPollingInterval: durationjson.Duration(10 * time.Second),
 				AdvertiseDomain:           "cell.service.cf.internal",
 				EnableLegacyAPIServer:     true,
 				BBSClientSessionCacheSize: 0,
-				EvacuationTimeout:         config.Duration(10 * time.Minute),
+				EvacuationTimeout:         durationjson.Duration(10 * time.Minute),
 				LagerConfig:               lagerflags.DefaultLagerConfig(),
 				ExecutorConfig: executorinit.ExecutorConfig{
 					GardenNetwork:                      "unix",

@@ -17,6 +17,7 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
 	"code.cloudfoundry.org/cfhttp"
+	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/executor/gardenhealth"
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/garden"
@@ -111,7 +112,7 @@ var _ = Describe("The Rep", func() {
 			ListenAddr:            fmt.Sprintf("0.0.0.0:%d", serverPort),
 			ListenAddrSecurable:   fmt.Sprintf("0.0.0.0:%d", serverPortSecurable),
 			RequireTLS:            false,
-			LockRetryInterval:     config.Duration(1 * time.Second),
+			LockRetryInterval:     durationjson.Duration(1 * time.Second),
 			ExecutorConfig: executorinit.ExecutorConfig{
 				GardenAddr:                   fakeGarden.HTTPTestServer.Listener.Addr().String(),
 				GardenNetwork:                "tcp",
@@ -123,8 +124,8 @@ var _ = Describe("The Rep", func() {
 				LogLevel: "debug",
 			},
 			ConsulCluster:         consulRunner.ConsulCluster(),
-			PollingInterval:       config.Duration(pollingInterval),
-			EvacuationTimeout:     config.Duration(evacuationTimeout),
+			PollingInterval:       durationjson.Duration(pollingInterval),
+			EvacuationTimeout:     durationjson.Duration(evacuationTimeout),
 			EnableLegacyAPIServer: true,
 		}
 
