@@ -113,10 +113,9 @@ var _ = Describe("Evacuation", func() {
 				})
 
 				It("waits for all the containers to go away and exits before evacuation timeout", func() {
-					fakeClock.Increment(pollingInterval)
 					Eventually(executorClient.ListContainersCallCount).Should(Equal(1))
 
-					fakeClock.Increment(pollingInterval)
+					fakeClock.WaitForNWatchersAndIncrement(pollingInterval, 2)
 					Eventually(executorClient.ListContainersCallCount).Should(Equal(2))
 
 					Eventually(errChan).Should(Receive(BeNil()))
@@ -135,10 +134,9 @@ var _ = Describe("Evacuation", func() {
 					})
 
 					It("retries", func() {
-						fakeClock.Increment(pollingInterval)
 						Eventually(executorClient.ListContainersCallCount).Should(Equal(1))
 
-						fakeClock.Increment(pollingInterval)
+						fakeClock.WaitForNWatchersAndIncrement(pollingInterval, 2)
 						Eventually(executorClient.ListContainersCallCount).Should(Equal(2))
 
 						Eventually(errChan).Should(Receive(BeNil()))
@@ -154,9 +152,9 @@ var _ = Describe("Evacuation", func() {
 				It("exits after the evacuation timeout", func() {
 					Eventually(fakeClock.WatcherCount).Should(Equal(2))
 
-					fakeClock.Increment(evacuationTimeout - time.Second)
+					fakeClock.WaitForNWatchersAndIncrement(evacuationTimeout-time.Second, 2)
 					Consistently(errChan).ShouldNot(Receive())
-					fakeClock.Increment(2 * time.Second)
+					fakeClock.WaitForNWatchersAndIncrement(2*time.Second, 2)
 					Eventually(errChan).Should(Receive(BeNil()))
 				})
 
