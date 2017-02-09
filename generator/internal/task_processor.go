@@ -119,6 +119,7 @@ func (p *taskProcessor) startTask(logger lager.Logger, guid string) bool {
 func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Container) {
 	var result string
 	var err error
+
 	if !container.RunResult.Failed {
 		result, err = p.containerDelegate.FetchContainerResultFile(logger, container.Guid, container.Tags[rep.ResultFileTag])
 		if err != nil {
