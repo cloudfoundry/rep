@@ -45,7 +45,7 @@ var _ = Describe("Bulker", func() {
 		logger = lagertest.NewTestLogger("test")
 		pollInterval = 30 * time.Second
 		evacuationPollInterval = 10 * time.Second
-		fakeClock = fakeclock.NewFakeClock(time.Unix(123, 456))
+		fakeClock = fakeclock.NewFakeClock(time.Now())
 		fakeGenerator = new(fake_generator.FakeGenerator)
 		fakeQueue = new(fake_operationq.FakeQueue)
 
@@ -116,14 +116,14 @@ var _ = Describe("Bulker", func() {
 
 	Context("when the poll interval elapses", func() {
 		JustBeforeEach(func() {
-			fakeClock.WaitForWatcherAndIncrement(pollInterval + 1)
+			fakeClock.WaitForWatcherAndIncrement(pollInterval)
 		})
 
 		itPerformsBatchOperations(2)
 
 		Context("and elapses again", func() {
 			JustBeforeEach(func() {
-				fakeClock.WaitForWatcherAndIncrement(pollInterval + 1)
+				fakeClock.WaitForWatcherAndIncrement(pollInterval)
 			})
 
 			itPerformsBatchOperations(4)
