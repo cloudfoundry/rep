@@ -11,7 +11,9 @@ import (
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/generator/internal"
 	"code.cloudfoundry.org/rep/generator/internal/fake_internal"
+	fake_metrics_sender "github.com/cloudfoundry/dropsonde/metric_sender/fake"
 
+	"github.com/cloudfoundry/dropsonde/metrics"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -23,6 +25,7 @@ var _ = Describe("TaskProcessor", func() {
 		bbsClient                *fake_bbs.FakeInternalClient
 		expectedCellID, taskGuid string
 		containerDelegate        *fake_internal.FakeContainerDelegate
+		fakeMetricSender         *fake_metrics_sender.FakeMetricSender
 		logger                   *lagertest.TestLogger
 		task                     *models.Task
 		expectedRunRequest       executor.RunRequest
@@ -35,6 +38,8 @@ var _ = Describe("TaskProcessor", func() {
 		bbsClient = &fake_bbs.FakeInternalClient{}
 		containerDelegate = &fake_internal.FakeContainerDelegate{}
 		logger = lagertest.NewTestLogger("task-processor")
+		fakeMetricSender = fake_metrics_sender.NewFakeMetricSender()
+		metrics.Initialize(fakeMetricSender, nil)
 
 		expectedCellID = "the-cell"
 		taskGuid = "the-guid"
@@ -60,6 +65,7 @@ var _ = Describe("TaskProcessor", func() {
 		It("starts the task", func() {
 			Expect(bbsClient.StartTaskCallCount()).To(Equal(1))
 			_, guid, cellID := bbsClient.StartTaskArgsForCall(0)
+			Expect(fakeMetricSender.GetCounter("CellTasksStarted")).To(BeEquivalentTo(1))
 			Expect(guid).To(Equal(taskGuid))
 			Expect(cellID).To(Equal(expectedCellID))
 		})
@@ -77,6 +83,7 @@ var _ = Describe("TaskProcessor", func() {
 
 			It("does not run the container", func() {
 				Expect(containerDelegate.RunContainerCallCount()).To(Equal(0))
+				Expect(fakeMetricSender.GetCounter("CellTasksStarted")).To(BeEquivalentTo(0))
 			})
 		})
 
@@ -90,6 +97,7 @@ var _ = Describe("TaskProcessor", func() {
 				Expect(bbsClient.TaskByGuidCallCount()).To(Equal(1))
 				Expect(containerDelegate.RunContainerCallCount()).To(Equal(0))
 				Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(0))
+				Expect(fakeMetricSender.GetCounter("CellTasksStarted")).To(BeEquivalentTo(0))
 			})
 		})
 
@@ -103,6 +111,7 @@ var _ = Describe("TaskProcessor", func() {
 				Expect(bbsClient.TaskByGuidCallCount()).To(Equal(1))
 				Expect(containerDelegate.RunContainerCallCount()).To(Equal(0))
 				Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(0))
+				Expect(fakeMetricSender.GetCounter("CellTasksStarted")).To(BeEquivalentTo(0))
 			})
 		})
 
@@ -116,6 +125,8 @@ var _ = Describe("TaskProcessor", func() {
 				_, guid, reason := bbsClient.FailTaskArgsForCall(0)
 				Expect(guid).To(Equal(taskGuid))
 				Expect(reason).To(Equal(internal.TaskCompletionReasonFailedToRunContainer))
+				Expect(fakeMetricSender.GetCounter("CellTasksFailed")).To(BeEquivalentTo(1))
+				Expect(fakeMetricSender.GetCounter("CellTasksSucceeded")).To(BeEquivalentTo(0))
 			})
 		})
 
@@ -235,6 +246,8 @@ var _ = Describe("TaskProcessor", func() {
 			Expect(cellID).To(Equal(expectedCellID))
 			Expect(failed).To(Equal(true))
 			Expect(failureReason).To(Equal("oh nooooooooooooo mr bill"))
+			Expect(fakeMetricSender.GetCounter("CellTasksFailed")).To(BeEquivalentTo(1))
+			Expect(fakeMetricSender.GetCounter("CellTasksSucceeded")).To(BeEquivalentTo(0))
 			Expect(result).To(Equal(""))
 		})
 
@@ -278,6 +291,8 @@ var _ = Describe("TaskProcessor", func() {
 				Expect(cellID).To(Equal(expectedCellID))
 				Expect(failed).To(Equal(false))
 				Expect(failureReason).To(Equal(""))
+				Expect(fakeMetricSender.GetCounter("CellTasksFailed")).To(BeEquivalentTo(0))
+				Expect(fakeMetricSender.GetCounter("CellTasksSucceeded")).To(BeEquivalentTo(1))
 				Expect(result).To(Equal("i am a result yo"))
 			})
 
