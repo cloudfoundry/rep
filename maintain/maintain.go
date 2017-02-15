@@ -81,6 +81,8 @@ func (m *Maintainer) waitForExecutor(sigChan <-chan os.Signal) (ifrit.Runner, er
 	defer m.logger.Info("complete-waiting-for-executor")
 
 	sleeper := m.clock.NewTimer(ExecutorPollInterval)
+	defer sleeper.Stop()
+
 	for {
 		m.logger.Debug("waiting-pinging-executor")
 		err := m.executorClient.Ping(m.logger)
