@@ -114,7 +114,7 @@ var _ = Describe("Maintain Presence", func() {
 
 			pingErrors <- nil
 			clock.WaitForWatcherAndIncrement(1 * time.Second)
-			Eventually(fakeClient.PingCallCount).Should(Equal(5))
+			Eventually(fakeClient.PingCallCount).Should(BeNumerically(">=", 5))
 
 			Eventually(ready).Should(BeClosed())
 			Expect(fakeHeartbeater.RunCallCount()).To(Equal(1))
