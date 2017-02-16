@@ -260,10 +260,10 @@ var _ = Describe("AuctionCellRep", func() {
 
 	Describe("Perform", func() {
 		var (
-			work rep.Work
-			task rep.Task
-
-			expectedIndex = 1
+			work                rep.Work
+			task                rep.Task
+			organizationalUnits []string
+			expectedIndex       = 1
 		)
 
 		Context("when evacuating", func() {
@@ -390,6 +390,7 @@ var _ = Describe("AuctionCellRep", func() {
 							rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
 							&resource,
 							tags,
+							organizationalUnits,
 						)
 						allocationFailure := executor.NewAllocationFailure(&allocationRequest, commonErr.Error())
 						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure}, nil)
@@ -457,6 +458,7 @@ var _ = Describe("AuctionCellRep", func() {
 							rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
 							&resource,
 							tags,
+							organizationalUnits,
 						)
 						allocationFailure := executor.NewAllocationFailure(&allocationRequest, commonErr.Error())
 						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure}, nil)
@@ -551,6 +553,7 @@ var _ = Describe("AuctionCellRep", func() {
 							rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
 							&resource,
 							tags,
+							organizationalUnits,
 						)
 						allocationFailure := executor.NewAllocationFailure(&allocationRequest, commonErr.Error())
 						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure}, nil)
@@ -618,6 +621,7 @@ var _ = Describe("AuctionCellRep", func() {
 							task1.TaskGuid,
 							&resource,
 							tags,
+							organizationalUnits,
 						)
 						allocationFailure := executor.NewAllocationFailure(&allocationRequest, commonErr.Error())
 						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure}, nil)
@@ -760,5 +764,6 @@ func allocationRequestFromTask(task rep.Task, rootFSPath string) executor.Alloca
 			rep.LifecycleTag: rep.TaskLifecycle,
 			rep.DomainTag:    task.Domain,
 		},
+		nil,
 	)
 }
