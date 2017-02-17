@@ -317,12 +317,14 @@ var _ = Describe("Resources", func() {
 						Mode:          executor.BindMountModeRO,
 					},
 				},
-
 				Network: &executor.Network{
 					Properties: map[string]string{
 						"some-key":       "some-value",
 						"some-other-key": "some-other-value",
 					},
+				},
+				CertificateProperties: executor.CertificateProperties{
+					OrganizationalUnits: []string{"iamthelizardking", "iamthelizardqueen"},
 				},
 			}))
 		})
@@ -336,6 +338,18 @@ var _ = Describe("Resources", func() {
 				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.Network).To(BeNil())
+			})
+		})
+
+		Context("when the certificate properties are nil", func() {
+			BeforeEach(func() {
+				desiredLRP.CertificateProperties = nil
+			})
+
+			It("it sets an empty certificate properties on the result", func() {
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.CertificateProperties).To(Equal(executor.CertificateProperties{}))
 			})
 		})
 

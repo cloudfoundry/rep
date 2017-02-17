@@ -136,6 +136,7 @@ func NewRunRequestFromDesiredLRP(
 		TrustedSystemCertificatesPath: desiredLRP.TrustedSystemCertificatesPath,
 		VolumeMounts:                  mounts,
 		Network:                       convertNetwork(desiredLRP.Network),
+		CertificateProperties:         convertCertificateProperties(desiredLRP.CertificateProperties),
 	}
 	tags := executor.Tags{}
 	return executor.NewRunRequest(containerGuid, &runInfo, tags), nil
@@ -245,6 +246,16 @@ func convertNetwork(network *models.Network) *executor.Network {
 
 	return &executor.Network{
 		Properties: network.Properties,
+	}
+}
+
+func convertCertificateProperties(props *models.CertificateProperties) executor.CertificateProperties {
+	if props == nil {
+		return executor.CertificateProperties{}
+	}
+
+	return executor.CertificateProperties{
+		OrganizationalUnits: props.OrganizationalUnits,
 	}
 }
 
