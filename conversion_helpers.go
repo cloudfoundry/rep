@@ -174,6 +174,7 @@ func NewRunRequestFromTask(task *models.Task) (executor.RunRequest, error) {
 		TrustedSystemCertificatesPath: task.TrustedSystemCertificatesPath,
 		VolumeMounts:                  mounts,
 		Network:                       convertNetwork(task.Network),
+		CertificateProperties:         convertCertificateProperties(task.CertificateProperties),
 	}
 	return executor.NewRunRequest(task.TaskGuid, &runInfo, tags), nil
 }
@@ -255,7 +256,7 @@ func convertCertificateProperties(props *models.CertificateProperties) executor.
 	}
 
 	return executor.CertificateProperties{
-		OrganizationalUnits: props.OrganizationalUnits,
+		OrganizationalUnit: props.OrganizationalUnit,
 	}
 }
 

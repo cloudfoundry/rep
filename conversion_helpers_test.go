@@ -324,7 +324,7 @@ var _ = Describe("Resources", func() {
 					},
 				},
 				CertificateProperties: executor.CertificateProperties{
-					OrganizationalUnits: []string{"iamthelizardking", "iamthelizardqueen"},
+					OrganizationalUnit: []string{"iamthelizardking", "iamthelizardqueen"},
 				},
 			}))
 		})
@@ -423,6 +423,9 @@ var _ = Describe("Resources", func() {
 						"some-other-key": "some-other-value",
 					},
 				},
+				CertificateProperties: executor.CertificateProperties{
+					OrganizationalUnit: []string{"iamthelizardking", "iamthelizardqueen"},
+				},
 			}))
 		})
 
@@ -435,6 +438,18 @@ var _ = Describe("Resources", func() {
 				runReq, err := rep.NewRunRequestFromTask(task)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.Network).To(BeNil())
+			})
+		})
+
+		Context("when the certificate properties are nil", func() {
+			BeforeEach(func() {
+				task.CertificateProperties = nil
+			})
+
+			It("it sets an empty certificate properties on the result", func() {
+				runReq, err := rep.NewRunRequestFromTask(task)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.CertificateProperties).To(Equal(executor.CertificateProperties{}))
 			})
 		})
 
