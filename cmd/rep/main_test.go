@@ -78,7 +78,7 @@ var _ = Describe("The Rep", func() {
 		fakeGarden.RouteToHandler("GET", "/ping", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 		fakeGarden.RouteToHandler("GET", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 		fakeGarden.RouteToHandler("GET", "/capacity", ghttp.RespondWithJSONEncoded(http.StatusOK,
-			garden.Capacity{MemoryInBytes: 1024 * 1024 * 1024, DiskInBytes: 2048 * 1024 * 1024, MaxContainers: 4}))
+			garden.Capacity{MemoryInBytes: 1024 * 1024 * 1024, DiskInBytes: 20 * 1024 * 1024 * 1024, MaxContainers: 4}))
 		fakeGarden.RouteToHandler("GET", "/containers/bulk_info", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 
 		// The following handlers are needed to fake out the healthcheck containers
@@ -329,7 +329,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					Expect(err).NotTo(HaveOccurred())
 					Expect(state.TotalResources).To(Equal(rep.Resources{
 						MemoryMB:   1024,
-						DiskMB:     2048,
+						DiskMB:     10 * 1024,
 						Containers: 3,
 					}))
 					Expect(state.PlacementTags).To(Equal([]string{"test"}))
@@ -347,7 +347,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 							return state.AvailableResources
 						}).Should(Equal(rep.Resources{
 							MemoryMB:   1024,
-							DiskMB:     2048,
+							DiskMB:     10 * 1024,
 							Containers: 3,
 						}))
 					})
