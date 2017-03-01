@@ -5,7 +5,6 @@ import (
 	"os"
 	"time"
 
-	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/executor"
@@ -16,7 +15,7 @@ import (
 type Maintainer struct {
 	Config
 	executorClient executor.Client
-	serviceClient  bbs.ServiceClient
+	serviceClient  CellPresenceClient
 	logger         lager.Logger
 	lockTTL        time.Duration
 	clock          clock.Clock
@@ -38,7 +37,7 @@ func New(
 	logger lager.Logger,
 	config Config,
 	executorClient executor.Client,
-	serviceClient bbs.ServiceClient,
+	serviceClient CellPresenceClient,
 	lockTTL time.Duration,
 	clock clock.Clock,
 ) *Maintainer {

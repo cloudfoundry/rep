@@ -113,7 +113,7 @@ func main() {
 
 	consulClient := initializeConsulClient(logger, repConfig)
 
-	serviceClient := bbs.NewServiceClient(consulClient, clock)
+	serviceClient := maintain.NewCellPresenceClient(consulClient, clock)
 
 	evacuatable, evacuationReporter, evacuationNotifier := evacuation_context.New()
 
@@ -207,7 +207,7 @@ func initializeDropsonde(logger lager.Logger, dropsondePort int) {
 
 func initializeCellPresence(
 	address string,
-	serviceClient bbs.ServiceClient,
+	serviceClient maintain.CellPresenceClient,
 	executorClient executor.Client,
 	logger lager.Logger,
 	repConfig config.RepConfig,
@@ -222,7 +222,6 @@ func initializeCellPresence(
 		repUrl = fmt.Sprintf("http://%s:%s", repURL(repConfig.CellID, repConfig.AdvertiseDomain), port)
 	}
 
-	
 	if repConfig.LocketAddress != "" {
 
 		conn, err := grpc.Dial(repConfig.LocketAddress, grpc.WithInsecure())

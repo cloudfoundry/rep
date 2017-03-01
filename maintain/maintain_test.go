@@ -5,7 +5,6 @@ import (
 	"os"
 	"time"
 
-	"code.cloudfoundry.org/bbs/fake_bbs"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/clock/fakeclock"
 	"code.cloudfoundry.org/executor"
@@ -27,7 +26,7 @@ var _ = Describe("Maintain Presence", func() {
 		config          maintain.Config
 		fakeHeartbeater *maintain_fakes.FakeRunner
 		fakeClient      *fake_client.FakeClient
-		serviceClient   *fake_bbs.FakeServiceClient
+		serviceClient   *maintain_fakes.FakeCellPresenceClient
 		logger          *lagertest.TestLogger
 
 		maintainer        ifrit.Runner
@@ -72,7 +71,7 @@ var _ = Describe("Maintain Presence", func() {
 			},
 		}
 
-		serviceClient = &fake_bbs.FakeServiceClient{}
+		serviceClient = &maintain_fakes.FakeCellPresenceClient{}
 		serviceClient.NewCellPresenceRunnerReturns(fakeHeartbeater)
 
 		config = maintain.Config{
