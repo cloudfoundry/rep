@@ -40,6 +40,7 @@ var (
 	bbsProcess       ifrit.Process
 	bbsClient        bbs.InternalClient
 	auctioneerServer *ghttp.Server
+	locketBinPath    string
 
 	sqlProcess ifrit.Process
 	sqlRunner  sqlrunner.SQLRunner
@@ -54,10 +55,13 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	bbsConfig, err := gexec.Build("code.cloudfoundry.org/bbs/cmd/bbs", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
+	locketPath, err := gexec.Build("code.cloudfoundry.org/locket/cmd/locket", "-race")
+	Expect(err).NotTo(HaveOccurred())
+
 	representative, err := gexec.Build("code.cloudfoundry.org/rep/cmd/rep", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	return []byte(strings.Join([]string{representative, bbsConfig}, ","))
+	return []byte(strings.Join([]string{representative, locketPath, bbsConfig}, ","))
 }, func(pathsByte []byte) {
 	// tests here are fairly Eventually driven which tends to flake out under
 	// load (for insignificant reasons); bump the default a bit higher than the
@@ -66,7 +70,8 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	path := string(pathsByte)
 	representativePath = strings.Split(path, ",")[0]
-	bbsBinPath = strings.Split(path, ",")[1]
+	locketBinPath = strings.Split(path, ",")[1]
+	bbsBinPath = strings.Split(path, ",")[2]
 
 	cellID = "the_rep_id-" + strconv.Itoa(GinkgoParallelNode())
 

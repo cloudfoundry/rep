@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,6 +12,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"google.golang.org/grpc"
 
 	"code.cloudfoundry.org/bbs"
 	bbstestrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
@@ -25,6 +28,10 @@ import (
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/localip"
+	locketconfig "code.cloudfoundry.org/locket/cmd/locket/config"
+	locketrunner "code.cloudfoundry.org/locket/cmd/locket/testrunner"
+	locketmodels "code.cloudfoundry.org/locket/models"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
 	"code.cloudfoundry.org/rep/cmd/rep/testrunner"
@@ -35,6 +42,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/ghttp"
+	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
 
@@ -129,10 +137,7 @@ var _ = Describe("The Rep", func() {
 			EnableLegacyAPIServer: true,
 		}
 
-		runner = testrunner.New(
-			representativePath,
-			repConfig,
-		)
+		runner = testrunner.New(representativePath, repConfig)
 	})
 
 	JustBeforeEach(func() {
@@ -292,19 +297,76 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 		})
 
 		Describe("maintaining presence", func() {
-			It("should maintain presence", func() {
-				Eventually(fetchCells(logger)).Should(HaveLen(1))
+			Context("with consul", func() {
+				BeforeEach(func() {
+					repConfig.LocketAddress = ""
+				})
 
-				cells, err := bbsClient.Cells(logger)
-				Expect(err).NotTo(HaveOccurred())
+				It("should maintain presence", func() {
+					Eventually(fetchCells(logger)).Should(HaveLen(1))
 
-				cellSet := models.NewCellSetFromList(cells)
+					cells, err := bbsClient.Cells(logger)
+					Expect(err).NotTo(HaveOccurred())
 
-				cellPresence := cellSet[cellID]
-				Expect(cellPresence.CellId).To(Equal(cellID))
-				Expect(cellPresence.RepAddress).To(MatchRegexp(fmt.Sprintf(`http\:\/\/.*\:%d`, serverPort)))
-				Expect(cellPresence.PlacementTags).To(Equal([]string{"test"}))
-				Expect(cellPresence.OptionalPlacementTags).To(Equal([]string{"optional_tag"}))
+					cellSet := models.NewCellSetFromList(cells)
+
+					cellPresence := cellSet[cellID]
+					Expect(cellPresence.CellId).To(Equal(cellID))
+					Expect(cellPresence.RepAddress).To(MatchRegexp(fmt.Sprintf(`http\:\/\/.*\:%d`, serverPort)))
+					Expect(cellPresence.PlacementTags).To(Equal([]string{"test"}))
+					Expect(cellPresence.OptionalPlacementTags).To(Equal([]string{"optional_tag"}))
+				})
+			})
+
+			Context("with locket", func() {
+				var (
+					locketRunner  ifrit.Runner
+					locketProcess ifrit.Process
+					locketAddress string
+				)
+
+				BeforeEach(func() {
+					locketPort, err := localip.LocalPort()
+					Expect(err).NotTo(HaveOccurred())
+
+					locketAddress = fmt.Sprintf("localhost:%d", locketPort)
+					locketConfig := locketconfig.LocketConfig{
+						ListenAddress:            locketAddress,
+						DatabaseDriver:           sqlRunner.DriverName(),
+						DatabaseConnectionString: sqlRunner.ConnectionString(),
+						ConsulCluster:            consulRunner.ConsulCluster(),
+					}
+
+					locketRunner = locketrunner.NewLocketRunner(locketBinPath, locketConfig)
+					locketProcess = ginkgomon.Invoke(locketRunner)
+
+					repConfig.LocketAddress = locketAddress
+
+					runner = testrunner.New(representativePath, repConfig)
+				})
+
+				AfterEach(func() {
+					ginkgomon.Interrupt(bbsProcess)
+					ginkgomon.Interrupt(locketProcess)
+				})
+
+				It("should maintain presence", func() {
+					conn, err := grpc.Dial(locketAddress, grpc.WithInsecure())
+					Expect(err).NotTo(HaveOccurred())
+					locketClient := locketmodels.NewLocketClient(conn)
+
+					var response *locketmodels.FetchResponse
+					Eventually(func() error {
+						response, err = locketClient.Fetch(context.Background(), &locketmodels.FetchRequest{Key: repConfig.CellID})
+						return err
+					}, 10*time.Second).Should(Succeed())
+					Expect(response.Resource.Key).To(Equal(repConfig.CellID))
+					value := &models.CellPresence{}
+					err = json.Unmarshal([]byte(response.Resource.Value), value)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(value.Zone).To(Equal(repConfig.Zone))
+					Expect(value.CellId).To(Equal(repConfig.CellID))
+				})
 			})
 		})
 

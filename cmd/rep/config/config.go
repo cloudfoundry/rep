@@ -81,6 +81,7 @@ type RepConfig struct {
 	ListenAddrSecurable       string                `json:"listen_addr_securable,omitempty"`
 	LockRetryInterval         durationjson.Duration `json:"lock_retry_interval,omitempty"`
 	LockTTL                   durationjson.Duration `json:"lock_ttl,omitempty"`
+	LocketAddress             string                `json:"locket_address"`
 	OptionalPlacementTags     []string              `json:"optional_placement_tags"`
 	PlacementTags             []string              `json:"placement_tags"`
 	PollingInterval           durationjson.Duration `json:"polling_interval,omitempty"`

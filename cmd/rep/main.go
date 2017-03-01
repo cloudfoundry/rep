@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,7 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/grpc"
+
 	"code.cloudfoundry.org/bbs"
+	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
@@ -21,6 +25,8 @@ import (
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/locket"
+	"code.cloudfoundry.org/locket/lock"
+	locketmodels "code.cloudfoundry.org/locket/models"
 	"code.cloudfoundry.org/operationq"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/auction_cell_rep"
@@ -208,7 +214,6 @@ func initializeCellPresence(
 	preloadedRootFSes []string,
 	secure bool,
 ) ifrit.Runner {
-
 	var repUrl string
 	port := strings.Split(repConfig.ListenAddrSecurable, ":")[1]
 	if secure && repConfig.RequireTLS {
@@ -217,26 +222,71 @@ func initializeCellPresence(
 		repUrl = fmt.Sprintf("http://%s:%s", repURL(repConfig.CellID, repConfig.AdvertiseDomain), port)
 	}
 
-	config := maintain.Config{
-		CellID:                repConfig.CellID,
-		RepAddress:            address,
-		RepUrl:                repUrl,
-		Zone:                  repConfig.Zone,
-		RetryInterval:         time.Duration(repConfig.LockRetryInterval),
-		RootFSProviders:       repConfig.SupportedProviders,
-		PreloadedRootFSes:     preloadedRootFSes,
-		PlacementTags:         repConfig.PlacementTags,
-		OptionalPlacementTags: repConfig.OptionalPlacementTags,
-	}
+	
+	if repConfig.LocketAddress != "" {
 
-	return maintain.New(
-		logger,
-		config,
-		executorClient,
-		serviceClient,
-		time.Duration(repConfig.LockTTL),
-		clock.NewClock(),
-	)
+		conn, err := grpc.Dial(repConfig.LocketAddress, grpc.WithInsecure())
+		if err != nil {
+			logger.Fatal("failed-to-connect-to-locket", err)
+		}
+		locketClient := locketmodels.NewLocketClient(conn)
+
+		guid, err := uuid.NewV4()
+		if err != nil {
+			logger.Fatal("failed-to-generate-guid", err)
+		}
+
+		resources, err := executorClient.TotalResources(logger)
+		if err != nil {
+			logger.Fatal("failed-to-get-total-resources", err)
+		}
+		cellCapacity := models.NewCellCapacity(int32(resources.MemoryMB), int32(resources.DiskMB), int32(resources.Containers))
+		cellPresence := models.NewCellPresence(repConfig.CellID, address, repUrl,
+			repConfig.Zone, cellCapacity, repConfig.SupportedProviders,
+			preloadedRootFSes, repConfig.PlacementTags, repConfig.OptionalPlacementTags)
+
+		payload, err := json.Marshal(cellPresence)
+		if err != nil {
+			logger.Fatal("failed-to-encode-cell-presence", err)
+		}
+
+		lockPayload := &locketmodels.Resource{
+			Key:   repConfig.CellID,
+			Owner: guid.String(),
+			Value: string(payload),
+		}
+
+		logger.Debug("presence-payload", lager.Data{"payload": lockPayload})
+		return lock.NewLockRunner(
+			logger,
+			locketClient,
+			lockPayload,
+			int64(time.Duration(repConfig.LockTTL)/time.Second),
+			clock.NewClock(),
+			locket.RetryInterval,
+		)
+	} else {
+		config := maintain.Config{
+			CellID:                repConfig.CellID,
+			RepAddress:            address,
+			RepUrl:                repUrl,
+			Zone:                  repConfig.Zone,
+			RetryInterval:         time.Duration(repConfig.LockRetryInterval),
+			RootFSProviders:       repConfig.SupportedProviders,
+			PreloadedRootFSes:     preloadedRootFSes,
+			PlacementTags:         repConfig.PlacementTags,
+			OptionalPlacementTags: repConfig.OptionalPlacementTags,
+		}
+
+		return maintain.New(
+			logger,
+			config,
+			executorClient,
+			serviceClient,
+			time.Duration(repConfig.LockTTL),
+			clock.NewClock(),
+		)
+	}
 }
 
 func initializeServer(
