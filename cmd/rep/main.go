@@ -252,6 +252,7 @@ func initializeCellPresence(
 			Key:   repConfig.CellID,
 			Owner: guid.String(),
 			Value: string(payload),
+			Type:  locketmodels.PresenceType,
 		}
 
 		logger.Debug("presence-payload", lager.Data{"payload": lockPayload})

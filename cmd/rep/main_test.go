@@ -361,6 +361,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 						return err
 					}, 10*time.Second).Should(Succeed())
 					Expect(response.Resource.Key).To(Equal(repConfig.CellID))
+					Expect(response.Resource.Type).To(Equal(locketmodels.PresenceType))
 					value := &models.CellPresence{}
 					err = json.Unmarshal([]byte(response.Resource.Value), value)
 					Expect(err).NotTo(HaveOccurred())
