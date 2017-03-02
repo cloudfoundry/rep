@@ -12,7 +12,7 @@ import (
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep/maintain"
-	maintain_fakes "code.cloudfoundry.org/rep/maintain/fakes"
+	"code.cloudfoundry.org/rep/maintain/maintainfakes"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 
@@ -24,9 +24,9 @@ import (
 var _ = Describe("Maintain Presence", func() {
 	var (
 		config          maintain.Config
-		fakeHeartbeater *maintain_fakes.FakeRunner
+		fakeHeartbeater *maintainfakes.FakeRunner
 		fakeClient      *fake_client.FakeClient
-		serviceClient   *maintain_fakes.FakeCellPresenceClient
+		serviceClient   *maintainfakes.FakeCellPresenceClient
 		logger          *lagertest.TestLogger
 
 		maintainer        ifrit.Runner
@@ -52,7 +52,7 @@ var _ = Describe("Maintain Presence", func() {
 
 		heartbeaterErrors = make(chan error)
 		observedSignals = make(chan os.Signal, 2)
-		fakeHeartbeater = &maintain_fakes.FakeRunner{
+		fakeHeartbeater = &maintainfakes.FakeRunner{
 			RunStub: func(sigChan <-chan os.Signal, ready chan<- struct{}) error {
 				defer GinkgoRecover()
 				logger.Info("fake-heartbeat-started")
@@ -71,7 +71,7 @@ var _ = Describe("Maintain Presence", func() {
 			},
 		}
 
-		serviceClient = &maintain_fakes.FakeCellPresenceClient{}
+		serviceClient = &maintainfakes.FakeCellPresenceClient{}
 		serviceClient.NewCellPresenceRunnerReturns(fakeHeartbeater)
 
 		config = maintain.Config{
@@ -123,7 +123,7 @@ var _ = Describe("Maintain Presence", func() {
 	Context("when pinging the executor succeeds", func() {
 		Context("when the heartbeater is not ready", func() {
 			BeforeEach(func() {
-				fakeHeartbeater = &maintain_fakes.FakeRunner{
+				fakeHeartbeater = &maintainfakes.FakeRunner{
 					RunStub: func(sigChan <-chan os.Signal, ready chan<- struct{}) error {
 						defer GinkgoRecover()
 						for {

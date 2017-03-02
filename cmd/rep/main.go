@@ -223,7 +223,6 @@ func initializeCellPresence(
 	}
 
 	if repConfig.LocketAddress != "" {
-
 		conn, err := grpc.Dial(repConfig.LocketAddress, grpc.WithInsecure())
 		if err != nil {
 			logger.Fatal("failed-to-connect-to-locket", err)
