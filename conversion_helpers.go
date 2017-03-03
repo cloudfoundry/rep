@@ -137,6 +137,8 @@ func NewRunRequestFromDesiredLRP(
 		VolumeMounts:                  mounts,
 		Network:                       convertNetwork(desiredLRP.Network),
 		CertificateProperties:         convertCertificateProperties(desiredLRP.CertificateProperties),
+		ImageUsername:                 desiredLRP.ImageUsername,
+		ImagePassword:                 desiredLRP.ImagePassword,
 	}
 	tags := executor.Tags{}
 	return executor.NewRunRequest(containerGuid, &runInfo, tags), nil
