@@ -428,6 +428,8 @@ var _ = Describe("Resources", func() {
 				CertificateProperties: executor.CertificateProperties{
 					OrganizationalUnit: []string{"iamthelizardking", "iamthelizardqueen"},
 				},
+				ImageUsername: "image-username",
+				ImagePassword: "image-password",
 			}))
 		})
 

@@ -177,6 +177,8 @@ func NewRunRequestFromTask(task *models.Task) (executor.RunRequest, error) {
 		VolumeMounts:                  mounts,
 		Network:                       convertNetwork(task.Network),
 		CertificateProperties:         convertCertificateProperties(task.CertificateProperties),
+		ImageUsername:                 task.ImageUsername,
+		ImagePassword:                 task.ImagePassword,
 	}
 	return executor.NewRunRequest(task.TaskGuid, &runInfo, tags), nil
 }
