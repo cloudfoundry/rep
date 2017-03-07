@@ -68,10 +68,10 @@ type RepConfig struct {
 	CaCertFile                string                `json:"ca_cert_file"`
 	CellID                    string                `json:"cell_id"`
 	CommunicationTimeout      durationjson.Duration `json:"communication_timeout,omitempty"`
-	ConsulCluster             string                `json:"consul_cluster"`
 	ConsulCACert              string                `json:"consul_ca_cert"`
 	ConsulClientCert          string                `json:"consul_client_cert"`
 	ConsulClientKey           string                `json:"consul_client_key"`
+	ConsulCluster             string                `json:"consul_cluster"`
 	DropsondePort             int                   `json:"dropsonde_port,omitempty"`
 	EnableLegacyAPIServer     bool                  `json:"enable_legacy_api_endpoints"`
 	EvacuationPollingInterval durationjson.Duration `json:"evacuation_polling_interval,omitempty"`
@@ -81,7 +81,6 @@ type RepConfig struct {
 	ListenAddrSecurable       string                `json:"listen_addr_securable,omitempty"`
 	LockRetryInterval         durationjson.Duration `json:"lock_retry_interval,omitempty"`
 	LockTTL                   durationjson.Duration `json:"lock_ttl,omitempty"`
-	LocketAddress             string                `json:"locket_address"`
 	OptionalPlacementTags     []string              `json:"optional_placement_tags"`
 	PlacementTags             []string              `json:"placement_tags"`
 	PollingInterval           durationjson.Duration `json:"polling_interval,omitempty"`
@@ -93,8 +92,9 @@ type RepConfig struct {
 	SupportedProviders        []string              `json:"supported_providers"`
 	Zone                      string                `json:"zone"`
 	debugserver.DebugServerConfig
-	lagerflags.LagerConfig
 	executorinit.ExecutorConfig
+	lagerflags.LagerConfig
+	locket.ClientLocketConfig
 }
 
 func defaultConfig() RepConfig {
@@ -107,6 +107,7 @@ func defaultConfig() RepConfig {
 		EnableLegacyAPIServer:     true,
 		EvacuationPollingInterval: durationjson.Duration(10 * time.Second),
 		EvacuationTimeout:         durationjson.Duration(10 * time.Minute),
+		ExecutorConfig:            executorinit.DefaultConfiguration,
 		LagerConfig:               lagerflags.DefaultLagerConfig(),
 		ListenAddr:                "0.0.0.0:1800",
 		ListenAddrSecurable:       "0.0.0.0:1801",
@@ -115,7 +116,6 @@ func defaultConfig() RepConfig {
 		PollingInterval:           durationjson.Duration(30 * time.Second),
 		RequireTLS:                true,
 		SessionName:               "rep",
-		ExecutorConfig:            executorinit.DefaultConfiguration,
 	}
 }
 

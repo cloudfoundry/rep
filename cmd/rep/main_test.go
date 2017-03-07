@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"path"
@@ -13,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/grpc"
+	"google.golang.org/grpc/grpclog"
 
 	"code.cloudfoundry.org/bbs"
 	bbstestrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
@@ -29,6 +30,7 @@ import (
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/localip"
+	"code.cloudfoundry.org/locket"
 	locketconfig "code.cloudfoundry.org/locket/cmd/locket/config"
 	locketrunner "code.cloudfoundry.org/locket/cmd/locket/testrunner"
 	locketmodels "code.cloudfoundry.org/locket/models"
@@ -330,16 +332,15 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					Expect(err).NotTo(HaveOccurred())
 
 					locketAddress = fmt.Sprintf("localhost:%d", locketPort)
-					locketConfig := locketconfig.LocketConfig{
-						ListenAddress:            locketAddress,
-						DatabaseDriver:           sqlRunner.DriverName(),
-						DatabaseConnectionString: sqlRunner.ConnectionString(),
-						ConsulCluster:            consulRunner.ConsulCluster(),
-					}
-
-					locketRunner = locketrunner.NewLocketRunner(locketBinPath, locketConfig)
+					locketRunner = locketrunner.NewLocketRunner(locketBinPath, func(cfg *locketconfig.LocketConfig) {
+						cfg.ConsulCluster = consulRunner.ConsulCluster()
+						cfg.DatabaseConnectionString = sqlRunner.ConnectionString()
+						cfg.DatabaseDriver = sqlRunner.DriverName()
+						cfg.ListenAddress = locketAddress
+					})
 					locketProcess = ginkgomon.Invoke(locketRunner)
 
+					repConfig.ClientLocketConfig = locketrunner.ClientLocketConfig()
 					repConfig.LocketAddress = locketAddress
 
 					runner = testrunner.New(representativePath, repConfig)
@@ -351,9 +352,9 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 				})
 
 				It("should maintain presence", func() {
-					conn, err := grpc.Dial(locketAddress, grpc.WithInsecure())
+					locketClient, err := locket.NewClient(logger, repConfig.ClientLocketConfig)
 					Expect(err).NotTo(HaveOccurred())
-					locketClient := locketmodels.NewLocketClient(conn)
+					grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
 
 					var response *locketmodels.FetchResponse
 					Eventually(func() error {

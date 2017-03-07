@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/grpc"
-
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/cfhttp"
@@ -223,11 +221,10 @@ func initializeCellPresence(
 	}
 
 	if repConfig.LocketAddress != "" {
-		conn, err := grpc.Dial(repConfig.LocketAddress, grpc.WithInsecure())
+		locketClient, err := locket.NewClient(logger, repConfig.ClientLocketConfig)
 		if err != nil {
-			logger.Fatal("failed-to-connect-to-locket", err)
+			logger.Fatal("failed-to-construct-locket-client", err)
 		}
-		locketClient := locketmodels.NewLocketClient(conn)
 
 		guid, err := uuid.NewV4()
 		if err != nil {
