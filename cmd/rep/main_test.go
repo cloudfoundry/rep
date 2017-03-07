@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path"
@@ -13,8 +12,6 @@ import (
 	"runtime"
 	"strings"
 	"time"
-
-	"google.golang.org/grpc/grpclog"
 
 	"code.cloudfoundry.org/bbs"
 	bbstestrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
@@ -354,7 +351,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 				It("should maintain presence", func() {
 					locketClient, err := locket.NewClient(logger, repConfig.ClientLocketConfig)
 					Expect(err).NotTo(HaveOccurred())
-					grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
 
 					var response *locketmodels.FetchResponse
 					Eventually(func() error {

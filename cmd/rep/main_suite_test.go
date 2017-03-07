@@ -2,12 +2,16 @@ package main_test
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"google.golang.org/grpc/grpclog"
 
 	"code.cloudfoundry.org/bbs"
 	bbsconfig "code.cloudfoundry.org/bbs/cmd/bbs/config"
@@ -63,6 +67,8 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	return []byte(strings.Join([]string{representative, locketPath, bbsConfig}, ","))
 }, func(pathsByte []byte) {
+	grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
+
 	// tests here are fairly Eventually driven which tends to flake out under
 	// load (for insignificant reasons); bump the default a bit higher than the
 	// default (1 second)
