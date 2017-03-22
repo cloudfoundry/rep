@@ -13,6 +13,7 @@ import (
 	"code.cloudfoundry.org/executor/fakes"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
+	mfakes "code.cloudfoundry.org/loggregator_v2/fakes"
 	"code.cloudfoundry.org/rep/evacuation"
 	fake_metrics_sender "github.com/cloudfoundry/dropsonde/metric_sender/fake"
 	"github.com/cloudfoundry/dropsonde/metrics"
@@ -32,6 +33,7 @@ var _ = Describe("EvacuationCleanup", func() {
 		fakeBBSClient      *fake_bbs.FakeInternalClient
 		fakeExecutorClient *fakes.FakeClient
 		fakeMetricsSender  *fake_metrics_sender.FakeMetricSender
+		fakeMetronClient   *mfakes.FakeClient
 
 		cleanup        *evacuation.EvacuationCleanup
 		cleanupProcess ifrit.Process
@@ -49,10 +51,18 @@ var _ = Describe("EvacuationCleanup", func() {
 		fakeExecutorClient = &fakes.FakeClient{}
 		fakeMetricsSender = fake_metrics_sender.NewFakeMetricSender()
 		metrics.Initialize(fakeMetricsSender, nil)
+		fakeMetronClient = new(mfakes.FakeClient)
 
 		errCh = make(chan error, 1)
 		doneCh = make(chan struct{})
-		cleanup = evacuation.NewEvacuationCleanup(logger, cellID, fakeBBSClient, fakeExecutorClient, fakeClock)
+		cleanup = evacuation.NewEvacuationCleanup(
+			logger,
+			cellID,
+			fakeBBSClient,
+			fakeExecutorClient,
+			fakeClock,
+			fakeMetronClient,
+		)
 	})
 
 	JustBeforeEach(func() {
@@ -138,7 +148,9 @@ var _ = Describe("EvacuationCleanup", func() {
 
 		It("emits a metric for the number of stranded evacuating actual lrps", func() {
 			Eventually(errCh).Should(Receive(nil))
-			Expect(fakeMetricsSender.GetValue("StrandedEvacuatingActualLRPs").Value).To(BeEquivalentTo(2))
+			metric, value := fakeMetronClient.SendMetricArgsForCall(0)
+			Expect(metric).To(Equal("StrandedEvacuatingActualLRPs"))
+			Expect(value).To(BeEquivalentTo(2))
 		})
 
 		Describe("stopping running containers", func() {

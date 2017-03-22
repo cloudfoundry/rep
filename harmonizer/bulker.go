@@ -6,13 +6,13 @@ import (
 
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/loggregator_v2"
 	"code.cloudfoundry.org/operationq"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
 	"code.cloudfoundry.org/rep/generator"
-	"code.cloudfoundry.org/runtimeschema/metric"
 )
 
-const repBulkSyncDuration = metric.Duration("RepBulkSyncDuration")
+const repBulkSyncDuration = "RepBulkSyncDuration"
 
 type Bulker struct {
 	logger lager.Logger
@@ -23,6 +23,7 @@ type Bulker struct {
 	clock                  clock.Clock
 	generator              generator.Generator
 	queue                  operationq.Queue
+	metronClient           loggregator_v2.Client
 }
 
 func NewBulker(
@@ -33,6 +34,7 @@ func NewBulker(
 	clock clock.Clock,
 	generator generator.Generator,
 	queue operationq.Queue,
+	metronClient loggregator_v2.Client,
 ) *Bulker {
 	return &Bulker{
 		logger: logger,
@@ -43,6 +45,7 @@ func NewBulker(
 		clock:                  clock,
 		generator:              generator,
 		queue:                  queue,
+		metronClient:           metronClient,
 	}
 }
 
@@ -95,7 +98,7 @@ func (b *Bulker) sync(logger lager.Logger) {
 
 	endTime := b.clock.Now()
 
-	sendError := repBulkSyncDuration.Send(endTime.Sub(startTime))
+	sendError := b.metronClient.SendDuration(repBulkSyncDuration, endTime.Sub(startTime))
 	if sendError != nil {
 		logger.Error("failed-to-send-rep-bulk-sync-duration-metric", sendError)
 	}
