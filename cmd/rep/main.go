@@ -25,6 +25,7 @@ import (
 	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/locket/lock"
 	locketmodels "code.cloudfoundry.org/locket/models"
+	"code.cloudfoundry.org/loggregator_v2"
 	"code.cloudfoundry.org/operationq"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/auction_cell_rep"
@@ -102,7 +103,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	executorClient, executorMembers, err := executorinit.Initialize(logger, repConfig.ExecutorConfig, gardenHealthcheckRootFS, clock)
+	metronClient, err := loggregator_v2.NewClient(logger, repConfig.MetronConfig)
+	if err != nil {
+		logger.Error("failed-to-initialize-metron-client", err)
+		os.Exit(1)
+	}
+
+	executorClient, executorMembers, err := executorinit.Initialize(logger, repConfig.ExecutorConfig, gardenHealthcheckRootFS, metronClient, clock)
 	if err != nil {
 		logger.Error("failed-to-initialize-executor", err)
 		os.Exit(1)
@@ -138,7 +145,7 @@ func main() {
 		evacuationReporter,
 		uint64(time.Duration(repConfig.EvacuationTimeout).Seconds()),
 	)
-	cleanup := evacuation.NewEvacuationCleanup(logger, repConfig.CellID, bbsClient, executorClient, clock)
+	cleanup := evacuation.NewEvacuationCleanup(logger, repConfig.CellID, bbsClient, executorClient, clock, metronClient)
 
 	_, portString, err := net.SplitHostPort(repConfig.ListenAddr)
 	if err != nil {
@@ -159,6 +166,7 @@ func main() {
 		clock,
 		opGenerator,
 		queue,
+		metronClient,
 	)
 
 	members := grouper.Members{

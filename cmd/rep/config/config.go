@@ -13,6 +13,7 @@ import (
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
+	"code.cloudfoundry.org/loggregator_v2"
 )
 
 type StackMap map[string]string
@@ -58,6 +59,7 @@ func (m StackMap) MarshalJSON() (b []byte, err error) {
 }
 
 type RepConfig struct {
+	loggregator_v2.MetronConfig
 	AdvertiseDomain           string                `json:"advertise_domain,omitempty"`
 	BBSAddress                string                `json:"bbs_address"`
 	BBSCACertFile             string                `json:"bbs_ca_cert_file"`

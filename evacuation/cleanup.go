@@ -10,14 +10,14 @@ import (
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/runtimeschema/metric"
+	"code.cloudfoundry.org/loggregator_v2"
 )
 
 const (
 	ExitTimeout = 15 * time.Second
 )
 
-var strandedEvacuatingActualLRPs = metric.Metric("StrandedEvacuatingActualLRPs")
+var strandedEvacuatingActualLRPs = "StrandedEvacuatingActualLRPs"
 
 type EvacuationCleanup struct {
 	clock          clock.Clock
@@ -25,6 +25,7 @@ type EvacuationCleanup struct {
 	cellID         string
 	bbsClient      bbs.InternalClient
 	executorClient executor.Client
+	metronClient   loggregator_v2.Client
 }
 
 func NewEvacuationCleanup(
@@ -33,6 +34,7 @@ func NewEvacuationCleanup(
 	bbsClient bbs.InternalClient,
 	executorClient executor.Client,
 	clock clock.Clock,
+	metronClient loggregator_v2.Client,
 ) *EvacuationCleanup {
 	return &EvacuationCleanup{
 		logger:         logger,
@@ -40,6 +42,7 @@ func NewEvacuationCleanup(
 		bbsClient:      bbsClient,
 		executorClient: executorClient,
 		clock:          clock,
+		metronClient:   metronClient,
 	}
 }
 
@@ -76,7 +79,7 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 		}
 	}
 
-	err = strandedEvacuatingActualLRPs.Send(strandedEvacuationCount)
+	err = e.metronClient.SendMetric(strandedEvacuatingActualLRPs, strandedEvacuationCount)
 	if err != nil {
 		logger.Error("failed-sending-stranded-evacuating-lrp-metric", err, lager.Data{"count": strandedEvacuationCount})
 	}
