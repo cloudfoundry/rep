@@ -13,6 +13,7 @@ import (
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
+	"code.cloudfoundry.org/loggregator_v2"
 )
 
 type StackMap map[string]string
@@ -95,6 +96,7 @@ type RepConfig struct {
 	executorinit.ExecutorConfig
 	lagerflags.LagerConfig
 	locket.ClientLocketConfig
+	loggregator_v2.MetronConfig
 }
 
 func defaultConfig() RepConfig {
