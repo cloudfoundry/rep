@@ -13,7 +13,7 @@ import (
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
-	"code.cloudfoundry.org/loggregator_v2"
+	"code.cloudfoundry.org/go-loggregator/loggregator_v2"
 )
 
 type StackMap map[string]string
