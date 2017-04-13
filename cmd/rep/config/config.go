@@ -127,6 +127,9 @@ func NewRepConfig(configPath string) (RepConfig, error) {
 	if err != nil {
 		return RepConfig{}, err
 	}
+
+	defer configFile.Close()
+
 	decoder := json.NewDecoder(configFile)
 
 	err = decoder.Decode(&repConfig)

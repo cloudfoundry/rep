@@ -247,12 +247,11 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 
 		Context("when the bbs is down", func() {
 			BeforeEach(func() {
-				ginkgomon.Interrupt(bbsProcess)
+				ginkgomon.Kill(bbsProcess)
 			})
 
 			AfterEach(func() {
 				bbsRunner = bbstestrunner.New(bbsBinPath, bbsConfig)
-				bbsProcess = ginkgomon.Invoke(bbsRunner)
 			})
 
 			It("starts", func() {
@@ -344,8 +343,8 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 				})
 
 				AfterEach(func() {
-					ginkgomon.Interrupt(bbsProcess)
-					ginkgomon.Interrupt(locketProcess)
+					ginkgomon.Kill(bbsProcess)
+					ginkgomon.Kill(locketProcess)
 				})
 
 				It("should maintain presence", func() {
@@ -382,7 +381,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					})
 
 					It("does not exit", func() {
-						ginkgomon.Interrupt(locketProcess)
+						ginkgomon.Kill(locketProcess)
 						Consistently(runner.Session, locket.RetryInterval).ShouldNot(Exit())
 					})
 				})

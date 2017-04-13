@@ -107,8 +107,11 @@ var _ = Describe("RepConfig", func() {
 		configFile, err := ioutil.TempFile("", "config-file")
 		Expect(err).NotTo(HaveOccurred())
 
+		defer configFile.Close()
+
 		n, err := configFile.WriteString(configData)
 		Expect(err).NotTo(HaveOccurred())
+
 		Expect(n).To(Equal(len(configData)))
 
 		configFilePath = configFile.Name()
