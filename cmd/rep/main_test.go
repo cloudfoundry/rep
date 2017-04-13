@@ -225,7 +225,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					runner.StartCheck = "started"
 				})
 
-				It("should start", func() {
+				FIt("should start", func() {
 					Consistently(runner.Session).ShouldNot(Exit())
 				})
 			})

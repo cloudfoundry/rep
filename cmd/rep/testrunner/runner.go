@@ -39,6 +39,8 @@ func (r *Runner) Start() {
 	f, err := ioutil.TempFile("", "rep")
 	Expect(err).NotTo(HaveOccurred())
 
+	defer f.Close()
+
 	encoder := json.NewEncoder(f)
 
 	err = encoder.Encode(r.repConfig)
