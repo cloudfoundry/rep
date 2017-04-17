@@ -365,6 +365,27 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					Expect(value.Zone).To(Equal(repConfig.Zone))
 					Expect(value.CellId).To(Equal(repConfig.CellID))
 				})
+
+				Context("when it loses its presence", func() {
+					var locketClient locketmodels.LocketClient
+					var response *locketmodels.FetchResponse
+
+					JustBeforeEach(func() {
+						var err error
+						locketClient, err = locket.NewClient(logger, repConfig.ClientLocketConfig)
+						Expect(err).NotTo(HaveOccurred())
+
+						Eventually(func() error {
+							response, err = locketClient.Fetch(context.Background(), &locketmodels.FetchRequest{Key: repConfig.CellID})
+							return err
+						}, 10*time.Second).Should(Succeed())
+					})
+
+					It("does not exit", func() {
+						ginkgomon.Interrupt(locketProcess)
+						Consistently(runner.Session, locket.RetryInterval).ShouldNot(Exit())
+					})
+				})
 			})
 		})
 

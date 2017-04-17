@@ -261,7 +261,7 @@ func initializeCellPresence(
 		}
 
 		logger.Debug("presence-payload", lager.Data{"payload": lockPayload})
-		return lock.NewLockRunner(
+		return lock.NewPresenceRunner(
 			logger,
 			locketClient,
 			lockPayload,
