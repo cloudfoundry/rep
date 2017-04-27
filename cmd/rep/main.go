@@ -19,6 +19,7 @@ import (
 	"code.cloudfoundry.org/debugserver"
 	"code.cloudfoundry.org/executor"
 	executorinit "code.cloudfoundry.org/executor/initializer"
+	"code.cloudfoundry.org/go-loggregator/loggregator_v2"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/localip"
@@ -35,7 +36,6 @@ import (
 	"code.cloudfoundry.org/rep/handlers"
 	"code.cloudfoundry.org/rep/harmonizer"
 	"code.cloudfoundry.org/rep/maintain"
-	"code.cloudfoundry.org/go-loggregator/loggregator_v2"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/hashicorp/consul/api"
 	"github.com/nu7hatch/gouuid"
@@ -307,7 +307,7 @@ func initializeServer(
 		rep.StackPathMap(repConfig.PreloadedRootFS),
 		repConfig.SupportedProviders,
 		repConfig.Zone,
-		generateGuid,
+		auction_cell_rep.GenerateGuid,
 		executorClient,
 		evacuationReporter,
 		repConfig.PlacementTags,
@@ -344,14 +344,6 @@ func initializeServer(
 	}
 
 	return http_server.New(listenAddress, router), address
-}
-
-func generateGuid() (string, error) {
-	guid, err := uuid.NewV4()
-	if err != nil {
-		return "", err
-	}
-	return guid.String(), nil
 }
 
 func getHandlers(
