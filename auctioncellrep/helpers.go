@@ -1,4 +1,4 @@
-package auction_cell_rep
+package auctioncellrep
 
 import uuid "github.com/nu7hatch/gouuid"
 

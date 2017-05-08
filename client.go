@@ -132,15 +132,11 @@ func (factory *clientFactory) CreateClient(address, url string) (Client, error) 
 	return newClient(factory.httpClient, factory.stateClient, urlToUse), nil
 }
 
-type AuctionCellClient interface {
-	State(logger lager.Logger) (CellState, error)
-	Perform(logger lager.Logger, work Work) (Work, error)
-}
-
 //go:generate counterfeiter -o repfakes/fake_client.go . Client
 
 type Client interface {
-	AuctionCellClient
+	State(logger lager.Logger) (CellState, error)
+	Perform(logger lager.Logger, work Work) (Work, error)
 	StopLRPInstance(key models.ActualLRPKey, instanceKey models.ActualLRPInstanceKey) error
 	CancelTask(taskGuid string) error
 	SetStateClient(stateClient *http.Client)

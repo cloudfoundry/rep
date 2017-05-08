@@ -1,4 +1,4 @@
-package auction_cell_rep_test
+package auctioncellrep_test
 
 import (
 	. "github.com/onsi/ginkgo"

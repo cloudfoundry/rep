@@ -11,9 +11,9 @@ import (
 	executorfakes "code.cloudfoundry.org/executor/fakes"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep"
+	"code.cloudfoundry.org/rep/auctioncellrep/auctioncellrepfakes"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"code.cloudfoundry.org/rep/handlers"
-	"code.cloudfoundry.org/rep/repfakes"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -30,14 +30,14 @@ func TestAuctionHttpHandlers(t *testing.T) {
 var server *httptest.Server
 var requestGenerator *rata.RequestGenerator
 var client *http.Client
-var fakeLocalRep *repfakes.FakeSimClient
+var fakeLocalRep *auctioncellrepfakes.FakeAuctionCellClient
 var repGuid string
 var logger *lagertest.TestLogger
 
 var _ = BeforeEach(func() {
 	logger = lagertest.NewTestLogger("handlers")
 
-	fakeLocalRep = new(repfakes.FakeSimClient)
+	fakeLocalRep = new(auctioncellrepfakes.FakeAuctionCellClient)
 	fakeExecutorClient := new(executorfakes.FakeClient)
 	fakeEvacuatable := new(fake_evacuation_context.FakeEvacuatable)
 	handler, err := rata.NewRouter(rep.Routes, handlers.NewLegacy(fakeLocalRep, fakeExecutorClient, fakeEvacuatable, logger))

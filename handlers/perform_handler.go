@@ -6,10 +6,11 @@ import (
 
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/rep"
+	"code.cloudfoundry.org/rep/auctioncellrep"
 )
 
 type perform struct {
-	rep rep.AuctionCellClient
+	rep auctioncellrep.AuctionCellClient
 }
 
 func (h *perform) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {

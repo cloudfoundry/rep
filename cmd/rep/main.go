@@ -28,7 +28,7 @@ import (
 	locketmodels "code.cloudfoundry.org/locket/models"
 	"code.cloudfoundry.org/operationq"
 	"code.cloudfoundry.org/rep"
-	"code.cloudfoundry.org/rep/auction_cell_rep"
+	"code.cloudfoundry.org/rep/auctioncellrep"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
 	"code.cloudfoundry.org/rep/evacuation"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
@@ -302,12 +302,12 @@ func initializeServer(
 	repConfig config.RepConfig,
 	secure bool,
 ) (ifrit.Runner, string) {
-	auctionCellRep := auction_cell_rep.New(
+	auctionCellRep := auctioncellrep.New(
 		repConfig.CellID,
 		rep.StackPathMap(repConfig.PreloadedRootFS),
 		repConfig.SupportedProviders,
 		repConfig.Zone,
-		auction_cell_rep.GenerateGuid,
+		auctioncellrep.GenerateGuid,
 		executorClient,
 		evacuationReporter,
 		repConfig.PlacementTags,
@@ -348,7 +348,7 @@ func initializeServer(
 
 func getHandlers(
 	logger lager.Logger,
-	auctionCellRep rep.AuctionCellClient,
+	auctionCellRep auctioncellrep.AuctionCellClient,
 	executorClient executor.Client,
 	evacuatable evacuation_context.Evacuatable,
 	enableLegacyAPIServer bool,

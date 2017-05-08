@@ -5,21 +5,26 @@ import (
 	"net/http"
 
 	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/rep"
+	"code.cloudfoundry.org/rep/auctioncellrep"
 )
 
 type state struct {
-	rep rep.AuctionCellClient
+	rep auctioncellrep.AuctionCellClient
 }
 
 func (h *state) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
 	logger = logger.Session("auction-fetch-state")
 
-	state, err := h.rep.State(logger)
+	state, healthy, err := h.rep.State(logger)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		logger.Error("failed-to-fetch-state", err)
 		return
+	}
+
+	if !healthy {
+		logger.Info("cell-not-healthy")
+		w.WriteHeader(http.StatusServiceUnavailable)
 	}
 
 	json.NewEncoder(w).Encode(state)

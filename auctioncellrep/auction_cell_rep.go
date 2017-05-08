@@ -1,4 +1,4 @@
-package auction_cell_rep
+package auctioncellrep
 
 import (
 	"errors"
@@ -11,6 +11,14 @@ import (
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
 )
+
+//go:generate counterfeiter . AuctionCellClient
+
+type AuctionCellClient interface {
+	State(logger lager.Logger) (rep.CellState, bool, error)
+	Perform(logger lager.Logger, work rep.Work) (rep.Work, error)
+	Reset() error
+}
 
 var ErrPreloadedRootFSNotFound = errors.New("preloaded rootfs path not found")
 var ErrCellUnhealthy = errors.New("internal cell healthcheck failed")
@@ -90,39 +98,32 @@ func PathForRootFS(rootFS string, stackPathMap rep.StackPathMap) (string, error)
 
 // State currently does not return tasks or lrp rootfs, because the
 // auctioneer currently does not need them.
-func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, error) {
+func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, bool, error) {
 	logger = logger.Session("auction-state")
 	logger.Info("providing")
-
-	// Fail quickly if cached internal health is sick
-	healthy := a.client.Healthy(logger)
-	if !healthy {
-		logger.Error("failed-garden-health-check", nil)
-		return rep.CellState{}, ErrCellUnhealthy
-	}
 
 	containers, err := a.client.ListContainers(logger)
 	if err != nil {
 		logger.Error("failed-to-fetch-containers", err)
-		return rep.CellState{}, err
+		return rep.CellState{}, false, err
 	}
 
 	totalResources, err := a.client.TotalResources(logger)
 	if err != nil {
 		logger.Error("failed-to-get-total-resources", err)
-		return rep.CellState{}, err
+		return rep.CellState{}, false, err
 	}
 
 	availableResources, err := a.client.RemainingResources(logger)
 	if err != nil {
 		logger.Error("failed-to-get-remaining-resource", err)
-		return rep.CellState{}, err
+		return rep.CellState{}, false, err
 	}
 
 	volumeDrivers, err := a.client.VolumeDrivers(logger)
 	if err != nil {
 		logger.Error("failed-to-get-volume-drivers", err)
-		return rep.CellState{}, err
+		return rep.CellState{}, false, err
 	}
 
 	var key *models.ActualLRPKey
@@ -174,6 +175,11 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, error) {
 		a.optionalPlacementTags,
 	)
 
+	healthy := a.client.Healthy(logger)
+	if !healthy {
+		logger.Error("failed-garden-health-check", nil)
+	}
+
 	logger.Info("provided", lager.Data{
 		"available-resources": state.AvailableResources,
 		"total-resources":     state.TotalResources,
@@ -182,7 +188,7 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, error) {
 		"evacuating":          state.Evacuating,
 	})
 
-	return state, nil
+	return state, healthy, nil
 }
 
 func containerIsStarting(container *executor.Container) bool {
@@ -324,4 +330,8 @@ func (a *AuctionCellRep) convertResources(resources executor.ExecutorResources) 
 		DiskMB:     int32(resources.DiskMB),
 		Containers: resources.Containers,
 	}
+}
+
+func (a *AuctionCellRep) Reset() error {
+	return errors.New("not-a-simulation-rep")
 }

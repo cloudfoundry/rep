@@ -6,12 +6,13 @@ import (
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/rep"
+	"code.cloudfoundry.org/rep/auctioncellrep"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
 	"github.com/tedsuo/rata"
 )
 
 func New(
-	localCellClient rep.AuctionCellClient,
+	localCellClient auctioncellrep.AuctionCellClient,
 	executorClient executor.Client,
 	evacuatable evacuation_context.Evacuatable,
 	logger lager.Logger,
@@ -44,7 +45,7 @@ func New(
 }
 
 func NewLegacy(
-	localCellClient rep.AuctionCellClient,
+	localCellClient auctioncellrep.AuctionCellClient,
 	executorClient executor.Client,
 	evacuatable evacuation_context.Evacuatable,
 	logger lager.Logger,

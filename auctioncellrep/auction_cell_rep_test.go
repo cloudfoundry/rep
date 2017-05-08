@@ -1,4 +1,4 @@
-package auction_cell_rep_test
+package auctioncellrep_test
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 	fake_client "code.cloudfoundry.org/executor/fakes"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep"
-	"code.cloudfoundry.org/rep/auction_cell_rep"
+	"code.cloudfoundry.org/rep/auctioncellrep"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context/fake_evacuation_context"
 
 	. "github.com/onsi/ginkgo"
@@ -23,7 +23,7 @@ var _ = Describe("AuctionCellRep", func() {
 	)
 
 	var (
-		cellRep            rep.AuctionCellClient
+		cellRep            auctioncellrep.AuctionCellClient
 		client             *fake_client.FakeClient
 		logger             *lagertest.TestLogger
 		evacuationReporter *fake_evacuation_context.FakeEvacuationReporter
@@ -53,7 +53,7 @@ var _ = Describe("AuctionCellRep", func() {
 	})
 
 	JustBeforeEach(func() {
-		cellRep = auction_cell_rep.New(
+		cellRep = auctioncellrep.New(
 			expectedCellID,
 			rep.StackPathMap{linuxStack: linuxPath},
 			[]string{"docker"},
@@ -138,8 +138,10 @@ var _ = Describe("AuctionCellRep", func() {
 		})
 
 		It("queries the client and returns state", func() {
-			state, err := cellRep.State(logger)
+			state, healthy, err := cellRep.State(logger)
 			Expect(err).NotTo(HaveOccurred())
+
+			Expect(healthy).To(BeTrue())
 
 			Expect(state.Evacuating).To(BeTrue())
 			Expect(state.RootFSProviders).To(Equal(rep.RootFSProviders{
@@ -192,8 +194,9 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 
 			It("errors when reporting state", func() {
-				_, err := cellRep.State(logger)
-				Expect(err).To(MatchError(auction_cell_rep.ErrCellUnhealthy))
+				_, healthy, err := cellRep.State(logger)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(healthy).To(BeFalse())
 			})
 		})
 
@@ -203,8 +206,7 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 
 			It("should return an error and no state", func() {
-				state, err := cellRep.State(logger)
-				Expect(state).To(BeZero())
+				_, _, err := cellRep.State(logger)
 				Expect(err).To(MatchError(commonErr))
 			})
 		})
@@ -215,8 +217,7 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 
 			It("should return an error and no state", func() {
-				state, err := cellRep.State(logger)
-				Expect(state).To(BeZero())
+				_, _, err := cellRep.State(logger)
 				Expect(err).To(MatchError(commonErr))
 			})
 		})
@@ -227,8 +228,7 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 
 			It("should return an error and no state", func() {
-				state, err := cellRep.State(logger)
-				Expect(state).To(BeZero())
+				_, _, err := cellRep.State(logger)
 				Expect(err).To(MatchError(commonErr))
 			})
 		})
@@ -239,8 +239,9 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 
 			It("returns the tags as part of the state", func() {
-				state, err := cellRep.State(logger)
+				state, healthy, err := cellRep.State(logger)
 				Expect(err).NotTo(HaveOccurred())
+				Expect(healthy).To(BeTrue())
 				Expect(state.PlacementTags).To(ConsistOf(placementTags))
 			})
 		})
@@ -251,8 +252,9 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 
 			It("returns the tags as part of the state", func() {
-				state, err := cellRep.State(logger)
+				state, healthy, err := cellRep.State(logger)
 				Expect(err).NotTo(HaveOccurred())
+				Expect(healthy).To(BeTrue())
 				Expect(state.OptionalPlacementTags).To(ConsistOf(optionalPlacementTags))
 			})
 		})

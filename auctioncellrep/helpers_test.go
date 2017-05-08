@@ -1,7 +1,7 @@
-package auction_cell_rep_test
+package auctioncellrep_test
 
 import (
-	"code.cloudfoundry.org/rep/auction_cell_rep"
+	"code.cloudfoundry.org/rep/auctioncellrep"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -9,7 +9,7 @@ import (
 var _ = Describe("Helpers", func() {
 	Context("GenerateGuid", func() {
 		It("generates a 28 character identifier", func() {
-			guid, err := auction_cell_rep.GenerateGuid()
+			guid, err := auctioncellrep.GenerateGuid()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(guid).To(HaveLen(28))
 		})
