@@ -175,6 +175,7 @@ var _ = Describe("Resources", func() {
 			container = executor.Container{
 				Guid:       "some-instance-guid",
 				ExternalIP: "some-external-ip",
+				InternalIP: "container-ip",
 				Tags: executor.Tags{
 					rep.LifecycleTag:    rep.LRPLifecycle,
 					rep.DomainTag:       "my-domain",
@@ -209,7 +210,8 @@ var _ = Describe("Resources", func() {
 							HostPort:      6789,
 						},
 					},
-					Address: "some-external-ip",
+					Address:         "some-external-ip",
+					InstanceAddress: "container-ip",
 				}
 
 				Expect(*lrpNetInfo).To(Equal(expectedNetInfo))

@@ -241,9 +241,11 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 			BeforeEach(func() {
 				container.State = executor.StateRunning
 				externalIP := "executor-ip"
+				internalIP := "container-ip"
 				container.ExternalIP = externalIP
+				container.InternalIP = internalIP
 				container.Ports = []executor.PortMapping{{ContainerPort: 1357, HostPort: 8642}}
-				lrpNetInfo = models.NewActualLRPNetInfo(externalIP, models.NewPortMapping(8642, 1357))
+				lrpNetInfo = models.NewActualLRPNetInfo(externalIP, internalIP, models.NewPortMapping(8642, 1357))
 			})
 
 			It("evacuates the lrp", func() {
@@ -256,10 +258,11 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 				Eventually(logger).Should(Say(
 					fmt.Sprintf(
-						`"net_info":\{"address":"%s","ports":\[\{"container_port":%d,"host_port":%d\}\]\}`,
+						`"net_info":\{"address":"%s","ports":\[\{"container_port":%d,"host_port":%d\}\],"instance_address":"%s"\}`,
 						lrpNetInfo.Address,
 						lrpNetInfo.Ports[0].ContainerPort,
 						lrpNetInfo.Ports[0].HostPort,
+						lrpNetInfo.InstanceAddress,
 					),
 				))
 			})

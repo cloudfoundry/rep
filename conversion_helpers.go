@@ -76,7 +76,7 @@ func ActualLRPNetInfoFromContainer(container executor.Container) (*models.Actual
 		ports = append(ports, models.NewPortMapping(uint32(portMapping.HostPort), uint32(portMapping.ContainerPort)))
 	}
 
-	actualLRPNetInfo := models.NewActualLRPNetInfo(container.ExternalIP, ports...)
+	actualLRPNetInfo := models.NewActualLRPNetInfo(container.ExternalIP, container.InternalIP, ports...)
 
 	err := actualLRPNetInfo.Validate()
 	if err != nil {

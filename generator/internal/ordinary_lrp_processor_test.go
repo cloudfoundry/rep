@@ -55,7 +55,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 			desiredLRP = model_helpers.NewValidDesiredLRP("process-guid")
 			expectedLrpKey = models.NewActualLRPKey("process-guid", 2, "domain")
 			expectedInstanceKey = models.NewActualLRPInstanceKey("instance-guid", "cell-id")
-			expectedNetInfo = models.NewActualLRPNetInfo("1.2.3.4", models.NewPortMapping(61999, 8080))
+			expectedNetInfo = models.NewActualLRPNetInfo("1.2.3.4", "2.2.2.2", models.NewPortMapping(61999, 8080))
 		})
 
 		Context("when given an LRP container", func() {
@@ -212,6 +212,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						expectedSessionName = sessionPrefix + "process-running-container"
 						container.State = executor.StateRunning
 						container.ExternalIP = "1.2.3.4"
+						container.InternalIP = "2.2.2.2"
 						container.Ports = []executor.PortMapping{{ContainerPort: 8080, HostPort: 61999}}
 					})
 
@@ -224,10 +225,11 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 						Eventually(logger).Should(Say(
 							fmt.Sprintf(
-								`"net_info":\{"address":"%s","ports":\[\{"container_port":%d,"host_port":%d\}\]\}`,
+								`"net_info":\{"address":"%s","ports":\[\{"container_port":%d,"host_port":%d\}\],"instance_address":"%s"\}`,
 								expectedNetInfo.Address,
 								expectedNetInfo.Ports[0].ContainerPort,
 								expectedNetInfo.Ports[0].HostPort,
+								expectedNetInfo.InstanceAddress,
 							),
 						))
 					})
