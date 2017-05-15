@@ -11,9 +11,9 @@ import (
 	"code.cloudfoundry.org/debugserver"
 	"code.cloudfoundry.org/durationjson"
 	executorinit "code.cloudfoundry.org/executor/initializer"
+	loggregator_v2 "code.cloudfoundry.org/go-loggregator"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
-	"code.cloudfoundry.org/go-loggregator/loggregator_v2"
 )
 
 type StackMap map[string]string
@@ -59,7 +59,7 @@ func (m StackMap) MarshalJSON() (b []byte, err error) {
 }
 
 type RepConfig struct {
-	loggregator_v2.MetronConfig
+	loggregator_v2.Config
 	AdvertiseDomain           string                `json:"advertise_domain,omitempty"`
 	BBSAddress                string                `json:"bbs_address"`
 	BBSCACertFile             string                `json:"bbs_ca_cert_file"`
