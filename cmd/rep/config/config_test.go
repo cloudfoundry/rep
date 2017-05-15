@@ -9,6 +9,7 @@ import (
 	"code.cloudfoundry.org/durationjson"
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/executor/initializer/configuration"
+	loggregator_v2 "code.cloudfoundry.org/go-loggregator"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
@@ -76,6 +77,16 @@ var _ = Describe("RepConfig", func() {
 			"locket_client_cert_file": "locket-client-cert",
 			"locket_client_key_file": "locket-client-key",
 			"log_level": "debug",
+			"loggregator_use_v2_api": true,
+			"loggregator_api_port": 1234,
+			"loggregator_ca_path": "ca-path",
+			"loggregator_cert_path": "cert-path",
+			"loggregator_key_path": "key-path",
+			"loggregator_job_deployment": "job-deployment",
+			"loggregator_job_name": "job-name",
+			"loggregator_job_index": "job-index",
+			"loggregator_job_ip": "job-ip",
+			"loggregator_job_origin": "job-origin",
 			"max_cache_size_in_bytes": 101,
 			"max_concurrent_downloads": 11,
 			"memory_mb": "1000",
@@ -212,6 +223,18 @@ var _ = Describe("RepConfig", func() {
 			SessionName:           "test",
 			SupportedProviders:    []string{"provider1", "provider2"},
 			Zone:                  "test-zone",
+			Config: loggregator_v2.Config{
+				UseV2API:      true,
+				APIPort:       1234,
+				CACertPath:    "ca-path",
+				CertPath:      "cert-path",
+				KeyPath:       "key-path",
+				JobDeployment: "job-deployment",
+				JobName:       "job-name",
+				JobIndex:      "job-index",
+				JobIP:         "job-ip",
+				JobOrigin:     "job-origin",
+			},
 		}))
 	})
 
