@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
+	mfakes "code.cloudfoundry.org/go-loggregator/fakes"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/operationq"
@@ -13,7 +14,6 @@ import (
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
 	"code.cloudfoundry.org/rep/generator/fake_generator"
 	"code.cloudfoundry.org/rep/harmonizer"
-	mfakes "code.cloudfoundry.org/go-loggregator/loggregator_v2/fakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"

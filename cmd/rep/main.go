@@ -19,7 +19,7 @@ import (
 	"code.cloudfoundry.org/debugserver"
 	"code.cloudfoundry.org/executor"
 	executorinit "code.cloudfoundry.org/executor/initializer"
-	"code.cloudfoundry.org/go-loggregator/loggregator_v2"
+	loggregator_v2 "code.cloudfoundry.org/go-loggregator"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/localip"
@@ -103,7 +103,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	metronClient, err := loggregator_v2.NewClient(logger, repConfig.MetronConfig)
+	metronClient, err := loggregator_v2.NewClient(repConfig.Config)
 	if err != nil {
 		logger.Error("failed-to-initialize-metron-client", err)
 		os.Exit(1)
