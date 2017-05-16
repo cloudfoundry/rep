@@ -59,7 +59,6 @@ func (m StackMap) MarshalJSON() (b []byte, err error) {
 }
 
 type RepConfig struct {
-	loggregator_v2.Config
 	AdvertiseDomain           string                `json:"advertise_domain,omitempty"`
 	BBSAddress                string                `json:"bbs_address"`
 	BBSCACertFile             string                `json:"bbs_ca_cert_file"`
@@ -93,6 +92,7 @@ type RepConfig struct {
 	SessionName               string                `json:"session_name,omitempty"`
 	SupportedProviders        []string              `json:"supported_providers"`
 	Zone                      string                `json:"zone"`
+	LoggregatorConfig         loggregator_v2.Config `json:"loggregator"`
 	debugserver.DebugServerConfig
 	executorinit.ExecutorConfig
 	lagerflags.LagerConfig

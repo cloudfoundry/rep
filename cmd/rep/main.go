@@ -103,7 +103,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	metronClient, err := loggregator_v2.NewClient(repConfig.Config)
+	metronClient, err := loggregator_v2.NewClient(repConfig.LoggregatorConfig)
 	if err != nil {
 		logger.Error("failed-to-initialize-metron-client", err)
 		os.Exit(1)
