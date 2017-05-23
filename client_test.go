@@ -4,10 +4,12 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/cfhttp"
+	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep"
 
 	. "github.com/onsi/ginkgo"
@@ -82,6 +84,33 @@ var _ = Describe("Client", func() {
 
 	AfterEach(func() {
 		fakeServer.Close()
+	})
+
+	Describe("State", func() {
+		var (
+			logger *lagertest.TestLogger
+			addrs  map[string]struct{}
+		)
+
+		BeforeEach(func() {
+			str := strings.Repeat("x", 4096)
+			addrs = make(map[string]struct{})
+
+			fakeServer.RouteToHandler("GET", "/state", func(resp http.ResponseWriter, req *http.Request) {
+				addrs[req.RemoteAddr] = struct{}{}
+				resp.Write([]byte("{}" + str))
+			})
+		})
+
+		// test that the http client read the entire body, otherwise the http
+		// connections won't be recycled. **Note** this test is slightly ugly but I
+		// cannot think of a better way. see
+		// https://www.pivotaltracker.com/story/show/144907419 for more info
+		It("reads the entire body", func() {
+			client.State(logger)
+			client.State(logger)
+			Expect(addrs).To(HaveLen(1))
+		})
 	})
 
 	Describe("StopLRPInstance", func() {

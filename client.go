@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -191,7 +192,11 @@ func (c *client) State(logger lager.Logger) (CellState, error) {
 	}
 
 	var state CellState
-	err = json.NewDecoder(resp.Body).Decode(&state)
+	bs, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return CellState{}, err
+	}
+	err = json.Unmarshal(bs, &state)
 	if err != nil {
 		return CellState{}, err
 	}
