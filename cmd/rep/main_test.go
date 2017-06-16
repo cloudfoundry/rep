@@ -367,7 +367,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 
 				Context("when it loses its presence", func() {
 					var locketClient locketmodels.LocketClient
-					var response *locketmodels.FetchResponse
 
 					JustBeforeEach(func() {
 						var err error
@@ -375,7 +374,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 						Expect(err).NotTo(HaveOccurred())
 
 						Eventually(func() error {
-							response, err = locketClient.Fetch(context.Background(), &locketmodels.FetchRequest{Key: repConfig.CellID})
+							_, err = locketClient.Fetch(context.Background(), &locketmodels.FetchRequest{Key: repConfig.CellID})
 							return err
 						}, 10*time.Second).Should(Succeed())
 					})
