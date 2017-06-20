@@ -138,8 +138,8 @@ func (factory *clientFactory) CreateClient(address, url string) (Client, error) 
 type Client interface {
 	State(logger lager.Logger) (CellState, error)
 	Perform(logger lager.Logger, work Work) (Work, error)
-	StopLRPInstance(key models.ActualLRPKey, instanceKey models.ActualLRPInstanceKey) error
-	CancelTask(taskGuid string) error
+	StopLRPInstance(logger lager.Logger, key models.ActualLRPKey, instanceKey models.ActualLRPInstanceKey) error
+	CancelTask(logger lager.Logger, taskGuid string) error
 	SetStateClient(stateClient *http.Client)
 	StateClientTimeout() time.Duration
 }
@@ -254,11 +254,21 @@ func (c *client) Reset() error {
 }
 
 func (c *client) StopLRPInstance(
+	logger lager.Logger,
 	key models.ActualLRPKey,
 	instanceKey models.ActualLRPInstanceKey,
 ) error {
+	start := time.Now()
+	logger = logger.Session("stop-lrp", lager.Data{"process-guid": key.ProcessGuid,
+		"index":        key.Index,
+		"domain":       key.Domain,
+		"instance-key": instanceKey,
+	})
+	logger.Info("starting")
+
 	req, err := c.requestGenerator.CreateRequest(StopLRPInstanceRoute, stopParamsFromLRP(key, instanceKey), nil)
 	if err != nil {
+		logger.Error("connection-failed", err)
 		return err
 	}
 
@@ -266,34 +276,47 @@ func (c *client) StopLRPInstance(
 
 	resp, err := c.client.Do(req)
 	if err != nil {
+		logger.Error("request-failed", err)
 		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusAccepted {
-		return fmt.Errorf("http error: status code %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode))
+		err := fmt.Errorf("http error: status code %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode))
+		logger.Error("failed-with-status", err, lager.Data{"status-code": resp.StatusCode, "msg": http.StatusText(resp.StatusCode)})
+		return err
 	}
 
+	logger.Info("completed", lager.Data{"duration": time.Since(start)})
 	return nil
 }
 
-func (c *client) CancelTask(taskGuid string) error {
+func (c *client) CancelTask(logger lager.Logger, taskGuid string) error {
+	start := time.Now()
+	logger = logger.Session("cancel-task", lager.Data{"task-guid": taskGuid})
+	logger.Info("starting")
+
 	req, err := c.requestGenerator.CreateRequest(CancelTaskRoute, rata.Params{"task_guid": taskGuid}, nil)
 	if err != nil {
+		logger.Error("connection-failed", err)
 		return err
 	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
+		logger.Error("request-failed", err)
 		return err
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusAccepted {
-		return fmt.Errorf("http error: status code %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode))
+		err := fmt.Errorf("http error: status code %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode))
+		logger.Error("failed-with-status", err, lager.Data{"status-code": resp.StatusCode, "msg": http.StatusText(resp.StatusCode)})
+		return err
 	}
 
+	logger.Info("completed", lager.Data{"duration": time.Since(start)})
 	return nil
 }
 

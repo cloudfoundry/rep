@@ -19,6 +19,10 @@ type FakeGenerator struct {
 		result1 map[string]operationq.Operation
 		result2 error
 	}
+	batchOperationsReturnsOnCall map[int]struct {
+		result1 map[string]operationq.Operation
+		result2 error
+	}
 	OperationStreamStub        func(lager.Logger) (<-chan operationq.Operation, error)
 	operationStreamMutex       sync.RWMutex
 	operationStreamArgsForCall []struct {
@@ -28,12 +32,17 @@ type FakeGenerator struct {
 		result1 <-chan operationq.Operation
 		result2 error
 	}
+	operationStreamReturnsOnCall map[int]struct {
+		result1 <-chan operationq.Operation
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
 func (fake *FakeGenerator) BatchOperations(arg1 lager.Logger) (map[string]operationq.Operation, error) {
 	fake.batchOperationsMutex.Lock()
+	ret, specificReturn := fake.batchOperationsReturnsOnCall[len(fake.batchOperationsArgsForCall)]
 	fake.batchOperationsArgsForCall = append(fake.batchOperationsArgsForCall, struct {
 		arg1 lager.Logger
 	}{arg1})
@@ -41,9 +50,11 @@ func (fake *FakeGenerator) BatchOperations(arg1 lager.Logger) (map[string]operat
 	fake.batchOperationsMutex.Unlock()
 	if fake.BatchOperationsStub != nil {
 		return fake.BatchOperationsStub(arg1)
-	} else {
-		return fake.batchOperationsReturns.result1, fake.batchOperationsReturns.result2
 	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.batchOperationsReturns.result1, fake.batchOperationsReturns.result2
 }
 
 func (fake *FakeGenerator) BatchOperationsCallCount() int {
@@ -66,8 +77,23 @@ func (fake *FakeGenerator) BatchOperationsReturns(result1 map[string]operationq.
 	}{result1, result2}
 }
 
+func (fake *FakeGenerator) BatchOperationsReturnsOnCall(i int, result1 map[string]operationq.Operation, result2 error) {
+	fake.BatchOperationsStub = nil
+	if fake.batchOperationsReturnsOnCall == nil {
+		fake.batchOperationsReturnsOnCall = make(map[int]struct {
+			result1 map[string]operationq.Operation
+			result2 error
+		})
+	}
+	fake.batchOperationsReturnsOnCall[i] = struct {
+		result1 map[string]operationq.Operation
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeGenerator) OperationStream(arg1 lager.Logger) (<-chan operationq.Operation, error) {
 	fake.operationStreamMutex.Lock()
+	ret, specificReturn := fake.operationStreamReturnsOnCall[len(fake.operationStreamArgsForCall)]
 	fake.operationStreamArgsForCall = append(fake.operationStreamArgsForCall, struct {
 		arg1 lager.Logger
 	}{arg1})
@@ -75,9 +101,11 @@ func (fake *FakeGenerator) OperationStream(arg1 lager.Logger) (<-chan operationq
 	fake.operationStreamMutex.Unlock()
 	if fake.OperationStreamStub != nil {
 		return fake.OperationStreamStub(arg1)
-	} else {
-		return fake.operationStreamReturns.result1, fake.operationStreamReturns.result2
 	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.operationStreamReturns.result1, fake.operationStreamReturns.result2
 }
 
 func (fake *FakeGenerator) OperationStreamCallCount() int {
@@ -95,6 +123,20 @@ func (fake *FakeGenerator) OperationStreamArgsForCall(i int) lager.Logger {
 func (fake *FakeGenerator) OperationStreamReturns(result1 <-chan operationq.Operation, result2 error) {
 	fake.OperationStreamStub = nil
 	fake.operationStreamReturns = struct {
+		result1 <-chan operationq.Operation
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeGenerator) OperationStreamReturnsOnCall(i int, result1 <-chan operationq.Operation, result2 error) {
+	fake.OperationStreamStub = nil
+	if fake.operationStreamReturnsOnCall == nil {
+		fake.operationStreamReturnsOnCall = make(map[int]struct {
+			result1 <-chan operationq.Operation
+			result2 error
+		})
+	}
+	fake.operationStreamReturnsOnCall[i] = struct {
 		result1 <-chan operationq.Operation
 		result2 error
 	}{result1, result2}

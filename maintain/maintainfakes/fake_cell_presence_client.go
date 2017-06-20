@@ -23,6 +23,9 @@ type FakeCellPresenceClient struct {
 	newCellPresenceRunnerReturns struct {
 		result1 ifrit.Runner
 	}
+	newCellPresenceRunnerReturnsOnCall map[int]struct {
+		result1 ifrit.Runner
+	}
 	CellByIdStub        func(logger lager.Logger, cellId string) (*models.CellPresence, error)
 	cellByIdMutex       sync.RWMutex
 	cellByIdArgsForCall []struct {
@@ -30,6 +33,10 @@ type FakeCellPresenceClient struct {
 		cellId string
 	}
 	cellByIdReturns struct {
+		result1 *models.CellPresence
+		result2 error
+	}
+	cellByIdReturnsOnCall map[int]struct {
 		result1 *models.CellPresence
 		result2 error
 	}
@@ -42,6 +49,10 @@ type FakeCellPresenceClient struct {
 		result1 models.CellSet
 		result2 error
 	}
+	cellsReturnsOnCall map[int]struct {
+		result1 models.CellSet
+		result2 error
+	}
 	CellEventsStub        func(logger lager.Logger) <-chan models.CellEvent
 	cellEventsMutex       sync.RWMutex
 	cellEventsArgsForCall []struct {
@@ -50,12 +61,16 @@ type FakeCellPresenceClient struct {
 	cellEventsReturns struct {
 		result1 <-chan models.CellEvent
 	}
+	cellEventsReturnsOnCall map[int]struct {
+		result1 <-chan models.CellEvent
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
 func (fake *FakeCellPresenceClient) NewCellPresenceRunner(logger lager.Logger, cellPresence *models.CellPresence, retryInterval time.Duration, lockTTL time.Duration) ifrit.Runner {
 	fake.newCellPresenceRunnerMutex.Lock()
+	ret, specificReturn := fake.newCellPresenceRunnerReturnsOnCall[len(fake.newCellPresenceRunnerArgsForCall)]
 	fake.newCellPresenceRunnerArgsForCall = append(fake.newCellPresenceRunnerArgsForCall, struct {
 		logger        lager.Logger
 		cellPresence  *models.CellPresence
@@ -66,9 +81,11 @@ func (fake *FakeCellPresenceClient) NewCellPresenceRunner(logger lager.Logger, c
 	fake.newCellPresenceRunnerMutex.Unlock()
 	if fake.NewCellPresenceRunnerStub != nil {
 		return fake.NewCellPresenceRunnerStub(logger, cellPresence, retryInterval, lockTTL)
-	} else {
-		return fake.newCellPresenceRunnerReturns.result1
 	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.newCellPresenceRunnerReturns.result1
 }
 
 func (fake *FakeCellPresenceClient) NewCellPresenceRunnerCallCount() int {
@@ -90,8 +107,21 @@ func (fake *FakeCellPresenceClient) NewCellPresenceRunnerReturns(result1 ifrit.R
 	}{result1}
 }
 
+func (fake *FakeCellPresenceClient) NewCellPresenceRunnerReturnsOnCall(i int, result1 ifrit.Runner) {
+	fake.NewCellPresenceRunnerStub = nil
+	if fake.newCellPresenceRunnerReturnsOnCall == nil {
+		fake.newCellPresenceRunnerReturnsOnCall = make(map[int]struct {
+			result1 ifrit.Runner
+		})
+	}
+	fake.newCellPresenceRunnerReturnsOnCall[i] = struct {
+		result1 ifrit.Runner
+	}{result1}
+}
+
 func (fake *FakeCellPresenceClient) CellById(logger lager.Logger, cellId string) (*models.CellPresence, error) {
 	fake.cellByIdMutex.Lock()
+	ret, specificReturn := fake.cellByIdReturnsOnCall[len(fake.cellByIdArgsForCall)]
 	fake.cellByIdArgsForCall = append(fake.cellByIdArgsForCall, struct {
 		logger lager.Logger
 		cellId string
@@ -100,9 +130,11 @@ func (fake *FakeCellPresenceClient) CellById(logger lager.Logger, cellId string)
 	fake.cellByIdMutex.Unlock()
 	if fake.CellByIdStub != nil {
 		return fake.CellByIdStub(logger, cellId)
-	} else {
-		return fake.cellByIdReturns.result1, fake.cellByIdReturns.result2
 	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.cellByIdReturns.result1, fake.cellByIdReturns.result2
 }
 
 func (fake *FakeCellPresenceClient) CellByIdCallCount() int {
@@ -125,8 +157,23 @@ func (fake *FakeCellPresenceClient) CellByIdReturns(result1 *models.CellPresence
 	}{result1, result2}
 }
 
+func (fake *FakeCellPresenceClient) CellByIdReturnsOnCall(i int, result1 *models.CellPresence, result2 error) {
+	fake.CellByIdStub = nil
+	if fake.cellByIdReturnsOnCall == nil {
+		fake.cellByIdReturnsOnCall = make(map[int]struct {
+			result1 *models.CellPresence
+			result2 error
+		})
+	}
+	fake.cellByIdReturnsOnCall[i] = struct {
+		result1 *models.CellPresence
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeCellPresenceClient) Cells(logger lager.Logger) (models.CellSet, error) {
 	fake.cellsMutex.Lock()
+	ret, specificReturn := fake.cellsReturnsOnCall[len(fake.cellsArgsForCall)]
 	fake.cellsArgsForCall = append(fake.cellsArgsForCall, struct {
 		logger lager.Logger
 	}{logger})
@@ -134,9 +181,11 @@ func (fake *FakeCellPresenceClient) Cells(logger lager.Logger) (models.CellSet, 
 	fake.cellsMutex.Unlock()
 	if fake.CellsStub != nil {
 		return fake.CellsStub(logger)
-	} else {
-		return fake.cellsReturns.result1, fake.cellsReturns.result2
 	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.cellsReturns.result1, fake.cellsReturns.result2
 }
 
 func (fake *FakeCellPresenceClient) CellsCallCount() int {
@@ -159,8 +208,23 @@ func (fake *FakeCellPresenceClient) CellsReturns(result1 models.CellSet, result2
 	}{result1, result2}
 }
 
+func (fake *FakeCellPresenceClient) CellsReturnsOnCall(i int, result1 models.CellSet, result2 error) {
+	fake.CellsStub = nil
+	if fake.cellsReturnsOnCall == nil {
+		fake.cellsReturnsOnCall = make(map[int]struct {
+			result1 models.CellSet
+			result2 error
+		})
+	}
+	fake.cellsReturnsOnCall[i] = struct {
+		result1 models.CellSet
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeCellPresenceClient) CellEvents(logger lager.Logger) <-chan models.CellEvent {
 	fake.cellEventsMutex.Lock()
+	ret, specificReturn := fake.cellEventsReturnsOnCall[len(fake.cellEventsArgsForCall)]
 	fake.cellEventsArgsForCall = append(fake.cellEventsArgsForCall, struct {
 		logger lager.Logger
 	}{logger})
@@ -168,9 +232,11 @@ func (fake *FakeCellPresenceClient) CellEvents(logger lager.Logger) <-chan model
 	fake.cellEventsMutex.Unlock()
 	if fake.CellEventsStub != nil {
 		return fake.CellEventsStub(logger)
-	} else {
-		return fake.cellEventsReturns.result1
 	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.cellEventsReturns.result1
 }
 
 func (fake *FakeCellPresenceClient) CellEventsCallCount() int {
@@ -188,6 +254,18 @@ func (fake *FakeCellPresenceClient) CellEventsArgsForCall(i int) lager.Logger {
 func (fake *FakeCellPresenceClient) CellEventsReturns(result1 <-chan models.CellEvent) {
 	fake.CellEventsStub = nil
 	fake.cellEventsReturns = struct {
+		result1 <-chan models.CellEvent
+	}{result1}
+}
+
+func (fake *FakeCellPresenceClient) CellEventsReturnsOnCall(i int, result1 <-chan models.CellEvent) {
+	fake.CellEventsStub = nil
+	if fake.cellEventsReturnsOnCall == nil {
+		fake.cellEventsReturnsOnCall = make(map[int]struct {
+			result1 <-chan models.CellEvent
+		})
+	}
+	fake.cellEventsReturnsOnCall[i] = struct {
 		result1 <-chan models.CellEvent
 	}{result1}
 }

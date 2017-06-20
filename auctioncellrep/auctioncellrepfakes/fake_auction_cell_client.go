@@ -20,6 +20,11 @@ type FakeAuctionCellClient struct {
 		result2 bool
 		result3 error
 	}
+	stateReturnsOnCall map[int]struct {
+		result1 rep.CellState
+		result2 bool
+		result3 error
+	}
 	PerformStub        func(logger lager.Logger, work rep.Work) (rep.Work, error)
 	performMutex       sync.RWMutex
 	performArgsForCall []struct {
@@ -30,10 +35,17 @@ type FakeAuctionCellClient struct {
 		result1 rep.Work
 		result2 error
 	}
+	performReturnsOnCall map[int]struct {
+		result1 rep.Work
+		result2 error
+	}
 	ResetStub        func() error
 	resetMutex       sync.RWMutex
 	resetArgsForCall []struct{}
 	resetReturns     struct {
+		result1 error
+	}
+	resetReturnsOnCall map[int]struct {
 		result1 error
 	}
 	invocations      map[string][][]interface{}
@@ -42,6 +54,7 @@ type FakeAuctionCellClient struct {
 
 func (fake *FakeAuctionCellClient) State(logger lager.Logger) (rep.CellState, bool, error) {
 	fake.stateMutex.Lock()
+	ret, specificReturn := fake.stateReturnsOnCall[len(fake.stateArgsForCall)]
 	fake.stateArgsForCall = append(fake.stateArgsForCall, struct {
 		logger lager.Logger
 	}{logger})
@@ -49,9 +62,11 @@ func (fake *FakeAuctionCellClient) State(logger lager.Logger) (rep.CellState, bo
 	fake.stateMutex.Unlock()
 	if fake.StateStub != nil {
 		return fake.StateStub(logger)
-	} else {
-		return fake.stateReturns.result1, fake.stateReturns.result2, fake.stateReturns.result3
 	}
+	if specificReturn {
+		return ret.result1, ret.result2, ret.result3
+	}
+	return fake.stateReturns.result1, fake.stateReturns.result2, fake.stateReturns.result3
 }
 
 func (fake *FakeAuctionCellClient) StateCallCount() int {
@@ -75,8 +90,25 @@ func (fake *FakeAuctionCellClient) StateReturns(result1 rep.CellState, result2 b
 	}{result1, result2, result3}
 }
 
+func (fake *FakeAuctionCellClient) StateReturnsOnCall(i int, result1 rep.CellState, result2 bool, result3 error) {
+	fake.StateStub = nil
+	if fake.stateReturnsOnCall == nil {
+		fake.stateReturnsOnCall = make(map[int]struct {
+			result1 rep.CellState
+			result2 bool
+			result3 error
+		})
+	}
+	fake.stateReturnsOnCall[i] = struct {
+		result1 rep.CellState
+		result2 bool
+		result3 error
+	}{result1, result2, result3}
+}
+
 func (fake *FakeAuctionCellClient) Perform(logger lager.Logger, work rep.Work) (rep.Work, error) {
 	fake.performMutex.Lock()
+	ret, specificReturn := fake.performReturnsOnCall[len(fake.performArgsForCall)]
 	fake.performArgsForCall = append(fake.performArgsForCall, struct {
 		logger lager.Logger
 		work   rep.Work
@@ -85,9 +117,11 @@ func (fake *FakeAuctionCellClient) Perform(logger lager.Logger, work rep.Work) (
 	fake.performMutex.Unlock()
 	if fake.PerformStub != nil {
 		return fake.PerformStub(logger, work)
-	} else {
-		return fake.performReturns.result1, fake.performReturns.result2
 	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.performReturns.result1, fake.performReturns.result2
 }
 
 func (fake *FakeAuctionCellClient) PerformCallCount() int {
@@ -110,16 +144,33 @@ func (fake *FakeAuctionCellClient) PerformReturns(result1 rep.Work, result2 erro
 	}{result1, result2}
 }
 
+func (fake *FakeAuctionCellClient) PerformReturnsOnCall(i int, result1 rep.Work, result2 error) {
+	fake.PerformStub = nil
+	if fake.performReturnsOnCall == nil {
+		fake.performReturnsOnCall = make(map[int]struct {
+			result1 rep.Work
+			result2 error
+		})
+	}
+	fake.performReturnsOnCall[i] = struct {
+		result1 rep.Work
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeAuctionCellClient) Reset() error {
 	fake.resetMutex.Lock()
+	ret, specificReturn := fake.resetReturnsOnCall[len(fake.resetArgsForCall)]
 	fake.resetArgsForCall = append(fake.resetArgsForCall, struct{}{})
 	fake.recordInvocation("Reset", []interface{}{})
 	fake.resetMutex.Unlock()
 	if fake.ResetStub != nil {
 		return fake.ResetStub()
-	} else {
-		return fake.resetReturns.result1
 	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.resetReturns.result1
 }
 
 func (fake *FakeAuctionCellClient) ResetCallCount() int {
@@ -131,6 +182,18 @@ func (fake *FakeAuctionCellClient) ResetCallCount() int {
 func (fake *FakeAuctionCellClient) ResetReturns(result1 error) {
 	fake.ResetStub = nil
 	fake.resetReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeAuctionCellClient) ResetReturnsOnCall(i int, result1 error) {
+	fake.ResetStub = nil
+	if fake.resetReturnsOnCall == nil {
+		fake.resetReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.resetReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }

@@ -18,12 +18,17 @@ type FakeClientFactory struct {
 		result1 rep.Client
 		result2 error
 	}
+	createClientReturnsOnCall map[int]struct {
+		result1 rep.Client
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
 func (fake *FakeClientFactory) CreateClient(address string, url string) (rep.Client, error) {
 	fake.createClientMutex.Lock()
+	ret, specificReturn := fake.createClientReturnsOnCall[len(fake.createClientArgsForCall)]
 	fake.createClientArgsForCall = append(fake.createClientArgsForCall, struct {
 		address string
 		url     string
@@ -32,9 +37,11 @@ func (fake *FakeClientFactory) CreateClient(address string, url string) (rep.Cli
 	fake.createClientMutex.Unlock()
 	if fake.CreateClientStub != nil {
 		return fake.CreateClientStub(address, url)
-	} else {
-		return fake.createClientReturns.result1, fake.createClientReturns.result2
 	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.createClientReturns.result1, fake.createClientReturns.result2
 }
 
 func (fake *FakeClientFactory) CreateClientCallCount() int {
@@ -52,6 +59,20 @@ func (fake *FakeClientFactory) CreateClientArgsForCall(i int) (string, string) {
 func (fake *FakeClientFactory) CreateClientReturns(result1 rep.Client, result2 error) {
 	fake.CreateClientStub = nil
 	fake.createClientReturns = struct {
+		result1 rep.Client
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeClientFactory) CreateClientReturnsOnCall(i int, result1 rep.Client, result2 error) {
+	fake.CreateClientStub = nil
+	if fake.createClientReturnsOnCall == nil {
+		fake.createClientReturnsOnCall = make(map[int]struct {
+			result1 rep.Client
+			result2 error
+		})
+	}
+	fake.createClientReturnsOnCall[i] = struct {
 		result1 rep.Client
 		result2 error
 	}{result1, result2}
