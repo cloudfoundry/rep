@@ -126,6 +126,7 @@ func NewRunRequestFromDesiredLRP(
 		Setup:              desiredLRP.Setup,
 		Action:             desiredLRP.Action,
 		Monitor:            desiredLRP.Monitor,
+		CheckDefinition:    desiredLRP.CheckDefinition,
 		EgressRules:        desiredLRP.EgressRules,
 		Env: append([]executor.EnvironmentVariable{
 			{Name: "INSTANCE_GUID", Value: lrpInstanceKey.InstanceGuid},
