@@ -281,6 +281,24 @@ var _ = Describe("TaskProcessor", func() {
 				Expect(result).To(Equal("i am a result yo"))
 			})
 
+			Context("and there is no result file tag", func() {
+				BeforeEach(func() {
+					container.Tags = executor.Tags{}
+				})
+
+				It("does not attempt to fetch the result file and completes the task", func() {
+					Expect(containerDelegate.FetchContainerResultFileCallCount()).To(Equal(0))
+
+					Expect(bbsClient.CompleteTaskCallCount()).To(Equal(1))
+					_, guid, cellID, failed, failureReason, result := bbsClient.CompleteTaskArgsForCall(0)
+					Expect(guid).To(Equal(taskGuid))
+					Expect(cellID).To(Equal(expectedCellID))
+					Expect(failed).To(Equal(false))
+					Expect(failureReason).To(Equal(""))
+					Expect(result).To(Equal(""))
+				})
+			})
+
 			Context("and fetching the container result fails", func() {
 				BeforeEach(func() {
 					containerDelegate.FetchContainerResultFileReturns("", errors.New("get outta here"))

@@ -120,8 +120,9 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 	var result string
 	var err error
 
-	if !container.RunResult.Failed {
-		result, err = p.containerDelegate.FetchContainerResultFile(logger, container.Guid, container.Tags[rep.ResultFileTag])
+	resultFile := container.Tags[rep.ResultFileTag]
+	if !container.RunResult.Failed && resultFile != "" {
+		result, err = p.containerDelegate.FetchContainerResultFile(logger, container.Guid, resultFile)
 		if err != nil {
 			p.failTask(logger, container.Guid, TaskCompletionReasonFailedToFetchResult)
 			return
