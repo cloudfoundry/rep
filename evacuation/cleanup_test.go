@@ -11,7 +11,7 @@ import (
 	"code.cloudfoundry.org/clock/fakeclock"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/executor/fakes"
-	mfakes "code.cloudfoundry.org/go-loggregator/fakes"
+	mfakes "code.cloudfoundry.org/go-loggregator/testhelpers/fakes/v1"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep/evacuation"
@@ -33,7 +33,7 @@ var _ = Describe("EvacuationCleanup", func() {
 		fakeBBSClient      *fake_bbs.FakeInternalClient
 		fakeExecutorClient *fakes.FakeClient
 		fakeMetricsSender  *fake_metrics_sender.FakeMetricSender
-		fakeMetronClient   *mfakes.FakeClient
+		fakeMetronClient   *mfakes.FakeIngressClient
 
 		cleanup        *evacuation.EvacuationCleanup
 		cleanupProcess ifrit.Process
@@ -51,7 +51,7 @@ var _ = Describe("EvacuationCleanup", func() {
 		fakeExecutorClient = &fakes.FakeClient{}
 		fakeMetricsSender = fake_metrics_sender.NewFakeMetricSender()
 		metrics.Initialize(fakeMetricsSender, nil)
-		fakeMetronClient = new(mfakes.FakeClient)
+		fakeMetronClient = new(mfakes.FakeIngressClient)
 
 		errCh = make(chan error, 1)
 		doneCh = make(chan struct{})

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
-	mfakes "code.cloudfoundry.org/go-loggregator/fakes"
+	mfakes "code.cloudfoundry.org/go-loggregator/testhelpers/fakes/v1"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/operationq"
@@ -30,7 +30,7 @@ var _ = Describe("Bulker", func() {
 		fakeQueue              *fake_operationq.FakeQueue
 		evacuatable            evacuation_context.Evacuatable
 		evacuationNotifier     evacuation_context.EvacuationNotifier
-		fakeMetronClient       *mfakes.FakeClient
+		fakeMetronClient       *mfakes.FakeIngressClient
 
 		bulker  *harmonizer.Bulker
 		process ifrit.Process
@@ -43,7 +43,7 @@ var _ = Describe("Bulker", func() {
 		fakeClock = fakeclock.NewFakeClock(time.Now())
 		fakeGenerator = new(fake_generator.FakeGenerator)
 		fakeQueue = new(fake_operationq.FakeQueue)
-		fakeMetronClient = new(mfakes.FakeClient)
+		fakeMetronClient = new(mfakes.FakeIngressClient)
 
 		evacuatable, _, evacuationNotifier = evacuation_context.New()
 

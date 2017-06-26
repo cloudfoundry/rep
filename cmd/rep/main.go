@@ -19,7 +19,8 @@ import (
 	"code.cloudfoundry.org/debugserver"
 	"code.cloudfoundry.org/executor"
 	executorinit "code.cloudfoundry.org/executor/initializer"
-	loggregator_v2 "code.cloudfoundry.org/go-loggregator"
+	loggregator_v2 "code.cloudfoundry.org/go-loggregator/compatibility"
+	"code.cloudfoundry.org/go-loggregator/runtimeemitter"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/localip"
@@ -96,14 +97,12 @@ func main() {
 		logger.Fatal("", errors.New("failed-to-configure-executor"))
 	}
 
-	initializeDropsonde(logger, repConfig.DropsondePort)
-
 	if repConfig.CellID == "" {
 		logger.Error("invalid-cell-id", errors.New("-cellID must be specified"))
 		os.Exit(1)
 	}
 
-	metronClient, err := loggregator_v2.NewClient(repConfig.LoggregatorConfig)
+	metronClient, err := initializeMetron(logger, repConfig)
 	if err != nil {
 		logger.Error("failed-to-initialize-metron-client", err)
 		os.Exit(1)
@@ -452,4 +451,20 @@ func initializeRegistrationRunner(
 		Tags: []string{repHost(repConfig.CellID)},
 	}
 	return locket.NewRegistrationRunner(logger, registration, consulClient, locket.RetryInterval, clock)
+}
+
+func initializeMetron(logger lager.Logger, repConfig config.RepConfig) (loggregator_v2.IngressClient, error) {
+	client, err := loggregator_v2.NewIngressClient(repConfig.LoggregatorConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	if repConfig.LoggregatorConfig.UseV2API {
+		emitter := runtimeemitter.NewV1(client)
+		go emitter.Run()
+	} else {
+		initializeDropsonde(logger, repConfig.DropsondePort)
+	}
+
+	return client, nil
 }

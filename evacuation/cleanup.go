@@ -9,7 +9,7 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/executor"
-	loggregator_v2 "code.cloudfoundry.org/go-loggregator"
+	loggregator_v2 "code.cloudfoundry.org/go-loggregator/compatibility"
 	"code.cloudfoundry.org/lager"
 )
 
@@ -25,7 +25,7 @@ type EvacuationCleanup struct {
 	cellID         string
 	bbsClient      bbs.InternalClient
 	executorClient executor.Client
-	metronClient   loggregator_v2.Client
+	metronClient   loggregator_v2.IngressClient
 }
 
 func NewEvacuationCleanup(
@@ -34,7 +34,7 @@ func NewEvacuationCleanup(
 	bbsClient bbs.InternalClient,
 	executorClient executor.Client,
 	clock clock.Clock,
-	metronClient loggregator_v2.Client,
+	metronClient loggregator_v2.IngressClient,
 ) *EvacuationCleanup {
 	return &EvacuationCleanup{
 		logger:         logger,
