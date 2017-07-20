@@ -2,6 +2,7 @@ package auctioncellrep_test
 
 import (
 	"errors"
+	"fmt"
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/executor"
@@ -145,8 +146,9 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Expect(state.Evacuating).To(BeTrue())
 			Expect(state.RootFSProviders).To(Equal(rep.RootFSProviders{
-				models.PreloadedRootFSScheme: rep.NewFixedSetRootFSProvider("linux"),
-				"docker":                     rep.ArbitraryRootFSProvider{},
+				models.PreloadedRootFSScheme:    rep.NewFixedSetRootFSProvider("linux"),
+				models.PreloadedOCIRootFSScheme: rep.NewFixedSetRootFSProvider("linux"),
+				"docker":                        rep.ArbitraryRootFSProvider{},
 			}))
 
 			Expect(state.AvailableResources).To(Equal(rep.Resources{
@@ -297,23 +299,27 @@ var _ = Describe("AuctionCellRep", func() {
 		})
 
 		Describe("performing starts", func() {
-			const (
-				expectedIndexOneString = "1"
-				expectedIndexTwoString = "2"
-			)
-
 			var (
-				lrpAuctionOne, lrpAuctionTwo rep.LRP
-				expectedGuidOne                    = "instance-guid-1"
-				expectedGuidTwo                    = "instance-guid-2"
-				expectedIndexOne             int32 = 1
-				expectedIndexTwo             int32 = 2
+				lrpAuctionOne,
+				lrpAuctionTwo,
+				lrpAuctionThree rep.LRP
+				expectedGuidOne                = "instance-guid-1"
+				expectedGuidTwo                = "instance-guid-2"
+				expectedGuidThree              = "instance-guid-3"
+				expectedIndexOne         int32 = 1
+				expectedIndexTwo         int32 = 2
+				expectedIndexThree       int32 = 3
+				expectedIndexOneString         = "1"
+				expectedIndexTwoString         = "2"
+				expectedIndexThreeString       = "3"
+				lrpAuctions              []rep.LRP
 			)
 
 			BeforeEach(func() {
-				guidChan := make(chan string, 2)
+				guidChan := make(chan string, 3)
 				guidChan <- expectedGuidOne
 				guidChan <- expectedGuidTwo
+				guidChan <- expectedGuidThree
 
 				fakeGenerateContainerGuid = func() (string, error) {
 					return <-guidChan, nil
@@ -329,17 +335,27 @@ var _ = Describe("AuctionCellRep", func() {
 					rep.NewResource(2048, 1024, 100),
 					rep.NewPlacementConstraint("rootfs", nil, []string{}),
 				)
+				lrpAuctionThree = rep.NewLRP(
+					models.NewActualLRPKey("process-guid", expectedIndexThree, "tests"),
+					rep.NewResource(2048, 1024, 100),
+					rep.NewPlacementConstraint("rootfs", nil, []string{}),
+				)
+			})
+
+			JustBeforeEach(func() {
+				lrpAuctions = []rep.LRP{lrpAuctionOne, lrpAuctionTwo, lrpAuctionThree}
 			})
 
 			Context("when all LRP Auctions can be successfully translated to container specs", func() {
 				BeforeEach(func() {
 					lrpAuctionOne.RootFs = linuxRootFSURL
 					lrpAuctionTwo.RootFs = "unsupported-arbitrary://still-goes-through"
+					lrpAuctionThree.RootFs = fmt.Sprintf("%s:linux?somekey=somevalue", models.PreloadedOCIRootFSScheme)
 				})
 
 				It("makes the correct allocation requests for all LRP Auctions", func() {
 					_, err := cellRep.Perform(logger, rep.Work{
-						LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo},
+						LRPs: lrpAuctions,
 					})
 					Expect(err).NotTo(HaveOccurred())
 
@@ -368,6 +384,17 @@ var _ = Describe("AuctionCellRep", func() {
 							},
 							Resource: executor.NewResource(int(lrpAuctionTwo.MemoryMB), int(lrpAuctionTwo.DiskMB), int(lrpAuctionTwo.MaxPids), "unsupported-arbitrary://still-goes-through"),
 						},
+						executor.AllocationRequest{
+							Guid: rep.LRPContainerGuid(lrpAuctionThree.ProcessGuid, expectedGuidThree),
+							Tags: executor.Tags{
+								rep.LifecycleTag:    rep.LRPLifecycle,
+								rep.DomainTag:       lrpAuctionThree.Domain,
+								rep.ProcessGuidTag:  lrpAuctionThree.ProcessGuid,
+								rep.InstanceGuidTag: expectedGuidThree,
+								rep.ProcessIndexTag: expectedIndexThreeString,
+							},
+							Resource: executor.NewResource(int(lrpAuctionThree.MemoryMB), int(lrpAuctionThree.DiskMB), int(lrpAuctionThree.MaxPids), fmt.Sprintf("%s:/data/rootfs/linux?somekey=somevalue", models.PreloadedOCIRootFSScheme)),
+						},
 					))
 				})
 
@@ -377,7 +404,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("does not mark any LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
+						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: lrpAuctions})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork).To(BeZero())
 					})
@@ -398,7 +425,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("marks the corresponding LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
+						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: lrpAuctions})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.LRPs).To(ConsistOf(lrpAuctionOne))
 					})
@@ -409,10 +436,11 @@ var _ = Describe("AuctionCellRep", func() {
 				BeforeEach(func() {
 					lrpAuctionOne.RootFs = linuxRootFSURL
 					lrpAuctionTwo.RootFs = "preloaded:not-on-cell"
+					lrpAuctionThree.RootFs = fmt.Sprintf("%s:not-on-cell?somekey=somevalue", models.PreloadedOCIRootFSScheme)
 				})
 
 				It("only makes container allocation requests for the remaining LRP Auctions", func() {
-					_, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
+					_, err := cellRep.Perform(logger, rep.Work{LRPs: lrpAuctions})
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
@@ -433,21 +461,9 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 
 				It("marks the LRP Auction as failed", func() {
-					failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
+					failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: lrpAuctions})
 					Expect(err).NotTo(HaveOccurred())
-					Expect(failedWork.LRPs).To(ContainElement(lrpAuctionTwo))
-				})
-
-				Context("when all remaining containers can be successfully allocated", func() {
-					BeforeEach(func() {
-						client.AllocateContainersReturns([]executor.AllocationFailure{}, nil)
-					})
-
-					It("does not mark any additional LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
-						Expect(err).NotTo(HaveOccurred())
-						Expect(failedWork.LRPs).To(ConsistOf(lrpAuctionTwo))
-					})
+					Expect(failedWork.LRPs).To(ConsistOf(lrpAuctionTwo, lrpAuctionThree))
 				})
 
 				Context("when a remaining container fails to be allocated", func() {
@@ -465,9 +481,9 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("marks the corresponding LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
+						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: lrpAuctions})
 						Expect(err).NotTo(HaveOccurred())
-						Expect(failedWork.LRPs).To(ConsistOf(lrpAuctionOne, lrpAuctionTwo))
+						Expect(failedWork.LRPs).To(ConsistOf(lrpAuctionOne, lrpAuctionTwo, lrpAuctionThree))
 					})
 				})
 			})
@@ -527,7 +543,7 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 
 				It("marks the LRP Auction as failed", func() {
-					failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
+					failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: lrpAuctions})
 					Expect(err).NotTo(HaveOccurred())
 					Expect(failedWork.LRPs).To(ContainElement(lrpAuctionTwo))
 				})
@@ -538,7 +554,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("does not mark any additional LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
+						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: lrpAuctions})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.LRPs).To(ConsistOf(lrpAuctionTwo))
 					})
@@ -559,7 +575,7 @@ var _ = Describe("AuctionCellRep", func() {
 					})
 
 					It("marks the corresponding LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
+						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: lrpAuctions})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.LRPs).To(ConsistOf(lrpAuctionOne, lrpAuctionTwo))
 					})

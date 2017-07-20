@@ -2,6 +2,7 @@ package auctioncellrep
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"strconv"
 
@@ -70,7 +71,8 @@ func rootFSProviders(preloaded rep.StackPathMap, arbitrary []string) rep.RootFSP
 	for stack, _ := range preloaded {
 		stacks = append(stacks, stack)
 	}
-	rootFSProviders["preloaded"] = rep.NewFixedSetRootFSProvider(stacks...)
+	rootFSProviders[models.PreloadedRootFSScheme] = rep.NewFixedSetRootFSProvider(stacks...)
+	rootFSProviders[models.PreloadedOCIRootFSScheme] = rep.NewFixedSetRootFSProvider(stacks...)
 
 	return rootFSProviders
 }
@@ -91,6 +93,13 @@ func PathForRootFS(rootFS string, stackPathMap rep.StackPathMap) (string, error)
 			return "", ErrPreloadedRootFSNotFound
 		}
 		return path, nil
+	} else if url.Scheme == models.PreloadedOCIRootFSScheme {
+		path, ok := stackPathMap[url.Opaque]
+		if !ok {
+			return "", ErrPreloadedRootFSNotFound
+		}
+
+		return fmt.Sprintf("%s:%s?%s", url.Scheme, path, url.RawQuery), nil
 	}
 
 	return rootFS, nil

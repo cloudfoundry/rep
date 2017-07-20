@@ -141,7 +141,6 @@ func (provider *FixedSetRootFSProvider) UnmarshalJSON(payload []byte) error {
 	provider.FixedSet = f.Set
 
 	return nil
-
 }
 
 type StringSet map[string]struct{}
