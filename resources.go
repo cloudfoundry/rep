@@ -138,47 +138,43 @@ func (c *CellState) MatchVolumeDrivers(volumeDrivers []string) bool {
 	return true
 }
 
-func (c *CellState) MatchPlacementTags(placementTags []string) bool {
-	nRequiredTags := len(c.PlacementTags)
-	nOptionalTags := len(c.OptionalPlacementTags)
-	nDesiredTags := len(placementTags)
-	cellRequiredIndex := 0
-	cellOptionalIndex := 0
-	desiredIndex := 0
+func (c *CellState) MatchPlacementTags(desiredPlacementTags []string) bool {
+	desiredTags := toSet(desiredPlacementTags)
+	optionalTags := toSet(c.OptionalPlacementTags)
+	requiredTags := toSet(c.PlacementTags)
+	allTags := requiredTags.union(optionalTags)
 
-	if nDesiredTags > (nRequiredTags + nOptionalTags) {
-		return false
+	return requiredTags.isSubset(desiredTags) && desiredTags.isSubset(allTags)
+}
+
+type placementTagSet map[string]struct{}
+
+func (set placementTagSet) union(other placementTagSet) placementTagSet {
+	tags := placementTagSet{}
+	for k := range set {
+		tags[k] = struct{}{}
 	}
+	for k := range other {
+		tags[k] = struct{}{}
+	}
+	return tags
+}
 
-	sort.Strings(placementTags)
-	sort.Strings(c.PlacementTags)
-	sort.Strings(c.OptionalPlacementTags)
-
-	for {
-		if desiredIndex == nDesiredTags {
-			break
-		}
-		if cellOptionalIndex == nOptionalTags && cellRequiredIndex == nRequiredTags {
-			break
-		}
-		if cellRequiredIndex < nRequiredTags &&
-			placementTags[desiredIndex] == c.PlacementTags[cellRequiredIndex] {
-			cellRequiredIndex++
-			desiredIndex++
-		} else if cellOptionalIndex < nOptionalTags &&
-			placementTags[desiredIndex] == c.OptionalPlacementTags[cellOptionalIndex] {
-			cellOptionalIndex++
-			desiredIndex++
-		} else {
-			if cellOptionalIndex < nOptionalTags {
-				cellOptionalIndex++
-			} else {
-				break
-			}
+func (set placementTagSet) isSubset(other placementTagSet) bool {
+	for k := range set {
+		if _, ok := other[k]; !ok {
+			return false
 		}
 	}
+	return true
+}
 
-	return desiredIndex == nDesiredTags && cellRequiredIndex == nRequiredTags
+func toSet(slice []string) placementTagSet {
+	tags := placementTagSet{}
+	for _, k := range slice {
+		tags[k] = struct{}{}
+	}
+	return tags
 }
 
 type Resources struct {
