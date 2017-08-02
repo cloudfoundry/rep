@@ -46,6 +46,64 @@ var _ = Describe("Resources", func() {
 		)
 	})
 
+	Describe("MatchPlacementTags", func() {
+		Context("when cell state does not have placement tags", func() {
+			It("does not allow lrps with placement tags", func() {
+				state := rep.CellState{
+					PlacementTags:         []string{},
+					OptionalPlacementTags: []string{},
+				}
+				Expect(state.MatchPlacementTags([]string{"foo"})).To(BeFalse())
+				Expect(state.MatchPlacementTags([]string{})).To(BeTrue())
+			})
+		})
+
+		Context("when it has require placement tags", func() {
+			It("requires the placement tags to be present in the lrp", func() {
+				state := rep.CellState{
+					PlacementTags:         []string{"foo", "bar"},
+					OptionalPlacementTags: []string{},
+				}
+				Expect(state.MatchPlacementTags([]string{})).To(BeFalse())
+				Expect(state.MatchPlacementTags([]string{"foo"})).To(BeFalse())
+				Expect(state.MatchPlacementTags([]string{"foo", "bar"})).To(BeTrue())
+			})
+		})
+
+		Context("when it has optional placement tags", func() {
+			It("does not require placement tags to be present on the desired lrp", func() {
+				state := rep.CellState{
+					PlacementTags:         []string{},
+					OptionalPlacementTags: []string{"foo"},
+				}
+				Expect(state.MatchPlacementTags([]string{})).To(BeTrue())
+				Expect(state.MatchPlacementTags([]string{"foo"})).To(BeTrue())
+			})
+
+			It("does not allow extra placement tags to be defined in the lrp", func() {
+				state := rep.CellState{
+					PlacementTags:         []string{},
+					OptionalPlacementTags: []string{"foo"},
+				}
+				Expect(state.MatchPlacementTags([]string{"bar"})).To(BeFalse())
+			})
+		})
+
+		Context("when both placement tags and optional placement tags are present", func() {
+			It("requires all required placement tags to be on the lrp", func() {
+				state := rep.CellState{
+					PlacementTags:         []string{"foo"},
+					OptionalPlacementTags: []string{"bar"},
+				}
+				Expect(state.MatchPlacementTags([]string{})).To(BeFalse())
+				Expect(state.MatchPlacementTags([]string{"bar"})).To(BeFalse())
+				Expect(state.MatchPlacementTags([]string{"foo"})).To(BeTrue())
+				Expect(state.MatchPlacementTags([]string{"foo", "bar"})).To(BeTrue())
+				Expect(state.MatchPlacementTags([]string{"foo", "bar", "baz"})).To(BeFalse())
+			})
+		})
+	})
+
 	Describe("Resource Matching", func() {
 		var requiredResource rep.Resource
 		var err error
