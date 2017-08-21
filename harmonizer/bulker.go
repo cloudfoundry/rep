@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock"
-	loggregator_v2 "code.cloudfoundry.org/go-loggregator/compatibility"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/operationq"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
@@ -23,7 +23,7 @@ type Bulker struct {
 	clock                  clock.Clock
 	generator              generator.Generator
 	queue                  operationq.Queue
-	metronClient           loggregator_v2.IngressClient
+	metronClient           loggingclient.IngressClient
 }
 
 func NewBulker(
@@ -34,7 +34,7 @@ func NewBulker(
 	clock clock.Clock,
 	generator generator.Generator,
 	queue operationq.Queue,
-	metronClient loggregator_v2.IngressClient,
+	metronClient loggingclient.IngressClient,
 ) *Bulker {
 	return &Bulker{
 		logger: logger,

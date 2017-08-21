@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/debugserver"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/durationjson"
 	executorinit "code.cloudfoundry.org/executor/initializer"
-	loggregator_v2 "code.cloudfoundry.org/go-loggregator/compatibility"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
 )
@@ -92,7 +92,7 @@ type RepConfig struct {
 	SessionName               string                `json:"session_name,omitempty"`
 	SupportedProviders        []string              `json:"supported_providers"`
 	Zone                      string                `json:"zone"`
-	LoggregatorConfig         loggregator_v2.Config `json:"loggregator"`
+	LoggregatorConfig         loggingclient.Config  `json:"loggregator"`
 	debugserver.DebugServerConfig
 	executorinit.ExecutorConfig
 	lagerflags.LagerConfig
