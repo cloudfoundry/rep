@@ -17,9 +17,9 @@ import (
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/debugserver"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/executor"
 	executorinit "code.cloudfoundry.org/executor/initializer"
-	loggregator_v2 "code.cloudfoundry.org/go-loggregator/compatibility"
 	"code.cloudfoundry.org/go-loggregator/runtimeemitter"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
@@ -454,8 +454,8 @@ func initializeRegistrationRunner(
 	return locket.NewRegistrationRunner(logger, registration, consulClient, locket.RetryInterval, clock)
 }
 
-func initializeMetron(logger lager.Logger, repConfig config.RepConfig) (loggregator_v2.IngressClient, error) {
-	client, err := loggregator_v2.NewIngressClient(repConfig.LoggregatorConfig)
+func initializeMetron(logger lager.Logger, repConfig config.RepConfig) (loggingclient.IngressClient, error) {
+	client, err := loggingclient.NewIngressClient(repConfig.LoggregatorConfig)
 	if err != nil {
 		return nil, err
 	}

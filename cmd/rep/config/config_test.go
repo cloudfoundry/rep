@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/debugserver"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/durationjson"
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/executor/initializer/configuration"
-	loggregator_v2 "code.cloudfoundry.org/go-loggregator/compatibility"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
@@ -231,7 +231,7 @@ var _ = Describe("RepConfig", func() {
 			SessionName:           "test",
 			SupportedProviders:    []string{"provider1", "provider2"},
 			Zone:                  "test-zone",
-			LoggregatorConfig: loggregator_v2.Config{
+			LoggregatorConfig: loggingclient.Config{
 				UseV2API:      true,
 				APIPort:       1234,
 				CACertPath:    "ca-path",
