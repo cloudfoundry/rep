@@ -210,6 +210,8 @@ var _ = Describe("RepConfig", func() {
 				TrustedSystemCertificatesPath: "/tmp/trusted",
 				UnhealthyMonitoringInterval:   10000000000,
 				VolmanDriverPaths:             "/tmp/volman1:/tmp/volman2",
+				CsiPaths:                      []string{"/var/vcap/data/csiplugins"},
+				CsiMountRootDir:               "/var/vcap/data/csimountroot",
 			},
 			LagerConfig: lagerflags.LagerConfig{
 				LogLevel: lagerflags.DEBUG,
@@ -330,6 +332,8 @@ var _ = Describe("RepConfig", func() {
 					GardenHealthcheckProcessArgs:       []string{},
 					GardenHealthcheckProcessEnv:        []string{},
 					ContainerMetricsReportInterval:     durationjson.Duration(15 * time.Second),
+					CsiPaths:                           []string{"/var/vcap/data/csiplugins"},
+					CsiMountRootDir:                    "/var/vcap/data/csimountroot",
 				},
 			}))
 		})
