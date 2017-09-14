@@ -522,34 +522,50 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 		})
 
 		Describe("ServiceRegistration", func() {
-			It("registers itself with consul", func() {
-				consulClient := consulRunner.NewClient()
-				services, err := consulClient.Agent().Services()
-				Expect(err).ToNot(HaveOccurred())
+			Context("when consul service registration is enabled", func() {
+				BeforeEach(func() {
+					repConfig.EnableConsulServiceRegistration = true
+					runner = testrunner.New(representativePath, repConfig)
+				})
 
-				Expect(services).To(HaveKeyWithValue("cell",
-					&api.AgentService{
-						Service: "cell",
-						ID:      "cell",
-						Port:    serverPort,
-						Tags:    []string{strings.Replace(cellID, "_", "-", -1)},
-					}))
+				It("registers itself with consul", func() {
+					consulClient := consulRunner.NewClient()
+					services, err := consulClient.Agent().Services()
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(services).To(HaveKeyWithValue("cell",
+						&api.AgentService{
+							Service: "cell",
+							ID:      "cell",
+							Port:    serverPort,
+							Tags:    []string{strings.Replace(cellID, "_", "-", -1)},
+						}))
+				})
+
+				It("registers a TTL healthcheck", func() {
+					consulClient := consulRunner.NewClient()
+					checks, err := consulClient.Agent().Checks()
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(checks).To(HaveKeyWithValue("service:cell",
+						&api.AgentCheck{
+							Node:        "0",
+							CheckID:     "service:cell",
+							Name:        "Service 'cell' check",
+							Status:      "passing",
+							ServiceID:   "cell",
+							ServiceName: "cell",
+						}))
+				})
 			})
 
-			It("registers a TTL healthcheck", func() {
-				consulClient := consulRunner.NewClient()
-				checks, err := consulClient.Agent().Checks()
-				Expect(err).ToNot(HaveOccurred())
+			Context("when consul service registration is disabled", func() {
+				It("does not register itself with consul", func() {
+					services, err := consulRunner.NewClient().Agent().Services()
+					Expect(err).ToNot(HaveOccurred())
 
-				Expect(checks).To(HaveKeyWithValue("service:cell",
-					&api.AgentCheck{
-						Node:        "0",
-						CheckID:     "service:cell",
-						Name:        "Service 'cell' check",
-						Status:      "passing",
-						ServiceID:   "cell",
-						ServiceName: "cell",
-					}))
+					Expect(services).NotTo(HaveKey("cell"))
+				})
 			})
 		})
 

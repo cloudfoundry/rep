@@ -50,6 +50,7 @@ var _ = Describe("RepConfig", func() {
 			"dropsonde_port": 8082,
 			"enable_declarative_healthcheck": true,
 			"declarative_healthcheck_path": "/var/vcap/packages/healthcheck",
+			"enable_consul_service_registration": true,
 			"enable_legacy_api_endpoints": true,
 			"evacuation_polling_interval" : "13s",
 			"evacuation_timeout" : "12s",
@@ -165,10 +166,11 @@ var _ = Describe("RepConfig", func() {
 			DebugServerConfig: debugserver.DebugServerConfig{
 				DebugAddress: "5.5.5.5:9090",
 			},
-			DropsondePort:             8082,
-			EnableLegacyAPIServer:     true,
-			EvacuationPollingInterval: durationjson.Duration(13 * time.Second),
-			EvacuationTimeout:         durationjson.Duration(12 * time.Second),
+			DropsondePort:                   8082,
+			EnableConsulServiceRegistration: true,
+			EnableLegacyAPIServer:           true,
+			EvacuationPollingInterval:       durationjson.Duration(13 * time.Second),
+			EvacuationTimeout:               durationjson.Duration(12 * time.Second),
 			ExecutorConfig: executorinit.ExecutorConfig{
 				CachePath:                      "/tmp/cache",
 				ContainerInodeLimit:            1000,

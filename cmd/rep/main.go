@@ -155,8 +155,6 @@ func main() {
 		logger.Fatal("failed-invalid-server-port", err)
 	}
 
-	registrationRunner := initializeRegistrationRunner(logger, consulClient, repConfig, portNum, clock)
-
 	bulker := harmonizer.NewBulker(
 		logger,
 		time.Duration(repConfig.PollingInterval),
@@ -176,7 +174,11 @@ func main() {
 		{"bulker", bulker},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 		{"evacuator", evacuator},
-		{"registration-runner", registrationRunner},
+	}
+
+	if repConfig.EnableConsulServiceRegistration {
+		registrationRunner := initializeRegistrationRunner(logger, consulClient, repConfig, portNum, clock)
+		members = append(members, grouper.Member{"registration-runner", registrationRunner})
 	}
 
 	members = append(executorMembers, members...)
