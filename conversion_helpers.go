@@ -72,8 +72,15 @@ func ActualLRPInstanceKeyFromContainer(container executor.Container, cellID stri
 
 func ActualLRPNetInfoFromContainer(container executor.Container) (*models.ActualLRPNetInfo, error) {
 	ports := []*models.PortMapping{}
-	for _, portMapping := range container.Ports {
-		ports = append(ports, models.NewPortMapping(uint32(portMapping.HostPort), uint32(portMapping.ContainerPort)))
+
+	for _, port := range container.Ports {
+		// todo: do not include proxy ports
+		ports = append(ports, models.NewPortMappingWithTLSProxy(
+			uint32(port.HostPort),
+			uint32(port.ContainerPort),
+			uint32(port.HostTLSProxyPort),
+			uint32(port.ContainerTLSProxyPort),
+		))
 	}
 
 	actualLRPNetInfo := models.NewActualLRPNetInfo(container.ExternalIP, container.InternalIP, ports...)
