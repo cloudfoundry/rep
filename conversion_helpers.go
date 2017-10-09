@@ -108,6 +108,11 @@ func NewRunRequestFromDesiredLRP(
 		return executor.RunRequest{}, err
 	}
 
+	enableContainerProxy, err := isPreloadedRootFS(desiredLRP.RootFs)
+	if err != nil {
+		return executor.RunRequest{}, err
+	}
+
 	mounts, err := convertVolumeMounts(desiredLRP.VolumeMounts)
 	if err != nil {
 		return executor.RunRequest{}, err
@@ -147,6 +152,7 @@ func NewRunRequestFromDesiredLRP(
 		CertificateProperties:         convertCertificateProperties(desiredLRP.CertificateProperties),
 		ImageUsername:                 desiredLRP.ImageUsername,
 		ImagePassword:                 desiredLRP.ImagePassword,
+		EnableContainerProxy:          enableContainerProxy,
 	}
 	tags := executor.Tags{}
 	return executor.NewRunRequest(containerGuid, &runInfo, tags), nil
@@ -187,6 +193,7 @@ func NewRunRequestFromTask(task *models.Task) (executor.RunRequest, error) {
 		CertificateProperties:         convertCertificateProperties(task.CertificateProperties),
 		ImageUsername:                 task.ImageUsername,
 		ImagePassword:                 task.ImagePassword,
+		EnableContainerProxy:          true,
 	}
 	return executor.NewRunRequest(task.TaskGuid, &runInfo, tags), nil
 }
@@ -283,16 +290,25 @@ func ConvertPortMappings(containerPorts []uint32) []executor.PortMapping {
 	return out
 }
 
-func diskScopeForRootFS(rootFS string) (executor.DiskLimitScope, error) {
+func isPreloadedRootFS(rootFS string) (bool, error) {
 	preloaded := false
 
 	url, err := url.Parse(rootFS)
 	if err != nil {
-		return executor.TotalDiskLimit, err
+		return false, err
 	}
 
 	if url.Scheme == models.PreloadedRootFSScheme {
 		preloaded = true
+	}
+
+	return preloaded, nil
+}
+
+func diskScopeForRootFS(rootFS string) (executor.DiskLimitScope, error) {
+	preloaded, err := isPreloadedRootFS(rootFS)
+	if err != nil {
+		return executor.ExclusiveDiskLimit, err
 	}
 
 	if preloaded {

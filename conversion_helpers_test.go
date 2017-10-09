@@ -329,8 +329,9 @@ var _ = Describe("Resources", func() {
 				CertificateProperties: executor.CertificateProperties{
 					OrganizationalUnit: []string{"iamthelizardking", "iamthelizardqueen"},
 				},
-				ImageUsername: "image-username",
-				ImagePassword: "image-password",
+				ImageUsername:        "image-username",
+				ImagePassword:        "image-password",
+				EnableContainerProxy: true,
 			}))
 		})
 
@@ -369,9 +370,21 @@ var _ = Describe("Resources", func() {
 			})
 		})
 
+		It("enables the envoy proxy", func() {
+			runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(runReq.EnableContainerProxy).To(BeTrue())
+		})
+
 		Context("when the rootfs is not preloaded", func() {
 			BeforeEach(func() {
 				desiredLRP.RootFs = "docker://cloudfoundry/test"
+			})
+
+			It("disables the envoy proxy", func() {
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.EnableContainerProxy).To(BeFalse())
 			})
 
 			It("uses TotalDiskLimit as the disk scope", func() {
@@ -431,8 +444,9 @@ var _ = Describe("Resources", func() {
 				CertificateProperties: executor.CertificateProperties{
 					OrganizationalUnit: []string{"iamthelizardking", "iamthelizardqueen"},
 				},
-				ImageUsername: "image-username",
-				ImagePassword: "image-password",
+				ImageUsername:        "image-username",
+				ImagePassword:        "image-password",
+				EnableContainerProxy: true,
 			}))
 		})
 
@@ -460,9 +474,21 @@ var _ = Describe("Resources", func() {
 			})
 		})
 
+		It("enables the envoy proxy", func() {
+			runReq, err := rep.NewRunRequestFromTask(task)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(runReq.EnableContainerProxy).To(BeTrue())
+		})
+
 		Context("when the rootfs is not preloaded", func() {
 			BeforeEach(func() {
 				task.RootFs = "docker://cloudfoundry/test"
+			})
+
+			It("enables the envoy proxy", func() {
+				runReq, err := rep.NewRunRequestFromTask(task)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.EnableContainerProxy).To(BeTrue())
 			})
 
 			It("uses TotalDiskLimit as the disk scope", func() {
