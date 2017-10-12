@@ -18,9 +18,10 @@ import (
 
 var _ = Describe("AuctionCellRep", func() {
 	const (
-		expectedCellID = "some-cell-id"
-		linuxStack     = "linux"
-		linuxPath      = "/data/rootfs/linux"
+		repURL     = "https://foo.cell.service.cf.internal:8888"
+		cellID     = "some-cell-id"
+		linuxStack = "linux"
+		linuxPath  = "/data/rootfs/linux"
 	)
 
 	var (
@@ -55,7 +56,8 @@ var _ = Describe("AuctionCellRep", func() {
 
 	JustBeforeEach(func() {
 		cellRep = auctioncellrep.New(
-			expectedCellID,
+			cellID,
+			repURL,
 			rep.StackPathMap{linuxStack: linuxPath},
 			[]string{"docker"},
 			"the-zone",
@@ -93,21 +95,27 @@ var _ = Describe("AuctionCellRep", func() {
 					Guid:     "first",
 					Resource: executor.NewResource(20, 10, 100, "rootfs"),
 					Tags: executor.Tags{
-						rep.LifecycleTag:    rep.LRPLifecycle,
-						rep.ProcessGuidTag:  "the-first-app-guid",
-						rep.ProcessIndexTag: "17",
-						rep.DomainTag:       "domain",
+						rep.LifecycleTag:     rep.LRPLifecycle,
+						rep.ProcessGuidTag:   "the-first-app-guid",
+						rep.ProcessIndexTag:  "17",
+						rep.DomainTag:        "domain",
+						rep.InstanceGuidTag:  "ig-1",
+						rep.PlacementTagsTag: `["pt-1"]`,
+						rep.VolumeDriversTag: `["vd-1"]`,
 					},
 					State: executor.StateReserved,
 				},
 				{
 					Guid:     "second",
-					Resource: executor.NewResource(40, 30, 100, "rootfs"),
+					Resource: executor.NewResource(40, 30, 100, "docker://onsi/grace-busybox"),
 					Tags: executor.Tags{
-						rep.LifecycleTag:    rep.LRPLifecycle,
-						rep.ProcessGuidTag:  "the-second-app-guid",
-						rep.ProcessIndexTag: "92",
-						rep.DomainTag:       "domain",
+						rep.LifecycleTag:     rep.LRPLifecycle,
+						rep.ProcessGuidTag:   "the-second-app-guid",
+						rep.ProcessIndexTag:  "92",
+						rep.DomainTag:        "domain",
+						rep.InstanceGuidTag:  "ig-2",
+						rep.PlacementTagsTag: `["pt-2"]`,
+						rep.VolumeDriversTag: `["vd-2"]`,
 					},
 					State: executor.StateInitializing,
 				},
@@ -115,8 +123,10 @@ var _ = Describe("AuctionCellRep", func() {
 					Guid:     "da-task",
 					Resource: executor.NewResource(40, 30, 100, "rootfs"),
 					Tags: executor.Tags{
-						rep.LifecycleTag: rep.TaskLifecycle,
-						rep.DomainTag:    "domain",
+						rep.LifecycleTag:     rep.TaskLifecycle,
+						rep.DomainTag:        "domain",
+						rep.PlacementTagsTag: `[]`,
+						rep.VolumeDriversTag: `[]`,
 					},
 					State: executor.StateCreated,
 				},
@@ -144,6 +154,9 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Expect(healthy).To(BeTrue())
 
+			Expect(state.CellID).To(Equal(cellID))
+			Expect(state.RepURL).To(Equal(repURL))
+
 			Expect(state.Evacuating).To(BeTrue())
 			Expect(state.RootFSProviders).To(Equal(rep.RootFSProviders{
 				models.PreloadedRootFSScheme:    rep.NewFixedSetRootFSProvider("linux"),
@@ -165,14 +178,16 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Expect(state.LRPs).To(ConsistOf([]rep.LRP{
 				rep.NewLRP(
+					"ig-1",
 					models.NewActualLRPKey("the-first-app-guid", 17, "domain"),
-					rep.NewResource(20, 10, 0),
-					rep.NewPlacementConstraint("", nil, nil),
+					rep.NewResource(20, 10, 100),
+					rep.NewPlacementConstraint("rootfs", []string{"pt-1"}, []string{"vd-1"}),
 				),
 				rep.NewLRP(
+					"ig-2",
 					models.NewActualLRPKey("the-second-app-guid", 92, "domain"),
-					rep.NewResource(40, 30, 0),
-					rep.NewPlacementConstraint("", nil, nil),
+					rep.NewResource(40, 30, 100),
+					rep.NewPlacementConstraint("docker://onsi/grace-busybox", []string{"pt-2"}, []string{"vd-2"}),
 				),
 			}))
 
@@ -180,8 +195,8 @@ var _ = Describe("AuctionCellRep", func() {
 				rep.NewTask(
 					"da-task",
 					"domain",
-					rep.NewResource(40, 30, 0),
-					rep.NewPlacementConstraint("", nil, nil),
+					rep.NewResource(40, 30, 100),
+					rep.NewPlacementConstraint("rootfs", []string{}, []string{}),
 				),
 			}))
 
@@ -275,6 +290,7 @@ var _ = Describe("AuctionCellRep", func() {
 				evacuationReporter.EvacuatingReturns(true)
 
 				lrp := rep.NewLRP(
+					"ig-1",
 					models.NewActualLRPKey("process-guid", int32(expectedIndex), "tests"),
 					rep.NewResource(2048, 1024, 100),
 					rep.NewPlacementConstraint(linuxRootFSURL, nil, []string{}),
@@ -326,19 +342,22 @@ var _ = Describe("AuctionCellRep", func() {
 				}
 
 				lrpAuctionOne = rep.NewLRP(
+					"ig-1",
 					models.NewActualLRPKey("process-guid", expectedIndexOne, "tests"),
 					rep.NewResource(2048, 1024, 100),
-					rep.NewPlacementConstraint("rootfs", nil, []string{}),
+					rep.NewPlacementConstraint("rootfs", []string{"pt-1"}, []string{"vd-1"}),
 				)
 				lrpAuctionTwo = rep.NewLRP(
+					"ig-2",
 					models.NewActualLRPKey("process-guid", expectedIndexTwo, "tests"),
 					rep.NewResource(2048, 1024, 100),
-					rep.NewPlacementConstraint("rootfs", nil, []string{}),
+					rep.NewPlacementConstraint("rootfs", []string{"pt-2"}, []string{}),
 				)
 				lrpAuctionThree = rep.NewLRP(
+					"ig-3",
 					models.NewActualLRPKey("process-guid", expectedIndexThree, "tests"),
 					rep.NewResource(2048, 1024, 100),
-					rep.NewPlacementConstraint("rootfs", nil, []string{}),
+					rep.NewPlacementConstraint("rootfs", []string{}, []string{"vd-3"}),
 				)
 			})
 
@@ -365,33 +384,39 @@ var _ = Describe("AuctionCellRep", func() {
 						executor.AllocationRequest{
 							Guid: rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
 							Tags: executor.Tags{
-								rep.LifecycleTag:    rep.LRPLifecycle,
-								rep.DomainTag:       lrpAuctionOne.Domain,
-								rep.ProcessGuidTag:  lrpAuctionOne.ProcessGuid,
-								rep.InstanceGuidTag: expectedGuidOne,
-								rep.ProcessIndexTag: expectedIndexOneString,
+								rep.LifecycleTag:     rep.LRPLifecycle,
+								rep.DomainTag:        lrpAuctionOne.Domain,
+								rep.ProcessGuidTag:   lrpAuctionOne.ProcessGuid,
+								rep.InstanceGuidTag:  expectedGuidOne,
+								rep.ProcessIndexTag:  expectedIndexOneString,
+								rep.PlacementTagsTag: `["pt-1"]`,
+								rep.VolumeDriversTag: `["vd-1"]`,
 							},
 							Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), linuxPath),
 						},
 						executor.AllocationRequest{
 							Guid: rep.LRPContainerGuid(lrpAuctionTwo.ProcessGuid, expectedGuidTwo),
 							Tags: executor.Tags{
-								rep.LifecycleTag:    rep.LRPLifecycle,
-								rep.DomainTag:       lrpAuctionTwo.Domain,
-								rep.ProcessGuidTag:  lrpAuctionTwo.ProcessGuid,
-								rep.InstanceGuidTag: expectedGuidTwo,
-								rep.ProcessIndexTag: expectedIndexTwoString,
+								rep.LifecycleTag:     rep.LRPLifecycle,
+								rep.DomainTag:        lrpAuctionTwo.Domain,
+								rep.ProcessGuidTag:   lrpAuctionTwo.ProcessGuid,
+								rep.InstanceGuidTag:  expectedGuidTwo,
+								rep.ProcessIndexTag:  expectedIndexTwoString,
+								rep.PlacementTagsTag: `["pt-2"]`,
+								rep.VolumeDriversTag: `[]`,
 							},
 							Resource: executor.NewResource(int(lrpAuctionTwo.MemoryMB), int(lrpAuctionTwo.DiskMB), int(lrpAuctionTwo.MaxPids), "unsupported-arbitrary://still-goes-through"),
 						},
 						executor.AllocationRequest{
 							Guid: rep.LRPContainerGuid(lrpAuctionThree.ProcessGuid, expectedGuidThree),
 							Tags: executor.Tags{
-								rep.LifecycleTag:    rep.LRPLifecycle,
-								rep.DomainTag:       lrpAuctionThree.Domain,
-								rep.ProcessGuidTag:  lrpAuctionThree.ProcessGuid,
-								rep.InstanceGuidTag: expectedGuidThree,
-								rep.ProcessIndexTag: expectedIndexThreeString,
+								rep.LifecycleTag:     rep.LRPLifecycle,
+								rep.DomainTag:        lrpAuctionThree.Domain,
+								rep.ProcessGuidTag:   lrpAuctionThree.ProcessGuid,
+								rep.InstanceGuidTag:  expectedGuidThree,
+								rep.ProcessIndexTag:  expectedIndexThreeString,
+								rep.PlacementTagsTag: `[]`,
+								rep.VolumeDriversTag: `["vd-3"]`,
 							},
 							Resource: executor.NewResource(int(lrpAuctionThree.MemoryMB), int(lrpAuctionThree.DiskMB), int(lrpAuctionThree.MaxPids), fmt.Sprintf("%s:/data/rootfs/linux?somekey=somevalue", models.PreloadedOCIRootFSScheme)),
 						},
@@ -449,11 +474,13 @@ var _ = Describe("AuctionCellRep", func() {
 						executor.AllocationRequest{
 							Guid: rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
 							Tags: executor.Tags{
-								rep.LifecycleTag:    rep.LRPLifecycle,
-								rep.DomainTag:       lrpAuctionOne.Domain,
-								rep.ProcessGuidTag:  lrpAuctionOne.ProcessGuid,
-								rep.InstanceGuidTag: expectedGuidOne,
-								rep.ProcessIndexTag: expectedIndexOneString,
+								rep.LifecycleTag:     rep.LRPLifecycle,
+								rep.DomainTag:        lrpAuctionOne.Domain,
+								rep.ProcessGuidTag:   lrpAuctionOne.ProcessGuid,
+								rep.InstanceGuidTag:  expectedGuidOne,
+								rep.ProcessIndexTag:  expectedIndexOneString,
+								rep.PlacementTagsTag: `["pt-1"]`,
+								rep.VolumeDriversTag: `["vd-1"]`,
 							},
 							Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), linuxPath),
 						},
@@ -503,11 +530,13 @@ var _ = Describe("AuctionCellRep", func() {
 						executor.AllocationRequest{
 							Guid: rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
 							Tags: executor.Tags{
-								rep.LifecycleTag:    rep.LRPLifecycle,
-								rep.DomainTag:       lrpAuctionOne.Domain,
-								rep.ProcessGuidTag:  lrpAuctionOne.ProcessGuid,
-								rep.InstanceGuidTag: expectedGuidOne,
-								rep.ProcessIndexTag: expectedIndexOneString,
+								rep.LifecycleTag:     rep.LRPLifecycle,
+								rep.DomainTag:        lrpAuctionOne.Domain,
+								rep.ProcessGuidTag:   lrpAuctionOne.ProcessGuid,
+								rep.InstanceGuidTag:  expectedGuidOne,
+								rep.ProcessIndexTag:  expectedIndexOneString,
+								rep.PlacementTagsTag: `["pt-1"]`,
+								rep.VolumeDriversTag: `["vd-1"]`,
 							},
 							Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), ""),
 						},
@@ -531,11 +560,13 @@ var _ = Describe("AuctionCellRep", func() {
 						executor.AllocationRequest{
 							Guid: rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
 							Tags: executor.Tags{
-								rep.LifecycleTag:    rep.LRPLifecycle,
-								rep.DomainTag:       lrpAuctionOne.Domain,
-								rep.ProcessGuidTag:  lrpAuctionOne.ProcessGuid,
-								rep.InstanceGuidTag: expectedGuidOne,
-								rep.ProcessIndexTag: expectedIndexOneString,
+								rep.LifecycleTag:     rep.LRPLifecycle,
+								rep.DomainTag:        lrpAuctionOne.Domain,
+								rep.ProcessGuidTag:   lrpAuctionOne.ProcessGuid,
+								rep.InstanceGuidTag:  expectedGuidOne,
+								rep.ProcessIndexTag:  expectedIndexOneString,
+								rep.PlacementTagsTag: `["pt-1"]`,
+								rep.VolumeDriversTag: `["vd-1"]`,
 							},
 							Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), linuxPath),
 						},
@@ -588,11 +619,11 @@ var _ = Describe("AuctionCellRep", func() {
 
 			BeforeEach(func() {
 				resource1 := rep.NewResource(256, 512, 256)
-				placement1 := rep.NewPlacementConstraint("tests", nil, []string{})
+				placement1 := rep.NewPlacementConstraint("tests", []string{"pt-1"}, []string{"vd-1"})
 				task1 = rep.NewTask("the-task-guid-1", "tests", resource1, placement1)
 
 				resource2 := rep.NewResource(512, 1024, 256)
-				placement2 := rep.NewPlacementConstraint("linux", nil, []string{})
+				placement2 := rep.NewPlacementConstraint("linux", []string{"pt-2"}, []string{})
 				task2 = rep.NewTask("the-task-guid-2", "tests", resource2, placement2)
 
 				work = rep.Work{Tasks: []rep.Task{task}}
@@ -611,8 +642,8 @@ var _ = Describe("AuctionCellRep", func() {
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
 					_, arg := client.AllocateContainersArgsForCall(0)
 					Expect(arg).To(ConsistOf(
-						allocationRequestFromTask(task1, linuxPath),
-						allocationRequestFromTask(task2, task2.RootFs),
+						allocationRequestFromTask(task1, linuxPath, `["pt-1"]`, `["vd-1"]`),
+						allocationRequestFromTask(task2, task2.RootFs, `["pt-2"]`, `[]`),
 					))
 				})
 
@@ -662,7 +693,7 @@ var _ = Describe("AuctionCellRep", func() {
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
 					_, arg := client.AllocateContainersArgsForCall(0)
 					Expect(arg).To(ConsistOf(
-						allocationRequestFromTask(task1, linuxPath),
+						allocationRequestFromTask(task1, linuxPath, `["pt-1"]`, `["vd-1"]`),
 					))
 				})
 
@@ -686,7 +717,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 				Context("when a remaining container fails to be allocated", func() {
 					BeforeEach(func() {
-						request := allocationRequestFromTask(task1, linuxPath)
+						request := allocationRequestFromTask(task1, linuxPath, `["pt-1"]`, `["vd-1"]`)
 						allocationFailure := executor.NewAllocationFailure(&request, commonErr.Error())
 						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure}, nil)
 					})
@@ -711,7 +742,7 @@ var _ = Describe("AuctionCellRep", func() {
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
 					_, arg := client.AllocateContainersArgsForCall(0)
 					Expect(arg).To(ConsistOf(
-						allocationRequestFromTask(task1, ""),
+						allocationRequestFromTask(task1, "", `["pt-1"]`, `["vd-1"]`),
 					))
 				})
 			})
@@ -729,7 +760,7 @@ var _ = Describe("AuctionCellRep", func() {
 					Expect(client.AllocateContainersCallCount()).To(Equal(1))
 					_, arg := client.AllocateContainersArgsForCall(0)
 					Expect(arg).To(ConsistOf(
-						allocationRequestFromTask(task1, linuxPath),
+						allocationRequestFromTask(task1, linuxPath, `["pt-1"]`, `["vd-1"]`),
 					))
 				})
 
@@ -753,7 +784,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 				Context("when a remaining container fails to be allocated", func() {
 					BeforeEach(func() {
-						request := allocationRequestFromTask(task1, linuxPath)
+						request := allocationRequestFromTask(task1, linuxPath, `["pt-1"]`, `["vd-1"]`)
 						allocationFailure := executor.NewAllocationFailure(&request, commonErr.Error())
 						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure}, nil)
 					})
@@ -769,14 +800,16 @@ var _ = Describe("AuctionCellRep", func() {
 	})
 })
 
-func allocationRequestFromTask(task rep.Task, rootFSPath string) executor.AllocationRequest {
+func allocationRequestFromTask(task rep.Task, rootFSPath, placementTags, volumeDrivers string) executor.AllocationRequest {
 	resource := executor.NewResource(int(task.MemoryMB), int(task.DiskMB), int(task.MaxPids), rootFSPath)
 	return executor.NewAllocationRequest(
 		task.TaskGuid,
 		&resource,
 		executor.Tags{
-			rep.LifecycleTag: rep.TaskLifecycle,
-			rep.DomainTag:    task.Domain,
+			rep.LifecycleTag:     rep.TaskLifecycle,
+			rep.DomainTag:        task.Domain,
+			rep.PlacementTagsTag: placementTags,
+			rep.VolumeDriversTag: volumeDrivers,
 		},
 	)
 }

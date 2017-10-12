@@ -403,6 +403,56 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 				Expect(err).NotTo(HaveOccurred())
 			})
 
+			Context("State", func() {
+				It("returns the cell id and rep url in the state info", func() {
+					state, err := client.State(logger)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(state.CellID).To(Equal(cellID))
+					url := fmt.Sprintf("http://%s.cell.service.cf.internal:%d", cellID, serverPortSecurable)
+					url = strings.Replace(url, "_", "-", -1)
+					Expect(state.RepURL).To(Equal(url))
+				})
+
+				Context("when an lrp is running", func() {
+					var (
+						placementTags, volumeDrivers []string
+					)
+
+					BeforeEach(func() {
+						placementTags = []string{"pg-1"}
+						volumeDrivers = []string{"vd-1"}
+					})
+
+					JustBeforeEach(func() {
+						work := rep.Work{
+							LRPs: []rep.LRP{
+								rep.NewLRP(
+									"",
+									models.NewActualLRPKey("pg-1", 0, "domain"),
+									rep.NewResource(100, 100, 10),
+									rep.NewPlacementConstraint("foobar", placementTags, volumeDrivers),
+								),
+							},
+						}
+						failed, err := client.Perform(logger, work)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(failed.LRPs).To(HaveLen(0))
+					})
+
+					It("returns the lrp info ", func() {
+						state, err := client.State(logger)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(state.LRPs).To(HaveLen(1))
+						lrp := state.LRPs[0]
+						Expect(lrp.InstanceGUID).NotTo(BeEmpty())
+						Expect(lrp.PlacementConstraint.PlacementTags).To(Equal(placementTags))
+						Expect(lrp.PlacementConstraint.VolumeDrivers).To(Equal(volumeDrivers))
+						Expect(lrp.RootFs).To(Equal("foobar"))
+						Expect(lrp.MaxPids).To(BeEquivalentTo(10))
+					})
+				})
+			})
+
 			Context("Capacity with a container", func() {
 				It("returns total capacity and state information", func() {
 					state, err := client.State(logger)

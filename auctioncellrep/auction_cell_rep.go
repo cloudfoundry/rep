@@ -1,6 +1,7 @@
 package auctioncellrep
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -26,6 +27,7 @@ var ErrCellUnhealthy = errors.New("internal cell healthcheck failed")
 
 type AuctionCellRep struct {
 	cellID                string
+	repURL                string
 	stackPathMap          rep.StackPathMap
 	rootFSProviders       rep.RootFSProviders
 	stack                 string
@@ -39,6 +41,7 @@ type AuctionCellRep struct {
 
 func New(
 	cellID string,
+	repURL string,
 	preloadedStackPathMap rep.StackPathMap,
 	arbitraryRootFSes []string,
 	zone string,
@@ -50,6 +53,7 @@ func New(
 ) *AuctionCellRep {
 	return &AuctionCellRep{
 		cellID:                cellID,
+		repURL:                repURL,
 		stackPathMap:          preloadedStackPathMap,
 		rootFSProviders:       rootFSProviders(preloadedStackPathMap, arbitraryRootFSes),
 		zone:                  zone,
@@ -135,8 +139,6 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, bool, error)
 		return rep.CellState{}, false, err
 	}
 
-	var key *models.ActualLRPKey
-	var keyErr error
 	lrps := []rep.LRP{}
 	tasks := []rep.Task{}
 	startingContainerCount := 0
@@ -153,17 +155,40 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, bool, error)
 			continue
 		}
 
-		resource := rep.Resource{MemoryMB: int32(container.MemoryMB), DiskMB: int32(container.DiskMB)}
-		placementConstraint := rep.PlacementConstraint{}
+		placementTagsJSON := container.Tags[rep.PlacementTagsTag]
+		var placementTags []string
+		err := json.Unmarshal([]byte(placementTagsJSON), &placementTags)
+		if err != nil {
+			logger.Error("cannot-unmarshal-placement-tags", err, lager.Data{"placement-tags": placementTagsJSON})
+		}
+
+		volumeDriversJSON := container.Tags[rep.VolumeDriversTag]
+		var volumeDrivers []string
+		err = json.Unmarshal([]byte(volumeDriversJSON), &volumeDrivers)
+		if err != nil {
+			logger.Error("cannot-unmarshal-volume-drivers", err, lager.Data{"volume-drivers": volumeDriversJSON})
+		}
+
+		resource := rep.Resource{MemoryMB: int32(container.MemoryMB), DiskMB: int32(container.DiskMB), MaxPids: int32(container.MaxPids)}
+		placementConstraint := rep.PlacementConstraint{
+			RootFs:        container.RootFSPath,
+			VolumeDrivers: volumeDrivers,
+			PlacementTags: placementTags,
+		}
 
 		switch container.Tags[rep.LifecycleTag] {
 		case rep.LRPLifecycle:
-			key, keyErr = rep.ActualLRPKeyFromTags(container.Tags)
-			if keyErr != nil {
-				logger.Error("failed-to-extract-key", keyErr)
+			key, err := rep.ActualLRPKeyFromTags(container.Tags)
+			if err != nil {
+				logger.Error("failed-to-extract-key", err)
 				continue
 			}
-			lrps = append(lrps, rep.NewLRP(*key, resource, placementConstraint))
+			instanceKey, err := rep.ActualLRPInstanceKeyFromContainer(*container, a.cellID)
+			if err != nil {
+				logger.Error("failed-to-extract-key", err)
+				continue
+			}
+			lrps = append(lrps, rep.NewLRP(instanceKey.InstanceGuid, *key, resource, placementConstraint))
 		case rep.TaskLifecycle:
 			domain := container.Tags[rep.DomainTag]
 			tasks = append(tasks, rep.NewTask(container.Guid, domain, resource, placementConstraint))
@@ -171,6 +196,8 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, bool, error)
 	}
 
 	state := rep.NewCellState(
+		a.cellID,
+		a.repURL,
 		a.rootFSProviders,
 		a.convertResources(availableResources),
 		a.convertResources(totalResources),
@@ -293,6 +320,11 @@ func (a *AuctionCellRep) lrpsToAllocationRequest(lrps []rep.LRP) ([]executor.All
 		tags[rep.LifecycleTag] = rep.LRPLifecycle
 		tags[rep.InstanceGuidTag] = instanceGuid
 
+		placementTags, _ := json.Marshal(lrp.PlacementConstraint.PlacementTags)
+		volumeDrivers, _ := json.Marshal(lrp.PlacementConstraint.VolumeDrivers)
+		tags[rep.PlacementTagsTag] = string(placementTags)
+		tags[rep.VolumeDriversTag] = string(volumeDrivers)
+
 		rootFSPath, err := PathForRootFS(lrp.RootFs, a.stackPathMap)
 		if err != nil {
 			untranslatedLRPs = append(untranslatedLRPs, *lrp)
@@ -325,6 +357,11 @@ func (a *AuctionCellRep) tasksToAllocationRequests(tasks []rep.Task) ([]executor
 		tags := executor.Tags{}
 		tags[rep.LifecycleTag] = rep.TaskLifecycle
 		tags[rep.DomainTag] = task.Domain
+
+		placementTags, _ := json.Marshal(task.PlacementConstraint.PlacementTags)
+		volumeDrivers, _ := json.Marshal(task.PlacementConstraint.VolumeDrivers)
+		tags[rep.PlacementTagsTag] = string(placementTags)
+		tags[rep.VolumeDriversTag] = string(volumeDrivers)
 
 		resource := executor.NewResource(int(task.MemoryMB), int(task.DiskMB), int(task.MaxPids), rootFSPath)
 		requests = append(requests, executor.NewAllocationRequest(task.TaskGuid, &resource, tags))
