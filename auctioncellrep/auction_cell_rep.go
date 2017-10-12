@@ -1,6 +1,7 @@
 package auctioncellrep
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -135,8 +136,6 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, bool, error)
 		return rep.CellState{}, false, err
 	}
 
-	var key *models.ActualLRPKey
-	var keyErr error
 	lrps := []rep.LRP{}
 	tasks := []rep.Task{}
 	startingContainerCount := 0
@@ -153,17 +152,39 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, bool, error)
 			continue
 		}
 
-		resource := rep.Resource{MemoryMB: int32(container.MemoryMB), DiskMB: int32(container.DiskMB)}
-		placementConstraint := rep.PlacementConstraint{}
+		placementTagsJSON := container.Tags[rep.PlacementTagsTag]
+		var placementTags []string
+		err := json.Unmarshal([]byte(placementTagsJSON), &placementTags)
+		if err != nil {
+			logger.Error("cannot-unmarshal-placement-tags", err, lager.Data{"placement-tags": placementTagsJSON})
+		}
+
+		volumeDriversJSON := container.Tags[rep.VolumeDriversTag]
+		var volumeDrivers []string
+		err = json.Unmarshal([]byte(volumeDriversJSON), &volumeDrivers)
+		if err != nil {
+			logger.Error("cannot-unmarshal-volume-drivers", err, lager.Data{"volume-drivers": volumeDriversJSON})
+		}
+
+		resource := rep.Resource{MemoryMB: int32(container.MemoryMB), DiskMB: int32(container.DiskMB), MaxPids: int32(container.MaxPids)}
+		placementConstraint := rep.PlacementConstraint{RootFs: container.RootFSPath,
+			VolumeDrivers: volumeDrivers,
+			PlacementTags: placementTags,
+		}
 
 		switch container.Tags[rep.LifecycleTag] {
 		case rep.LRPLifecycle:
-			key, keyErr = rep.ActualLRPKeyFromTags(container.Tags)
-			if keyErr != nil {
-				logger.Error("failed-to-extract-key", keyErr)
+			key, err := rep.ActualLRPKeyFromTags(container.Tags)
+			if err != nil {
+				logger.Error("failed-to-extract-key", err)
 				continue
 			}
-			lrps = append(lrps, rep.NewLRP(*key, resource, placementConstraint))
+			instanceKey, err := rep.ActualLRPInstanceKeyFromContainer(*container, a.cellID)
+			if err != nil {
+				logger.Error("failed-to-extract-key", err)
+				continue
+			}
+			lrps = append(lrps, rep.NewLRP(instanceKey.InstanceGuid, *key, resource, placementConstraint))
 		case rep.TaskLifecycle:
 			domain := container.Tags[rep.DomainTag]
 			tasks = append(tasks, rep.NewTask(container.Guid, domain, resource, placementConstraint))

@@ -21,6 +21,9 @@ const (
 	ProcessGuidTag  = "process-guid"
 	InstanceGuidTag = "instance-guid"
 	ProcessIndexTag = "process-index"
+
+	VolumeDriversTag = "volume-drivers"
+	PlacementTagsTag = "placement-tags"
 )
 
 var (

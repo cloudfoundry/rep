@@ -205,9 +205,9 @@ func (r *Resources) ComputeScore(total *Resources) float64 {
 }
 
 type Resource struct {
-	MemoryMB int32
-	DiskMB   int32
-	MaxPids  int32
+	MemoryMB int32 `json:"memory_mb"`
+	DiskMB   int32 `json:"disk_mb"`
+	MaxPids  int32 `json:"max_pids"`
 }
 
 func NewResource(memoryMb, diskMb int32, maxPids int32) Resource {
@@ -223,9 +223,9 @@ func (r *Resource) Copy() Resource {
 }
 
 type PlacementConstraint struct {
-	PlacementTags []string
-	VolumeDrivers []string
-	RootFs        string
+	PlacementTags []string `json:"placement_tags"`
+	VolumeDrivers []string `json:"volume_drivers"`
+	RootFs        string   `json:"rootfs"`
 }
 
 func NewPlacementConstraint(rootFs string, placementTags, volumeDrivers []string) PlacementConstraint {
@@ -237,13 +237,14 @@ func (p *PlacementConstraint) Valid() bool {
 }
 
 type LRP struct {
+	InstanceGUID string `json:"instance_guid"`
 	models.ActualLRPKey
 	PlacementConstraint
 	Resource
 }
 
-func NewLRP(key models.ActualLRPKey, res Resource, pc PlacementConstraint) LRP {
-	return LRP{key, pc, res}
+func NewLRP(instanceGUID string, key models.ActualLRPKey, res Resource, pc PlacementConstraint) LRP {
+	return LRP{instanceGUID, key, pc, res}
 }
 
 func (lrp *LRP) Identifier() string {
@@ -251,7 +252,7 @@ func (lrp *LRP) Identifier() string {
 }
 
 func (lrp *LRP) Copy() LRP {
-	return NewLRP(lrp.ActualLRPKey, lrp.Resource, lrp.PlacementConstraint)
+	return NewLRP(lrp.InstanceGUID, lrp.ActualLRPKey, lrp.Resource, lrp.PlacementConstraint)
 }
 
 type Task struct {

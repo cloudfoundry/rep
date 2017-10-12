@@ -135,8 +135,11 @@ func main() {
 	)
 
 	bbsClient := initializeBBSClient(logger, repConfig)
-	httpServer, address := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, repConfig, false)
-	httpsServer, _ := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, repConfig, true)
+	url := repURL(repConfig)
+	address := repAddress(logger, repConfig)
+	cellPresence := initializeCellPresence(address, serviceClient, executorClient, logger, repConfig, preloadedRootFSes, url)
+	httpServer := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, repConfig, false)
+	httpsServer := initializeServer(bbsClient, executorClient, evacuatable, evacuationReporter, logger, repConfig, true)
 	opGenerator := generator.New(
 		repConfig.CellID,
 		bbsClient,
@@ -167,7 +170,7 @@ func main() {
 	)
 
 	members := grouper.Members{
-		{"presence", initializeCellPresence(address, serviceClient, executorClient, logger, repConfig, preloadedRootFSes, true)},
+		{"presence", cellPresence},
 		{"http_server", httpServer},
 		{"https_server", httpsServer},
 		{"evacuation-cleanup", cleanup},
@@ -219,16 +222,8 @@ func initializeCellPresence(
 	logger lager.Logger,
 	repConfig config.RepConfig,
 	preloadedRootFSes []string,
-	secure bool,
+	repUrl string,
 ) ifrit.Runner {
-	var repUrl string
-	port := strings.Split(repConfig.ListenAddrSecurable, ":")[1]
-	if secure && repConfig.RequireTLS {
-		repUrl = fmt.Sprintf("https://%s:%s", repURL(repConfig.CellID, repConfig.AdvertiseDomain), port)
-	} else {
-		repUrl = fmt.Sprintf("http://%s:%s", repURL(repConfig.CellID, repConfig.AdvertiseDomain), port)
-	}
-
 	if repConfig.LocketAddress != "" {
 		locketClient, err := locket.NewClient(logger, repConfig.ClientLocketConfig)
 		if err != nil {
@@ -303,7 +298,7 @@ func initializeServer(
 	logger lager.Logger,
 	repConfig config.RepConfig,
 	secure bool,
-) (ifrit.Runner, string) {
+) ifrit.Runner {
 	auctionCellRep := auctioncellrep.New(
 		repConfig.CellID,
 		rep.StackPathMap(repConfig.PreloadedRootFS),
@@ -324,28 +319,20 @@ func initializeServer(
 		logger.Fatal("failed-to-construct-router", err)
 	}
 
-	ip, err := localip.LocalIP()
-	if err != nil {
-		logger.Fatal("failed-to-fetch-ip", err)
-	}
-
 	listenAddress := repConfig.ListenAddr
 	if secure {
 		listenAddress = repConfig.ListenAddrSecurable
 	}
-	port := strings.Split(listenAddress, ":")[1]
-	address := fmt.Sprintf("http://%s:%s", ip, port)
 
 	if secure && repConfig.RequireTLS {
 		tlsConfig, err := cfhttp.NewTLSConfig(repConfig.ServerCertFile, repConfig.ServerKeyFile, repConfig.CaCertFile)
 		if err != nil {
 			logger.Fatal("tls-configuration-failed", err)
 		}
-		address = fmt.Sprintf("https://%s:%s", ip, port)
-		return http_server.NewTLSServer(listenAddress, router, tlsConfig), address
+		return http_server.NewTLSServer(listenAddress, router, tlsConfig)
 	}
 
-	return http_server.New(listenAddress, router), address
+	return http_server.New(listenAddress, router)
 }
 
 func getHandlers(
@@ -434,8 +421,24 @@ func repBaseHostName(advertiseDomain string) string {
 	return strings.Split(advertiseDomain, ".")[0]
 }
 
-func repURL(cellID, advertiseDomain string) string {
-	return repHost(cellID) + "." + advertiseDomain
+func repURL(config config.RepConfig) string {
+	port := strings.Split(config.ListenAddrSecurable, ":")[1]
+	if config.RequireTLS {
+		return fmt.Sprintf("https://%s.%s:%s", repHost(config.CellID), config.AdvertiseDomain, port)
+	}
+
+	return fmt.Sprintf("http://%s.%s:%s", repHost(config.CellID), config.AdvertiseDomain, port)
+}
+
+func repAddress(logger lager.Logger, config config.RepConfig) string {
+	ip, err := localip.LocalIP()
+	if err != nil {
+		logger.Fatal("failed-to-fetch-ip", err)
+	}
+
+	listenAddress := config.ListenAddr
+	port := strings.Split(listenAddress, ":")[1]
+	return fmt.Sprintf("http://%s:%s", ip, port)
 }
 
 func initializeRegistrationRunner(

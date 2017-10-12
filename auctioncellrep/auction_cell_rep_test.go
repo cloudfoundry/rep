@@ -93,21 +93,27 @@ var _ = Describe("AuctionCellRep", func() {
 					Guid:     "first",
 					Resource: executor.NewResource(20, 10, 100, "rootfs"),
 					Tags: executor.Tags{
-						rep.LifecycleTag:    rep.LRPLifecycle,
-						rep.ProcessGuidTag:  "the-first-app-guid",
-						rep.ProcessIndexTag: "17",
-						rep.DomainTag:       "domain",
+						rep.LifecycleTag:     rep.LRPLifecycle,
+						rep.ProcessGuidTag:   "the-first-app-guid",
+						rep.ProcessIndexTag:  "17",
+						rep.DomainTag:        "domain",
+						rep.InstanceGuidTag:  "ig-1",
+						rep.PlacementTagsTag: `["pt-1"]`,
+						rep.VolumeDriversTag: `["vd-1"]`,
 					},
 					State: executor.StateReserved,
 				},
 				{
 					Guid:     "second",
-					Resource: executor.NewResource(40, 30, 100, "rootfs"),
+					Resource: executor.NewResource(40, 30, 100, "docker://onsi/grace-busybox"),
 					Tags: executor.Tags{
-						rep.LifecycleTag:    rep.LRPLifecycle,
-						rep.ProcessGuidTag:  "the-second-app-guid",
-						rep.ProcessIndexTag: "92",
-						rep.DomainTag:       "domain",
+						rep.LifecycleTag:     rep.LRPLifecycle,
+						rep.ProcessGuidTag:   "the-second-app-guid",
+						rep.ProcessIndexTag:  "92",
+						rep.DomainTag:        "domain",
+						rep.InstanceGuidTag:  "ig-2",
+						rep.PlacementTagsTag: `["pt-2"]`,
+						rep.VolumeDriversTag: `["vd-2"]`,
 					},
 					State: executor.StateInitializing,
 				},
@@ -115,8 +121,10 @@ var _ = Describe("AuctionCellRep", func() {
 					Guid:     "da-task",
 					Resource: executor.NewResource(40, 30, 100, "rootfs"),
 					Tags: executor.Tags{
-						rep.LifecycleTag: rep.TaskLifecycle,
-						rep.DomainTag:    "domain",
+						rep.LifecycleTag:     rep.TaskLifecycle,
+						rep.DomainTag:        "domain",
+						rep.PlacementTagsTag: `[]`,
+						rep.VolumeDriversTag: `[]`,
 					},
 					State: executor.StateCreated,
 				},
@@ -165,14 +173,16 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Expect(state.LRPs).To(ConsistOf([]rep.LRP{
 				rep.NewLRP(
+					"ig-1",
 					models.NewActualLRPKey("the-first-app-guid", 17, "domain"),
-					rep.NewResource(20, 10, 0),
-					rep.NewPlacementConstraint("", nil, nil),
+					rep.NewResource(20, 10, 100),
+					rep.NewPlacementConstraint("rootfs", []string{"pt-1"}, []string{"vd-1"}),
 				),
 				rep.NewLRP(
+					"ig-2",
 					models.NewActualLRPKey("the-second-app-guid", 92, "domain"),
-					rep.NewResource(40, 30, 0),
-					rep.NewPlacementConstraint("", nil, nil),
+					rep.NewResource(40, 30, 100),
+					rep.NewPlacementConstraint("docker://onsi/grace-busybox", []string{"pt-2"}, []string{"vd-2"}),
 				),
 			}))
 
@@ -180,8 +190,8 @@ var _ = Describe("AuctionCellRep", func() {
 				rep.NewTask(
 					"da-task",
 					"domain",
-					rep.NewResource(40, 30, 0),
-					rep.NewPlacementConstraint("", nil, nil),
+					rep.NewResource(40, 30, 100),
+					rep.NewPlacementConstraint("rootfs", []string{}, []string{}),
 				),
 			}))
 
@@ -275,6 +285,7 @@ var _ = Describe("AuctionCellRep", func() {
 				evacuationReporter.EvacuatingReturns(true)
 
 				lrp := rep.NewLRP(
+					"ig-1",
 					models.NewActualLRPKey("process-guid", int32(expectedIndex), "tests"),
 					rep.NewResource(2048, 1024, 100),
 					rep.NewPlacementConstraint(linuxRootFSURL, nil, []string{}),
@@ -326,16 +337,19 @@ var _ = Describe("AuctionCellRep", func() {
 				}
 
 				lrpAuctionOne = rep.NewLRP(
+					"ig-1",
 					models.NewActualLRPKey("process-guid", expectedIndexOne, "tests"),
 					rep.NewResource(2048, 1024, 100),
 					rep.NewPlacementConstraint("rootfs", nil, []string{}),
 				)
 				lrpAuctionTwo = rep.NewLRP(
+					"ig-2",
 					models.NewActualLRPKey("process-guid", expectedIndexTwo, "tests"),
 					rep.NewResource(2048, 1024, 100),
 					rep.NewPlacementConstraint("rootfs", nil, []string{}),
 				)
 				lrpAuctionThree = rep.NewLRP(
+					"ig-3",
 					models.NewActualLRPKey("process-guid", expectedIndexThree, "tests"),
 					rep.NewResource(2048, 1024, 100),
 					rep.NewPlacementConstraint("rootfs", nil, []string{}),
