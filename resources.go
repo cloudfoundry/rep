@@ -262,8 +262,8 @@ func (lrp *LRP) Copy() LRP {
 }
 
 type Task struct {
-	TaskGuid string
-	Domain   string
+	TaskGuid string `json:"task_guid"`
+	Domain   string `json: domain"`
 	PlacementConstraint
 	Resource
 }

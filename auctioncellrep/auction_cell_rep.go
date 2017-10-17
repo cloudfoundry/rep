@@ -81,7 +81,7 @@ func rootFSProviders(preloaded rep.StackPathMap, arbitrary []string) rep.RootFSP
 	return rootFSProviders
 }
 
-func PathForRootFS(rootFS string, stackPathMap rep.StackPathMap) (string, error) {
+func pathForRootFS(rootFS string, stackPathMap rep.StackPathMap) (string, error) {
 	if rootFS == "" {
 		return rootFS, nil
 	}
@@ -109,8 +109,22 @@ func PathForRootFS(rootFS string, stackPathMap rep.StackPathMap) (string, error)
 	return rootFS, nil
 }
 
-// State currently does not return tasks or lrp rootfs, because the
-// auctioneer currently does not need them.
+func rootFSURLFromPath(rootfsPath string, stackPathMap rep.StackPathMap) string {
+	url, err := url.Parse(rootfsPath)
+	if err != nil {
+		return rootfsPath
+	}
+
+	for k, v := range stackPathMap {
+		if rootfsPath == v {
+			return fmt.Sprintf("%s:%s", models.PreloadedRootFSScheme, k)
+		} else if url.Path == v {
+			return fmt.Sprintf("%s:%s?%s", models.PreloadedOCIRootFSScheme, k, url.RawQuery)
+		}
+	}
+	return rootfsPath
+}
+
 func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, bool, error) {
 	logger = logger.Session("auction-state")
 	logger.Info("providing")
@@ -171,7 +185,7 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, bool, error)
 
 		resource := rep.Resource{MemoryMB: int32(container.MemoryMB), DiskMB: int32(container.DiskMB), MaxPids: int32(container.MaxPids)}
 		placementConstraint := rep.PlacementConstraint{
-			RootFs:        container.RootFSPath,
+			RootFs:        rootFSURLFromPath(container.RootFSPath, a.stackPathMap),
 			VolumeDrivers: volumeDrivers,
 			PlacementTags: placementTags,
 		}
@@ -325,7 +339,7 @@ func (a *AuctionCellRep) lrpsToAllocationRequest(lrps []rep.LRP) ([]executor.All
 		tags[rep.PlacementTagsTag] = string(placementTags)
 		tags[rep.VolumeDriversTag] = string(volumeDrivers)
 
-		rootFSPath, err := PathForRootFS(lrp.RootFs, a.stackPathMap)
+		rootFSPath, err := pathForRootFS(lrp.RootFs, a.stackPathMap)
 		if err != nil {
 			untranslatedLRPs = append(untranslatedLRPs, *lrp)
 			continue
@@ -349,7 +363,7 @@ func (a *AuctionCellRep) tasksToAllocationRequests(tasks []rep.Task) ([]executor
 	for i := range tasks {
 		task := &tasks[i]
 		taskMap[task.TaskGuid] = task
-		rootFSPath, err := PathForRootFS(task.RootFs, a.stackPathMap)
+		rootFSPath, err := pathForRootFS(task.RootFs, a.stackPathMap)
 		if err != nil {
 			failedTasks = append(failedTasks, *task)
 			continue

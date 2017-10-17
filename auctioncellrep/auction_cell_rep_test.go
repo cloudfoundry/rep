@@ -93,7 +93,7 @@ var _ = Describe("AuctionCellRep", func() {
 			containers = []executor.Container{
 				{
 					Guid:     "first",
-					Resource: executor.NewResource(20, 10, 100, "rootfs"),
+					Resource: executor.NewResource(20, 10, 100, linuxPath),
 					Tags: executor.Tags{
 						rep.LifecycleTag:     rep.LRPLifecycle,
 						rep.ProcessGuidTag:   "the-first-app-guid",
@@ -120,8 +120,13 @@ var _ = Describe("AuctionCellRep", func() {
 					State: executor.StateInitializing,
 				},
 				{
-					Guid:     "da-task",
-					Resource: executor.NewResource(40, 30, 100, "rootfs"),
+					Guid: "da-task",
+					Resource: executor.NewResource(
+						40,
+						30,
+						100,
+						fmt.Sprintf("%s:%s?key=value", models.PreloadedOCIRootFSScheme, linuxPath),
+					),
 					Tags: executor.Tags{
 						rep.LifecycleTag:     rep.TaskLifecycle,
 						rep.DomainTag:        "domain",
@@ -131,8 +136,19 @@ var _ = Describe("AuctionCellRep", func() {
 					State: executor.StateCreated,
 				},
 				{
+					Guid:     "another-task",
+					Resource: executor.NewResource(40, 30, 100, ":url-error"),
+					Tags: executor.Tags{
+						rep.LifecycleTag:     rep.TaskLifecycle,
+						rep.DomainTag:        "domain",
+						rep.PlacementTagsTag: `[]`,
+						rep.VolumeDriversTag: `[]`,
+					},
+					State: executor.StateRunning,
+				},
+				{
 					Guid:     "other-task",
-					Resource: executor.NewResource(40, 30, 100, "rootfs"),
+					Resource: executor.NewResource(40, 30, 100, linuxPath),
 					Tags:     nil,
 					State:    executor.StateRunning,
 				},
@@ -181,7 +197,7 @@ var _ = Describe("AuctionCellRep", func() {
 					"ig-1",
 					models.NewActualLRPKey("the-first-app-guid", 17, "domain"),
 					rep.NewResource(20, 10, 100),
-					rep.NewPlacementConstraint("rootfs", []string{"pt-1"}, []string{"vd-1"}),
+					rep.NewPlacementConstraint("preloaded:linux", []string{"pt-1"}, []string{"vd-1"}),
 				),
 				rep.NewLRP(
 					"ig-2",
@@ -196,7 +212,13 @@ var _ = Describe("AuctionCellRep", func() {
 					"da-task",
 					"domain",
 					rep.NewResource(40, 30, 100),
-					rep.NewPlacementConstraint("rootfs", []string{}, []string{}),
+					rep.NewPlacementConstraint("preloaded+layer:linux?key=value", []string{}, []string{}),
+				),
+				rep.NewTask(
+					"another-task",
+					"domain",
+					rep.NewResource(40, 30, 100),
+					rep.NewPlacementConstraint(":url-error", []string{}, []string{}),
 				),
 			}))
 
