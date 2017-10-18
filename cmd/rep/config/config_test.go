@@ -226,7 +226,7 @@ var _ = Describe("RepConfig", func() {
 			OptionalPlacementTags: []string{"otag1", "otag2"},
 			PlacementTags:         []string{"tag1", "tag2"},
 			PollingInterval:       durationjson.Duration(10 * time.Second),
-			PreloadedRootFS:       map[string]string{"test": "value", "test2": "value2"},
+			PreloadedRootFS:       []config.RootFS{{"test", "value"}, {"test2", "value2"}},
 			RequireTLS:            true,
 			ServerCertFile:        "/tmp/server_cert",
 			ServerKeyFile:         "/tmp/server_key",

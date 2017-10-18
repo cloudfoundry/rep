@@ -14,12 +14,17 @@ import (
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
+	"code.cloudfoundry.org/rep"
 )
 
-type StackMap map[string]string
+type RootFS struct {
+	Name, Path string
+}
 
-func (m *StackMap) UnmarshalJSON(data []byte) error {
-	*m = make(map[string]string)
+type RootFSes []RootFS
+
+func (m *RootFSes) UnmarshalJSON(data []byte) error {
+	*m = make(RootFSes, 0)
 	arr := []string{}
 	err := json.Unmarshal(data, &arr)
 	if err != nil {
@@ -40,22 +45,34 @@ func (m *StackMap) UnmarshalJSON(data []byte) error {
 			return errors.New("Invalid preloaded RootFS value: blank path")
 		}
 
-		(*m)[parts[0]] = parts[1]
+		*m = append(*m, RootFS{parts[0], parts[1]})
 	}
 
 	return nil
 }
 
-func (m StackMap) MarshalJSON() (b []byte, err error) {
-	arr := []string{}
-	for k, v := range m {
-		arr = append(arr, fmt.Sprintf("%s:%s", k, v))
+func (rootFSes RootFSes) Names() []string {
+	names := make([]string, len(rootFSes))
+	for i, rootFS := range rootFSes {
+		names[i] = rootFS.Name
 	}
-	data, err := json.Marshal(arr)
-	if err != nil {
-		return nil, err
+	return names
+}
+
+func (rootFSes RootFSes) StackPathMap() rep.StackPathMap {
+	m := make(rep.StackPathMap)
+	for _, rootFS := range rootFSes {
+		m[rootFS.Name] = rootFS.Path
 	}
-	return data, nil
+	return m
+}
+
+func (m RootFSes) MarshalJSON() (b []byte, err error) {
+	arr := make([]string, len(m))
+	for i, rootFS := range m {
+		arr[i] = fmt.Sprintf("%s:%s", rootFS.Name, rootFS.Path)
+	}
+	return json.Marshal(arr)
 }
 
 type RepConfig struct {
@@ -86,7 +103,7 @@ type RepConfig struct {
 	OptionalPlacementTags           []string              `json:"optional_placement_tags"`
 	PlacementTags                   []string              `json:"placement_tags"`
 	PollingInterval                 durationjson.Duration `json:"polling_interval,omitempty"`
-	PreloadedRootFS                 StackMap              `json:"preloaded_root_fs"`
+	PreloadedRootFS                 RootFSes              `json:"preloaded_root_fs"`
 	RequireTLS                      bool                  `json:"require_tls"`
 	ServerCertFile                  string                `json:"server_cert_file"`
 	ServerKeyFile                   string                `json:"server_key_file"`

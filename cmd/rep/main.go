@@ -76,11 +76,6 @@ func main() {
 		repConfig.Zone = *zoneOverride
 	}
 
-	preloadedRootFSes := []string{}
-	for k := range repConfig.PreloadedRootFS {
-		preloadedRootFSes = append(preloadedRootFSes, k)
-	}
-
 	cfhttp.Initialize(time.Duration(repConfig.CommunicationTimeout))
 
 	clock := clock.NewClock()
@@ -88,10 +83,11 @@ func main() {
 
 	var gardenHealthcheckRootFS string
 
-	if len(preloadedRootFSes) == 0 {
-		gardenHealthcheckRootFS = ""
-	} else {
-		gardenHealthcheckRootFS = repConfig.PreloadedRootFS[preloadedRootFSes[0]]
+	rootFSes := repConfig.PreloadedRootFS
+	rootFSNames := rootFSes.Names()
+	if len(rootFSNames) > 0 {
+		firstRootFS := rootFSNames[0]
+		gardenHealthcheckRootFS = rootFSes.StackPathMap()[firstRootFS]
 	}
 	if !repConfig.ExecutorConfig.Validate(logger) {
 		logger.Fatal("", errors.New("failed-to-configure-executor"))
@@ -137,11 +133,11 @@ func main() {
 	bbsClient := initializeBBSClient(logger, repConfig)
 	url := repURL(repConfig)
 	address := repAddress(logger, repConfig)
-	cellPresence := initializeCellPresence(address, serviceClient, executorClient, logger, repConfig, preloadedRootFSes, url)
+	cellPresence := initializeCellPresence(address, serviceClient, executorClient, logger, repConfig, rootFSNames, url)
 	auctionCellRep := auctioncellrep.New(
 		repConfig.CellID,
 		url,
-		rep.StackPathMap(repConfig.PreloadedRootFS),
+		rootFSes.StackPathMap(),
 		repConfig.SupportedProviders,
 		repConfig.Zone,
 		auctioncellrep.GenerateGuid,

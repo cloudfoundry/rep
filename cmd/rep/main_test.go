@@ -110,7 +110,7 @@ var _ = Describe("The Rep", func() {
 		rootFSPath = "/path/to/rootfs"
 
 		repConfig = config.RepConfig{
-			PreloadedRootFS:       map[string]string{rootFSName: rootFSPath},
+			PreloadedRootFS:       []config.RootFS{{Name: rootFSName, Path: rootFSPath}},
 			SupportedProviders:    []string{"docker"},
 			PlacementTags:         []string{"test"},
 			OptionalPlacementTags: []string{"optional_tag"},
@@ -915,11 +915,11 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 		})
 
 		Describe("RootFS for garden healthcheck", func() {
-			var createRequestReceived chan struct{}
+			var createRequestReceived chan string
 
 			BeforeEach(func() {
 				respondWithSuccessToCreateContainer = false
-				createRequestReceived = make(chan struct{})
+				createRequestReceived = make(chan string)
 				fakeGarden.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("POST", "/containers", ""),
@@ -927,9 +927,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 							body, err := ioutil.ReadAll(req.Body)
 							req.Body.Close()
 							Expect(err).ShouldNot(HaveOccurred())
-							Expect(string(body)).Should(ContainSubstring(`executor-healthcheck`))
-							Expect(string(body)).Should(ContainSubstring(`"rootfs":"/path/to/rootfs"`))
-							createRequestReceived <- struct{}{}
+							createRequestReceived <- string(body)
 						},
 					),
 				)
@@ -939,7 +937,29 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 			})
 
 			It("sends the correct rootfs when creating the container", func() {
-				Eventually(createRequestReceived).Should(Receive())
+				Eventually(createRequestReceived).Should(Receive(And(
+					ContainSubstring(`executor-healthcheck`),
+					ContainSubstring(`"rootfs":"/path/to/rootfs"`),
+				)))
+			})
+
+			Context("when there are multiple rootfses", func() {
+				BeforeEach(func() {
+					repConfig.PreloadedRootFS = append([]config.RootFS{{
+						Name: "another",
+						Path: "/path/to/another/rootfs",
+					}}, repConfig.PreloadedRootFS...)
+
+					runner = testrunner.New(representativePath, repConfig)
+					runner.StartCheck = ""
+				})
+
+				It("uses the first rootfs", func() {
+					Eventually(createRequestReceived).Should(Receive(And(
+						ContainSubstring(`executor-healthcheck`),
+						ContainSubstring(`"rootfs":"/path/to/another/rootfs"`),
+					)))
+				})
 			})
 		})
 	})
