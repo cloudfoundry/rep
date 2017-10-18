@@ -24,6 +24,7 @@ type AuctionCellClient interface {
 
 var ErrPreloadedRootFSNotFound = errors.New("preloaded rootfs path not found")
 var ErrCellUnhealthy = errors.New("internal cell healthcheck failed")
+var ErrCellIdMismatch = errors.New("workload cell ID does not match this cell")
 
 type AuctionCellRep struct {
 	cellID                string
@@ -253,7 +254,13 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 	logger = logger.Session("auction-work", lager.Data{
 		"lrp-starts": len(work.LRPs),
 		"tasks":      len(work.Tasks),
+		"cell-id":    work.CellID,
 	})
+
+	if work.CellID != "" && work.CellID != a.cellID {
+		logger.Error("cell-id-mismatch", ErrCellIdMismatch)
+		return work, ErrCellIdMismatch
+	}
 
 	if a.evacuationReporter.Evacuating() {
 		return work, nil

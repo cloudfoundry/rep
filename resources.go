@@ -280,8 +280,9 @@ func (task Task) Copy() Task {
 }
 
 type Work struct {
-	LRPs  []LRP
-	Tasks []Task
+	LRPs   []LRP
+	Tasks  []Task
+	CellID string `json:"cell_id,omitempty"`
 }
 
 type StackPathMap map[string]string

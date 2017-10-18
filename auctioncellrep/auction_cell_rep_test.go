@@ -445,6 +445,26 @@ var _ = Describe("AuctionCellRep", func() {
 					))
 				})
 
+				Context("when the workload's cell ID matches the cell's ID", func() {
+					It("accepts the workload", func() {
+						_, err := cellRep.Perform(logger, rep.Work{
+							LRPs:   lrpAuctions,
+							CellID: cellID,
+						})
+						Expect(err).NotTo(HaveOccurred())
+					})
+				})
+
+				Context("when the workload's cell ID does not match the cell's ID", func() {
+					It("rejects the workload", func() {
+						_, err := cellRep.Perform(logger, rep.Work{
+							LRPs:   lrpAuctions,
+							CellID: "do-not-want-your-work",
+						})
+						Expect(err).To(MatchError(auctioncellrep.ErrCellIdMismatch))
+					})
+				})
+
 				Context("when all containers can be successfully allocated", func() {
 					BeforeEach(func() {
 						client.AllocateContainersReturns([]executor.AllocationFailure{}, nil)
