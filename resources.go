@@ -1,7 +1,6 @@
 package rep
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -286,9 +285,3 @@ type Work struct {
 }
 
 type StackPathMap map[string]string
-
-func UnmarshalStackPathMap(payload []byte) (StackPathMap, error) {
-	stackPathMap := StackPathMap{}
-	err := json.Unmarshal(payload, &stackPathMap)
-	return stackPathMap, err
-}
