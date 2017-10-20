@@ -210,9 +210,9 @@ func (r *Resources) ComputeScore(total *Resources) float64 {
 }
 
 type Resource struct {
-	MemoryMB int32 `json:"memory_mb"`
-	DiskMB   int32 `json:"disk_mb"`
-	MaxPids  int32 `json:"max_pids"`
+	MemoryMB int32
+	DiskMB   int32
+	MaxPids  int32
 }
 
 func NewResource(memoryMb, diskMb int32, maxPids int32) Resource {
@@ -228,9 +228,9 @@ func (r *Resource) Copy() Resource {
 }
 
 type PlacementConstraint struct {
-	PlacementTags []string `json:"placement_tags"`
-	VolumeDrivers []string `json:"volume_drivers"`
-	RootFs        string   `json:"rootfs"`
+	PlacementTags []string
+	VolumeDrivers []string
+	RootFs        string
 }
 
 func NewPlacementConstraint(rootFs string, placementTags, volumeDrivers []string) PlacementConstraint {
