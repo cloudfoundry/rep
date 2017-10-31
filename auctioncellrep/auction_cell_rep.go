@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/executor"
@@ -25,19 +26,22 @@ type AuctionCellClient interface {
 var ErrPreloadedRootFSNotFound = errors.New("preloaded rootfs path not found")
 var ErrCellUnhealthy = errors.New("internal cell healthcheck failed")
 var ErrCellIdMismatch = errors.New("workload cell ID does not match this cell")
+var ErrNotEnoughMemory = errors.New("not enough memory for container and additional memory allocation")
 
 type AuctionCellRep struct {
-	cellID                string
-	repURL                string
-	stackPathMap          rep.StackPathMap
-	rootFSProviders       rep.RootFSProviders
-	stack                 string
-	zone                  string
-	generateInstanceGuid  func() (string, error)
-	client                executor.Client
-	evacuationReporter    evacuation_context.EvacuationReporter
-	placementTags         []string
-	optionalPlacementTags []string
+	cellID                     string
+	repURL                     string
+	stackPathMap               rep.StackPathMap
+	rootFSProviders            rep.RootFSProviders
+	stack                      string
+	zone                       string
+	generateInstanceGuid       func() (string, error)
+	client                     executor.Client
+	evacuationReporter         evacuation_context.EvacuationReporter
+	placementTags              []string
+	optionalPlacementTags      []string
+	additionalMemoryAllocation int
+	enableContainerProxy       bool
 }
 
 func New(
@@ -51,18 +55,22 @@ func New(
 	evacuationReporter evacuation_context.EvacuationReporter,
 	placementTags []string,
 	optionalPlacementTags []string,
+	additionalMemoryAllocation int,
+	enableContainerProxy bool,
 ) *AuctionCellRep {
 	return &AuctionCellRep{
-		cellID:                cellID,
-		repURL:                repURL,
-		stackPathMap:          preloadedStackPathMap,
-		rootFSProviders:       rootFSProviders(preloadedStackPathMap, arbitraryRootFSes),
-		zone:                  zone,
-		generateInstanceGuid:  generateInstanceGuid,
-		client:                client,
-		evacuationReporter:    evacuationReporter,
-		placementTags:         placementTags,
-		optionalPlacementTags: optionalPlacementTags,
+		cellID:                     cellID,
+		repURL:                     repURL,
+		stackPathMap:               preloadedStackPathMap,
+		rootFSProviders:            rootFSProviders(preloadedStackPathMap, arbitraryRootFSes),
+		zone:                       zone,
+		generateInstanceGuid:       generateInstanceGuid,
+		client:                     client,
+		evacuationReporter:         evacuationReporter,
+		placementTags:              placementTags,
+		optionalPlacementTags:      optionalPlacementTags,
+		additionalMemoryAllocation: additionalMemoryAllocation,
+		enableContainerProxy:       enableContainerProxy,
 	}
 }
 
@@ -262,6 +270,26 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 		return work, ErrCellIdMismatch
 	}
 
+	if a.enableContainerProxy {
+		remainingResources, err := a.client.RemainingResources(logger)
+		if err != nil {
+			logger.Error("failed-gathering-remaining-reosurces", err)
+			return work, err
+		}
+		var totalRequiredMemory = int32(0)
+
+		for _, lrp := range work.LRPs {
+			totalRequiredMemory = totalRequiredMemory + lrp.Resource.MemoryMB
+			if strings.Contains(lrp.RootFs, models.PreloadedRootFSScheme) || strings.Contains(lrp.RootFs, models.PreloadedOCIRootFSScheme) {
+				totalRequiredMemory = totalRequiredMemory + int32(a.additionalMemoryAllocation)
+			}
+		}
+		if int32(remainingResources.MemoryMB) < totalRequiredMemory {
+			logger.Error("not-enough-memory", ErrNotEnoughMemory)
+			return work, ErrNotEnoughMemory
+		}
+	}
+
 	if a.evacuationReporter.Evacuating() {
 		return work, nil
 	}
@@ -355,7 +383,13 @@ func (a *AuctionCellRep) lrpsToAllocationRequest(lrps []rep.LRP) ([]executor.All
 		containerGuid := rep.LRPContainerGuid(lrp.ProcessGuid, instanceGuid)
 		lrpMap[containerGuid] = lrp
 
-		resource := executor.NewResource(int(lrp.MemoryMB), int(lrp.DiskMB), int(lrp.MaxPids), rootFSPath)
+		var resource executor.Resource
+		if a.enableContainerProxy &&
+			(strings.Contains(lrp.RootFs, models.PreloadedRootFSScheme) || strings.Contains(lrp.RootFs, models.PreloadedOCIRootFSScheme)) {
+			resource = executor.NewResource(int(lrp.MemoryMB)+a.additionalMemoryAllocation, int(lrp.DiskMB), int(lrp.MaxPids), rootFSPath)
+		} else {
+			resource = executor.NewResource(int(lrp.MemoryMB), int(lrp.DiskMB), int(lrp.MaxPids), rootFSPath)
+		}
 		requests = append(requests, executor.NewAllocationRequest(containerGuid, &resource, tags))
 	}
 

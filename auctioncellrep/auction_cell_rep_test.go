@@ -36,6 +36,8 @@ var _ = Describe("AuctionCellRep", func() {
 		fakeGenerateContainerGuid func() (string, error)
 
 		placementTags, optionalPlacementTags []string
+		additionalMemoryAllocation           int
+		enableContainerProxy                 bool
 	)
 
 	BeforeEach(func() {
@@ -51,6 +53,8 @@ var _ = Describe("AuctionCellRep", func() {
 		linuxRootFSURL = models.PreloadedRootFS(linuxStack)
 
 		commonErr = errors.New("Failed to fetch")
+		additionalMemoryAllocation = 0
+		enableContainerProxy = false
 		client.HealthyReturns(true)
 	})
 
@@ -66,6 +70,8 @@ var _ = Describe("AuctionCellRep", func() {
 			evacuationReporter,
 			placementTags,
 			optionalPlacementTags,
+			additionalMemoryAllocation,
+			enableContainerProxy,
 		)
 	})
 
@@ -307,6 +313,10 @@ var _ = Describe("AuctionCellRep", func() {
 			expectedIndex = 1
 		)
 
+		BeforeEach(func() {
+			client.RemainingResourcesReturns(executor.ExecutorResources{MemoryMB: 8192}, nil)
+		})
+
 		Context("when evacuating", func() {
 			BeforeEach(func() {
 				evacuationReporter.EvacuatingReturns(true)
@@ -392,6 +402,8 @@ var _ = Describe("AuctionCellRep", func() {
 					lrpAuctionOne.RootFs = linuxRootFSURL
 					lrpAuctionTwo.RootFs = "unsupported-arbitrary://still-goes-through"
 					lrpAuctionThree.RootFs = fmt.Sprintf("%s:linux?somekey=somevalue", models.PreloadedOCIRootFSScheme)
+
+					additionalMemoryAllocation = 5
 				})
 
 				It("makes the correct allocation requests for all LRP Auctions", func() {
@@ -445,6 +457,67 @@ var _ = Describe("AuctionCellRep", func() {
 					))
 				})
 
+				Context("when envoy needs to be placed in the container", func() {
+					BeforeEach(func() {
+						lrpAuctionOne.RootFs = linuxRootFSURL
+						lrpAuctionTwo.RootFs = "unsupported-arbitrary://still-goes-through"
+						lrpAuctionThree.RootFs = fmt.Sprintf("%s:linux?somekey=somevalue", models.PreloadedOCIRootFSScheme)
+
+						enableContainerProxy = true
+					})
+
+					It("makes the correct allocation requests for all LRP Auctions with the additional memory allocation", func() {
+						_, err := cellRep.Perform(logger, rep.Work{
+							LRPs: lrpAuctions,
+						})
+						Expect(err).NotTo(HaveOccurred())
+
+						Expect(client.AllocateContainersCallCount()).To(Equal(1))
+						_, arg := client.AllocateContainersArgsForCall(0)
+						Expect(arg).To(ConsistOf(
+							executor.AllocationRequest{
+								Guid: rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
+								Tags: executor.Tags{
+									rep.LifecycleTag:     rep.LRPLifecycle,
+									rep.DomainTag:        lrpAuctionOne.Domain,
+									rep.ProcessGuidTag:   lrpAuctionOne.ProcessGuid,
+									rep.InstanceGuidTag:  expectedGuidOne,
+									rep.ProcessIndexTag:  expectedIndexOneString,
+									rep.PlacementTagsTag: `["pt-1"]`,
+									rep.VolumeDriversTag: `["vd-1"]`,
+								},
+								Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB+int32(additionalMemoryAllocation)), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), linuxPath),
+							},
+							executor.AllocationRequest{
+								Guid: rep.LRPContainerGuid(lrpAuctionTwo.ProcessGuid, expectedGuidTwo),
+								Tags: executor.Tags{
+									rep.LifecycleTag:     rep.LRPLifecycle,
+									rep.DomainTag:        lrpAuctionTwo.Domain,
+									rep.ProcessGuidTag:   lrpAuctionTwo.ProcessGuid,
+									rep.InstanceGuidTag:  expectedGuidTwo,
+									rep.ProcessIndexTag:  expectedIndexTwoString,
+									rep.PlacementTagsTag: `["pt-2"]`,
+									rep.VolumeDriversTag: `[]`,
+								},
+								Resource: executor.NewResource(int(lrpAuctionTwo.MemoryMB), int(lrpAuctionTwo.DiskMB), int(lrpAuctionTwo.MaxPids), "unsupported-arbitrary://still-goes-through"),
+							},
+							executor.AllocationRequest{
+								Guid: rep.LRPContainerGuid(lrpAuctionThree.ProcessGuid, expectedGuidThree),
+								Tags: executor.Tags{
+									rep.LifecycleTag:     rep.LRPLifecycle,
+									rep.DomainTag:        lrpAuctionThree.Domain,
+									rep.ProcessGuidTag:   lrpAuctionThree.ProcessGuid,
+									rep.InstanceGuidTag:  expectedGuidThree,
+									rep.ProcessIndexTag:  expectedIndexThreeString,
+									rep.PlacementTagsTag: `[]`,
+									rep.VolumeDriversTag: `["vd-3"]`,
+								},
+								Resource: executor.NewResource(int(lrpAuctionThree.MemoryMB+int32(additionalMemoryAllocation)), int(lrpAuctionThree.DiskMB), int(lrpAuctionThree.MaxPids), fmt.Sprintf("%s:/data/rootfs/linux?somekey=somevalue", models.PreloadedOCIRootFSScheme)),
+							},
+						))
+					})
+				})
+
 				Context("when the workload's cell ID matches the cell's ID", func() {
 					It("accepts the workload", func() {
 						_, err := cellRep.Perform(logger, rep.Work{
@@ -462,6 +535,22 @@ var _ = Describe("AuctionCellRep", func() {
 							CellID: "do-not-want-your-work",
 						})
 						Expect(err).To(MatchError(auctioncellrep.ErrCellIdMismatch))
+					})
+				})
+
+				Context("when container proxy is enabled and there is not enough memory for the additional allocation", func() {
+					BeforeEach(func() {
+						enableContainerProxy = true
+						lrpAuctions = append(lrpAuctions, lrpAuctionOne)
+						client.RemainingResourcesReturns(executor.ExecutorResources{MemoryMB: 2048}, nil)
+					})
+
+					It("rejects the workload", func() {
+						_, err := cellRep.Perform(logger, rep.Work{
+							LRPs:   lrpAuctions,
+							CellID: cellID,
+						})
+						Expect(err).To(MatchError(auctioncellrep.ErrNotEnoughMemory))
 					})
 				})
 
