@@ -23,7 +23,7 @@ var _ = Describe("RepConfig", func() {
 
 	BeforeEach(func() {
 		configData = `{
-			"additional_memory_allocation_mb": 6,
+			"proxy_memory_allocation_mb": 6,
 			"advertise_domain": "test-domain",
 			"bbs_address": "1.1.1.1:9091",
 			"bbs_ca_cert_file": "/tmp/bbs_ca_cert",
@@ -174,7 +174,7 @@ var _ = Describe("RepConfig", func() {
 			EvacuationPollingInterval:       durationjson.Duration(13 * time.Second),
 			EvacuationTimeout:               durationjson.Duration(12 * time.Second),
 			ExecutorConfig: executorinit.ExecutorConfig{
-				AdditionalMemoryAllocationMB:   6,
+				ProxyMemoryAllocationMB:        6,
 				CachePath:                      "/tmp/cache",
 				ContainerInodeLimit:            1000,
 				ContainerMaxCpuShares:          4,

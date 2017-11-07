@@ -29,19 +29,19 @@ var ErrCellIdMismatch = errors.New("workload cell ID does not match this cell")
 var ErrNotEnoughMemory = errors.New("not enough memory for container and additional memory allocation")
 
 type AuctionCellRep struct {
-	cellID                     string
-	repURL                     string
-	stackPathMap               rep.StackPathMap
-	rootFSProviders            rep.RootFSProviders
-	stack                      string
-	zone                       string
-	generateInstanceGuid       func() (string, error)
-	client                     executor.Client
-	evacuationReporter         evacuation_context.EvacuationReporter
-	placementTags              []string
-	optionalPlacementTags      []string
-	additionalMemoryAllocation int
-	enableContainerProxy       bool
+	cellID                string
+	repURL                string
+	stackPathMap          rep.StackPathMap
+	rootFSProviders       rep.RootFSProviders
+	stack                 string
+	zone                  string
+	generateInstanceGuid  func() (string, error)
+	client                executor.Client
+	evacuationReporter    evacuation_context.EvacuationReporter
+	placementTags         []string
+	optionalPlacementTags []string
+	proxyMemoryAllocation int
+	enableContainerProxy  bool
 }
 
 func New(
@@ -55,22 +55,22 @@ func New(
 	evacuationReporter evacuation_context.EvacuationReporter,
 	placementTags []string,
 	optionalPlacementTags []string,
-	additionalMemoryAllocation int,
+	proxyMemoryAllocation int,
 	enableContainerProxy bool,
 ) *AuctionCellRep {
 	return &AuctionCellRep{
-		cellID:                     cellID,
-		repURL:                     repURL,
-		stackPathMap:               preloadedStackPathMap,
-		rootFSProviders:            rootFSProviders(preloadedStackPathMap, arbitraryRootFSes),
-		zone:                       zone,
-		generateInstanceGuid:       generateInstanceGuid,
-		client:                     client,
-		evacuationReporter:         evacuationReporter,
-		placementTags:              placementTags,
-		optionalPlacementTags:      optionalPlacementTags,
-		additionalMemoryAllocation: additionalMemoryAllocation,
-		enableContainerProxy:       enableContainerProxy,
+		cellID:                cellID,
+		repURL:                repURL,
+		stackPathMap:          preloadedStackPathMap,
+		rootFSProviders:       rootFSProviders(preloadedStackPathMap, arbitraryRootFSes),
+		zone:                  zone,
+		generateInstanceGuid:  generateInstanceGuid,
+		client:                client,
+		evacuationReporter:    evacuationReporter,
+		placementTags:         placementTags,
+		optionalPlacementTags: optionalPlacementTags,
+		proxyMemoryAllocation: proxyMemoryAllocation,
+		enableContainerProxy:  enableContainerProxy,
 	}
 }
 
@@ -281,7 +281,7 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 		for _, lrp := range work.LRPs {
 			totalRequiredMemory = totalRequiredMemory + lrp.Resource.MemoryMB
 			if strings.Contains(lrp.RootFs, models.PreloadedRootFSScheme) || strings.Contains(lrp.RootFs, models.PreloadedOCIRootFSScheme) {
-				totalRequiredMemory = totalRequiredMemory + int32(a.additionalMemoryAllocation)
+				totalRequiredMemory = totalRequiredMemory + int32(a.proxyMemoryAllocation)
 			}
 		}
 		if int32(remainingResources.MemoryMB) < totalRequiredMemory {
@@ -386,7 +386,7 @@ func (a *AuctionCellRep) lrpsToAllocationRequest(lrps []rep.LRP) ([]executor.All
 		var resource executor.Resource
 		if a.enableContainerProxy &&
 			(strings.Contains(lrp.RootFs, models.PreloadedRootFSScheme) || strings.Contains(lrp.RootFs, models.PreloadedOCIRootFSScheme)) {
-			resource = executor.NewResource(int(lrp.MemoryMB)+a.additionalMemoryAllocation, int(lrp.DiskMB), int(lrp.MaxPids), rootFSPath)
+			resource = executor.NewResource(int(lrp.MemoryMB)+a.proxyMemoryAllocation, int(lrp.DiskMB), int(lrp.MaxPids), rootFSPath)
 		} else {
 			resource = executor.NewResource(int(lrp.MemoryMB), int(lrp.DiskMB), int(lrp.MaxPids), rootFSPath)
 		}

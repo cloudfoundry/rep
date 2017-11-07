@@ -36,7 +36,7 @@ var _ = Describe("AuctionCellRep", func() {
 		fakeGenerateContainerGuid func() (string, error)
 
 		placementTags, optionalPlacementTags []string
-		additionalMemoryAllocation           int
+		proxyMemoryAllocation                int
 		enableContainerProxy                 bool
 	)
 
@@ -53,7 +53,7 @@ var _ = Describe("AuctionCellRep", func() {
 		linuxRootFSURL = models.PreloadedRootFS(linuxStack)
 
 		commonErr = errors.New("Failed to fetch")
-		additionalMemoryAllocation = 0
+		proxyMemoryAllocation = 0
 		enableContainerProxy = false
 		client.HealthyReturns(true)
 	})
@@ -70,7 +70,7 @@ var _ = Describe("AuctionCellRep", func() {
 			evacuationReporter,
 			placementTags,
 			optionalPlacementTags,
-			additionalMemoryAllocation,
+			proxyMemoryAllocation,
 			enableContainerProxy,
 		)
 	})
@@ -403,7 +403,7 @@ var _ = Describe("AuctionCellRep", func() {
 					lrpAuctionTwo.RootFs = "unsupported-arbitrary://still-goes-through"
 					lrpAuctionThree.RootFs = fmt.Sprintf("%s:linux?somekey=somevalue", models.PreloadedOCIRootFSScheme)
 
-					additionalMemoryAllocation = 5
+					proxyMemoryAllocation = 5
 				})
 
 				It("makes the correct allocation requests for all LRP Auctions", func() {
@@ -486,7 +486,7 @@ var _ = Describe("AuctionCellRep", func() {
 									rep.PlacementTagsTag: `["pt-1"]`,
 									rep.VolumeDriversTag: `["vd-1"]`,
 								},
-								Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB+int32(additionalMemoryAllocation)), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), linuxPath),
+								Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB+int32(proxyMemoryAllocation)), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), linuxPath),
 							},
 							executor.AllocationRequest{
 								Guid: rep.LRPContainerGuid(lrpAuctionTwo.ProcessGuid, expectedGuidTwo),
@@ -512,7 +512,7 @@ var _ = Describe("AuctionCellRep", func() {
 									rep.PlacementTagsTag: `[]`,
 									rep.VolumeDriversTag: `["vd-3"]`,
 								},
-								Resource: executor.NewResource(int(lrpAuctionThree.MemoryMB+int32(additionalMemoryAllocation)), int(lrpAuctionThree.DiskMB), int(lrpAuctionThree.MaxPids), fmt.Sprintf("%s:/data/rootfs/linux?somekey=somevalue", models.PreloadedOCIRootFSScheme)),
+								Resource: executor.NewResource(int(lrpAuctionThree.MemoryMB+int32(proxyMemoryAllocation)), int(lrpAuctionThree.DiskMB), int(lrpAuctionThree.MaxPids), fmt.Sprintf("%s:/data/rootfs/linux?somekey=somevalue", models.PreloadedOCIRootFSScheme)),
 							},
 						))
 					})
