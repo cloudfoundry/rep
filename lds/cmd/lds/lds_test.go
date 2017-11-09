@@ -117,9 +117,4 @@ var _ = Describe("Lds", func() {
 
 		})
 	})
-
-	It("dies after receiving SIGTERM", func() {
-		session.Terminate()
-		Eventually(session).Should(gexec.Exit())
-	})
 })
