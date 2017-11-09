@@ -423,7 +423,7 @@ var _ = Describe("Resources", func() {
 				},
 				ImageUsername:        "image-username",
 				ImagePassword:        "image-password",
-				EnableContainerProxy: true,
+				EnableContainerProxy: false,
 			}))
 		})
 
@@ -451,10 +451,10 @@ var _ = Describe("Resources", func() {
 			})
 		})
 
-		It("enables the envoy proxy", func() {
+		It("disables the envoy proxy", func() {
 			runReq, err := rep.NewRunRequestFromTask(task)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(runReq.EnableContainerProxy).To(BeTrue())
+			Expect(runReq.EnableContainerProxy).To(BeFalse())
 		})
 
 		Context("when the rootfs is not preloaded", func() {
@@ -462,10 +462,10 @@ var _ = Describe("Resources", func() {
 				task.RootFs = "docker://cloudfoundry/test"
 			})
 
-			It("enables the envoy proxy", func() {
+			It("disables the envoy proxy", func() {
 				runReq, err := rep.NewRunRequestFromTask(task)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(runReq.EnableContainerProxy).To(BeTrue())
+				Expect(runReq.EnableContainerProxy).To(BeFalse())
 			})
 
 			It("uses TotalDiskLimit as the disk scope", func() {

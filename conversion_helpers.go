@@ -196,7 +196,7 @@ func NewRunRequestFromTask(task *models.Task) (executor.RunRequest, error) {
 		CertificateProperties:         convertCertificateProperties(task.CertificateProperties),
 		ImageUsername:                 task.ImageUsername,
 		ImagePassword:                 task.ImagePassword,
-		EnableContainerProxy:          true,
+		EnableContainerProxy:          false,
 	}
 	return executor.NewRunRequest(task.TaskGuid, &runInfo, tags), nil
 }
