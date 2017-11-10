@@ -111,7 +111,7 @@ func NewRunRequestFromDesiredLRP(
 		return executor.RunRequest{}, err
 	}
 
-	enableContainerProxy, err := isPreloadedRootFS(desiredLRP.RootFs)
+	enableContainerProxy, err := IsPreloadedRootFS(desiredLRP.RootFs)
 	if err != nil {
 		return executor.RunRequest{}, err
 	}
@@ -293,7 +293,7 @@ func ConvertPortMappings(containerPorts []uint32) []executor.PortMapping {
 	return out
 }
 
-func isPreloadedRootFS(rootFS string) (bool, error) {
+func IsPreloadedRootFS(rootFS string) (bool, error) {
 	preloaded := false
 
 	url, err := url.Parse(rootFS)
@@ -309,7 +309,7 @@ func isPreloadedRootFS(rootFS string) (bool, error) {
 }
 
 func diskScopeForRootFS(rootFS string) (executor.DiskLimitScope, error) {
-	preloaded, err := isPreloadedRootFS(rootFS)
+	preloaded, err := IsPreloadedRootFS(rootFS)
 	if err != nil {
 		return executor.ExclusiveDiskLimit, err
 	}

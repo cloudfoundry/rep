@@ -145,7 +145,7 @@ func main() {
 		evacuationReporter,
 		repConfig.PlacementTags,
 		repConfig.OptionalPlacementTags,
-		repConfig.AdditionalMemoryAllocationMB,
+		repConfig.ProxyMemoryAllocationMB,
 		repConfig.EnableContainerProxy,
 	)
 	httpServer := initializeServer(auctionCellRep, executorClient, evacuatable, logger, repConfig, false)
