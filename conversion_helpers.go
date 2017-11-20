@@ -301,7 +301,7 @@ func IsPreloadedRootFS(rootFS string) (bool, error) {
 		return false, err
 	}
 
-	if url.Scheme == models.PreloadedRootFSScheme {
+	if url.Scheme == models.PreloadedRootFSScheme || url.Scheme == models.PreloadedOCIRootFSScheme {
 		preloaded = true
 	}
 

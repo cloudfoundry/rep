@@ -525,7 +525,7 @@ var _ = Describe("AuctionCellRep", func() {
 									rep.PlacementTagsTag: `[]`,
 									rep.VolumeDriversTag: `["vd-3"]`,
 								},
-								Resource: executor.NewResource(int(lrpAuctionThree.MemoryMB), int(lrpAuctionThree.DiskMB), int(lrpAuctionThree.MaxPids), fmt.Sprintf("%s:/data/rootfs/linux?somekey=somevalue", models.PreloadedOCIRootFSScheme)),
+								Resource: executor.NewResource(int(lrpAuctionThree.MemoryMB+int32(proxyMemoryAllocation)), int(lrpAuctionThree.DiskMB), int(lrpAuctionThree.MaxPids), fmt.Sprintf("%s:/data/rootfs/linux?somekey=somevalue", models.PreloadedOCIRootFSScheme)),
 							},
 						))
 					})
@@ -554,8 +554,25 @@ var _ = Describe("AuctionCellRep", func() {
 				Context("when container proxy is enabled and there is not enough memory for the additional allocation", func() {
 					BeforeEach(func() {
 						enableContainerProxy = true
-						lrpAuctions = append(lrpAuctions, lrpAuctionOne)
 						client.RemainingResourcesReturns(executor.ExecutorResources{MemoryMB: 2048}, nil)
+					})
+
+					JustBeforeEach(func() {
+						lrpAuctions = []rep.LRP{lrpAuctionOne}
+					})
+
+					Context("when the lrp uses OCI rootfs scheme", func() {
+						BeforeEach(func() {
+							lrpAuctionOne.RootFs = fmt.Sprintf("%s:linux?somekey=somevalue", models.PreloadedOCIRootFSScheme)
+						})
+
+						It("rejects the workload", func() {
+							_, err := cellRep.Perform(logger, rep.Work{
+								LRPs:   lrpAuctions,
+								CellID: cellID,
+							})
+							Expect(err).To(MatchError(auctioncellrep.ErrNotEnoughMemory))
+						})
 					})
 
 					It("rejects the workload", func() {

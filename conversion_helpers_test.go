@@ -353,6 +353,24 @@ var _ = Describe("Resources", func() {
 			Expect(runReq.EnableContainerProxy).To(BeTrue())
 		})
 
+		Context("when the rootfs is preloaded+layer", func() {
+			BeforeEach(func() {
+				desiredLRP.RootFs = "preloaded+layer:cflinuxfs2?layer=http://file-server/layer.tgz&layer_digest=some-digest&layer_path=/path/in/container"
+			})
+
+			It("enables the envoy proxy", func() {
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.EnableContainerProxy).To(BeTrue())
+			})
+
+			It("uses ExclusiveDiskLimit as the disk scope", func() {
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.DiskScope).To(Equal(executor.ExclusiveDiskLimit))
+			})
+		})
+
 		Context("when the rootfs is not preloaded", func() {
 			BeforeEach(func() {
 				desiredLRP.RootFs = "docker://cloudfoundry/test"

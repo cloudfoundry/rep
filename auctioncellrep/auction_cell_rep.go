@@ -285,7 +285,7 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 			}
 
 			if preloadedRootFs {
-				totalRequiredMemory = totalRequiredMemory + int32(a.proxyMemoryAllocation)
+				totalRequiredMemory += int32(a.proxyMemoryAllocation)
 			}
 		}
 		if int32(remainingResources.MemoryMB) < totalRequiredMemory {
