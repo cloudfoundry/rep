@@ -84,6 +84,8 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 		logger.Error("failed-sending-stranded-evacuating-lrp-metric", err, lager.Data{"count": strandedEvacuationCount})
 	}
 
+	logger.Info("finished-evacuating", lager.Data{"stranded-evacuating-actual-lrps": strandedEvacuationCount})
+
 	logger.Info("stopping-all-containers")
 
 	exitTimer := e.clock.NewTimer(ExitTimeout)

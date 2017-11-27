@@ -146,6 +146,10 @@ var _ = Describe("EvacuationCleanup", func() {
 			Expect(*lrpInstanceKey).To(Equal(actualLRPGroup.Evacuating.ActualLRPInstanceKey))
 		})
 
+		It("logs the number of stranded evacuating actual lrps", func() {
+			Eventually(logger).Should(gbytes.Say("finished-evacuating.*\"stranded-evacuating-actual-lrps\":2"))
+		})
+
 		It("emits a metric for the number of stranded evacuating actual lrps", func() {
 			Eventually(errCh).Should(Receive(nil))
 			metric, value := fakeMetronClient.SendMetricArgsForCall(0)
@@ -154,7 +158,7 @@ var _ = Describe("EvacuationCleanup", func() {
 		})
 
 		Describe("stopping running containers", func() {
-			It("should stop all of the containers that still running", func() {
+			It("should stop all of the containers that are still running", func() {
 				Eventually(errCh).Should(Receive(nil))
 				Expect(fakeExecutorClient.ListContainersCallCount()).To(Equal(2))
 				Expect(fakeExecutorClient.StopContainerCallCount()).To(Equal(2))
