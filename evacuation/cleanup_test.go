@@ -110,8 +110,9 @@ var _ = Describe("EvacuationCleanup", func() {
 
 			fakeBBSClient.ActualLRPGroupsReturns(actualLRPGroups, nil)
 
+			fakeExecutorClientCopy := fakeExecutorClient
 			fakeExecutorClient.ListContainersStub = func(lager.Logger) ([]executor.Container, error) {
-				if fakeExecutorClient.ListContainersCallCount() == 1 {
+				if fakeExecutorClientCopy.ListContainersCallCount() == 1 {
 					return []executor.Container{
 						{Guid: "container1", State: executor.StateRunning},
 						{Guid: "container2", State: executor.StateRunning},
