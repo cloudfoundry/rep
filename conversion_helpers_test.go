@@ -376,10 +376,10 @@ var _ = Describe("Resources", func() {
 				desiredLRP.RootFs = "docker://cloudfoundry/test"
 			})
 
-			It("disables the envoy proxy", func() {
+			It("enables the envoy proxy", func() {
 				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(runReq.EnableContainerProxy).To(BeFalse())
+				Expect(runReq.EnableContainerProxy).To(BeTrue())
 			})
 
 			It("uses TotalDiskLimit as the disk scope", func() {

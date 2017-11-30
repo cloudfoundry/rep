@@ -279,14 +279,7 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 
 		for _, lrp := range work.LRPs {
 			totalRequiredMemory = totalRequiredMemory + lrp.Resource.MemoryMB
-			preloadedRootFs, err := rep.IsPreloadedRootFS(lrp.RootFs)
-			if err != nil {
-				continue
-			}
-
-			if preloadedRootFs {
-				totalRequiredMemory += int32(a.proxyMemoryAllocation)
-			}
+			totalRequiredMemory += int32(a.proxyMemoryAllocation)
 		}
 		if int32(remainingResources.MemoryMB) < totalRequiredMemory {
 			logger.Error("not-enough-memory", ErrNotEnoughMemory)
@@ -388,13 +381,8 @@ func (a *AuctionCellRep) lrpsToAllocationRequest(lrps []rep.LRP) ([]executor.All
 		lrpMap[containerGuid] = lrp
 
 		var resource executor.Resource
-		preloadedRootFs, err := rep.IsPreloadedRootFS(lrp.RootFs)
-		if err != nil {
-			untranslatedLRPs = append(untranslatedLRPs, *lrp)
-			continue
-		}
 
-		if a.enableContainerProxy && preloadedRootFs {
+		if a.enableContainerProxy {
 			resource = executor.NewResource(int(lrp.MemoryMB)+a.proxyMemoryAllocation, int(lrp.DiskMB), int(lrp.MaxPids), rootFSPath)
 		} else {
 			resource = executor.NewResource(int(lrp.MemoryMB), int(lrp.DiskMB), int(lrp.MaxPids), rootFSPath)

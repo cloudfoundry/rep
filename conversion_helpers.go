@@ -111,11 +111,6 @@ func NewRunRequestFromDesiredLRP(
 		return executor.RunRequest{}, err
 	}
 
-	enableContainerProxy, err := IsPreloadedRootFS(desiredLRP.RootFs)
-	if err != nil {
-		return executor.RunRequest{}, err
-	}
-
 	mounts, err := convertVolumeMounts(desiredLRP.VolumeMounts)
 	if err != nil {
 		return executor.RunRequest{}, err
@@ -155,7 +150,7 @@ func NewRunRequestFromDesiredLRP(
 		CertificateProperties:         convertCertificateProperties(desiredLRP.CertificateProperties),
 		ImageUsername:                 desiredLRP.ImageUsername,
 		ImagePassword:                 desiredLRP.ImagePassword,
-		EnableContainerProxy:          enableContainerProxy,
+		EnableContainerProxy:          true,
 	}
 	tags := executor.Tags{}
 	return executor.NewRunRequest(containerGuid, &runInfo, tags), nil

@@ -512,7 +512,7 @@ var _ = Describe("AuctionCellRep", func() {
 									rep.PlacementTagsTag: `["pt-2"]`,
 									rep.VolumeDriversTag: `[]`,
 								},
-								Resource: executor.NewResource(int(lrpAuctionTwo.MemoryMB), int(lrpAuctionTwo.DiskMB), int(lrpAuctionTwo.MaxPids), "unsupported-arbitrary://still-goes-through"),
+								Resource: executor.NewResource(int(lrpAuctionTwo.MemoryMB+int32(proxyMemoryAllocation)), int(lrpAuctionTwo.DiskMB), int(lrpAuctionTwo.MaxPids), "unsupported-arbitrary://still-goes-through"),
 							},
 							executor.AllocationRequest{
 								Guid: rep.LRPContainerGuid(lrpAuctionThree.ProcessGuid, expectedGuidThree),
@@ -564,6 +564,20 @@ var _ = Describe("AuctionCellRep", func() {
 					Context("when the lrp uses OCI rootfs scheme", func() {
 						BeforeEach(func() {
 							lrpAuctionOne.RootFs = fmt.Sprintf("%s:linux?somekey=somevalue", models.PreloadedOCIRootFSScheme)
+						})
+
+						It("rejects the workload", func() {
+							_, err := cellRep.Perform(logger, rep.Work{
+								LRPs:   lrpAuctions,
+								CellID: cellID,
+							})
+							Expect(err).To(MatchError(auctioncellrep.ErrNotEnoughMemory))
+						})
+					})
+
+					Context("when the lrp uses docker rootfs scheme", func() {
+						BeforeEach(func() {
+							lrpAuctionOne.RootFs = "docker://onsi/grace"
 						})
 
 						It("rejects the workload", func() {
