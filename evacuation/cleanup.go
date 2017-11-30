@@ -17,7 +17,7 @@ const (
 	ExitTimeout = 15 * time.Second
 )
 
-var strandedEvacuatingActualLRPs = "StrandedEvacuatingActualLRPs"
+var strandedEvacuatingActualLRPsMetric = "StrandedEvacuatingActualLRPs"
 
 type EvacuationCleanup struct {
 	clock          clock.Clock
@@ -79,7 +79,7 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 		}
 	}
 
-	err = e.metronClient.SendMetric(strandedEvacuatingActualLRPs, strandedEvacuationCount)
+	err = e.metronClient.SendMetric(strandedEvacuatingActualLRPsMetric, strandedEvacuationCount)
 	if err != nil {
 		logger.Error("failed-sending-stranded-evacuating-lrp-metric", err, lager.Data{"count": strandedEvacuationCount})
 	}
