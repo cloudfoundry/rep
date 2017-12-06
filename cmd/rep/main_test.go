@@ -26,7 +26,6 @@ import (
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/lager/lagertest"
-	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/locket"
 	locketconfig "code.cloudfoundry.org/locket/cmd/locket/config"
 	locketrunner "code.cloudfoundry.org/locket/cmd/locket/testrunner"
@@ -324,7 +323,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 				)
 
 				BeforeEach(func() {
-					locketPort, err := localip.LocalPort()
+					locketPort, err := portAllocator.ClaimPorts(1)
 					Expect(err).NotTo(HaveOccurred())
 
 					locketAddress = fmt.Sprintf("localhost:%d", locketPort)
@@ -587,7 +586,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 						&api.AgentService{
 							Service: "cell",
 							ID:      "cell",
-							Port:    serverPort,
+							Port:    int(serverPort),
 							Tags:    []string{strings.Replace(cellID, "_", "-", -1)},
 						}))
 				})

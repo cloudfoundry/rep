@@ -20,6 +20,7 @@ import (
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
+	"code.cloudfoundry.org/inigo/helpers/portauthority"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -33,8 +34,8 @@ var (
 	cellID              string
 	representativePath  string
 	natsPort            int
-	serverPort          int
-	serverPortSecurable int
+	serverPort          uint16
+	serverPortSecurable uint16
 	consulRunner        *consulrunner.ClusterRunner
 
 	bbsConfig        bbsconfig.BBSConfig
@@ -46,8 +47,9 @@ var (
 	auctioneerServer *ghttp.Server
 	locketBinPath    string
 
-	sqlProcess ifrit.Process
-	sqlRunner  sqlrunner.SQLRunner
+	sqlProcess    ifrit.Process
+	sqlRunner     sqlrunner.SQLRunner
+	portAllocator portauthority.PortAllocator
 )
 
 func TestRep(t *testing.T) {
@@ -67,6 +69,16 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	return []byte(strings.Join([]string{representative, locketPath, bbsConfig}, ","))
 }, func(pathsByte []byte) {
+
+	node := GinkgoParallelNode()
+	startPort := 1050 * node // make sure we don't conflict with etcd ports 4000+GinkgoParallelNode & 7000+GinkgoParallelNode (4000,7000,40001,70001...)
+	portRange := 1000
+	endPort := startPort + portRange*(node+1)
+
+	var err error
+	portAllocator, err = portauthority.New(startPort, endPort)
+	Expect(err).NotTo(HaveOccurred())
+
 	grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
 
 	// tests here are fairly Eventually driven which tends to flake out under
@@ -81,8 +93,10 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	cellID = "the_rep_id-" + strconv.Itoa(GinkgoParallelNode())
 
-	serverPort = 1800 + GinkgoParallelNode()
-	serverPortSecurable = 1901 + GinkgoParallelNode()
+	serverPort, err = portAllocator.ClaimPorts(1)
+	Expect(err).NotTo(HaveOccurred())
+	serverPortSecurable, err = portAllocator.ClaimPorts(1)
+	Expect(err).NotTo(HaveOccurred())
 
 	dbName := fmt.Sprintf("diego_%d", GinkgoParallelNode())
 
@@ -99,7 +113,8 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	consulRunner.Start()
 
-	bbsPort := 13000 + GinkgoParallelNode()*2
+	bbsPort, err := portAllocator.ClaimPorts(2)
+	Expect(err).NotTo(HaveOccurred())
 	healthPort := bbsPort + 1
 	bbsAddress := fmt.Sprintf("127.0.0.1:%d", bbsPort)
 	healthAddress := fmt.Sprintf("127.0.0.1:%d", healthPort)
