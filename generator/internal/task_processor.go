@@ -4,6 +4,7 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/rep"
+	"code.cloudfoundry.org/runtimeschema/metric"
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/lager"
@@ -13,6 +14,10 @@ const TaskCompletionReasonMissingContainer = "task container does not exist"
 const TaskCompletionReasonFailedToRunContainer = "failed to run container"
 const TaskCompletionReasonInvalidTransition = "invalid state transition"
 const TaskCompletionReasonFailedToFetchResult = "failed to fetch result"
+
+var TasksStarted = metric.Counter("CellTasksStarted")
+var TasksFailed = metric.Counter("CellTasksFailed")
+var TasksSucceeded = metric.Counter("CellTasksSucceeded")
 
 //go:generate counterfeiter -o fake_internal/fake_task_processor.go task_processor.go TaskProcessor
 
@@ -84,6 +89,7 @@ func (p *taskProcessor) processActiveContainer(logger lager.Logger, container ex
 	if !ok {
 		p.failTask(logger, container.Guid, TaskCompletionReasonFailedToRunContainer)
 	}
+	TasksStarted.Increment()
 }
 
 func (p *taskProcessor) processCompletedContainer(logger lager.Logger, container executor.Container) {
@@ -127,6 +133,7 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 			p.failTask(logger, container.Guid, TaskCompletionReasonFailedToFetchResult)
 			return
 		}
+		TasksSucceeded.Increment()
 	}
 
 	logger.Info("completing-task")
@@ -141,16 +148,23 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 		return
 	}
 
+	if container.RunResult.Failed {
+		// Need to increment the FailedTask Counter since if we got to this point we have not called p.failTask()
+		TasksFailed.Increment()
+	}
+
 	logger.Info("succeeded-completing-task")
 }
 
 func (p *taskProcessor) failTask(logger lager.Logger, guid string, reason string) {
 	logger.Info("failing-task")
+	// Increment the failed task counter
+	TasksFailed.Increment()
+
 	err := p.bbsClient.FailTask(logger, guid, reason)
 	if err != nil {
 		logger.Error("failed-failing-task", err)
 		return
 	}
-
 	logger.Info("succeeded-failing-task")
 }
