@@ -225,7 +225,6 @@ var _ = Describe("RepConfig", func() {
 				LogLevel: lagerflags.DEBUG,
 			},
 			ListenAddr:            "0.0.0.0:8080",
-			ListenAddrAdmin:       "0.0.0.1:8081",
 			ListenAddrSecurable:   "0.0.0.0:8081",
 			LockRetryInterval:     durationjson.Duration(5 * time.Second),
 			LockTTL:               durationjson.Duration(5 * time.Second),
