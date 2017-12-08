@@ -96,7 +96,6 @@ type RepConfig struct {
 	EvacuationPollingInterval       durationjson.Duration `json:"evacuation_polling_interval,omitempty"`
 	EvacuationTimeout               durationjson.Duration `json:"evacuation_timeout,omitempty"`
 	ListenAddr                      string                `json:"listen_addr,omitempty"`
-	ListenAddrAdmin                 string                `json:"listen_addr_admin"`
 	ListenAddrSecurable             string                `json:"listen_addr_securable,omitempty"`
 	LockRetryInterval               durationjson.Duration `json:"lock_retry_interval,omitempty"`
 	LockTTL                         durationjson.Duration `json:"lock_ttl,omitempty"`
