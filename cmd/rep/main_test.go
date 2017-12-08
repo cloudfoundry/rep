@@ -699,6 +699,67 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 				})
 			})
 
+			Context("when RequireAdminTLS is set to true", func() {
+				BeforeEach(func() {
+					repConfig.RequireAdminTLS = true
+				})
+
+				Context("when invalid values for certificates are supplied", func() {
+					BeforeEach(func() {
+						repConfig.PathToTLSCACert = ""
+						repConfig.PathToTLSCert = ""
+						repConfig.PathToTLSKey = ""
+						runner = testrunner.New(
+							representativePath,
+							repConfig,
+						)
+						runner.StartCheck = ""
+					})
+
+					It("fails to start secure server", func() {
+						Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
+						Eventually(runner.Session.ExitCode).Should(Equal(2))
+					})
+				})
+
+				Context("when correct server cert and key are supplied", func() {
+					BeforeEach(func() {
+						repConfig.PathToTLSCACert = caFile
+						repConfig.PathToTLSCert = certFile
+						repConfig.PathToTLSKey = keyFile
+						runner = testrunner.New(
+							representativePath,
+							repConfig,
+						)
+						config, err := cfhttp.NewTLSConfig(repConfig.PathToTLSCert, repConfig.PathToTLSKey, repConfig.PathToTLSCACert)
+						Expect(err).NotTo(HaveOccurred())
+						client = &http.Client{Transport: &http.Transport{TLSClientConfig: config}}
+					})
+
+					It("serves the localhost-only endpoints over TLS", func() {
+						resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPort))
+						Expect(err).NotTo(HaveOccurred())
+						Expect(resp.StatusCode).To(Equal(http.StatusOK))
+					})
+
+					Context("when the legacy API endpoints are enabled", func() {
+						BeforeEach(func() {
+							repConfig.EnableLegacyAPIServer = true
+							runner = testrunner.New(
+								representativePath,
+								repConfig,
+							)
+						})
+
+						It("serves the endpoints over HTTP", func() {
+							resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
+							Expect(err).NotTo(HaveOccurred())
+							Expect(resp.StatusCode).To(Equal(http.StatusOK))
+						})
+					})
+				})
+			})
+
 			Context("when requireTLS is set to true", func() {
 				BeforeEach(func() {
 					repConfig.RequireTLS = true

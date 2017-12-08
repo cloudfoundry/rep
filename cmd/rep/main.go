@@ -329,6 +329,14 @@ func initializeServer(
 		return http_server.NewTLSServer(listenAddress, router, tlsConfig)
 	}
 
+	if repConfig.RequireAdminTLS && !repConfig.EnableLegacyAPIServer {
+		tlsConfig, err := cfhttp.NewTLSConfig(repConfig.PathToTLSCert, repConfig.PathToTLSKey, repConfig.PathToTLSCACert)
+		if err != nil {
+			logger.Fatal("admin-tls-configuration-failed", err)
+		}
+		return http_server.NewTLSServer(listenAddress, router, tlsConfig)
+	}
+
 	return http_server.New(listenAddress, router)
 }
 
