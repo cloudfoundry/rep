@@ -153,7 +153,7 @@ var _ = Describe("EvacuationCleanup", func() {
 
 		It("emits a metric for the number of stranded evacuating actual lrps", func() {
 			Eventually(errCh).Should(Receive(nil))
-			metric, value := fakeMetronClient.SendMetricArgsForCall(0)
+			metric, value, _ := fakeMetronClient.SendMetricArgsForCall(0)
 			Expect(metric).To(Equal("StrandedEvacuatingActualLRPs"))
 			Expect(value).To(BeEquivalentTo(2))
 		})
