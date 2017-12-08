@@ -36,13 +36,13 @@ var _ = Describe("New", func() {
 		})
 
 		It("has no secure routes", func() {
-			for _, route := range rep.RoutesSecure {
+			for _, route := range rep.RoutesNetworkAccessible {
 				Expect(test_handlers[route.Name]).To(BeNil())
 			}
 		})
 
 		It("has all unsecure routes", func() {
-			for _, route := range rep.RoutesInsecure {
+			for _, route := range rep.RoutesLocalhostOnly {
 				Expect(test_handlers[route.Name]).NotTo(BeNil())
 			}
 		})
@@ -56,13 +56,13 @@ var _ = Describe("New", func() {
 		})
 
 		It("has all the secure routes", func() {
-			for _, route := range rep.RoutesSecure {
+			for _, route := range rep.RoutesNetworkAccessible {
 				Expect(test_handlers[route.Name]).NotTo(BeNil())
 			}
 		})
 
 		It("has no unsecure routes", func() {
-			for _, route := range rep.RoutesInsecure {
+			for _, route := range rep.RoutesLocalhostOnly {
 				Expect(test_handlers[route.Name]).To(BeNil())
 			}
 		})
