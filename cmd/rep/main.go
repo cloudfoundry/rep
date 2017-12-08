@@ -306,10 +306,10 @@ func initializeServer(
 	evacuatable evacuation_context.Evacuatable,
 	logger lager.Logger,
 	repConfig config.RepConfig,
-	secure bool,
+	networkAccessible bool,
 ) ifrit.Runner {
-	handlers := getHandlers(logger, auctionCellRep, executorClient, evacuatable, repConfig.EnableLegacyAPIServer, secure)
-	routes := getRoutes(repConfig.EnableLegacyAPIServer, secure)
+	handlers := getHandlers(logger, auctionCellRep, executorClient, evacuatable, repConfig.EnableLegacyAPIServer, networkAccessible)
+	routes := getRoutes(repConfig.EnableLegacyAPIServer, networkAccessible)
 	router, err := rata.NewRouter(routes, handlers)
 
 	if err != nil {
@@ -317,11 +317,11 @@ func initializeServer(
 	}
 
 	listenAddress := repConfig.ListenAddr
-	if secure {
+	if networkAccessible {
 		listenAddress = repConfig.ListenAddrSecurable
 	}
 
-	if secure && repConfig.RequireTLS {
+	if networkAccessible && repConfig.RequireTLS {
 		tlsConfig, err := cfhttp.NewTLSConfig(repConfig.ServerCertFile, repConfig.ServerKeyFile, repConfig.CaCertFile)
 		if err != nil {
 			logger.Fatal("tls-configuration-failed", err)
@@ -338,20 +338,20 @@ func getHandlers(
 	executorClient executor.Client,
 	evacuatable evacuation_context.Evacuatable,
 	enableLegacyAPIServer bool,
-	isSecureServer bool,
+	isNetworkAccessibleServer bool,
 ) rata.Handlers {
 
-	if enableLegacyAPIServer && !isSecureServer {
+	if enableLegacyAPIServer && !isNetworkAccessibleServer {
 		return handlers.NewLegacy(auctionCellRep, executorClient, evacuatable, logger)
 	}
-	return handlers.New(auctionCellRep, executorClient, evacuatable, logger, isSecureServer)
+	return handlers.New(auctionCellRep, executorClient, evacuatable, logger, isNetworkAccessibleServer)
 }
 
-func getRoutes(enableLegacyAPIServer, isSecureServer bool) rata.Routes {
-	if enableLegacyAPIServer && !isSecureServer {
+func getRoutes(enableLegacyAPIServer, isNetworkAccessibleServer bool) rata.Routes {
+	if enableLegacyAPIServer && !isNetworkAccessibleServer {
 		return rep.Routes
 	}
-	return rep.NewRoutes(isSecureServer)
+	return rep.NewRoutes(isNetworkAccessibleServer)
 }
 
 func initializeBBSClient(

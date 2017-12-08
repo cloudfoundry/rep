@@ -15,10 +15,10 @@ const (
 	EvacuateRoute = "Evacuate"
 )
 
-func NewRoutes(secure bool) rata.Routes {
+func NewRoutes(networkAccessible bool) rata.Routes {
 	var routes rata.Routes
 
-	if secure {
+	if networkAccessible {
 		routes = append(routes,
 			rata.Route{Path: "/state", Method: "GET", Name: StateRoute},
 			rata.Route{Path: "/work", Method: "POST", Name: PerformRoute},
@@ -30,7 +30,7 @@ func NewRoutes(secure bool) rata.Routes {
 		)
 	}
 
-	if !secure {
+	if !networkAccessible {
 		routes = append(routes,
 			rata.Route{Path: "/ping", Method: "GET", Name: PingRoute},
 			rata.Route{Path: "/evacuate", Method: "POST", Name: EvacuateRoute},
@@ -40,6 +40,6 @@ func NewRoutes(secure bool) rata.Routes {
 
 }
 
-var RoutesInsecure = NewRoutes(false)
-var RoutesSecure = NewRoutes(true)
-var Routes = append(RoutesInsecure, RoutesSecure...)
+var RoutesLocalhostOnly = NewRoutes(false)
+var RoutesNetworkAccessible = NewRoutes(true)
+var Routes = append(RoutesLocalhostOnly, RoutesNetworkAccessible...)
