@@ -104,6 +104,7 @@ type RepConfig struct {
 	PollingInterval                 durationjson.Duration `json:"polling_interval,omitempty"`
 	PreloadedRootFS                 RootFSes              `json:"preloaded_root_fs"`
 	RequireTLS                      bool                  `json:"require_tls"`
+	RequireAdminTLS                 bool                  `json:"require_admin_tls"`
 	ServerCertFile                  string                `json:"server_cert_file"`
 	ServerKeyFile                   string                `json:"server_key_file"`
 	SessionName                     string                `json:"session_name,omitempty"`
