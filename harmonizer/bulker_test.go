@@ -99,7 +99,7 @@ var _ = Describe("Bulker", func() {
 			It("emits the duration it took to generate the batch operations", func() {
 				Eventually(fakeQueue.PushCallCount).Should(Equal(expectedQueueLength))
 
-				name, value := fakeMetronClient.SendDurationArgsForCall(0)
+				name, value, _ := fakeMetronClient.SendDurationArgsForCall(0)
 				Expect(name).To(Equal("RepBulkSyncDuration"))
 				Expect(value).To(BeNumerically("==", 10*time.Second))
 			})
