@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	ExitTimeout = 15 * time.Second
+	exitTimeoutOffset = 5 * time.Second
 )
 
 var strandedEvacuatingActualLRPsMetric = "StrandedEvacuatingActualLRPs"
@@ -23,6 +23,7 @@ type EvacuationCleanup struct {
 	clock          clock.Clock
 	logger         lager.Logger
 	cellID         string
+	exitTimeout    time.Duration
 	bbsClient      bbs.InternalClient
 	executorClient executor.Client
 	metronClient   loggingclient.IngressClient
@@ -31,6 +32,7 @@ type EvacuationCleanup struct {
 func NewEvacuationCleanup(
 	logger lager.Logger,
 	cellID string,
+	gracefulShutdownInterval time.Duration,
 	bbsClient bbs.InternalClient,
 	executorClient executor.Client,
 	clock clock.Clock,
@@ -39,6 +41,7 @@ func NewEvacuationCleanup(
 	return &EvacuationCleanup{
 		logger:         logger,
 		cellID:         cellID,
+		exitTimeout:    gracefulShutdownInterval + exitTimeoutOffset,
 		bbsClient:      bbsClient,
 		executorClient: executorClient,
 		clock:          clock,
@@ -88,7 +91,8 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 
 	logger.Info("stopping-all-containers")
 
-	exitTimer := e.clock.NewTimer(ExitTimeout)
+	exitTimer := e.clock.NewTimer(e.exitTimeout)
+
 	checkRunningContainersTimer := e.clock.NewTicker(1 * time.Second)
 	containersSignalled := make(chan struct{})
 	containersStopped := make(chan struct{})
@@ -97,7 +101,6 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 
 	select {
 	case <-exitTimer.C():
-		// exit after ExitTimeout has passed
 		logger.Info("failed-to-cleanup-all-containers")
 		return errors.New("failed-to-cleanup-all-containers")
 	case <-containersStopped:

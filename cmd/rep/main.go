@@ -157,7 +157,16 @@ func main() {
 		evacuationReporter,
 		uint64(time.Duration(repConfig.EvacuationTimeout).Seconds()),
 	)
-	cleanup := evacuation.NewEvacuationCleanup(logger, repConfig.CellID, bbsClient, executorClient, clock, metronClient)
+
+	cleanup := evacuation.NewEvacuationCleanup(
+		logger,
+		repConfig.CellID,
+		time.Duration(repConfig.GracefulShutdownInterval),
+		bbsClient,
+		executorClient,
+		clock,
+		metronClient,
+	)
 
 	_, portString, err := net.SplitHostPort(repConfig.ListenAddr)
 	if err != nil {

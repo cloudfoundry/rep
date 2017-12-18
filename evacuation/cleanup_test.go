@@ -25,9 +25,15 @@ import (
 )
 
 var _ = Describe("EvacuationCleanup", func() {
+	const (
+		exitTimeoutOffset = 5 * time.Second
+	)
+
 	var (
-		logger *lagertest.TestLogger
-		cellID string
+		logger                   *lagertest.TestLogger
+		cellID                   string
+		gracefulShutdownInterval time.Duration
+		exitTimeoutInterval      time.Duration
 
 		fakeClock          *fakeclock.FakeClock
 		fakeBBSClient      *fake_bbs.FakeInternalClient
@@ -45,6 +51,8 @@ var _ = Describe("EvacuationCleanup", func() {
 	BeforeEach(func() {
 		cellID = "the-cell-id"
 		logger = lagertest.NewTestLogger("cleanup")
+		gracefulShutdownInterval = 20 * time.Second
+		exitTimeoutInterval = gracefulShutdownInterval + exitTimeoutOffset
 
 		fakeClock = fakeclock.NewFakeClock(time.Now())
 		fakeBBSClient = &fake_bbs.FakeInternalClient{}
@@ -58,6 +66,7 @@ var _ = Describe("EvacuationCleanup", func() {
 		cleanup = evacuation.NewEvacuationCleanup(
 			logger,
 			cellID,
+			gracefulShutdownInterval,
 			fakeBBSClient,
 			fakeExecutorClient,
 			fakeClock,
@@ -76,7 +85,7 @@ var _ = Describe("EvacuationCleanup", func() {
 
 	AfterEach(func() {
 		cleanupProcess.Signal(os.Interrupt)
-		fakeClock.Increment(15 * time.Second)
+		fakeClock.Increment(exitTimeoutInterval)
 		Eventually(doneCh).Should(BeClosed())
 	})
 
@@ -180,8 +189,8 @@ var _ = Describe("EvacuationCleanup", func() {
 					}
 				})
 
-				It("gives up after 15 seconds", func() {
-					fakeClock.WaitForNWatchersAndIncrement(15*time.Second, 2)
+				It("gives up after the graceful shutdown interval expires", func() {
+					fakeClock.WaitForNWatchersAndIncrement(exitTimeoutInterval, 2)
 					Eventually(doneCh).Should(BeClosed())
 				})
 			})
@@ -235,12 +244,14 @@ var _ = Describe("EvacuationCleanup", func() {
 					}
 				})
 
-				It("gives up after 15 seconds", func() {
+				It("gives up after the graceful shutdown interval expires", func() {
 					Eventually(fakeExecutorClient.ListContainersCallCount).Should(Equal(2))
 					Expect(fakeExecutorClient.StopContainerCallCount()).To(Equal(2))
 					Consistently(errCh).ShouldNot(Receive())
 
-					for i := 0; i < 14; i++ {
+					exitTimeoutTicker := int(exitTimeoutInterval / time.Second)
+
+					for i := 0; i < exitTimeoutTicker-1; i++ {
 						fakeClock.WaitForNWatchersAndIncrement(1*time.Second, 2)
 						Eventually(fakeExecutorClient.ListContainersCallCount).Should(Equal(i + 3))
 					}
