@@ -113,7 +113,7 @@ var _ = Describe("AuctionCellRep", func() {
 				},
 				{
 					Guid:     "second",
-					Resource: executor.NewResource(40, 30, 100, "docker://onsi/grace-busybox"),
+					Resource: executor.NewResource(40, 30, 100, "docker://cfdiegodocker/grace"),
 					Tags: executor.Tags{
 						rep.LifecycleTag:     rep.LRPLifecycle,
 						rep.ProcessGuidTag:   "the-second-app-guid",
@@ -209,7 +209,7 @@ var _ = Describe("AuctionCellRep", func() {
 					"ig-2",
 					models.NewActualLRPKey("the-second-app-guid", 92, "domain"),
 					rep.NewResource(40, 30, 100),
-					rep.NewPlacementConstraint("docker://onsi/grace-busybox", []string{"pt-2"}, []string{"vd-2"}),
+					rep.NewPlacementConstraint("docker://cfdiegodocker/grace", []string{"pt-2"}, []string{"vd-2"}),
 				),
 			}))
 
@@ -577,7 +577,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 					Context("when the lrp uses docker rootfs scheme", func() {
 						BeforeEach(func() {
-							lrpAuctionOne.RootFs = "docker://onsi/grace"
+							lrpAuctionOne.RootFs = "docker://cfdiegodocker/grace"
 						})
 
 						It("rejects the workload", func() {
