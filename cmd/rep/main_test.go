@@ -759,6 +759,53 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 						})
 					})
 				})
+
+				Context("with SANs check", func() {
+					Context("when the domain SAN is present", func() {
+						BeforeEach(func() {
+							caFile = path.Join(basePath, "dnssan-certs", "server-ca.crt")
+							certFile = path.Join(basePath, "dnssan-certs", "server.crt")
+							keyFile = path.Join(basePath, "dnssan-certs", "server.key")
+							repConfig.PathToTLSCACert = caFile
+							repConfig.PathToTLSCert = certFile
+							repConfig.PathToTLSKey = keyFile
+							runner = testrunner.New(
+								representativePath,
+								repConfig,
+							)
+							config, err := cfhttp.NewTLSConfig(repConfig.PathToTLSCert, repConfig.PathToTLSKey, repConfig.PathToTLSCACert)
+							Expect(err).NotTo(HaveOccurred())
+							client = &http.Client{Transport: &http.Transport{TLSClientConfig: config}}
+						})
+
+						It("serves the localhost-only endpoints over TLS", func() {
+							resp, err := client.Get(fmt.Sprintf("https://localhost:%d/ping", serverPort))
+							Expect(err).NotTo(HaveOccurred())
+							Expect(resp.StatusCode).To(Equal(http.StatusOK))
+						})
+					})
+
+					Context("when the server cert does not have the correct SANs", func() {
+						BeforeEach(func() {
+							caFile = path.Join(basePath, "rouge-certs", "server-ca.crt")
+							certFile = path.Join(basePath, "rouge-certs", "server.crt")
+							keyFile = path.Join(basePath, "rouge-certs", "server.key")
+							repConfig.PathToTLSCACert = caFile
+							repConfig.PathToTLSCert = certFile
+							repConfig.PathToTLSKey = keyFile
+							runner = testrunner.New(
+								representativePath,
+								repConfig,
+							)
+							runner.StartCheck = ""
+						})
+
+						It("serves the localhost-only endpoints over TLS", func() {
+							Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
+							Eventually(runner.Session.ExitCode).Should(Equal(2))
+						})
+					})
+				})
 			})
 
 			Context("when requireTLS is set to true", func() {

@@ -1,10 +1,13 @@
 package main
 
 import (
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/url"
 	"os"
@@ -339,6 +342,10 @@ func initializeServer(
 	}
 
 	if repConfig.RequireAdminTLS && !repConfig.EnableLegacyAPIServer {
+		err := verifyCertificate(repConfig.PathToTLSCert)
+		if err != nil {
+			logger.Fatal("tls-configuration-failed", err)
+		}
 		tlsConfig, err := cfhttp.NewTLSConfig(repConfig.PathToTLSCert, repConfig.PathToTLSKey, repConfig.PathToTLSCACert)
 		if err != nil {
 			logger.Fatal("admin-tls-configuration-failed", err)
@@ -488,4 +495,41 @@ func initializeMetron(logger lager.Logger, repConfig config.RepConfig) (loggingc
 	}
 
 	return client, nil
+}
+
+func verifyCertificate(serverCertFile string) error {
+	certBytes, err := ioutil.ReadFile(serverCertFile)
+	if err != nil {
+		return err
+	}
+
+	block, pemByte := pem.Decode([]byte(strings.TrimSpace(string(certBytes))))
+	pemCertsByte := append(block.Bytes, pemByte...)
+	certs, err := x509.ParseCertificates(pemCertsByte)
+	if err != nil {
+		return err
+	}
+
+	var ipMatched, domainMatched bool
+	for _, cert := range certs {
+		for _, ip := range cert.IPAddresses {
+			if ip.Equal(net.ParseIP("127.0.0.1")) {
+				ipMatched = true
+				break
+			}
+		}
+
+		for _, dns := range cert.DNSNames {
+			if dns == "localhost" {
+				domainMatched = true
+				break
+			}
+		}
+	}
+
+	if ipMatched || domainMatched {
+		return nil
+	}
+
+	return errors.New("invalid SAN metadata. certificate needs to contain ip or localhost SAN metadata.")
 }
