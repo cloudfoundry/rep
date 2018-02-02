@@ -152,17 +152,8 @@ func main() {
 		repConfig.ProxyMemoryAllocationMB,
 		repConfig.EnableContainerProxy,
 	)
-	err = initializeServer(auctionCellRep, executorClient, evacuatable, logger, repConfig, false)
-	if err != nil {
-		logger.Error("failed-to-start-local-http-server", err)
-		os.Exit(1)
-	}
-
-	err = initializeServer(auctionCellRep, executorClient, evacuatable, logger, repConfig, true)
-	if err != nil {
-		logger.Error("failed-to-start-accessible-http-server", err)
-		os.Exit(1)
-	}
+	httpServer := initializeServer(auctionCellRep, executorClient, evacuatable, logger, repConfig, false)
+	httpsServer := initializeServer(auctionCellRep, executorClient, evacuatable, logger, repConfig, true)
 
 	opGenerator := generator.New(
 		repConfig.CellID,
@@ -204,6 +195,8 @@ func main() {
 
 	members := grouper.Members{
 		{"presence", cellPresence},
+		{"http_server", httpServer},
+		{"https_server", httpsServer},
 		{"evacuation-cleanup", cleanup},
 		{"bulker", bulker},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
@@ -328,7 +321,7 @@ func initializeServer(
 	logger lager.Logger,
 	repConfig config.RepConfig,
 	networkAccessible bool,
-) error {
+) ifrit.Runner {
 	handlers := getHandlers(logger, auctionCellRep, executorClient, evacuatable, repConfig.EnableLegacyAPIServer, networkAccessible)
 	routes := getRoutes(repConfig.EnableLegacyAPIServer, networkAccessible)
 	router, err := rata.NewRouter(routes, handlers)
@@ -366,23 +359,31 @@ func initializeServer(
 	return startServer(listenAddress, router)
 }
 
-func startTLSServer(addr string, handler http.Handler, tlsConfig *tls.Config) error {
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		return err
-	}
-	listener = tls.NewListener(listener, tlsConfig)
-	go http.Serve(listener, handler)
-	return nil
+func startTLSServer(addr string, handler http.Handler, tlsConfig *tls.Config) ifrit.Runner {
+	return ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
+		listener, err := net.Listen("tcp", addr)
+		if err != nil {
+			return err
+		}
+		listener = tls.NewListener(listener, tlsConfig)
+		close(ready)
+		go http.Serve(listener, handler)
+		<-signals
+		return listener.Close()
+	})
 }
 
-func startServer(addr string, handler http.Handler) error {
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		return err
-	}
-	go http.Serve(listener, handler)
-	return nil
+func startServer(addr string, handler http.Handler) ifrit.Runner {
+	return ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
+		listener, err := net.Listen("tcp", addr)
+		if err != nil {
+			return err
+		}
+		close(ready)
+		go http.Serve(listener, handler)
+		<-signals
+		return listener.Close()
+	})
 }
 
 func getHandlers(

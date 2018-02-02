@@ -1082,6 +1082,16 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 			Consistently(runner.Session).ShouldNot(Exit())
 		})
 
+		It("ping should fail", func() {
+			Consistently(func() bool {
+				resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
+				if err != nil {
+					return true
+				}
+				return resp.StatusCode != http.StatusOK
+			}, 5*time.Second).Should(BeTrue())
+		})
+
 		Context("when Garden starts", func() {
 			JustBeforeEach(func() {
 				fakeGarden.Start()
@@ -1091,6 +1101,47 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 
 			It("should connect", func() {
 				Eventually(runner.Session.Buffer(), 5*time.Second).Should(gbytes.Say("started"))
+			})
+
+			Context("while the healthcheck container is being created", func() {
+				var (
+					blockCh chan struct{}
+				)
+
+				BeforeEach(func() {
+					blockCh = make(chan struct{})
+				})
+
+				AfterEach(func() {
+					close(blockCh)
+				})
+
+				JustBeforeEach(func() {
+					// TODO: block the create call
+					fakeGarden.RouteToHandler("POST", "/containers/healthcheck-container/processes", http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+						<-blockCh
+					}))
+				})
+
+				It("ping should fail", func() {
+					Consistently(func() bool {
+						resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
+						if err != nil {
+							return true
+						}
+						return resp.StatusCode != http.StatusOK
+					}, 5*time.Second).Should(BeTrue())
+				})
+			})
+
+			It("ping should succeed", func() {
+				Eventually(func() bool {
+					resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
+					if err != nil {
+						return true
+					}
+					return resp.StatusCode != http.StatusOK
+				}, 5*time.Second).Should(BeFalse())
 			})
 		})
 	})
