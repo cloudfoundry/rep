@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
@@ -9,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -45,7 +47,6 @@ import (
 	"github.com/nu7hatch/gouuid"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
-	"github.com/tedsuo/ifrit/http_server"
 	"github.com/tedsuo/ifrit/sigmon"
 	"github.com/tedsuo/rata"
 )
@@ -151,8 +152,18 @@ func main() {
 		repConfig.ProxyMemoryAllocationMB,
 		repConfig.EnableContainerProxy,
 	)
-	httpServer := initializeServer(auctionCellRep, executorClient, evacuatable, logger, repConfig, false)
-	httpsServer := initializeServer(auctionCellRep, executorClient, evacuatable, logger, repConfig, true)
+	err = initializeServer(auctionCellRep, executorClient, evacuatable, logger, repConfig, false)
+	if err != nil {
+		logger.Error("failed-to-start-local-http-server", err)
+		os.Exit(1)
+	}
+
+	err = initializeServer(auctionCellRep, executorClient, evacuatable, logger, repConfig, true)
+	if err != nil {
+		logger.Error("failed-to-start-accessible-http-server", err)
+		os.Exit(1)
+	}
+
 	opGenerator := generator.New(
 		repConfig.CellID,
 		bbsClient,
@@ -193,8 +204,6 @@ func main() {
 
 	members := grouper.Members{
 		{"presence", cellPresence},
-		{"http_server", httpServer},
-		{"https_server", httpsServer},
 		{"evacuation-cleanup", cleanup},
 		{"bulker", bulker},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
@@ -319,7 +328,7 @@ func initializeServer(
 	logger lager.Logger,
 	repConfig config.RepConfig,
 	networkAccessible bool,
-) ifrit.Runner {
+) error {
 	handlers := getHandlers(logger, auctionCellRep, executorClient, evacuatable, repConfig.EnableLegacyAPIServer, networkAccessible)
 	routes := getRoutes(repConfig.EnableLegacyAPIServer, networkAccessible)
 	router, err := rata.NewRouter(routes, handlers)
@@ -338,7 +347,7 @@ func initializeServer(
 		if err != nil {
 			logger.Fatal("tls-configuration-failed", err)
 		}
-		return http_server.NewTLSServer(listenAddress, router, tlsConfig)
+		return startTLSServer(listenAddress, router, tlsConfig)
 	}
 
 	if repConfig.RequireAdminTLS && !repConfig.EnableLegacyAPIServer {
@@ -350,11 +359,30 @@ func initializeServer(
 		if err != nil {
 			logger.Fatal("admin-tls-configuration-failed", err)
 		}
-		return http_server.NewTLSServer(listenAddress, router, tlsConfig)
+		return startTLSServer(listenAddress, router, tlsConfig)
 	}
 	logger.Info("making-http-server", lager.Data{"config": repConfig})
 
-	return http_server.New(listenAddress, router)
+	return startServer(listenAddress, router)
+}
+
+func startTLSServer(addr string, handler http.Handler, tlsConfig *tls.Config) error {
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	listener = tls.NewListener(listener, tlsConfig)
+	go http.Serve(listener, handler)
+	return nil
+}
+
+func startServer(addr string, handler http.Handler) error {
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	go http.Serve(listener, handler)
+	return nil
 }
 
 func getHandlers(
