@@ -773,15 +773,12 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 								representativePath,
 								repConfig,
 							)
-							config, err := cfhttp.NewTLSConfig(repConfig.PathToTLSCert, repConfig.PathToTLSKey, repConfig.PathToTLSCACert)
-							Expect(err).NotTo(HaveOccurred())
-							client = &http.Client{Transport: &http.Transport{TLSClientConfig: config}}
+							runner.StartCheck = ""
 						})
 
 						It("serves the localhost-only endpoints over TLS", func() {
-							resp, err := client.Get(fmt.Sprintf("https://localhost:%d/ping", serverPort))
-							Expect(err).NotTo(HaveOccurred())
-							Expect(resp.StatusCode).To(Equal(http.StatusOK))
+							Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
+							Eventually(runner.Session.ExitCode).Should(Equal(2))
 						})
 					})
 

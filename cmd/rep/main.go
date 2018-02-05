@@ -539,26 +539,13 @@ func verifyCertificate(serverCertFile string) error {
 		return err
 	}
 
-	var ipMatched, domainMatched bool
 	for _, cert := range certs {
 		for _, ip := range cert.IPAddresses {
 			if ip.Equal(net.ParseIP("127.0.0.1")) {
-				ipMatched = true
-				break
-			}
-		}
-
-		for _, dns := range cert.DNSNames {
-			if dns == "localhost" {
-				domainMatched = true
-				break
+				return nil
 			}
 		}
 	}
 
-	if ipMatched || domainMatched {
-		return nil
-	}
-
-	return errors.New("invalid SAN metadata. certificate needs to contain ip or localhost SAN metadata.")
+	return errors.New("invalid SAN metadata. certificate needs to contain 127.0.0.1 for IP SAN metadata.")
 }
