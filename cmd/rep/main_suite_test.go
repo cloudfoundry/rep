@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"path"
 	"strconv"
 	"strings"
 	"testing"
@@ -86,10 +88,10 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	// default (1 second)
 	SetDefaultEventuallyTimeout(5 * time.Second)
 
-	path := string(pathsByte)
-	representativePath = strings.Split(path, ",")[0]
-	locketBinPath = strings.Split(path, ",")[1]
-	bbsBinPath = strings.Split(path, ",")[2]
+	strPath := string(pathsByte)
+	representativePath = strings.Split(strPath, ",")[0]
+	locketBinPath = strings.Split(strPath, ",")[1]
+	bbsBinPath = strings.Split(strPath, ",")[2]
 
 	cellID = "the_rep_id-" + strconv.Itoa(GinkgoParallelNode())
 
@@ -120,11 +122,11 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	healthAddress := fmt.Sprintf("127.0.0.1:%d", healthPort)
 
 	bbsURL = &url.URL{
-		Scheme: "http",
+		Scheme: "https",
 		Host:   bbsAddress,
 	}
 
-	bbsClient = bbs.NewClient(bbsURL.String())
+	fixturesPath := path.Join(os.Getenv("GOPATH"), "src/code.cloudfoundry.org/rep/cmd/rep/fixtures")
 
 	auctioneerServer = ghttp.NewServer()
 	auctioneerServer.UnhandledRequestStatusCode = http.StatusAccepted
@@ -144,6 +146,10 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 			EncryptionKeys: map[string]string{"label": "key"},
 			ActiveKeyLabel: "label",
 		},
+
+		CaFile:   path.Join(fixturesPath, "green-certs", "server-ca.crt"),
+		CertFile: path.Join(fixturesPath, "green-certs", "server.crt"),
+		KeyFile:  path.Join(fixturesPath, "green-certs", "server.key"),
 	}
 })
 
