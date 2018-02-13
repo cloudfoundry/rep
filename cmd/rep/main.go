@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -335,15 +334,15 @@ func initializeServer(
 		listenAddress = repConfig.ListenAddrSecurable
 	}
 
-	if networkAccessible && repConfig.RequireTLS {
-		tlsConfig, err := cfhttp.NewTLSConfig(repConfig.ServerCertFile, repConfig.ServerKeyFile, repConfig.CaCertFile)
+	if networkAccessible {
+		tlsConfig, err := cfhttp.NewTLSConfig(repConfig.CertFile, repConfig.KeyFile, repConfig.CaCertFile)
 		if err != nil {
 			logger.Fatal("tls-configuration-failed", err)
 		}
 		return startTLSServer(listenAddress, router, tlsConfig)
 	}
 
-	if repConfig.RequireAdminTLS && !repConfig.EnableLegacyAPIServer {
+	if !repConfig.EnableLegacyAPIServer {
 		err := verifyCertificate(repConfig.PathToTLSCert)
 		if err != nil {
 			logger.Fatal("tls-configuration-failed", err)
@@ -412,25 +411,16 @@ func initializeBBSClient(
 	logger lager.Logger,
 	repConfig config.RepConfig,
 ) bbs.InternalClient {
-	bbsURL, err := url.Parse(repConfig.BBSAddress)
-	if err != nil {
-		logger.Fatal("Invalid BBS URL", err)
-	}
-
-	if bbsURL.Scheme != "https" {
-		return bbs.NewClient(repConfig.BBSAddress)
-	}
-
-	bbsClient, err := bbs.NewSecureClient(
+	bbsClient, err := bbs.NewClient(
 		repConfig.BBSAddress,
-		repConfig.BBSCACertFile,
-		repConfig.BBSClientCertFile,
-		repConfig.BBSClientKeyFile,
+		repConfig.CaCertFile,
+		repConfig.CertFile,
+		repConfig.KeyFile,
 		repConfig.BBSClientSessionCacheSize,
 		repConfig.BBSMaxIdleConnsPerHost,
 	)
 	if err != nil {
-		logger.Fatal("Failed to configure secure BBS client", err)
+		logger.Fatal("failed-to-configure-secure-BBS-client", err)
 	}
 	return bbsClient
 }
@@ -474,11 +464,7 @@ func repBaseHostName(advertiseDomain string) string {
 
 func repURL(config config.RepConfig) string {
 	port := strings.Split(config.ListenAddrSecurable, ":")[1]
-	if config.RequireTLS {
-		return fmt.Sprintf("https://%s.%s:%s", repHost(config.CellID), config.AdvertiseDomain, port)
-	}
-
-	return fmt.Sprintf("http://%s.%s:%s", repHost(config.CellID), config.AdvertiseDomain, port)
+	return fmt.Sprintf("https://%s.%s:%s", repHost(config.CellID), config.AdvertiseDomain, port)
 }
 
 func repAddress(logger lager.Logger, config config.RepConfig) string {

@@ -57,6 +57,7 @@ var _ = Describe("The Rep", func() {
 		logger                              *lagertest.TestLogger
 		basePath                            string
 		respondWithSuccessToCreateContainer bool
+		caFile, certFile, keyFile           string
 
 		flushEvents chan struct{}
 	)
@@ -75,6 +76,12 @@ var _ = Describe("The Rep", func() {
 		respondWithSuccessToCreateContainer = true
 
 		basePath = path.Join(os.Getenv("GOPATH"), "src/code.cloudfoundry.org/rep/cmd/rep/fixtures")
+		var err error
+		caFile := path.Join(basePath, "green-certs", "server-ca.crt")
+		clientCertFile := path.Join(basePath, "green-certs", "client.crt")
+		clientKeyFile := path.Join(basePath, "green-certs", "client.key")
+		bbsClient, err = bbs.NewClient(bbsURL.String(), caFile, clientCertFile, clientKeyFile, 0, 0)
+		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(getActualLRPGroups(logger), 5*pollingInterval).Should(BeEmpty())
 		flushEvents = make(chan struct{})
@@ -108,6 +115,10 @@ var _ = Describe("The Rep", func() {
 		rootFSName = "the-rootfs"
 		rootFSPath = "/path/to/rootfs"
 
+		caFile = path.Join(basePath, "green-certs", "server-ca.crt")
+		certFile = path.Join(basePath, "green-certs", "server.crt")
+		keyFile = path.Join(basePath, "green-certs", "server.key")
+
 		repConfig = config.RepConfig{
 			PreloadedRootFS:       []config.RootFS{{Name: rootFSName, Path: rootFSPath}},
 			SupportedProviders:    []string{"docker"},
@@ -117,8 +128,10 @@ var _ = Describe("The Rep", func() {
 			BBSAddress:            bbsURL.String(),
 			ListenAddr:            fmt.Sprintf("0.0.0.0:%d", serverPort),
 			ListenAddrSecurable:   fmt.Sprintf("0.0.0.0:%d", serverPortSecurable),
-			RequireTLS:            false,
 			LockRetryInterval:     durationjson.Duration(1 * time.Second),
+			CaCertFile:            caFile,
+			CertFile:              certFile,
+			KeyFile:               keyFile,
 			ExecutorConfig: executorinit.ExecutorConfig{
 				GardenAddr:                   fakeGarden.HTTPTestServer.Listener.Addr().String(),
 				GardenNetwork:                "tcp",
@@ -407,7 +420,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					state, err := client.State(logger)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(state.CellID).To(Equal(cellID))
-					url := fmt.Sprintf("http://%s.cell.service.cf.internal:%d", cellID, serverPortSecurable)
+					url := fmt.Sprintf("https://%s.cell.service.cf.internal:%d", cellID, serverPortSecurable)
 					url = strings.Replace(url, "_", "-", -1)
 					Expect(state.RepURL).To(Equal(url))
 				})
@@ -618,113 +631,115 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 			})
 		})
 
-		Describe("Secure Server", func() {
+		Context("when an incorrect server key is supplied", func() {
+			BeforeEach(func() {
+				repConfig.CaCertFile = path.Join(basePath, "green-certs", "server-ca.crt")
+				repConfig.CertFile = path.Join(basePath, "green-certs", "server.crt")
+				repConfig.KeyFile = path.Join(basePath, "blue-certs", "server.key")
+				runner = testrunner.New(
+					representativePath,
+					repConfig,
+				)
+				runner.StartCheck = ""
+			})
+
+			It("fails to start secure server", func() {
+				Eventually(runner.Session.Buffer()).Should(gbytes.Say("failed-to-configure-secure-BBS-client"))
+				Eventually(runner.Session.ExitCode).Should(Equal(2))
+			})
+		})
+
+		Context("when invalid values for certificates are supplied", func() {
+			BeforeEach(func() {
+				repConfig.CaCertFile = ""
+				repConfig.CertFile = ""
+				repConfig.KeyFile = ""
+				runner = testrunner.New(
+					representativePath,
+					repConfig,
+				)
+				runner.StartCheck = ""
+			})
+
+			It("fails to start secure server", func() {
+				Eventually(runner.Session.Buffer()).Should(gbytes.Say("failed-to-configure-secure-BBS-client"))
+				Eventually(runner.Session.ExitCode).Should(Equal(2))
+			})
+		})
+
+		Context("legacy API endpoints disabled", func() {
 			var (
-				clientFactory                                            rep.ClientFactory
-				client                                                   *http.Client
-				tlsConfig                                                *rep.TLSConfig
-				err                                                      error
-				caFile, certFile, keyFile, clientCertFile, clientKeyFile string
+				client *http.Client
 			)
 
 			BeforeEach(func() {
-				client = cfhttp.NewClient()
-				caFile = path.Join(basePath, "green-certs", "server-ca.crt")
-				certFile = path.Join(basePath, "green-certs", "server.crt")
-				keyFile = path.Join(basePath, "green-certs", "server.key")
-				clientCertFile = path.Join(basePath, "green-certs", "client.crt")
-				clientKeyFile = path.Join(basePath, "green-certs", "client.key")
-				tlsConfig = &rep.TLSConfig{}
+				repConfig.EnableLegacyAPIServer = false
 			})
 
-			JustBeforeEach(func() {
-				clientFactory, err = rep.NewClientFactory(client, client, tlsConfig)
-			})
-
-			Context("when requireTLS is set to false", func() {
-				var (
-					addr string
-				)
-
+			Context("when invalid values for certificates are supplied", func() {
 				BeforeEach(func() {
-					addr = fmt.Sprintf("http://127.0.0.1:%d", serverPortSecurable)
+					repConfig.PathToTLSCACert = ""
+					repConfig.PathToTLSCert = ""
+					repConfig.PathToTLSKey = ""
+					runner = testrunner.New(
+						representativePath,
+						repConfig,
+					)
+					runner.StartCheck = ""
 				})
 
-				It("creates an insecure server", func() {
-					client, err := clientFactory.CreateClient(addr, "")
-					Expect(err).NotTo(HaveOccurred())
-					_, err = client.State(logger)
-					Expect(err).NotTo(HaveOccurred())
-				})
-
-				Context("ClientFactory", func() {
-					canConnectSuccessfully := func() {
-						client, err := clientFactory.CreateClient("", addr)
-						Expect(err).NotTo(HaveOccurred())
-						_, err = client.State(logger)
-						Expect(err).NotTo(HaveOccurred())
-					}
-
-					Context("doesn't support tls", func() {
-						It("can create a new client using the address", func() {
-							canConnectSuccessfully()
-						})
-					})
-
-					Context("prefers tls", func() {
-						BeforeEach(func() {
-							tlsConfig = &rep.TLSConfig{
-								RequireTLS: false,
-								CertFile:   clientCertFile,
-								KeyFile:    clientKeyFile,
-								CaCertFile: caFile,
-							}
-						})
-
-						It("can connect to the insecure url", func() {
-							canConnectSuccessfully()
-						})
-					})
-
-					Context("requires tls", func() {
-						BeforeEach(func() {
-							tlsConfig = &rep.TLSConfig{RequireTLS: true}
-						})
-
-						It("returns an error when creating a new client", func() {
-							_, err := clientFactory.CreateClient("", addr)
-							Expect(err).To(MatchError(ContainSubstring("https scheme is required")))
-						})
-					})
+				It("fails to start secure server", func() {
+					Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
+					Eventually(runner.Session.ExitCode).Should(Equal(2))
 				})
 			})
 
-			Context("when RequireAdminTLS is set to true and legacy API endpoints disabled", func() {
+			Context("when correct server cert and key are supplied", func() {
 				BeforeEach(func() {
-					repConfig.RequireAdminTLS = true
-					repConfig.EnableLegacyAPIServer = false
+					caFile = path.Join(basePath, "green-certs", "server-ca.crt")
+					certFile = path.Join(basePath, "green-certs", "server.crt")
+					keyFile = path.Join(basePath, "green-certs", "server.key")
+					repConfig.PathToTLSCACert = caFile
+					repConfig.PathToTLSCert = certFile
+					repConfig.PathToTLSKey = keyFile
+					runner = testrunner.New(
+						representativePath,
+						repConfig,
+					)
+					config, err := cfhttp.NewTLSConfig(repConfig.PathToTLSCert, repConfig.PathToTLSKey, repConfig.PathToTLSCACert)
+					Expect(err).NotTo(HaveOccurred())
+					client = &http.Client{Transport: &http.Transport{TLSClientConfig: config}}
 				})
 
-				Context("when invalid values for certificates are supplied", func() {
+				It("serves the localhost-only endpoints over TLS", func() {
+					resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPort))
+					Expect(err).NotTo(HaveOccurred())
+					Expect(resp.StatusCode).To(Equal(http.StatusOK))
+				})
+
+				Context("when the legacy API endpoints are enabled", func() {
 					BeforeEach(func() {
-						repConfig.PathToTLSCACert = ""
-						repConfig.PathToTLSCert = ""
-						repConfig.PathToTLSKey = ""
+						repConfig.EnableLegacyAPIServer = true
 						runner = testrunner.New(
 							representativePath,
 							repConfig,
 						)
-						runner.StartCheck = ""
 					})
 
-					It("fails to start secure server", func() {
-						Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
-						Eventually(runner.Session.ExitCode).Should(Equal(2))
+					It("serves the endpoints over HTTP", func() {
+						resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
+						Expect(err).NotTo(HaveOccurred())
+						Expect(resp.StatusCode).To(Equal(http.StatusOK))
 					})
 				})
+			})
 
-				Context("when correct server cert and key are supplied", func() {
+			Context("with SANs check", func() {
+				Context("when the domain SAN is present", func() {
 					BeforeEach(func() {
+						caFile = path.Join(basePath, "dnssan-certs", "server-ca.crt")
+						certFile = path.Join(basePath, "dnssan-certs", "server.crt")
+						keyFile = path.Join(basePath, "dnssan-certs", "server.key")
 						repConfig.PathToTLSCACert = caFile
 						repConfig.PathToTLSCert = certFile
 						repConfig.PathToTLSKey = keyFile
@@ -732,289 +747,181 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 							representativePath,
 							repConfig,
 						)
-						config, err := cfhttp.NewTLSConfig(repConfig.PathToTLSCert, repConfig.PathToTLSKey, repConfig.PathToTLSCACert)
-						Expect(err).NotTo(HaveOccurred())
-						client = &http.Client{Transport: &http.Transport{TLSClientConfig: config}}
+						runner.StartCheck = ""
 					})
 
 					It("serves the localhost-only endpoints over TLS", func() {
-						resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPort))
-						Expect(err).NotTo(HaveOccurred())
-						Expect(resp.StatusCode).To(Equal(http.StatusOK))
-					})
-
-					Context("when the legacy API endpoints are enabled", func() {
-						BeforeEach(func() {
-							repConfig.EnableLegacyAPIServer = true
-							runner = testrunner.New(
-								representativePath,
-								repConfig,
-							)
-						})
-
-						It("serves the endpoints over HTTP", func() {
-							resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
-							Expect(err).NotTo(HaveOccurred())
-							Expect(resp.StatusCode).To(Equal(http.StatusOK))
-						})
+						Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
+						Eventually(runner.Session.ExitCode).Should(Equal(2))
 					})
 				})
 
-				Context("with SANs check", func() {
-					Context("when the domain SAN is present", func() {
-						BeforeEach(func() {
-							caFile = path.Join(basePath, "dnssan-certs", "server-ca.crt")
-							certFile = path.Join(basePath, "dnssan-certs", "server.crt")
-							keyFile = path.Join(basePath, "dnssan-certs", "server.key")
-							repConfig.PathToTLSCACert = caFile
-							repConfig.PathToTLSCert = certFile
-							repConfig.PathToTLSKey = keyFile
-							runner = testrunner.New(
-								representativePath,
-								repConfig,
-							)
-							runner.StartCheck = ""
-						})
-
-						It("serves the localhost-only endpoints over TLS", func() {
-							Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
-							Eventually(runner.Session.ExitCode).Should(Equal(2))
-						})
+				Context("when the server cert does not have the correct SANs", func() {
+					BeforeEach(func() {
+						caFile = path.Join(basePath, "rouge-certs", "server-ca.crt")
+						certFile = path.Join(basePath, "rouge-certs", "server.crt")
+						keyFile = path.Join(basePath, "rouge-certs", "server.key")
+						repConfig.PathToTLSCACert = caFile
+						repConfig.PathToTLSCert = certFile
+						repConfig.PathToTLSKey = keyFile
+						runner = testrunner.New(
+							representativePath,
+							repConfig,
+						)
+						runner.StartCheck = ""
 					})
 
-					Context("when the server cert does not have the correct SANs", func() {
-						BeforeEach(func() {
-							caFile = path.Join(basePath, "rouge-certs", "server-ca.crt")
-							certFile = path.Join(basePath, "rouge-certs", "server.crt")
-							keyFile = path.Join(basePath, "rouge-certs", "server.key")
-							repConfig.PathToTLSCACert = caFile
-							repConfig.PathToTLSCert = certFile
-							repConfig.PathToTLSKey = keyFile
-							runner = testrunner.New(
-								representativePath,
-								repConfig,
-							)
-							runner.StartCheck = ""
-						})
-
-						It("serves the localhost-only endpoints over TLS", func() {
-							Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
-							Eventually(runner.Session.ExitCode).Should(Equal(2))
-						})
+					It("serves the localhost-only endpoints over TLS", func() {
+						Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
+						Eventually(runner.Session.ExitCode).Should(Equal(2))
 					})
 				})
 			})
+		})
 
-			Context("when requireTLS is set to true", func() {
+		Context("for the network accessible https server", func() {
+			var client *http.Client
+			BeforeEach(func() {
+				caFile = path.Join(basePath, "green-certs", "server-ca.crt")
+				certFile = path.Join(basePath, "green-certs", "server.crt")
+				keyFile = path.Join(basePath, "green-certs", "server.key")
+				config, err := cfhttp.NewTLSConfig(certFile, keyFile, caFile)
+				Expect(err).NotTo(HaveOccurred())
+				client = &http.Client{Transport: &http.Transport{TLSClientConfig: config}}
+			})
+
+			It("does not have unsecured routes", func() {
+				resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPortSecurable))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
+			})
+
+			It("has secured routes", func() {
+				resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/state", serverPortSecurable))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusOK))
+			})
+		})
+
+		Context("when the Rep has an http server accessible on all interfaces", func() {
+			BeforeEach(func() {
+				repConfig.EnableLegacyAPIServer = true
+
+				runner = testrunner.New(
+					representativePath,
+					repConfig,
+				)
+			})
+
+			It("has all secure and insecure routes on the locally accessible server", func() {
+				resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusOK))
+
+				resp, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d/state", serverPort))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusOK))
+			})
+		})
+
+		// CEV: Can we delete this test - as HTTPS is now enforced?
+		//
+		// Context("when the Rep has an http server that is only locally accessible", func() {
+		// 	BeforeEach(func() {
+		// 		repConfig.EnableLegacyAPIServer = false
+
+		// 		runner = testrunner.New(
+		// 			representativePath,
+		// 			repConfig,
+		// 		)
+		// 	})
+
+		// 	It("has only insecure routes on the locally accessible server", func() {
+		// 		resp, err := http.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPort))
+		// 		Expect(err).NotTo(HaveOccurred())
+		// 		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+
+		// 		resp, err = http.Get(fmt.Sprintf("https://127.0.0.1:%d/state", serverPort))
+		// 		Expect(err).NotTo(HaveOccurred())
+		// 		Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
+		// 	})
+		// })
+
+		Context("ClientFactory", func() {
+			var (
+				addr          string
+				tlsConfig     *rep.TLSConfig
+				client        *http.Client
+				clientFactory rep.ClientFactory
+			)
+
+			BeforeEach(func() {
+				caFile = path.Join(basePath, "green-certs", "server-ca.crt")
+				certFile = path.Join(basePath, "green-certs", "server.crt")
+				keyFile = path.Join(basePath, "green-certs", "server.key")
+			})
+
+			JustBeforeEach(func() {
+				addr = fmt.Sprintf("https://127.0.0.1:%d", serverPortSecurable)
+				client = cfhttp.NewClient()
+				var err error
+				clientFactory, err = rep.NewClientFactory(client, client, tlsConfig)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			canConnectSuccessfully := func() {
+				client, err := clientFactory.CreateClient("", addr)
+				Expect(err).NotTo(HaveOccurred())
+				_, err = client.State(logger)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			Context("doesn't support tls", func() {
 				BeforeEach(func() {
-					repConfig.RequireTLS = true
+					tlsConfig = nil
 				})
 
-				Context("when invalid values for certificates are supplied", func() {
-					BeforeEach(func() {
-						repConfig.CaCertFile = ""
-						repConfig.ServerCertFile = ""
-						repConfig.ServerKeyFile = ""
-						runner = testrunner.New(
-							representativePath,
-							repConfig,
-						)
-						runner.StartCheck = ""
-					})
+				It("cannot create a new client using the address", func() {
+					_, err := clientFactory.CreateClient("", addr)
+					Expect(err).To(MatchError(ContainSubstring("https scheme not supported")))
+				})
+			})
 
-					It("fails to start secure server", func() {
-						Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
-						Eventually(runner.Session.ExitCode).Should(Equal(2))
-					})
+			Context("prefers tls", func() {
+				BeforeEach(func() {
+					tlsConfig = &rep.TLSConfig{
+						RequireTLS: false,
+						CaCertFile: caFile,
+						KeyFile:    keyFile,
+						CertFile:   certFile,
+					}
 				})
 
-				Context("when an incorrect server key is supplied", func() {
-					BeforeEach(func() {
-						repConfig.CaCertFile = path.Join(basePath, "green-certs", "server-ca.crt")
-						repConfig.ServerCertFile = path.Join(basePath, "green-certs", "server.crt")
-						repConfig.ServerKeyFile = path.Join(basePath, "blue-certs", "server.key")
-						runner = testrunner.New(
-							representativePath,
-							repConfig,
-						)
-						runner.StartCheck = ""
-					})
+				It("can connect to the secure url", func() {
+					canConnectSuccessfully()
+				})
+			})
 
-					It("fails to start secure server", func() {
-						Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
-						Eventually(runner.Session.ExitCode).Should(Equal(2))
-					})
+			Context("requires tls", func() {
+				BeforeEach(func() {
+					tlsConfig = &rep.TLSConfig{
+						RequireTLS: true,
+						CaCertFile: caFile,
+						KeyFile:    keyFile,
+						CertFile:   certFile,
+					}
 				})
 
-				Context("when correct server cert and key are supplied", func() {
-					BeforeEach(func() {
-						repConfig.CaCertFile = caFile
-						repConfig.ServerCertFile = certFile
-						repConfig.ServerKeyFile = keyFile
-						runner = testrunner.New(
-							representativePath,
-							repConfig,
-						)
-					})
+				It("can connect to the secure url", func() {
+					canConnectSuccessfully()
+				})
 
-					It("runs secure server", func() {
-						Eventually(runner.Session.Buffer()).ShouldNot(gbytes.Say("tls-configuration-failed"))
-					})
-
-					Context("when server is insecurable", func() {
-						BeforeEach(func() {
-							repConfig.EnableLegacyAPIServer = true
-
-							runner = testrunner.New(
-								representativePath,
-								repConfig,
-							)
-						})
-
-						Context("for the secure server", func() {
-							var client *http.Client
-							BeforeEach(func() {
-								tlsConfig = &rep.TLSConfig{
-									RequireTLS: true,
-									CaCertFile: caFile,
-									KeyFile:    clientKeyFile,
-									CertFile:   clientCertFile,
-								}
-								config, err := cfhttp.NewTLSConfig(tlsConfig.CertFile, tlsConfig.KeyFile, tlsConfig.CaCertFile)
-								Expect(err).NotTo(HaveOccurred())
-								client = &http.Client{Transport: &http.Transport{TLSClientConfig: config}}
-							})
-
-							It("does not have unsecured routes on the secure server", func() {
-								resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPortSecurable))
-								Expect(err).NotTo(HaveOccurred())
-								Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
-							})
-
-							It("has secured routes on the secure server", func() {
-								resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/state", serverPortSecurable))
-								Expect(err).NotTo(HaveOccurred())
-								Expect(resp.StatusCode).To(Equal(http.StatusOK))
-							})
-						})
-
-						It("has all secure and insecure routes on the unsecured server", func() {
-							resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
-							Expect(err).NotTo(HaveOccurred())
-							Expect(resp.StatusCode).To(Equal(http.StatusOK))
-
-							resp, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d/state", serverPort))
-							Expect(err).NotTo(HaveOccurred())
-							Expect(resp.StatusCode).To(Equal(http.StatusOK))
-						})
-					})
-
-					Context("when server is not insecurable", func() {
-						BeforeEach(func() {
-							repConfig.EnableLegacyAPIServer = false
-
-							runner = testrunner.New(
-								representativePath,
-								repConfig,
-							)
-						})
-
-						Context("for the secure server", func() {
-							var client *http.Client
-							BeforeEach(func() {
-								tlsConfig = &rep.TLSConfig{
-									RequireTLS: true,
-									CaCertFile: caFile,
-									KeyFile:    clientKeyFile,
-									CertFile:   clientCertFile,
-								}
-								config, err := cfhttp.NewTLSConfig(tlsConfig.CertFile, tlsConfig.KeyFile, tlsConfig.CaCertFile)
-								Expect(err).NotTo(HaveOccurred())
-								client = &http.Client{Transport: &http.Transport{TLSClientConfig: config}}
-							})
-
-							It("does not have insecure routes on the secure server", func() {
-								resp, _ := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPortSecurable))
-								Expect(err).NotTo(HaveOccurred())
-								Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
-							})
-
-							It("has secure routes on the secure server", func() {
-								resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/state", serverPortSecurable))
-								Expect(err).NotTo(HaveOccurred())
-								Expect(resp.StatusCode).To(Equal(http.StatusOK))
-							})
-						})
-
-						It("has only insecure routes on the unsecured server", func() {
-							resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
-							Expect(err).NotTo(HaveOccurred())
-							Expect(resp.StatusCode).To(Equal(http.StatusOK))
-
-							resp, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d/state", serverPort))
-							Expect(err).NotTo(HaveOccurred())
-							Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
-						})
-					})
-
-					Context("ClientFactory", func() {
-						var (
-							addr string
-						)
-
-						BeforeEach(func() {
-							addr = fmt.Sprintf("https://127.0.0.1:%d", serverPortSecurable)
-						})
-
-						canConnectSuccessfully := func() {
-							client, err := clientFactory.CreateClient("", addr)
-							Expect(err).NotTo(HaveOccurred())
-							_, err = client.State(logger)
-							Expect(err).NotTo(HaveOccurred())
-						}
-
-						Context("doesn't support tls", func() {
-							It("cannot create a new client using the address", func() {
-								_, err := clientFactory.CreateClient("", addr)
-								Expect(err).To(MatchError(ContainSubstring("https scheme not supported")))
-							})
-						})
-
-						Context("prefers tls", func() {
-							BeforeEach(func() {
-								tlsConfig = &rep.TLSConfig{
-									RequireTLS: false,
-									CertFile:   clientCertFile,
-									KeyFile:    clientKeyFile,
-									CaCertFile: caFile,
-								}
-							})
-
-							It("can connect to the secure url", func() {
-								canConnectSuccessfully()
-							})
-						})
-
-						Context("requires tls", func() {
-							BeforeEach(func() {
-								tlsConfig = &rep.TLSConfig{
-									RequireTLS: true,
-									CaCertFile: caFile,
-									KeyFile:    clientKeyFile,
-									CertFile:   clientCertFile,
-								}
-							})
-
-							It("can connect to the secure url", func() {
-								canConnectSuccessfully()
-							})
-
-							It("sets a session cache", func() {
-								tlsConfig := client.Transport.(*http.Transport).TLSClientConfig
-								Expect(tlsConfig.ClientSessionCache).NotTo(BeNil())
-							})
-						})
-					})
+				It("sets a session cache", func() {
+					// make sure the client factory change the transport setting of the
+					// client passed in
+					tlsConfig := client.Transport.(*http.Transport).TLSClientConfig
+					Expect(tlsConfig).NotTo(BeNil())
+					Expect(tlsConfig.ClientSessionCache).NotTo(BeNil())
 				})
 			})
 		})
