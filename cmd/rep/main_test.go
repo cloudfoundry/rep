@@ -58,6 +58,7 @@ var _ = Describe("The Rep", func() {
 		basePath                            string
 		respondWithSuccessToCreateContainer bool
 		caFile, certFile, keyFile           string
+		client                              *http.Client
 
 		flushEvents chan struct{}
 	)
@@ -71,12 +72,18 @@ var _ = Describe("The Rep", func() {
 	}
 
 	BeforeEach(func() {
+		basePath = path.Join(os.Getenv("GOPATH"), "src/code.cloudfoundry.org/rep/cmd/rep/fixtures")
+		caFile = path.Join(basePath, "green-certs", "server-ca.crt")
+		certFile = path.Join(basePath, "green-certs", "server.crt")
+		keyFile = path.Join(basePath, "green-certs", "server.key")
+		tlsConfig, err := cfhttp.NewTLSConfig(certFile, keyFile, caFile)
+		Expect(err).NotTo(HaveOccurred())
+		client = &http.Client{Transport: &http.Transport{TLSClientConfig: tlsConfig}}
+
 		logger = lagertest.NewTestLogger("test")
 
 		respondWithSuccessToCreateContainer = true
 
-		basePath = path.Join(os.Getenv("GOPATH"), "src/code.cloudfoundry.org/rep/cmd/rep/fixtures")
-		var err error
 		caFile := path.Join(basePath, "green-certs", "server-ca.crt")
 		clientCertFile := path.Join(basePath, "green-certs", "client.crt")
 		clientKeyFile := path.Join(basePath, "green-certs", "client.key")
@@ -133,6 +140,9 @@ var _ = Describe("The Rep", func() {
 			CertFile:              certFile,
 			KeyFile:               keyFile,
 			ExecutorConfig: executorinit.ExecutorConfig{
+				PathToTLSCACert:              caFile,
+				PathToTLSCert:                certFile,
+				PathToTLSKey:                 keyFile,
 				GardenAddr:                   fakeGarden.HTTPTestServer.Listener.Addr().String(),
 				GardenNetwork:                "tcp",
 				GardenHealthcheckProcessUser: "me",
@@ -668,10 +678,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 		})
 
 		Context("legacy API endpoints disabled", func() {
-			var (
-				client *http.Client
-			)
-
 			BeforeEach(func() {
 				repConfig.EnableLegacyAPIServer = false
 			})
@@ -706,9 +712,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 						representativePath,
 						repConfig,
 					)
-					config, err := cfhttp.NewTLSConfig(repConfig.PathToTLSCert, repConfig.PathToTLSKey, repConfig.PathToTLSCACert)
-					Expect(err).NotTo(HaveOccurred())
-					client = &http.Client{Transport: &http.Transport{TLSClientConfig: config}}
 				})
 
 				It("serves the localhost-only endpoints over TLS", func() {
@@ -780,16 +783,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 		})
 
 		Context("for the network accessible https server", func() {
-			var client *http.Client
-			BeforeEach(func() {
-				caFile = path.Join(basePath, "green-certs", "server-ca.crt")
-				certFile = path.Join(basePath, "green-certs", "server.crt")
-				keyFile = path.Join(basePath, "green-certs", "server.key")
-				config, err := cfhttp.NewTLSConfig(certFile, keyFile, caFile)
-				Expect(err).NotTo(HaveOccurred())
-				client = &http.Client{Transport: &http.Transport{TLSClientConfig: config}}
-			})
-
 			It("does not have unsecured routes", func() {
 				resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPortSecurable))
 				Expect(err).NotTo(HaveOccurred())
@@ -824,28 +817,26 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 			})
 		})
 
-		// CEV: Can we delete this test - as HTTPS is now enforced?
-		//
-		// Context("when the Rep has an http server that is only locally accessible", func() {
-		// 	BeforeEach(func() {
-		// 		repConfig.EnableLegacyAPIServer = false
+		Context("when the Rep has an http server that is only locally accessible", func() {
+			BeforeEach(func() {
+				repConfig.EnableLegacyAPIServer = false
 
-		// 		runner = testrunner.New(
-		// 			representativePath,
-		// 			repConfig,
-		// 		)
-		// 	})
+				runner = testrunner.New(
+					representativePath,
+					repConfig,
+				)
+			})
 
-		// 	It("has only insecure routes on the locally accessible server", func() {
-		// 		resp, err := http.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPort))
-		// 		Expect(err).NotTo(HaveOccurred())
-		// 		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+			It("has only insecure routes on the locally accessible server", func() {
+				resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPort))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusOK))
 
-		// 		resp, err = http.Get(fmt.Sprintf("https://127.0.0.1:%d/state", serverPort))
-		// 		Expect(err).NotTo(HaveOccurred())
-		// 		Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
-		// 	})
-		// })
+				resp, err = client.Get(fmt.Sprintf("https://127.0.0.1:%d/state", serverPort))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
+			})
+		})
 
 		Context("ClientFactory", func() {
 			var (
