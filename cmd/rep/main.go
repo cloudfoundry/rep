@@ -247,7 +247,7 @@ func initializeCellPresence(
 	preloadedRootFSes []string,
 	repUrl string,
 ) ifrit.Runner {
-	if repConfig.LocketAddress != "" {
+	if repConfig.CellRegistrationsLocketEnabled {
 		locketClient, err := locket.NewClient(logger, repConfig.ClientLocketConfig)
 		if err != nil {
 			logger.Fatal("failed-to-construct-locket-client", err)

@@ -133,15 +133,16 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	auctioneerServer.AllowUnhandledRequests = true
 
 	bbsConfig = bbsconfig.BBSConfig{
-		ListenAddress:                 bbsAddress,
-		AdvertiseURL:                  bbsURL.String(),
-		AuctioneerAddress:             auctioneerServer.URL(),
-		DatabaseDriver:                sqlRunner.DriverName(),
-		DatabaseConnectionString:      sqlRunner.ConnectionString(),
-		DetectConsulCellRegistrations: true,
-		ConsulCluster:                 consulRunner.ConsulCluster(),
-		HealthAddress:                 healthAddress,
-
+		ListenAddress:                  bbsAddress,
+		AdvertiseURL:                   bbsURL.String(),
+		AuctioneerAddress:              auctioneerServer.URL(),
+		DatabaseDriver:                 sqlRunner.DriverName(),
+		DatabaseConnectionString:       sqlRunner.ConnectionString(),
+		DetectConsulCellRegistrations:  true,
+		ConsulCluster:                  consulRunner.ConsulCluster(),
+		HealthAddress:                  healthAddress,
+		LocksLocketEnabled:             false,
+		CellRegistrationsLocketEnabled: false,
 		EncryptionConfig: encryption.EncryptionConfig{
 			EncryptionKeys: map[string]string{"label": "key"},
 			ActiveKeyLabel: "label",

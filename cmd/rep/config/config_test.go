@@ -74,6 +74,7 @@ var _ = Describe("RepConfig", func() {
 			"listen_addr_securable": "0.0.0.0:8081",
 			"lock_retry_interval": "5s",
 			"lock_ttl": "5s",
+			"cell_registrations_locket_enabled": true,
 			"locket_address": "0.0.0.0:909090909",
 			"locket_ca_cert_file": "locket-ca-cert",
 			"locket_client_cert_file": "locket-client-cert",
@@ -147,6 +148,7 @@ var _ = Describe("RepConfig", func() {
 			BBSMaxIdleConnsPerHost:    10,
 			CaCertFile:                "/tmp/ca_cert",
 			CellID:                    "cell_z1/10",
+			CellRegistrationsLocketEnabled: true,
 			ClientLocketConfig: locket.ClientLocketConfig{
 				LocketAddress:        "0.0.0.0:909090909",
 				LocketCACertFile:     "locket-ca-cert",

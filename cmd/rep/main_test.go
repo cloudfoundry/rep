@@ -139,6 +139,7 @@ var _ = Describe("The Rep", func() {
 			CaCertFile:            caFile,
 			CertFile:              certFile,
 			KeyFile:               keyFile,
+			CellRegistrationsLocketEnabled: false,
 			ExecutorConfig: executorinit.ExecutorConfig{
 				PathToTLSCACert:              caFile,
 				PathToTLSCert:                certFile,
@@ -178,6 +179,18 @@ var _ = Describe("The Rep", func() {
 	Context("the rep doesn't start", func() {
 		BeforeEach(func() {
 			fakeGarden.Start()
+		})
+
+		Context("when locket registration is enabled and locket address is not provided", func() {
+			BeforeEach(func() {
+				repConfig.CellRegistrationsLocketEnabled = true
+				repConfig.LocketAddress = ""
+			})
+
+			It("logs that the locket address is required and exits non zero", func() {
+				Eventually(runner.Session).Should(Exit(2))
+				Expect(runner.Session).To(gbytes.Say("invalid-locket-config"))
+			})
 		})
 
 		Context("legacy API endpoints disabled", func() {
@@ -445,7 +458,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 		Describe("maintaining presence", func() {
 			Context("with consul", func() {
 				BeforeEach(func() {
-					repConfig.LocketAddress = ""
+					repConfig.CellRegistrationsLocketEnabled = false
 				})
 
 				It("should maintain presence", func() {
@@ -484,6 +497,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					})
 					locketProcess = ginkgomon.Invoke(locketRunner)
 
+					repConfig.CellRegistrationsLocketEnabled = true
 					repConfig.ClientLocketConfig = locketrunner.ClientLocketConfig()
 					repConfig.LocketAddress = locketAddress
 				})
