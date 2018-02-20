@@ -11,23 +11,20 @@ import (
 
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 )
 
 type Runner struct {
 	binPath           string
 	Session           *gexec.Session
-	StartCheck        string
 	repConfig         config.RepConfig
 	repConfigFilePath string
 }
 
 func New(binPath string, repConfig config.RepConfig) *Runner {
 	return &Runner{
-		binPath:    binPath,
-		StartCheck: "rep.started",
-		repConfig:  repConfig,
+		binPath:   binPath,
+		repConfig: repConfig,
 	}
 }
 
@@ -63,8 +60,6 @@ func (r *Runner) Start() {
 
 	Expect(err).NotTo(HaveOccurred())
 	r.Session = repSession
-
-	Eventually(r.Session.Buffer(), 2).Should(gbytes.Say(r.StartCheck))
 }
 
 func (r *Runner) Stop() {

@@ -157,8 +157,6 @@ var _ = Describe("The Rep", func() {
 			EvacuationTimeout:     durationjson.Duration(evacuationTimeout),
 			EnableLegacyAPIServer: true,
 		}
-
-		runner = testrunner.New(representativePath, repConfig)
 	})
 
 	JustBeforeEach(func() {
@@ -166,6 +164,7 @@ var _ = Describe("The Rep", func() {
 			fakeGarden.RouteToHandler("POST", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{"handle": "healthcheck-container"}))
 		}
 
+		runner = testrunner.New(representativePath, repConfig)
 		runner.Start()
 	})
 
@@ -176,9 +175,142 @@ var _ = Describe("The Rep", func() {
 		close(done)
 	})
 
+	Context("the rep doesn't start", func() {
+		BeforeEach(func() {
+			fakeGarden.Start()
+		})
+
+		Context("legacy API endpoints disabled", func() {
+			BeforeEach(func() {
+				repConfig.EnableLegacyAPIServer = false
+			})
+
+			Context("when the SAN is set to localhost instead of 127.0.0.1", func() {
+				BeforeEach(func() {
+					caFile = path.Join(basePath, "dnssan-certs", "server-ca.crt")
+					certFile = path.Join(basePath, "dnssan-certs", "server.crt")
+					keyFile = path.Join(basePath, "dnssan-certs", "server.key")
+					repConfig.PathToTLSCACert = caFile
+					repConfig.PathToTLSCert = certFile
+					repConfig.PathToTLSKey = keyFile
+				})
+
+				It("exits with status code 2", func() {
+					Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
+					Eventually(runner.Session.ExitCode).Should(Equal(2))
+				})
+			})
+
+			Context("when the server cert does not have the correct SANs", func() {
+				BeforeEach(func() {
+					caFile = path.Join(basePath, "rouge-certs", "server-ca.crt")
+					certFile = path.Join(basePath, "rouge-certs", "server.crt")
+					keyFile = path.Join(basePath, "rouge-certs", "server.key")
+					repConfig.PathToTLSCACert = caFile
+					repConfig.PathToTLSCert = certFile
+					repConfig.PathToTLSKey = keyFile
+				})
+
+				It("exits with status code 2", func() {
+					Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
+					Eventually(runner.Session.ExitCode).Should(Equal(2))
+				})
+			})
+
+			Context("because invalid values for certificates are supplied", func() {
+				BeforeEach(func() {
+					repConfig.PathToTLSCACert = ""
+					repConfig.PathToTLSCert = ""
+					repConfig.PathToTLSKey = ""
+				})
+
+				It("fails to start secure server", func() {
+					Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
+					Eventually(runner.Session.ExitCode).Should(Equal(2))
+				})
+			})
+		})
+
+		Context("because an incorrect server key is supplied", func() {
+			BeforeEach(func() {
+				repConfig.CaCertFile = path.Join(basePath, "green-certs", "server-ca.crt")
+				repConfig.CertFile = path.Join(basePath, "green-certs", "server.crt")
+				repConfig.KeyFile = path.Join(basePath, "blue-certs", "server.key")
+			})
+
+			It("fails to start secure server", func() {
+				Eventually(runner.Session.Buffer()).Should(gbytes.Say("failed-to-configure-secure-BBS-client"))
+				Eventually(runner.Session.ExitCode).Should(Equal(2))
+			})
+		})
+
+		Context("because an invalid values for certificates are supplied", func() {
+			BeforeEach(func() {
+				repConfig.CaCertFile = ""
+				repConfig.CertFile = ""
+				repConfig.KeyFile = ""
+			})
+
+			It("fails to start secure server", func() {
+				Eventually(runner.Session.Buffer()).Should(gbytes.Say("failed-to-configure-secure-BBS-client"))
+				Eventually(runner.Session.ExitCode).Should(Equal(2))
+			})
+		})
+	})
+
+	Describe("RootFS for garden healthcheck", func() {
+		var createRequestReceived chan string
+
+		BeforeEach(func() {
+			fakeGarden.Start()
+			respondWithSuccessToCreateContainer = false
+			createRequestReceived = make(chan string)
+			fakeGarden.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("POST", "/containers", ""),
+					func(w http.ResponseWriter, req *http.Request) {
+						body, err := ioutil.ReadAll(req.Body)
+						req.Body.Close()
+						Expect(err).ShouldNot(HaveOccurred())
+						createRequestReceived <- string(body)
+					},
+				),
+			)
+
+			fakeGarden.AllowUnhandledRequests = true
+		})
+
+		It("sends the correct rootfs when creating the container", func() {
+			Eventually(createRequestReceived).Should(Receive(And(
+				ContainSubstring(`executor-healthcheck`),
+				ContainSubstring(`"rootfs":"/path/to/rootfs"`),
+			)))
+		})
+
+		Context("when there are multiple rootfses", func() {
+			BeforeEach(func() {
+				repConfig.PreloadedRootFS = append([]config.RootFS{{
+					Name: "another",
+					Path: "/path/to/another/rootfs",
+				}}, repConfig.PreloadedRootFS...)
+			})
+
+			It("uses the first rootfs", func() {
+				Eventually(createRequestReceived).Should(Receive(And(
+					ContainSubstring(`executor-healthcheck`),
+					ContainSubstring(`"rootfs":"/path/to/another/rootfs"`),
+				)))
+			})
+		})
+	})
+
 	Context("when Garden is available", func() {
 		BeforeEach(func() {
 			fakeGarden.Start()
+		})
+
+		JustBeforeEach(func() {
+			Eventually(runner.Session, 2).Should(gbytes.Say("rep.started"))
 		})
 
 		Context("when a value is provided caCertsForDownloads", func() {
@@ -239,12 +371,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					err := ioutil.WriteFile(certFile.Name(), fileContents, os.ModePerm)
 					Expect(err).NotTo(HaveOccurred())
 					repConfig.PathToCACertsForDownloads = certFile.Name()
-					runner = testrunner.New(
-						representativePath,
-						repConfig,
-					)
-
-					runner.StartCheck = "started"
 				})
 
 				It("should start", func() {
@@ -360,8 +486,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 
 					repConfig.ClientLocketConfig = locketrunner.ClientLocketConfig()
 					repConfig.LocketAddress = locketAddress
-
-					runner = testrunner.New(representativePath, repConfig)
 				})
 
 				AfterEach(func() {
@@ -597,7 +721,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 			Context("when consul service registration is enabled", func() {
 				BeforeEach(func() {
 					repConfig.EnableConsulServiceRegistration = true
-					runner = testrunner.New(representativePath, repConfig)
 				})
 
 				It("registers itself with consul", func() {
@@ -641,63 +764,9 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 			})
 		})
 
-		Context("when an incorrect server key is supplied", func() {
-			BeforeEach(func() {
-				repConfig.CaCertFile = path.Join(basePath, "green-certs", "server-ca.crt")
-				repConfig.CertFile = path.Join(basePath, "green-certs", "server.crt")
-				repConfig.KeyFile = path.Join(basePath, "blue-certs", "server.key")
-				runner = testrunner.New(
-					representativePath,
-					repConfig,
-				)
-				runner.StartCheck = ""
-			})
-
-			It("fails to start secure server", func() {
-				Eventually(runner.Session.Buffer()).Should(gbytes.Say("failed-to-configure-secure-BBS-client"))
-				Eventually(runner.Session.ExitCode).Should(Equal(2))
-			})
-		})
-
-		Context("when invalid values for certificates are supplied", func() {
-			BeforeEach(func() {
-				repConfig.CaCertFile = ""
-				repConfig.CertFile = ""
-				repConfig.KeyFile = ""
-				runner = testrunner.New(
-					representativePath,
-					repConfig,
-				)
-				runner.StartCheck = ""
-			})
-
-			It("fails to start secure server", func() {
-				Eventually(runner.Session.Buffer()).Should(gbytes.Say("failed-to-configure-secure-BBS-client"))
-				Eventually(runner.Session.ExitCode).Should(Equal(2))
-			})
-		})
-
 		Context("legacy API endpoints disabled", func() {
 			BeforeEach(func() {
 				repConfig.EnableLegacyAPIServer = false
-			})
-
-			Context("when invalid values for certificates are supplied", func() {
-				BeforeEach(func() {
-					repConfig.PathToTLSCACert = ""
-					repConfig.PathToTLSCert = ""
-					repConfig.PathToTLSKey = ""
-					runner = testrunner.New(
-						representativePath,
-						repConfig,
-					)
-					runner.StartCheck = ""
-				})
-
-				It("fails to start secure server", func() {
-					Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
-					Eventually(runner.Session.ExitCode).Should(Equal(2))
-				})
 			})
 
 			Context("when correct server cert and key are supplied", func() {
@@ -708,10 +777,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					repConfig.PathToTLSCACert = caFile
 					repConfig.PathToTLSCert = certFile
 					repConfig.PathToTLSKey = keyFile
-					runner = testrunner.New(
-						representativePath,
-						repConfig,
-					)
 				})
 
 				It("serves the localhost-only endpoints over TLS", func() {
@@ -723,60 +788,12 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 				Context("when the legacy API endpoints are enabled", func() {
 					BeforeEach(func() {
 						repConfig.EnableLegacyAPIServer = true
-						runner = testrunner.New(
-							representativePath,
-							repConfig,
-						)
 					})
 
 					It("serves the endpoints over HTTP", func() {
 						resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
 						Expect(err).NotTo(HaveOccurred())
 						Expect(resp.StatusCode).To(Equal(http.StatusOK))
-					})
-				})
-			})
-
-			Context("with SANs check", func() {
-				Context("when the domain SAN is present", func() {
-					BeforeEach(func() {
-						caFile = path.Join(basePath, "dnssan-certs", "server-ca.crt")
-						certFile = path.Join(basePath, "dnssan-certs", "server.crt")
-						keyFile = path.Join(basePath, "dnssan-certs", "server.key")
-						repConfig.PathToTLSCACert = caFile
-						repConfig.PathToTLSCert = certFile
-						repConfig.PathToTLSKey = keyFile
-						runner = testrunner.New(
-							representativePath,
-							repConfig,
-						)
-						runner.StartCheck = ""
-					})
-
-					It("serves the localhost-only endpoints over TLS", func() {
-						Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
-						Eventually(runner.Session.ExitCode).Should(Equal(2))
-					})
-				})
-
-				Context("when the server cert does not have the correct SANs", func() {
-					BeforeEach(func() {
-						caFile = path.Join(basePath, "rouge-certs", "server-ca.crt")
-						certFile = path.Join(basePath, "rouge-certs", "server.crt")
-						keyFile = path.Join(basePath, "rouge-certs", "server.key")
-						repConfig.PathToTLSCACert = caFile
-						repConfig.PathToTLSCert = certFile
-						repConfig.PathToTLSKey = keyFile
-						runner = testrunner.New(
-							representativePath,
-							repConfig,
-						)
-						runner.StartCheck = ""
-					})
-
-					It("serves the localhost-only endpoints over TLS", func() {
-						Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
-						Eventually(runner.Session.ExitCode).Should(Equal(2))
 					})
 				})
 			})
@@ -799,11 +816,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 		Context("when the Rep has an http server accessible on all interfaces", func() {
 			BeforeEach(func() {
 				repConfig.EnableLegacyAPIServer = true
-
-				runner = testrunner.New(
-					representativePath,
-					repConfig,
-				)
 			})
 
 			It("has all secure and insecure routes on the locally accessible server", func() {
@@ -820,11 +832,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 		Context("when the Rep has an http server that is only locally accessible", func() {
 			BeforeEach(func() {
 				repConfig.EnableLegacyAPIServer = false
-
-				runner = testrunner.New(
-					representativePath,
-					repConfig,
-				)
 			})
 
 			It("has only insecure routes on the locally accessible server", func() {
@@ -916,62 +923,9 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 				})
 			})
 		})
-
-		Describe("RootFS for garden healthcheck", func() {
-			var createRequestReceived chan string
-
-			BeforeEach(func() {
-				respondWithSuccessToCreateContainer = false
-				createRequestReceived = make(chan string)
-				fakeGarden.AppendHandlers(
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("POST", "/containers", ""),
-						func(w http.ResponseWriter, req *http.Request) {
-							body, err := ioutil.ReadAll(req.Body)
-							req.Body.Close()
-							Expect(err).ShouldNot(HaveOccurred())
-							createRequestReceived <- string(body)
-						},
-					),
-				)
-
-				fakeGarden.AllowUnhandledRequests = true
-				runner.StartCheck = ""
-			})
-
-			It("sends the correct rootfs when creating the container", func() {
-				Eventually(createRequestReceived).Should(Receive(And(
-					ContainSubstring(`executor-healthcheck`),
-					ContainSubstring(`"rootfs":"/path/to/rootfs"`),
-				)))
-			})
-
-			Context("when there are multiple rootfses", func() {
-				BeforeEach(func() {
-					repConfig.PreloadedRootFS = append([]config.RootFS{{
-						Name: "another",
-						Path: "/path/to/another/rootfs",
-					}}, repConfig.PreloadedRootFS...)
-
-					runner = testrunner.New(representativePath, repConfig)
-					runner.StartCheck = ""
-				})
-
-				It("uses the first rootfs", func() {
-					Eventually(createRequestReceived).Should(Receive(And(
-						ContainSubstring(`executor-healthcheck`),
-						ContainSubstring(`"rootfs":"/path/to/another/rootfs"`),
-					)))
-				})
-			})
-		})
 	})
 
 	Context("when Garden is unavailable", func() {
-		BeforeEach(func() {
-			runner.StartCheck = ""
-		})
-
 		It("should not exit and continue waiting for a connection", func() {
 			Consistently(runner.Session.Buffer()).ShouldNot(gbytes.Say("started"))
 			Consistently(runner.Session).ShouldNot(Exit())
