@@ -682,13 +682,17 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 						Args: []string{},
 					}),
 				}
-				index := 0
+				actualLRPKey := models.ActualLRPKey{
+					ProcessGuid: desiredLRP.ProcessGuid,
+					Index:       0,
+				}
 
 				err := bbsClient.DesireLRP(logger, desiredLRP)
 				Expect(err).NotTo(HaveOccurred())
 
 				instanceKey := models.NewActualLRPInstanceKey("some-instance-guid", cellID)
-				err = bbsClient.ClaimActualLRP(logger, desiredLRP.ProcessGuid, index, &instanceKey)
+
+				err = bbsClient.ClaimActualLRP(logger, &actualLRPKey, &instanceKey)
 				Expect(err).NotTo(HaveOccurred())
 			})
 

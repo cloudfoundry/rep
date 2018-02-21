@@ -66,10 +66,10 @@ var _ = Describe("Operation", func() {
 
 				It("removes the actualLRP", func() {
 					Expect(fakeBBS.RemoveActualLRPCallCount()).To(Equal(1))
-					_, processGuid, index, actualInstanceKey := fakeBBS.RemoveActualLRPArgsForCall(0)
+					_, actualLRPKey, actualInstanceKey := fakeBBS.RemoveActualLRPArgsForCall(0)
 
-					Expect(processGuid).To(Equal(lrpKey.ProcessGuid))
-					Expect(index).To(Equal(int(lrpKey.Index)))
+					Expect(actualLRPKey.ProcessGuid).To(Equal(lrpKey.ProcessGuid))
+					Expect(actualLRPKey.Index).To(Equal(lrpKey.Index))
 					Expect(*actualInstanceKey).To(Equal(instanceKey))
 				})
 			})
@@ -218,10 +218,10 @@ var _ = Describe("Operation", func() {
 
 				It("removes the instance actualLRP", func() {
 					Expect(fakeBBS.RemoveActualLRPCallCount()).To(Equal(1))
-					_, processGuid, index, actualInstanceKey := fakeBBS.RemoveActualLRPArgsForCall(0)
+					_, actualLRPKey, actualInstanceKey := fakeBBS.RemoveActualLRPArgsForCall(0)
 
-					Expect(processGuid).To(Equal(lrpKey.ProcessGuid))
-					Expect(index).To(Equal(int(lrpKey.Index)))
+					Expect(actualLRPKey.ProcessGuid).To(Equal(lrpKey.ProcessGuid))
+					Expect(actualLRPKey.Index).To(Equal(lrpKey.Index))
 					Expect(*actualInstanceKey).To(Equal(instanceKey))
 				})
 

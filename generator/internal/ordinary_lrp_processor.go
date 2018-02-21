@@ -85,7 +85,7 @@ func (p *ordinaryLRPProcessor) processReservedContainer(logger lager.Logger, lrp
 	}
 	ok = p.containerDelegate.RunContainer(logger, &runReq)
 	if !ok {
-		p.bbsClient.RemoveActualLRP(logger, lrpContainer.ProcessGuid, int(lrpContainer.Index), lrpContainer.ActualLRPInstanceKey)
+		p.bbsClient.RemoveActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
 		return
 	}
 }
@@ -123,7 +123,7 @@ func (p *ordinaryLRPProcessor) processCompletedContainer(logger lager.Logger, lr
 	logger = logger.Session("process-completed-container")
 
 	if lrpContainer.RunResult.Stopped {
-		err := p.bbsClient.RemoveActualLRP(logger, lrpContainer.ProcessGuid, int(lrpContainer.Index), lrpContainer.ActualLRPInstanceKey)
+		err := p.bbsClient.RemoveActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
 		if err != nil {
 			logger.Info("failed-to-remove-actual-lrp", lager.Data{"error": err})
 		}
@@ -143,7 +143,7 @@ func (p *ordinaryLRPProcessor) processInvalidContainer(logger lager.Logger, lrpC
 }
 
 func (p *ordinaryLRPProcessor) claimLRPContainer(logger lager.Logger, lrpContainer *lrpContainer) bool {
-	err := p.bbsClient.ClaimActualLRP(logger, lrpContainer.ProcessGuid, int(lrpContainer.Index), lrpContainer.ActualLRPInstanceKey)
+	err := p.bbsClient.ClaimActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
 	bbsErr := models.ConvertError(err)
 	if err != nil {
 		if bbsErr.Type == models.Error_ActualLRPCannotBeClaimed {

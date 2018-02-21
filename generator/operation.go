@@ -52,7 +52,7 @@ func (o *ResidualInstanceLRPOperation) Execute() {
 		return
 	}
 
-	o.bbsClient.RemoveActualLRP(logger, o.ProcessGuid, int(o.Index), &models.ActualLRPInstanceKey{
+	o.bbsClient.RemoveActualLRP(logger, &o.ActualLRPKey, &models.ActualLRPInstanceKey{
 		InstanceGuid: o.InstanceGuid,
 		CellId:       o.CellId,
 	})
@@ -147,7 +147,7 @@ func (o *ResidualJointLRPOperation) Execute() {
 
 	actualLRPKey := models.NewActualLRPKey(o.ProcessGuid, int32(o.Index), o.Domain)
 	actualLRPInstanceKey := models.NewActualLRPInstanceKey(o.InstanceGuid, o.CellId)
-	o.bbsClient.RemoveActualLRP(logger, o.ProcessGuid, int(o.Index), &o.ActualLRPInstanceKey)
+	o.bbsClient.RemoveActualLRP(logger, &o.ActualLRPKey, &o.ActualLRPInstanceKey)
 	o.bbsClient.RemoveEvacuatingActualLRP(logger, &actualLRPKey, &actualLRPInstanceKey)
 }
 
