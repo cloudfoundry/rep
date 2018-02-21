@@ -89,9 +89,9 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 				It("claims the actualLRP in the bbs", func() {
 					Expect(bbsClient.ClaimActualLRPCallCount()).To(Equal(1))
-					_, processGuid, index, instanceKey := bbsClient.ClaimActualLRPArgsForCall(0)
-					Expect(processGuid).To(Equal(expectedLrpKey.ProcessGuid))
-					Expect(int32(index)).To(Equal(expectedLrpKey.Index))
+					_, actualLRPKey, instanceKey := bbsClient.ClaimActualLRPArgsForCall(0)
+					Expect(actualLRPKey.ProcessGuid).To(Equal(expectedLrpKey.ProcessGuid))
+					Expect(actualLRPKey.Index).To(Equal(expectedLrpKey.Index))
 					Expect(*instanceKey).To(Equal(expectedInstanceKey))
 				})
 
@@ -148,10 +148,10 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 						It("removes the actual LRP", func() {
 							Expect(bbsClient.RemoveActualLRPCallCount()).To(Equal(1))
-							_, processGuid, index, instanceKey := bbsClient.RemoveActualLRPArgsForCall(0)
+							_, actualLRPKey, instanceKey := bbsClient.RemoveActualLRPArgsForCall(0)
 
-							Expect(processGuid).To(Equal(expectedLrpKey.ProcessGuid))
-							Expect(int32(index)).To(Equal(expectedLrpKey.Index))
+							Expect(actualLRPKey.ProcessGuid).To(Equal(expectedLrpKey.ProcessGuid))
+							Expect(actualLRPKey.Index).To(Equal(expectedLrpKey.Index))
 							Expect(*instanceKey).To(Equal(expectedInstanceKey))
 						})
 					})
@@ -160,9 +160,9 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 				var itClaimsTheLRPOrDeletesTheContainer = func(expectedSessionName string) {
 					It("claims the lrp", func() {
 						Expect(bbsClient.ClaimActualLRPCallCount()).To(Equal(1))
-						_, processGuid, index, instanceKey := bbsClient.ClaimActualLRPArgsForCall(0)
-						Expect(processGuid).To(Equal(expectedLrpKey.ProcessGuid))
-						Expect(int32(index)).To(Equal(expectedLrpKey.Index))
+						_, actualLRPKey, instanceKey := bbsClient.ClaimActualLRPArgsForCall(0)
+						Expect(actualLRPKey.ProcessGuid).To(Equal(expectedLrpKey.ProcessGuid))
+						Expect(actualLRPKey.Index).To(Equal(expectedLrpKey.Index))
 						Expect(*instanceKey).To(Equal(expectedInstanceKey))
 					})
 
@@ -272,10 +272,9 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 						It("removes the actual LRP", func() {
 							Expect(bbsClient.RemoveActualLRPCallCount()).To(Equal(1))
-							_, processGuid, index, instanceKey := bbsClient.RemoveActualLRPArgsForCall(0)
-
-							Expect(processGuid).To(Equal(expectedLrpKey.ProcessGuid))
-							Expect(int32(index)).To(Equal(expectedLrpKey.Index))
+							_, actualLRPKey, instanceKey := bbsClient.RemoveActualLRPArgsForCall(0)
+							Expect(actualLRPKey.ProcessGuid).To(Equal(expectedLrpKey.ProcessGuid))
+							Expect(actualLRPKey.Index).To(Equal(expectedLrpKey.Index))
 							Expect(*instanceKey).To(Equal(expectedInstanceKey))
 						})
 
