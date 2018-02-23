@@ -28,9 +28,7 @@ func NewRoutes(networkAccessible bool) rata.Routes {
 
 			rata.Route{Path: "/sim/reset", Method: "POST", Name: Sim_ResetRoute},
 		)
-	}
-
-	if !networkAccessible {
+	} else {
 		routes = append(routes,
 			rata.Route{Path: "/ping", Method: "GET", Name: PingRoute},
 			rata.Route{Path: "/evacuate", Method: "POST", Name: EvacuateRoute},

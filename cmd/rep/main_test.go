@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"regexp"
@@ -153,10 +155,9 @@ var _ = Describe("The Rep", func() {
 			LagerConfig: lagerflags.LagerConfig{
 				LogLevel: "debug",
 			},
-			ConsulCluster:         consulRunner.ConsulCluster(),
-			PollingInterval:       durationjson.Duration(pollingInterval),
-			EvacuationTimeout:     durationjson.Duration(evacuationTimeout),
-			EnableLegacyAPIServer: true,
+			ConsulCluster:     consulRunner.ConsulCluster(),
+			PollingInterval:   durationjson.Duration(pollingInterval),
+			EvacuationTimeout: durationjson.Duration(evacuationTimeout),
 		}
 	})
 
@@ -193,54 +194,42 @@ var _ = Describe("The Rep", func() {
 			})
 		})
 
-		Context("legacy API endpoints disabled", func() {
+		Context("when the SAN is set to localhost instead of 127.0.0.1", func() {
 			BeforeEach(func() {
-				repConfig.EnableLegacyAPIServer = false
+				caFile = path.Join(basePath, "dnssan-certs", "server-ca.crt")
+				certFile = path.Join(basePath, "dnssan-certs", "server.crt")
+				keyFile = path.Join(basePath, "dnssan-certs", "server.key")
+				repConfig.CaCertFile = caFile
+				repConfig.CertFile = certFile
+				repConfig.KeyFile = keyFile
+
+				repConfig.PathToTLSCACert = caFile
+				repConfig.PathToTLSCert = certFile
+				repConfig.PathToTLSKey = keyFile
 			})
 
-			Context("when the SAN is set to localhost instead of 127.0.0.1", func() {
-				BeforeEach(func() {
-					caFile = path.Join(basePath, "dnssan-certs", "server-ca.crt")
-					certFile = path.Join(basePath, "dnssan-certs", "server.crt")
-					keyFile = path.Join(basePath, "dnssan-certs", "server.key")
-					repConfig.PathToTLSCACert = caFile
-					repConfig.PathToTLSCert = certFile
-					repConfig.PathToTLSKey = keyFile
-				})
+			It("exits with status code 2", func() {
+				Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
+				Eventually(runner.Session.ExitCode).Should(Equal(2))
+			})
+		})
 
-				It("exits with status code 2", func() {
-					Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
-					Eventually(runner.Session.ExitCode).Should(Equal(2))
-				})
+		Context("when the server cert does not have the correct SANs", func() {
+			BeforeEach(func() {
+				caFile = path.Join(basePath, "rouge-certs", "server-ca.crt")
+				certFile = path.Join(basePath, "rouge-certs", "server.crt")
+				keyFile = path.Join(basePath, "rouge-certs", "server.key")
+				repConfig.PathToTLSCACert = caFile
+				repConfig.PathToTLSCert = certFile
+				repConfig.PathToTLSKey = keyFile
+				repConfig.CaCertFile = caFile
+				repConfig.CertFile = certFile
+				repConfig.KeyFile = keyFile
 			})
 
-			Context("when the server cert does not have the correct SANs", func() {
-				BeforeEach(func() {
-					caFile = path.Join(basePath, "rouge-certs", "server-ca.crt")
-					certFile = path.Join(basePath, "rouge-certs", "server.crt")
-					keyFile = path.Join(basePath, "rouge-certs", "server.key")
-					repConfig.PathToTLSCACert = caFile
-					repConfig.PathToTLSCert = certFile
-					repConfig.PathToTLSKey = keyFile
-				})
-
-				It("exits with status code 2", func() {
-					Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
-					Eventually(runner.Session.ExitCode).Should(Equal(2))
-				})
-			})
-
-			Context("because invalid values for certificates are supplied", func() {
-				BeforeEach(func() {
-					repConfig.PathToTLSCACert = ""
-					repConfig.PathToTLSCert = ""
-					repConfig.PathToTLSKey = ""
-				})
-
-				It("fails to start secure server", func() {
-					Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
-					Eventually(runner.Session.ExitCode).Should(Equal(2))
-				})
+			It("exits with status code 2", func() {
+				Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
+				Eventually(runner.Session.ExitCode).Should(Equal(2))
 			})
 		})
 
@@ -549,7 +538,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 		})
 
 		Context("acting as an auction representative", func() {
-			var client rep.Client
+			var repClient rep.Client
 
 			JustBeforeEach(func() {
 				Eventually(fetchCells(logger)).Should(HaveLen(1))
@@ -557,15 +546,27 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 				cellSet := models.NewCellSetFromList(cells)
 				Expect(err).NotTo(HaveOccurred())
 
-				factory, err := rep.NewClientFactory(http.DefaultClient, cfhttp.NewCustomTimeoutClient(100*time.Millisecond), nil)
+				tlsConfig := &rep.TLSConfig{
+					RequireTLS: true,
+					CertFile:   certFile,
+					KeyFile:    keyFile,
+					CaCertFile: caFile,
+				}
+				factory, err := rep.NewClientFactory(cfhttp.NewClient(), cfhttp.NewCustomTimeoutClient(100*time.Millisecond), tlsConfig)
+
 				Expect(err).NotTo(HaveOccurred())
-				client, err = factory.CreateClient(cellSet[cellID].RepAddress, "")
+				u, err := url.Parse(cellSet[cellID].RepUrl)
+				Expect(err).NotTo(HaveOccurred())
+				_, p, err := net.SplitHostPort(u.Host)
+				Expect(err).NotTo(HaveOccurred())
+				u.Host = net.JoinHostPort("127.0.0.1", p) // no dns lookup in unit tests
+				repClient, err = factory.CreateClient("", u.String())
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			Context("State", func() {
 				It("returns the cell id and rep url in the state info", func() {
-					state, err := client.State(logger)
+					state, err := repClient.State(logger)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(state.CellID).To(Equal(cellID))
 					url := fmt.Sprintf("https://%s.cell.service.cf.internal:%d", cellID, serverPortSecurable)
@@ -594,13 +595,13 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 								),
 							},
 						}
-						failed, err := client.Perform(logger, work)
+						failed, err := repClient.Perform(logger, work)
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failed.LRPs).To(HaveLen(0))
 					})
 
 					It("returns the lrp info ", func() {
-						state, err := client.State(logger)
+						state, err := repClient.State(logger)
 						Expect(err).NotTo(HaveOccurred())
 						Expect(state.LRPs).To(HaveLen(1))
 						lrp := state.LRPs[0]
@@ -615,7 +616,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 
 			Context("Capacity with a container", func() {
 				It("returns total capacity and state information", func() {
-					state, err := client.State(logger)
+					state, err := repClient.State(logger)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(state.TotalResources).To(Equal(rep.Resources{
 						MemoryMB:   1024,
@@ -632,7 +633,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 						fakeGarden.RouteToHandler("GET", "/containers/bulk_info", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 
 						Eventually(func() rep.Resources {
-							state, err := client.State(logger)
+							state, err := repClient.State(logger)
 							Expect(err).NotTo(HaveOccurred())
 							return state.AvailableResources
 						}).Should(Equal(rep.Resources{
@@ -703,7 +704,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 
 		Describe("Evacuation", func() {
 			JustBeforeEach(func() {
-				resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/evacuate", serverPort), "text/html", nil)
+				resp, err := client.Post(fmt.Sprintf("https://127.0.0.1:%d/evacuate", serverPort), "text/html", nil)
 				Expect(err).NotTo(HaveOccurred())
 				resp.Body.Close()
 				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
@@ -729,7 +730,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 
 		Describe("when a Ping request comes in", func() {
 			It("responds with 200 OK", func() {
-				resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
+				resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPort))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusOK))
 			})
@@ -782,39 +783,20 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 			})
 		})
 
-		Context("legacy API endpoints disabled", func() {
-			BeforeEach(func() {
-				repConfig.EnableLegacyAPIServer = false
-			})
+		It("serves the localhost-only endpoints over TLS", func() {
+			resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPort))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(http.StatusOK))
+		})
 
-			Context("when correct server cert and key are supplied", func() {
-				BeforeEach(func() {
-					caFile = path.Join(basePath, "green-certs", "server-ca.crt")
-					certFile = path.Join(basePath, "green-certs", "server.crt")
-					keyFile = path.Join(basePath, "green-certs", "server.key")
-					repConfig.PathToTLSCACert = caFile
-					repConfig.PathToTLSCert = certFile
-					repConfig.PathToTLSKey = keyFile
-				})
+		It("has only insecure routes on the locally accessible server", func() {
+			resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPort))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(http.StatusOK))
 
-				It("serves the localhost-only endpoints over TLS", func() {
-					resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPort))
-					Expect(err).NotTo(HaveOccurred())
-					Expect(resp.StatusCode).To(Equal(http.StatusOK))
-				})
-
-				Context("when the legacy API endpoints are enabled", func() {
-					BeforeEach(func() {
-						repConfig.EnableLegacyAPIServer = true
-					})
-
-					It("serves the endpoints over HTTP", func() {
-						resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
-						Expect(err).NotTo(HaveOccurred())
-						Expect(resp.StatusCode).To(Equal(http.StatusOK))
-					})
-				})
-			})
+			resp, err = client.Get(fmt.Sprintf("https://127.0.0.1:%d/state", serverPort))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
 		})
 
 		Context("for the network accessible https server", func() {
@@ -828,38 +810,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 				resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/state", serverPortSecurable))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusOK))
-			})
-		})
-
-		Context("when the Rep has an http server accessible on all interfaces", func() {
-			BeforeEach(func() {
-				repConfig.EnableLegacyAPIServer = true
-			})
-
-			It("has all secure and insecure routes on the locally accessible server", func() {
-				resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
-				Expect(err).NotTo(HaveOccurred())
-				Expect(resp.StatusCode).To(Equal(http.StatusOK))
-
-				resp, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d/state", serverPort))
-				Expect(err).NotTo(HaveOccurred())
-				Expect(resp.StatusCode).To(Equal(http.StatusOK))
-			})
-		})
-
-		Context("when the Rep has an http server that is only locally accessible", func() {
-			BeforeEach(func() {
-				repConfig.EnableLegacyAPIServer = false
-			})
-
-			It("has only insecure routes on the locally accessible server", func() {
-				resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPort))
-				Expect(err).NotTo(HaveOccurred())
-				Expect(resp.StatusCode).To(Equal(http.StatusOK))
-
-				resp, err = client.Get(fmt.Sprintf("https://127.0.0.1:%d/state", serverPort))
-				Expect(err).NotTo(HaveOccurred())
-				Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
 			})
 		})
 
@@ -951,7 +901,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 
 		It("ping should fail", func() {
 			Consistently(func() bool {
-				resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
+				resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPort))
 				if err != nil {
 					return true
 				}
@@ -992,7 +942,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 
 				It("ping should fail", func() {
 					Consistently(func() bool {
-						resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
+						resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPort))
 						if err != nil {
 							return true
 						}
@@ -1003,7 +953,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 
 			It("ping should succeed", func() {
 				Eventually(func() bool {
-					resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", serverPort))
+					resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPort))
 					if err != nil {
 						return true
 					}

@@ -44,6 +44,10 @@ func New(
 	return handlers
 }
 
+// this isn't being used in the Rep anymore. It is used in tests that run a
+// fake cell. Without this function those tests will have to replicate the code
+// below. Those places are auctioneer fake_cell_test.go and rep's
+// handlers_suite_test.go
 func NewLegacy(
 	localCellClient auctioncellrep.AuctionCellClient,
 	executorClient executor.Client,

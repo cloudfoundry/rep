@@ -321,8 +321,8 @@ func initializeServer(
 	repConfig config.RepConfig,
 	networkAccessible bool,
 ) ifrit.Runner {
-	handlers := getHandlers(logger, auctionCellRep, executorClient, evacuatable, repConfig.EnableLegacyAPIServer, networkAccessible)
-	routes := getRoutes(repConfig.EnableLegacyAPIServer, networkAccessible)
+	handlers := handlers.New(auctionCellRep, executorClient, evacuatable, logger, networkAccessible)
+	routes := rep.NewRoutes(networkAccessible)
 	router, err := rata.NewRouter(routes, handlers)
 
 	if err != nil {
@@ -334,28 +334,18 @@ func initializeServer(
 		listenAddress = repConfig.ListenAddrSecurable
 	}
 
-	if networkAccessible {
-		tlsConfig, err := cfhttp.NewTLSConfig(repConfig.CertFile, repConfig.KeyFile, repConfig.CaCertFile)
+	if !networkAccessible {
+		err = verifyCertificate(repConfig.CertFile)
 		if err != nil {
 			logger.Fatal("tls-configuration-failed", err)
 		}
-		return startTLSServer(listenAddress, router, tlsConfig)
 	}
 
-	if !repConfig.EnableLegacyAPIServer {
-		err := verifyCertificate(repConfig.PathToTLSCert)
-		if err != nil {
-			logger.Fatal("tls-configuration-failed", err)
-		}
-		tlsConfig, err := cfhttp.NewTLSConfig(repConfig.PathToTLSCert, repConfig.PathToTLSKey, repConfig.PathToTLSCACert)
-		if err != nil {
-			logger.Fatal("admin-tls-configuration-failed", err)
-		}
-		return startTLSServer(listenAddress, router, tlsConfig)
+	tlsConfig, err := cfhttp.NewTLSConfig(repConfig.CertFile, repConfig.KeyFile, repConfig.CaCertFile)
+	if err != nil {
+		logger.Fatal("tls-configuration-failed", err)
 	}
-	logger.Info("making-http-server", lager.Data{"config": repConfig})
-
-	return startServer(listenAddress, router)
+	return startTLSServer(listenAddress, router, tlsConfig)
 }
 
 func startTLSServer(addr string, handler http.Handler, tlsConfig *tls.Config) ifrit.Runner {
@@ -383,28 +373,6 @@ func startServer(addr string, handler http.Handler) ifrit.Runner {
 		<-signals
 		return listener.Close()
 	})
-}
-
-func getHandlers(
-	logger lager.Logger,
-	auctionCellRep auctioncellrep.AuctionCellClient,
-	executorClient executor.Client,
-	evacuatable evacuation_context.Evacuatable,
-	enableLegacyAPIServer bool,
-	isNetworkAccessibleServer bool,
-) rata.Handlers {
-
-	if enableLegacyAPIServer && !isNetworkAccessibleServer {
-		return handlers.NewLegacy(auctionCellRep, executorClient, evacuatable, logger)
-	}
-	return handlers.New(auctionCellRep, executorClient, evacuatable, logger, isNetworkAccessibleServer)
-}
-
-func getRoutes(enableLegacyAPIServer, isNetworkAccessibleServer bool) rata.Routes {
-	if enableLegacyAPIServer && !isNetworkAccessibleServer {
-		return rep.Routes
-	}
-	return rep.NewRoutes(isNetworkAccessibleServer)
 }
 
 func initializeBBSClient(

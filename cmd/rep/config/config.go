@@ -92,7 +92,6 @@ type RepConfig struct {
 	ConsulCluster                   string                `json:"consul_cluster"`
 	DropsondePort                   int                   `json:"dropsonde_port,omitempty"`
 	EnableConsulServiceRegistration bool                  `json:"enable_consul_service_registration,omitempty"`
-	EnableLegacyAPIServer           bool                  `json:"enable_legacy_api_endpoints"`
 	EvacuationPollingInterval       durationjson.Duration `json:"evacuation_polling_interval,omitempty"`
 	EvacuationTimeout               durationjson.Duration `json:"evacuation_timeout,omitempty"`
 	ListenAddr                      string                `json:"listen_addr,omitempty"`
@@ -125,7 +124,6 @@ func defaultConfig() RepConfig {
 		BBSMaxIdleConnsPerHost:    0,
 		CommunicationTimeout:      durationjson.Duration(10 * time.Second),
 		DropsondePort:             3457,
-		EnableLegacyAPIServer:     true,
 		EvacuationPollingInterval: durationjson.Duration(10 * time.Second),
 		EvacuationTimeout:         durationjson.Duration(10 * time.Minute),
 		ExecutorConfig:            executorinit.DefaultConfiguration,

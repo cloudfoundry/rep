@@ -12,19 +12,6 @@ import (
 	"github.com/tedsuo/rata"
 )
 
-var _ = Describe("NewLegacy", func() {
-	It("has all routes", func() {
-
-		fakeExecutorClient := new(executorfakes.FakeClient)
-		fakeEvacuatable := new(fake_evacuation_context.FakeEvacuatable)
-		handlers := handlers.NewLegacy(fakeLocalRep, fakeExecutorClient, fakeEvacuatable, logger)
-
-		for _, route := range rep.Routes {
-			Expect(handlers[route.Name]).NotTo(BeNil())
-		}
-	})
-})
-
 var _ = Describe("New", func() {
 	var test_handlers rata.Handlers
 

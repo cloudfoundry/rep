@@ -165,7 +165,6 @@ var _ = Describe("RepConfig", func() {
 			},
 			DropsondePort:                   8082,
 			EnableConsulServiceRegistration: true,
-			EnableLegacyAPIServer:           true,
 			EvacuationPollingInterval:       durationjson.Duration(13 * time.Second),
 			EvacuationTimeout:               durationjson.Duration(12 * time.Second),
 			ExecutorConfig: executorinit.ExecutorConfig{
@@ -297,7 +296,7 @@ var _ = Describe("RepConfig", func() {
 				CommunicationTimeout:      durationjson.Duration(10 * time.Second),
 				EvacuationPollingInterval: durationjson.Duration(10 * time.Second),
 				AdvertiseDomain:           "cell.service.cf.internal",
-				EnableLegacyAPIServer:     true,
+
 				BBSClientSessionCacheSize: 0,
 				EvacuationTimeout:         durationjson.Duration(10 * time.Minute),
 				LagerConfig:               lagerflags.DefaultLagerConfig(),
