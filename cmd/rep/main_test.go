@@ -552,7 +552,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					KeyFile:    keyFile,
 					CaCertFile: caFile,
 				}
-				factory, err := rep.NewClientFactory(cfhttp.NewClient(), cfhttp.NewCustomTimeoutClient(100*time.Millisecond), tlsConfig)
+				factory, err := rep.NewClientFactory(cfhttp.NewClient(), cfhttp.NewCustomTimeoutClient(time.Second), tlsConfig)
 
 				Expect(err).NotTo(HaveOccurred())
 				u, err := url.Parse(cellSet[cellID].RepUrl)
