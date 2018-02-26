@@ -15,8 +15,6 @@ import (
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep/evacuation"
-	fake_metrics_sender "github.com/cloudfoundry/dropsonde/metric_sender/fake"
-	"github.com/cloudfoundry/dropsonde/metrics"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -38,7 +36,6 @@ var _ = Describe("EvacuationCleanup", func() {
 		fakeClock          *fakeclock.FakeClock
 		fakeBBSClient      *fake_bbs.FakeInternalClient
 		fakeExecutorClient *fakes.FakeClient
-		fakeMetricsSender  *fake_metrics_sender.FakeMetricSender
 		fakeMetronClient   *mfakes.FakeIngressClient
 
 		cleanup        *evacuation.EvacuationCleanup
@@ -57,8 +54,6 @@ var _ = Describe("EvacuationCleanup", func() {
 		fakeClock = fakeclock.NewFakeClock(time.Now())
 		fakeBBSClient = &fake_bbs.FakeInternalClient{}
 		fakeExecutorClient = &fakes.FakeClient{}
-		fakeMetricsSender = fake_metrics_sender.NewFakeMetricSender()
-		metrics.Initialize(fakeMetricsSender, nil)
 		fakeMetronClient = new(mfakes.FakeIngressClient)
 
 		errCh = make(chan error, 1)
