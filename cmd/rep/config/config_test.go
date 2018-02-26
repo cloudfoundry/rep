@@ -45,7 +45,6 @@ var _ = Describe("RepConfig", func() {
 			"debug_address": "5.5.5.5:9090",
 			"delete_work_pool_size": 10,
 			"disk_mb": "20000",
-			"dropsonde_port": 8082,
 			"enable_declarative_healthcheck": true,
 			"declarative_healthcheck_path": "/var/vcap/packages/healthcheck",
 			"enable_consul_service_registration": true,
@@ -162,7 +161,6 @@ var _ = Describe("RepConfig", func() {
 			DebugServerConfig: debugserver.DebugServerConfig{
 				DebugAddress: "5.5.5.5:9090",
 			},
-			DropsondePort:                   8082,
 			EnableConsulServiceRegistration: true,
 			EvacuationPollingInterval:       durationjson.Duration(13 * time.Second),
 			EvacuationTimeout:               durationjson.Duration(12 * time.Second),
@@ -290,7 +288,6 @@ var _ = Describe("RepConfig", func() {
 				ListenAddr:                "0.0.0.0:1800",
 				ListenAddrSecurable:       "0.0.0.0:1801",
 				PollingInterval:           durationjson.Duration(30 * time.Second),
-				DropsondePort:             3457,
 				CommunicationTimeout:      durationjson.Duration(10 * time.Second),
 				EvacuationPollingInterval: durationjson.Duration(10 * time.Second),
 				AdvertiseDomain:           "cell.service.cf.internal",

@@ -90,7 +90,6 @@ type RepConfig struct {
 	ConsulClientCert                string                `json:"consul_client_cert"`
 	ConsulClientKey                 string                `json:"consul_client_key"`
 	ConsulCluster                   string                `json:"consul_cluster"`
-	DropsondePort                   int                   `json:"dropsonde_port,omitempty"`
 	EnableConsulServiceRegistration bool                  `json:"enable_consul_service_registration,omitempty"`
 	EvacuationPollingInterval       durationjson.Duration `json:"evacuation_polling_interval,omitempty"`
 	EvacuationTimeout               durationjson.Duration `json:"evacuation_timeout,omitempty"`
@@ -123,7 +122,6 @@ func defaultConfig() RepConfig {
 		BBSClientSessionCacheSize: 0,
 		BBSMaxIdleConnsPerHost:    0,
 		CommunicationTimeout:      durationjson.Duration(10 * time.Second),
-		DropsondePort:             3457,
 		EvacuationPollingInterval: durationjson.Duration(10 * time.Second),
 		EvacuationTimeout:         durationjson.Duration(10 * time.Minute),
 		ExecutorConfig:            executorinit.DefaultConfiguration,

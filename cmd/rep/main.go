@@ -41,7 +41,6 @@ import (
 	"code.cloudfoundry.org/rep/handlers"
 	"code.cloudfoundry.org/rep/harmonizer"
 	"code.cloudfoundry.org/rep/maintain"
-	"github.com/cloudfoundry/dropsonde"
 	"github.com/hashicorp/consul/api"
 	"github.com/nu7hatch/gouuid"
 	"github.com/tedsuo/ifrit"
@@ -51,8 +50,7 @@ import (
 )
 
 const (
-	dropsondeOrigin = "rep"
-	bbsPingTimeout  = 5 * time.Minute
+	bbsPingTimeout = 5 * time.Minute
 )
 
 var configFilePath = flag.String(
@@ -228,14 +226,6 @@ func main() {
 	}
 
 	logger.Info("exited")
-}
-
-func initializeDropsonde(logger lager.Logger, dropsondePort int) {
-	dropsondeDestination := fmt.Sprint("localhost:", dropsondePort)
-	err := dropsonde.Initialize(dropsondeDestination, dropsondeOrigin)
-	if err != nil {
-		logger.Error("failed to initialize dropsonde: %v", err)
-	}
 }
 
 func initializeCellPresence(
@@ -473,8 +463,6 @@ func initializeMetron(logger lager.Logger, repConfig config.RepConfig) (loggingc
 	if repConfig.LoggregatorConfig.UseV2API {
 		emitter := runtimeemitter.NewV1(client)
 		go emitter.Run()
-	} else {
-		initializeDropsonde(logger, repConfig.DropsondePort)
 	}
 
 	return client, nil
