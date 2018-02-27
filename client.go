@@ -235,7 +235,7 @@ func (c *client) Perform(logger lager.Logger, work Work) (Work, error) {
 }
 
 func (c *client) Reset() error {
-	req, err := c.requestGenerator.CreateRequest(Sim_ResetRoute, nil, nil)
+	req, err := c.requestGenerator.CreateRequest(SimResetRoute, nil, nil)
 	if err != nil {
 		return err
 	}

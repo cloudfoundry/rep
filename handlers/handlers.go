@@ -29,7 +29,7 @@ func New(
 
 		handlers[rep.StateRoute] = logWrap(stateHandler.ServeHTTP, logger)
 		handlers[rep.PerformRoute] = logWrap(performHandler.ServeHTTP, logger)
-		handlers[rep.Sim_ResetRoute] = logWrap(resetHandler.ServeHTTP, logger)
+		handlers[rep.SimResetRoute] = logWrap(resetHandler.ServeHTTP, logger)
 
 		handlers[rep.StopLRPInstanceRoute] = logWrap(stopLrpHandler.ServeHTTP, logger)
 		handlers[rep.CancelTaskRoute] = logWrap(cancelTaskHandler.ServeHTTP, logger)

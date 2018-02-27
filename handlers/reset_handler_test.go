@@ -15,7 +15,7 @@ var _ = Describe("Reset Handler", func() {
 			It("succeeds", func() {
 				Expect(fakeLocalRep.ResetCallCount()).To(Equal(0))
 
-				status, body := Request(rep.Sim_ResetRoute, nil, nil)
+				status, body := Request(rep.SimResetRoute, nil, nil)
 				Expect(status).To(Equal(http.StatusOK))
 				Expect(body).To(BeEmpty())
 
@@ -28,7 +28,7 @@ var _ = Describe("Reset Handler", func() {
 				fakeLocalRep.ResetReturns(errors.New("boom"))
 				Expect(fakeLocalRep.ResetCallCount()).To(Equal(0))
 
-				status, body := Request(rep.Sim_ResetRoute, nil, nil)
+				status, body := Request(rep.SimResetRoute, nil, nil)
 				Expect(status).To(Equal(http.StatusInternalServerError))
 				Expect(body).To(BeEmpty())
 

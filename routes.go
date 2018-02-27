@@ -9,7 +9,7 @@ const (
 	StopLRPInstanceRoute = "StopLRPInstance"
 	CancelTaskRoute      = "CancelTask"
 
-	Sim_ResetRoute = "RESET"
+	SimResetRoute = "RESET"
 
 	PingRoute     = "Ping"
 	EvacuateRoute = "Evacuate"
@@ -26,7 +26,7 @@ func NewRoutes(networkAccessible bool) rata.Routes {
 			rata.Route{Path: "/v1/lrps/:process_guid/instances/:instance_guid/stop", Method: "POST", Name: StopLRPInstanceRoute},
 			rata.Route{Path: "/v1/tasks/:task_guid/cancel", Method: "POST", Name: CancelTaskRoute},
 
-			rata.Route{Path: "/sim/reset", Method: "POST", Name: Sim_ResetRoute},
+			rata.Route{Path: "/sim/reset", Method: "POST", Name: SimResetRoute},
 		)
 	} else {
 		routes = append(routes,
