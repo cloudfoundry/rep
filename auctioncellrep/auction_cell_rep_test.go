@@ -261,40 +261,40 @@ var _ = Describe("AuctionCellRep", func() {
 				Containers: totalResources.Containers,
 			}))
 
-			ig1 := rep.NewLRP(
+			lrp1 := rep.NewLRP(
 				"ig-1",
 				models.NewActualLRPKey("the-first-app-guid", 17, "domain"),
 				rep.NewResource(20, 10, 100),
 				rep.NewPlacementConstraint("preloaded:linux", []string{"pt-1"}, []string{"vd-1"}),
 			)
-			ig1.State = rep.StateClaimed
+			lrp1.State = rep.StateClaimed
 
-			ig2 := rep.NewLRP(
+			lrp2 := rep.NewLRP(
 				"ig-2",
 				models.NewActualLRPKey("the-second-app-guid", 92, "domain"),
 				rep.NewResource(40, 30, 100),
 				rep.NewPlacementConstraint("docker://cfdiegodocker/grace", []string{"pt-2"}, []string{"vd-2"}),
 			)
-			ig2.State = rep.StateClaimed
+			lrp2.State = rep.StateClaimed
 
-			ig3 := rep.NewLRP(
+			lrp3 := rep.NewLRP(
 				"ig-3",
 				models.NewActualLRPKey("the-third-app-guid", 193, "domain"),
 				rep.NewResource(40, 30, 100),
 				rep.NewPlacementConstraint("docker://cfdiegodocker/grace", []string{"pt-3"}, []string{"vd-3"}),
 			)
-			ig3.State = rep.StateClaimed
+			lrp3.State = rep.StateClaimed
 
-			ig4 := rep.NewLRP(
+			lrp4 := rep.NewLRP(
 				"ig-4",
 				models.NewActualLRPKey("the-fourth-app-guid", 194, "domain"),
 				rep.NewResource(40, 30, 100),
 				rep.NewPlacementConstraint("docker://cfdiegodocker/grace", []string{"pt-4"}, []string{"vd-4"}),
 			)
-			ig4.State = rep.StateRunning
+			lrp4.State = rep.StateRunning
 
 			Expect(state.LRPs).To(ConsistOf([]rep.LRP{
-				ig1, ig2, ig3, ig4,
+				lrp1, lrp2, lrp3, lrp4,
 			}))
 
 			task1 := rep.NewTask(

@@ -223,11 +223,10 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, bool, error)
 			if container.State == executor.StateCompleted {
 				state = rep.StateCompleted
 			}
-			lrp := rep.NewTask(container.Guid, domain, resource, placementConstraint)
-			lrp.State = state
-			lrp.Failed = container.RunResult.Failed
-			tasks = append(tasks, lrp)
-
+			task := rep.NewTask(container.Guid, domain, resource, placementConstraint)
+			task.State = state
+			task.Failed = container.RunResult.Failed
+			tasks = append(tasks, task)
 		}
 	}
 
