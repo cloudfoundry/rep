@@ -241,15 +241,24 @@ func (p *PlacementConstraint) Valid() bool {
 	return p.RootFs != ""
 }
 
+type State string
+
+const (
+	StateClaimed   State = "claimed"
+	StateRunning   State = "running"
+	StateCompleted State = "completed"
+)
+
 type LRP struct {
 	InstanceGUID string `json:"instance_guid"`
 	models.ActualLRPKey
 	PlacementConstraint
 	Resource
+	State State
 }
 
 func NewLRP(instanceGUID string, key models.ActualLRPKey, res Resource, pc PlacementConstraint) LRP {
-	return LRP{instanceGUID, key, pc, res}
+	return LRP{instanceGUID, key, pc, res, ""}
 }
 
 func (lrp *LRP) Identifier() string {
@@ -265,10 +274,12 @@ type Task struct {
 	Domain   string
 	PlacementConstraint
 	Resource
+	State  State
+	Failed bool
 }
 
 func NewTask(guid string, domain string, res Resource, pc PlacementConstraint) Task {
-	return Task{guid, domain, pc, res}
+	return Task{guid, domain, pc, res, "", false}
 }
 
 func (task *Task) Identifier() string {

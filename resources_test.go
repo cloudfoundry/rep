@@ -20,16 +20,16 @@ var _ = Describe("Resources", func() {
 		linuxRootFSURL = models.PreloadedRootFS("linux")
 
 		lrps := []rep.LRP{
-			*BuildLRP("ig-1", "pg-1", "domain", 0, linuxRootFSURL, 10, 20, 30, []string{}, []string{}),
-			*BuildLRP("ig-2", "pg-1", "domain", 1, linuxRootFSURL, 10, 20, 30, []string{}, []string{}),
-			*BuildLRP("ig-3", "pg-2", "domain", 0, linuxRootFSURL, 10, 20, 30, []string{}, []string{}),
-			*BuildLRP("ig-4", "pg-3", "domain", 0, linuxRootFSURL, 10, 20, 30, []string{}, []string{}),
-			*BuildLRP("ig-5", "pg-4", "domain", 0, linuxRootFSURL, 10, 20, 30, []string{}, []string{}),
+			*BuildLRP("ig-1", "pg-1", "domain", 0, linuxRootFSURL, 10, 20, 30, []string{}, []string{}, rep.StateClaimed),
+			*BuildLRP("ig-2", "pg-1", "domain", 1, linuxRootFSURL, 10, 20, 30, []string{}, []string{}, rep.StateClaimed),
+			*BuildLRP("ig-3", "pg-2", "domain", 0, linuxRootFSURL, 10, 20, 30, []string{}, []string{}, rep.StateClaimed),
+			*BuildLRP("ig-4", "pg-3", "domain", 0, linuxRootFSURL, 10, 20, 30, []string{}, []string{}, rep.StateClaimed),
+			*BuildLRP("ig-5", "pg-4", "domain", 0, linuxRootFSURL, 10, 20, 30, []string{}, []string{}, rep.StateClaimed),
 		}
 
 		tasks := []rep.Task{
-			*BuildTask("tg-big", "domain", linuxRootFSURL, 20, 10, 10, []string{}, []string{}),
-			*BuildTask("tg-small", "domain", linuxRootFSURL, 10, 10, 10, []string{}, []string{}),
+			*BuildTask("tg-big", "domain", linuxRootFSURL, 20, 10, 10, []string{}, []string{}, rep.StateRunning, false),
+			*BuildTask("tg-small", "domain", linuxRootFSURL, 10, 10, 10, []string{}, []string{}, rep.StateRunning, false),
 		}
 
 		cellState = rep.NewCellState(
@@ -194,16 +194,18 @@ func BuildLRP(instanceGuid,
 	maxPids int32,
 	placementTags,
 	volumeDrivers []string,
+	state rep.State,
 ) *rep.LRP {
 	lrpKey := models.NewActualLRPKey(guid, int32(index), domain)
 	lrp := rep.NewLRP(instanceGuid, lrpKey, rep.NewResource(memoryMB, diskMB, maxPids), rep.PlacementConstraint{RootFs: rootFS,
 		PlacementTags: placementTags,
 		VolumeDrivers: volumeDrivers,
 	})
+	lrp.State = state
 	return &lrp
 }
 
-func BuildTask(taskGuid, domain, rootFS string, memoryMB, diskMB, maxPids int32, placementTags, volumeDrivers []string) *rep.Task {
+func BuildTask(taskGuid, domain, rootFS string, memoryMB, diskMB, maxPids int32, placementTags, volumeDrivers []string, state rep.State, failed bool) *rep.Task {
 	task := rep.NewTask(taskGuid, domain, rep.NewResource(memoryMB, diskMB, maxPids), rep.PlacementConstraint{RootFs: rootFS, VolumeDrivers: volumeDrivers})
 	return &task
 }

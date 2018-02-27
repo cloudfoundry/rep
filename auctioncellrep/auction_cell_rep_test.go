@@ -126,6 +126,34 @@ var _ = Describe("AuctionCellRep", func() {
 					State: executor.StateInitializing,
 				},
 				{
+					Guid:     "third",
+					Resource: executor.NewResource(40, 30, 100, "docker://cfdiegodocker/grace"),
+					Tags: executor.Tags{
+						rep.LifecycleTag:     rep.LRPLifecycle,
+						rep.ProcessGuidTag:   "the-third-app-guid",
+						rep.ProcessIndexTag:  "193",
+						rep.DomainTag:        "domain",
+						rep.InstanceGuidTag:  "ig-3",
+						rep.PlacementTagsTag: `["pt-3"]`,
+						rep.VolumeDriversTag: `["vd-3"]`,
+					},
+					State: executor.StateCreated,
+				},
+				{
+					Guid:     "fourth",
+					Resource: executor.NewResource(40, 30, 100, "docker://cfdiegodocker/grace"),
+					Tags: executor.Tags{
+						rep.LifecycleTag:     rep.LRPLifecycle,
+						rep.ProcessGuidTag:   "the-fourth-app-guid",
+						rep.ProcessIndexTag:  "194",
+						rep.DomainTag:        "domain",
+						rep.InstanceGuidTag:  "ig-4",
+						rep.PlacementTagsTag: `["pt-4"]`,
+						rep.VolumeDriversTag: `["vd-4"]`,
+					},
+					State: executor.StateRunning,
+				},
+				{
 					Guid: "da-task",
 					Resource: executor.NewResource(
 						40,
@@ -151,6 +179,41 @@ var _ = Describe("AuctionCellRep", func() {
 						rep.VolumeDriversTag: `[]`,
 					},
 					State: executor.StateRunning,
+				},
+				{
+					Guid: "yet-another-task",
+					Resource: executor.NewResource(
+						40,
+						30,
+						100,
+						fmt.Sprintf("%s:%s?key=value", models.PreloadedOCIRootFSScheme, linuxPath),
+					),
+					Tags: executor.Tags{
+						rep.LifecycleTag:     rep.TaskLifecycle,
+						rep.DomainTag:        "domain",
+						rep.PlacementTagsTag: `[]`,
+						rep.VolumeDriversTag: `[]`,
+					},
+					State: executor.StateCompleted,
+				},
+				{
+					Guid: "a-failed-task",
+					Resource: executor.NewResource(
+						40,
+						30,
+						100,
+						fmt.Sprintf("%s:%s?key=value", models.PreloadedOCIRootFSScheme, linuxPath),
+					),
+					Tags: executor.Tags{
+						rep.LifecycleTag:     rep.TaskLifecycle,
+						rep.DomainTag:        "domain",
+						rep.PlacementTagsTag: `[]`,
+						rep.VolumeDriversTag: `[]`,
+					},
+					State: executor.StateCompleted,
+					RunResult: executor.ContainerRunResult{
+						Failed: true,
+					},
 				},
 				{
 					Guid:     "other-task",
@@ -198,37 +261,82 @@ var _ = Describe("AuctionCellRep", func() {
 				Containers: totalResources.Containers,
 			}))
 
+			ig1 := rep.NewLRP(
+				"ig-1",
+				models.NewActualLRPKey("the-first-app-guid", 17, "domain"),
+				rep.NewResource(20, 10, 100),
+				rep.NewPlacementConstraint("preloaded:linux", []string{"pt-1"}, []string{"vd-1"}),
+			)
+			ig1.State = rep.StateClaimed
+
+			ig2 := rep.NewLRP(
+				"ig-2",
+				models.NewActualLRPKey("the-second-app-guid", 92, "domain"),
+				rep.NewResource(40, 30, 100),
+				rep.NewPlacementConstraint("docker://cfdiegodocker/grace", []string{"pt-2"}, []string{"vd-2"}),
+			)
+			ig2.State = rep.StateClaimed
+
+			ig3 := rep.NewLRP(
+				"ig-3",
+				models.NewActualLRPKey("the-third-app-guid", 193, "domain"),
+				rep.NewResource(40, 30, 100),
+				rep.NewPlacementConstraint("docker://cfdiegodocker/grace", []string{"pt-3"}, []string{"vd-3"}),
+			)
+			ig3.State = rep.StateClaimed
+
+			ig4 := rep.NewLRP(
+				"ig-4",
+				models.NewActualLRPKey("the-fourth-app-guid", 194, "domain"),
+				rep.NewResource(40, 30, 100),
+				rep.NewPlacementConstraint("docker://cfdiegodocker/grace", []string{"pt-4"}, []string{"vd-4"}),
+			)
+			ig4.State = rep.StateRunning
+
 			Expect(state.LRPs).To(ConsistOf([]rep.LRP{
-				rep.NewLRP(
-					"ig-1",
-					models.NewActualLRPKey("the-first-app-guid", 17, "domain"),
-					rep.NewResource(20, 10, 100),
-					rep.NewPlacementConstraint("preloaded:linux", []string{"pt-1"}, []string{"vd-1"}),
-				),
-				rep.NewLRP(
-					"ig-2",
-					models.NewActualLRPKey("the-second-app-guid", 92, "domain"),
-					rep.NewResource(40, 30, 100),
-					rep.NewPlacementConstraint("docker://cfdiegodocker/grace", []string{"pt-2"}, []string{"vd-2"}),
-				),
+				ig1, ig2, ig3, ig4,
 			}))
 
-			Expect(state.Tasks).To(ConsistOf([]rep.Task{
-				rep.NewTask(
-					"da-task",
-					"domain",
-					rep.NewResource(40, 30, 100),
-					rep.NewPlacementConstraint("preloaded+layer:linux?key=value", []string{}, []string{}),
-				),
-				rep.NewTask(
-					"another-task",
-					"domain",
-					rep.NewResource(40, 30, 100),
-					rep.NewPlacementConstraint(":url-error", []string{}, []string{}),
-				),
-			}))
+			task1 := rep.NewTask(
+				"da-task",
+				"domain",
+				rep.NewResource(40, 30, 100),
+				rep.NewPlacementConstraint("preloaded+layer:linux?key=value", []string{}, []string{}),
+			)
+			task1.State = rep.StateRunning
+			task1.Failed = false
 
-			Expect(state.StartingContainerCount).To(Equal(3))
+			task2 := rep.NewTask(
+				"another-task",
+				"domain",
+				rep.NewResource(40, 30, 100),
+				rep.NewPlacementConstraint(":url-error", []string{}, []string{}),
+			)
+			task2.State = rep.StateRunning
+			task2.Failed = false
+
+			task3 := rep.NewTask(
+				"yet-another-task",
+				"domain",
+				rep.NewResource(40, 30, 100),
+				rep.NewPlacementConstraint("preloaded+layer:linux?key=value", []string{}, []string{}),
+			)
+
+			task3.State = rep.StateCompleted
+			task3.Failed = false
+
+			task4 := rep.NewTask(
+				"a-failed-task",
+				"domain",
+				rep.NewResource(40, 30, 100),
+				rep.NewPlacementConstraint("preloaded+layer:linux?key=value", []string{}, []string{}),
+			)
+			task4.State = rep.StateCompleted
+			task4.Failed = true
+
+			Expect(state.Tasks).To(ConsistOf([]rep.Task{task1, task2, task3, task4}))
+
+			Expect(state.StartingContainerCount).To(Equal(4))
 
 			Expect(state.VolumeDrivers).To(ConsistOf(volumeDrivers))
 		})

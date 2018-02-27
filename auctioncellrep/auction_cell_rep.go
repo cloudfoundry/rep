@@ -210,10 +210,24 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, bool, error)
 				logger.Error("failed-to-extract-key", err)
 				continue
 			}
-			lrps = append(lrps, rep.NewLRP(instanceKey.InstanceGuid, *key, resource, placementConstraint))
+			state := rep.StateClaimed
+			if container.State == executor.StateRunning {
+				state = rep.StateRunning
+			}
+			lrp := rep.NewLRP(instanceKey.InstanceGuid, *key, resource, placementConstraint)
+			lrp.State = state
+			lrps = append(lrps, lrp)
 		case rep.TaskLifecycle:
 			domain := container.Tags[rep.DomainTag]
-			tasks = append(tasks, rep.NewTask(container.Guid, domain, resource, placementConstraint))
+			state := rep.StateRunning
+			if container.State == executor.StateCompleted {
+				state = rep.StateCompleted
+			}
+			lrp := rep.NewTask(container.Guid, domain, resource, placementConstraint)
+			lrp.State = state
+			lrp.Failed = container.RunResult.Failed
+			tasks = append(tasks, lrp)
+
 		}
 	}
 
