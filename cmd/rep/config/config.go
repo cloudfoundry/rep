@@ -80,9 +80,9 @@ type RepConfig struct {
 	BBSAddress                      string                `json:"bbs_address"`
 	BBSClientSessionCacheSize       int                   `json:"bbs_client_session_cache_size,omitempty"`
 	BBSMaxIdleConnsPerHost          int                   `json:"bbs_max_idle_conns_per_host,omitempty"`
-	BBSCACertFile                   string                `json:"bbs_ca_cert_file"`
-	BBSClientCertFile               string                `json:"bbs_client_cert_file"`
-	BBSClientKeyFile                string                `json:"bbs_client_key_file"`
+	BBSCACertFile                   string                `json:"bbs_ca_cert_file"`     // DEPRECATED. Kept around for dusts compatability
+	BBSClientCertFile               string                `json:"bbs_client_cert_file"` // DEPRECATED. Kept around for dusts compatability
+	BBSClientKeyFile                string                `json:"bbs_client_key_file"`  // DEPRECATED. Kept around for dusts compatability
 	CaCertFile                      string                `json:"ca_cert_file"`
 	CellID                          string                `json:"cell_id"`
 	CommunicationTimeout            durationjson.Duration `json:"communication_timeout,omitempty"`
@@ -101,8 +101,8 @@ type RepConfig struct {
 	PlacementTags                   []string              `json:"placement_tags"`
 	PollingInterval                 durationjson.Duration `json:"polling_interval,omitempty"`
 	PreloadedRootFS                 RootFSes              `json:"preloaded_root_fs"`
-	ServerCertFile                  string                `json:"server_cert_file"`
-	ServerKeyFile                   string                `json:"server_key_file"`
+	ServerCertFile                  string                `json:"server_cert_file"` // DEPRECATED. Kept around for dusts compatability
+	ServerKeyFile                   string                `json:"server_key_file"`  // DEPRECATED. Kept around for dusts compatability
 	CertFile                        string                `json:"cert_file"`
 	KeyFile                         string                `json:"key_file"`
 	SessionName                     string                `json:"session_name,omitempty"`
