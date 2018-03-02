@@ -20,16 +20,16 @@ var _ = Describe("Resources", func() {
 		linuxRootFSURL = models.PreloadedRootFS("linux")
 
 		lrps := []rep.LRP{
-			*BuildLRP("ig-1", "pg-1", "domain", 0, linuxRootFSURL, 10, 20, 30, []string{}, []string{}, rep.StateClaimed),
-			*BuildLRP("ig-2", "pg-1", "domain", 1, linuxRootFSURL, 10, 20, 30, []string{}, []string{}, rep.StateClaimed),
-			*BuildLRP("ig-3", "pg-2", "domain", 0, linuxRootFSURL, 10, 20, 30, []string{}, []string{}, rep.StateClaimed),
-			*BuildLRP("ig-4", "pg-3", "domain", 0, linuxRootFSURL, 10, 20, 30, []string{}, []string{}, rep.StateClaimed),
-			*BuildLRP("ig-5", "pg-4", "domain", 0, linuxRootFSURL, 10, 20, 30, []string{}, []string{}, rep.StateClaimed),
+			*buildLRP("ig-1", "pg-1", "domain", 0, linuxRootFSURL, 10, 20, 30, []string{}, []string{}, models.ActualLRPStateClaimed),
+			*buildLRP("ig-2", "pg-1", "domain", 1, linuxRootFSURL, 10, 20, 30, []string{}, []string{}, models.ActualLRPStateClaimed),
+			*buildLRP("ig-3", "pg-2", "domain", 0, linuxRootFSURL, 10, 20, 30, []string{}, []string{}, models.ActualLRPStateClaimed),
+			*buildLRP("ig-4", "pg-3", "domain", 0, linuxRootFSURL, 10, 20, 30, []string{}, []string{}, models.ActualLRPStateClaimed),
+			*buildLRP("ig-5", "pg-4", "domain", 0, linuxRootFSURL, 10, 20, 30, []string{}, []string{}, models.ActualLRPStateClaimed),
 		}
 
 		tasks := []rep.Task{
-			*BuildTask("tg-big", "domain", linuxRootFSURL, 20, 10, 10, []string{}, []string{}, rep.StateRunning, false),
-			*BuildTask("tg-small", "domain", linuxRootFSURL, 10, 10, 10, []string{}, []string{}, rep.StateRunning, false),
+			*buildTask("tg-big", "domain", linuxRootFSURL, 20, 10, 10, []string{}, []string{}, models.Task_Running, false),
+			*buildTask("tg-small", "domain", linuxRootFSURL, 10, 10, 10, []string{}, []string{}, models.Task_Running, false),
 		}
 
 		cellState = rep.NewCellState(
@@ -184,7 +184,7 @@ var _ = Describe("Resources", func() {
 	})
 })
 
-func BuildLRP(instanceGuid,
+func buildLRP(instanceGuid,
 	guid,
 	domain string,
 	index int,
@@ -194,7 +194,7 @@ func BuildLRP(instanceGuid,
 	maxPids int32,
 	placementTags,
 	volumeDrivers []string,
-	state rep.State,
+	state string,
 ) *rep.LRP {
 	lrpKey := models.NewActualLRPKey(guid, int32(index), domain)
 	lrp := rep.NewLRP(instanceGuid, lrpKey, rep.NewResource(memoryMB, diskMB, maxPids), rep.PlacementConstraint{RootFs: rootFS,
@@ -205,7 +205,7 @@ func BuildLRP(instanceGuid,
 	return &lrp
 }
 
-func BuildTask(taskGuid, domain, rootFS string, memoryMB, diskMB, maxPids int32, placementTags, volumeDrivers []string, state rep.State, failed bool) *rep.Task {
+func buildTask(taskGuid, domain, rootFS string, memoryMB, diskMB, maxPids int32, placementTags, volumeDrivers []string, state models.Task_State, failed bool) *rep.Task {
 	task := rep.NewTask(taskGuid, domain, rep.NewResource(memoryMB, diskMB, maxPids), rep.PlacementConstraint{RootFs: rootFS, VolumeDrivers: volumeDrivers})
 	return &task
 }

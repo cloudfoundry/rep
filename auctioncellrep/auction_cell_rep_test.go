@@ -77,163 +77,285 @@ var _ = Describe("AuctionCellRep", func() {
 
 	Describe("State", func() {
 		var (
-			availableResources, totalResources executor.ExecutorResources
-			containers                         []executor.Container
-			volumeDrivers                      []string
+			containers []executor.Container
 		)
 
-		BeforeEach(func() {
+		Context("when the rep has a container", func() {
+			var (
+				state rep.CellState
+			)
+
+			JustBeforeEach(func() {
+				client.ListContainersReturns(containers, nil)
+				var healthy bool
+				var err error
+				state, healthy, err = cellRep.State(logger)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(healthy).To(BeTrue())
+			})
+
+			createContainer := func(state executor.State, lifecycle string) executor.Container {
+				return executor.Container{
+					Guid:     "first",
+					Resource: executor.NewResource(20, 10, 100, linuxPath),
+					Tags: executor.Tags{
+						rep.LifecycleTag:     lifecycle,
+						rep.ProcessGuidTag:   "some-process-guid",
+						rep.ProcessIndexTag:  "17",
+						rep.DomainTag:        "domain",
+						rep.InstanceGuidTag:  "ig",
+						rep.PlacementTagsTag: `["pt"]`,
+						rep.VolumeDriversTag: `["vd"]`,
+					},
+					State: state,
+				}
+			}
+
+			Context("with TaskLifecycle", func() {
+				createTaskContainer := func(state executor.State) executor.Container {
+					return createContainer(state, rep.TaskLifecycle)
+				}
+
+				Context("in Reserved state", func() {
+					BeforeEach(func() {
+						container := createTaskContainer(executor.StateReserved)
+						containers = []executor.Container{container}
+					})
+
+					It("returns a running Task", func() {
+						Expect(state.Tasks).To(HaveLen(1))
+						Expect(state.Tasks[0].State).To(Equal(models.Task_Running))
+					})
+				})
+
+				Context("in Running state", func() {
+					BeforeEach(func() {
+						container := createTaskContainer(executor.StateRunning)
+						containers = []executor.Container{container}
+					})
+
+					It("returns a running Task", func() {
+						Expect(state.Tasks).To(HaveLen(1))
+						Expect(state.Tasks[0].State).To(Equal(models.Task_Running))
+					})
+				})
+
+				Context("in Completed state", func() {
+					BeforeEach(func() {
+						container := createTaskContainer(executor.StateCompleted)
+						containers = []executor.Container{container}
+					})
+
+					It("returns a completed Task", func() {
+						Expect(state.Tasks).To(HaveLen(1))
+						Expect(state.Tasks[0].State).To(Equal(models.Task_Completed))
+					})
+
+					Context("and the Failed flag is set", func() {
+						BeforeEach(func() {
+							containers[0].RunResult.Failed = true
+						})
+
+						It("returns a Failed Task", func() {
+							Expect(state.Tasks).To(HaveLen(1))
+							Expect(state.Tasks[0].State).To(Equal(models.Task_Completed))
+							Expect(state.Tasks[0].Failed).To(BeTrue())
+						})
+					})
+				})
+			})
+
+			Context("with LRPLifecycle", func() {
+				createLRPContainer := func(state executor.State) executor.Container {
+					return createContainer(state, rep.LRPLifecycle)
+				}
+
+				Context("in Reserved state", func() {
+					BeforeEach(func() {
+						containers = []executor.Container{createLRPContainer(executor.StateReserved)}
+					})
+
+					It("returns a claimed LRP", func() {
+						Expect(state.LRPs).To(HaveLen(1))
+						Expect(state.LRPs[0].State).To(Equal(models.ActualLRPStateClaimed))
+
+						Expect(state.StartingContainerCount).To(Equal(1))
+					})
+				})
+
+				Context("in Initializing state", func() {
+					BeforeEach(func() {
+						containers = []executor.Container{createLRPContainer(executor.StateInitializing)}
+					})
+
+					It("returns a claimed LRP", func() {
+						Expect(state.LRPs).To(HaveLen(1))
+						Expect(state.LRPs[0].State).To(Equal(models.ActualLRPStateClaimed))
+
+						Expect(state.StartingContainerCount).To(Equal(1))
+					})
+				})
+
+				Context("in Created state", func() {
+					BeforeEach(func() {
+						containers = []executor.Container{createLRPContainer(executor.StateCreated)}
+					})
+
+					It("returns a Claimed LRP", func() {
+						Expect(state.LRPs).To(HaveLen(1))
+						Expect(state.LRPs[0].State).To(Equal(models.ActualLRPStateClaimed))
+
+						Expect(state.StartingContainerCount).To(Equal(1))
+					})
+				})
+
+				Context("in Completed state", func() {
+					BeforeEach(func() {
+						containers = []executor.Container{createLRPContainer(executor.StateCompleted)}
+					})
+
+					It("returns a Running LRP", func() {
+						Expect(state.LRPs).To(HaveLen(1))
+						Expect(state.LRPs[0].State).To(Equal("SHUTDOWN"))
+
+						Expect(state.StartingContainerCount).To(BeZero())
+					})
+
+					Context("and the LRP has crashed", func() {
+						BeforeEach(func() {
+							containers[0].RunResult.Failed = true
+						})
+
+						It("returns a Running LRP", func() {
+							Expect(state.LRPs).To(HaveLen(1))
+							Expect(state.LRPs[0].State).To(Equal("CRASHED"))
+
+							Expect(state.StartingContainerCount).To(BeZero())
+						})
+					})
+				})
+
+				Context("in Running state", func() {
+					BeforeEach(func() {
+						containers = []executor.Container{createLRPContainer(executor.StateRunning)}
+					})
+
+					It("returns a Running LRP", func() {
+						Expect(state.LRPs).To(HaveLen(1))
+						Expect(state.LRPs[0].State).To(Equal(models.ActualLRPStateRunning))
+
+						Expect(state.StartingContainerCount).To(BeZero())
+					})
+
+					Context("returns the right index", func() {
+						BeforeEach(func() {
+							containers[0].Tags[rep.ProcessIndexTag] = "100"
+						})
+
+						It("returns the right index", func() {
+							Expect(state.LRPs).To(HaveLen(1))
+							Expect(state.LRPs[0].Index).To(BeNumerically("==", 100))
+						})
+					})
+
+					Context("with a different domain", func() {
+						BeforeEach(func() {
+							containers[0].Tags[rep.DomainTag] = "random-domain"
+						})
+
+						It("returns the right index", func() {
+							Expect(state.LRPs).To(HaveLen(1))
+							Expect(state.LRPs[0].Domain).To(Equal("random-domain"))
+						})
+					})
+
+					Context("with a process guid", func() {
+						BeforeEach(func() {
+							containers[0].Tags[rep.ProcessGuidTag] = "random-guid"
+						})
+
+						It("returns the right index", func() {
+							Expect(state.LRPs).To(HaveLen(1))
+							Expect(state.LRPs[0].ProcessGuid).To(Equal("random-guid"))
+						})
+					})
+
+					Context("with different rootfs", func() {
+						BeforeEach(func() {
+							containers[0].RootFSPath = "docker://cfdiegodocker/grace"
+						})
+
+						It("returns the right index", func() {
+							Expect(state.LRPs).To(HaveLen(1))
+							Expect(state.LRPs[0].RootFs).To(Equal("docker://cfdiegodocker/grace"))
+						})
+					})
+
+					Context("with placement tags", func() {
+						BeforeEach(func() {
+							containers[0].Tags[rep.PlacementTagsTag] = `["random-placement-tag"]`
+						})
+
+						It("returns the right index", func() {
+							Expect(state.LRPs).To(HaveLen(1))
+							Expect(state.LRPs[0].PlacementTags).To(ConsistOf([]string{"random-placement-tag"}))
+						})
+					})
+
+					Context("with volume drivers", func() {
+						BeforeEach(func() {
+							containers[0].Tags[rep.VolumeDriversTag] = `["random-volume-driver"]`
+						})
+
+						It("returns the right index", func() {
+							Expect(state.LRPs).To(HaveLen(1))
+							Expect(state.LRPs[0].VolumeDrivers).To(ConsistOf([]string{"random-volume-driver"}))
+						})
+					})
+
+					Context("with different resource usage", func() {
+						BeforeEach(func() {
+							containers[0].Resource = executor.Resource{
+								MemoryMB: 2048,
+								DiskMB:   4096,
+								MaxPids:  10,
+							}
+						})
+
+						It("returns the right index", func() {
+							Expect(state.LRPs).To(HaveLen(1))
+							Expect(state.LRPs[0].Resource).To(Equal(rep.Resource{
+								MemoryMB: 2048,
+								DiskMB:   4096,
+								MaxPids:  10,
+							}))
+						})
+					})
+				})
+			})
+		})
+
+		It("queries the client and returns state", func() {
 			evacuationReporter.EvacuatingReturns(true)
-			totalResources = executor.ExecutorResources{
+			totalResources := executor.ExecutorResources{
 				MemoryMB:   1024,
 				DiskMB:     2048,
 				Containers: 4,
 			}
 
-			availableResources = executor.ExecutorResources{
+			availableResources := executor.ExecutorResources{
 				MemoryMB:   512,
 				DiskMB:     256,
 				Containers: 2,
 			}
 
-			containers = []executor.Container{
-				{
-					Guid:     "first",
-					Resource: executor.NewResource(20, 10, 100, linuxPath),
-					Tags: executor.Tags{
-						rep.LifecycleTag:     rep.LRPLifecycle,
-						rep.ProcessGuidTag:   "the-first-app-guid",
-						rep.ProcessIndexTag:  "17",
-						rep.DomainTag:        "domain",
-						rep.InstanceGuidTag:  "ig-1",
-						rep.PlacementTagsTag: `["pt-1"]`,
-						rep.VolumeDriversTag: `["vd-1"]`,
-					},
-					State: executor.StateReserved,
-				},
-				{
-					Guid:     "second",
-					Resource: executor.NewResource(40, 30, 100, "docker://cfdiegodocker/grace"),
-					Tags: executor.Tags{
-						rep.LifecycleTag:     rep.LRPLifecycle,
-						rep.ProcessGuidTag:   "the-second-app-guid",
-						rep.ProcessIndexTag:  "92",
-						rep.DomainTag:        "domain",
-						rep.InstanceGuidTag:  "ig-2",
-						rep.PlacementTagsTag: `["pt-2"]`,
-						rep.VolumeDriversTag: `["vd-2"]`,
-					},
-					State: executor.StateInitializing,
-				},
-				{
-					Guid:     "third",
-					Resource: executor.NewResource(40, 30, 100, "docker://cfdiegodocker/grace"),
-					Tags: executor.Tags{
-						rep.LifecycleTag:     rep.LRPLifecycle,
-						rep.ProcessGuidTag:   "the-third-app-guid",
-						rep.ProcessIndexTag:  "193",
-						rep.DomainTag:        "domain",
-						rep.InstanceGuidTag:  "ig-3",
-						rep.PlacementTagsTag: `["pt-3"]`,
-						rep.VolumeDriversTag: `["vd-3"]`,
-					},
-					State: executor.StateCreated,
-				},
-				{
-					Guid:     "fourth",
-					Resource: executor.NewResource(40, 30, 100, "docker://cfdiegodocker/grace"),
-					Tags: executor.Tags{
-						rep.LifecycleTag:     rep.LRPLifecycle,
-						rep.ProcessGuidTag:   "the-fourth-app-guid",
-						rep.ProcessIndexTag:  "194",
-						rep.DomainTag:        "domain",
-						rep.InstanceGuidTag:  "ig-4",
-						rep.PlacementTagsTag: `["pt-4"]`,
-						rep.VolumeDriversTag: `["vd-4"]`,
-					},
-					State: executor.StateRunning,
-				},
-				{
-					Guid: "da-task",
-					Resource: executor.NewResource(
-						40,
-						30,
-						100,
-						fmt.Sprintf("%s:%s?key=value", models.PreloadedOCIRootFSScheme, linuxPath),
-					),
-					Tags: executor.Tags{
-						rep.LifecycleTag:     rep.TaskLifecycle,
-						rep.DomainTag:        "domain",
-						rep.PlacementTagsTag: `[]`,
-						rep.VolumeDriversTag: `[]`,
-					},
-					State: executor.StateCreated,
-				},
-				{
-					Guid:     "another-task",
-					Resource: executor.NewResource(40, 30, 100, ":url-error"),
-					Tags: executor.Tags{
-						rep.LifecycleTag:     rep.TaskLifecycle,
-						rep.DomainTag:        "domain",
-						rep.PlacementTagsTag: `[]`,
-						rep.VolumeDriversTag: `[]`,
-					},
-					State: executor.StateRunning,
-				},
-				{
-					Guid: "yet-another-task",
-					Resource: executor.NewResource(
-						40,
-						30,
-						100,
-						fmt.Sprintf("%s:%s?key=value", models.PreloadedOCIRootFSScheme, linuxPath),
-					),
-					Tags: executor.Tags{
-						rep.LifecycleTag:     rep.TaskLifecycle,
-						rep.DomainTag:        "domain",
-						rep.PlacementTagsTag: `[]`,
-						rep.VolumeDriversTag: `[]`,
-					},
-					State: executor.StateCompleted,
-				},
-				{
-					Guid: "a-failed-task",
-					Resource: executor.NewResource(
-						40,
-						30,
-						100,
-						fmt.Sprintf("%s:%s?key=value", models.PreloadedOCIRootFSScheme, linuxPath),
-					),
-					Tags: executor.Tags{
-						rep.LifecycleTag:     rep.TaskLifecycle,
-						rep.DomainTag:        "domain",
-						rep.PlacementTagsTag: `[]`,
-						rep.VolumeDriversTag: `[]`,
-					},
-					State: executor.StateCompleted,
-					RunResult: executor.ContainerRunResult{
-						Failed: true,
-					},
-				},
-				{
-					Guid:     "other-task",
-					Resource: executor.NewResource(40, 30, 100, linuxPath),
-					Tags:     nil,
-					State:    executor.StateRunning,
-				},
-			}
-
-			volumeDrivers = []string{"lewis", "nico", "sebastian", "felipe"}
-			placementTags = []string{}
-			optionalPlacementTags = []string{}
+			volumeDrivers := []string{"lewis", "nico", "sebastian", "felipe"}
 
 			client.TotalResourcesReturns(totalResources, nil)
 			client.RemainingResourcesReturns(availableResources, nil)
 			client.ListContainersReturns(containers, nil)
 			client.VolumeDriversReturns(volumeDrivers, nil)
-		})
 
-		It("queries the client and returns state", func() {
 			state, healthy, err := cellRep.State(logger)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -260,83 +382,6 @@ var _ = Describe("AuctionCellRep", func() {
 				DiskMB:     int32(totalResources.DiskMB),
 				Containers: totalResources.Containers,
 			}))
-
-			lrp1 := rep.NewLRP(
-				"ig-1",
-				models.NewActualLRPKey("the-first-app-guid", 17, "domain"),
-				rep.NewResource(20, 10, 100),
-				rep.NewPlacementConstraint("preloaded:linux", []string{"pt-1"}, []string{"vd-1"}),
-			)
-			lrp1.State = rep.StateClaimed
-
-			lrp2 := rep.NewLRP(
-				"ig-2",
-				models.NewActualLRPKey("the-second-app-guid", 92, "domain"),
-				rep.NewResource(40, 30, 100),
-				rep.NewPlacementConstraint("docker://cfdiegodocker/grace", []string{"pt-2"}, []string{"vd-2"}),
-			)
-			lrp2.State = rep.StateClaimed
-
-			lrp3 := rep.NewLRP(
-				"ig-3",
-				models.NewActualLRPKey("the-third-app-guid", 193, "domain"),
-				rep.NewResource(40, 30, 100),
-				rep.NewPlacementConstraint("docker://cfdiegodocker/grace", []string{"pt-3"}, []string{"vd-3"}),
-			)
-			lrp3.State = rep.StateClaimed
-
-			lrp4 := rep.NewLRP(
-				"ig-4",
-				models.NewActualLRPKey("the-fourth-app-guid", 194, "domain"),
-				rep.NewResource(40, 30, 100),
-				rep.NewPlacementConstraint("docker://cfdiegodocker/grace", []string{"pt-4"}, []string{"vd-4"}),
-			)
-			lrp4.State = rep.StateRunning
-
-			Expect(state.LRPs).To(ConsistOf([]rep.LRP{
-				lrp1, lrp2, lrp3, lrp4,
-			}))
-
-			task1 := rep.NewTask(
-				"da-task",
-				"domain",
-				rep.NewResource(40, 30, 100),
-				rep.NewPlacementConstraint("preloaded+layer:linux?key=value", []string{}, []string{}),
-			)
-			task1.State = rep.StateRunning
-			task1.Failed = false
-
-			task2 := rep.NewTask(
-				"another-task",
-				"domain",
-				rep.NewResource(40, 30, 100),
-				rep.NewPlacementConstraint(":url-error", []string{}, []string{}),
-			)
-			task2.State = rep.StateRunning
-			task2.Failed = false
-
-			task3 := rep.NewTask(
-				"yet-another-task",
-				"domain",
-				rep.NewResource(40, 30, 100),
-				rep.NewPlacementConstraint("preloaded+layer:linux?key=value", []string{}, []string{}),
-			)
-
-			task3.State = rep.StateCompleted
-			task3.Failed = false
-
-			task4 := rep.NewTask(
-				"a-failed-task",
-				"domain",
-				rep.NewResource(40, 30, 100),
-				rep.NewPlacementConstraint("preloaded+layer:linux?key=value", []string{}, []string{}),
-			)
-			task4.State = rep.StateCompleted
-			task4.Failed = true
-
-			Expect(state.Tasks).To(ConsistOf([]rep.Task{task1, task2, task3, task4}))
-
-			Expect(state.StartingContainerCount).To(Equal(4))
 
 			Expect(state.VolumeDrivers).To(ConsistOf(volumeDrivers))
 		})

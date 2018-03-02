@@ -210,18 +210,26 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, bool, error)
 				logger.Error("failed-to-extract-key", err)
 				continue
 			}
-			state := rep.StateClaimed
-			if container.State == executor.StateRunning {
-				state = rep.StateRunning
+			var state string
+			switch container.State {
+			case executor.StateRunning:
+				state = models.ActualLRPStateRunning
+			case executor.StateCompleted:
+				state = "SHUTDOWN"
+				if container.RunResult.Failed {
+					state = "CRASHED"
+				}
+			default:
+				state = models.ActualLRPStateClaimed
 			}
 			lrp := rep.NewLRP(instanceKey.InstanceGuid, *key, resource, placementConstraint)
 			lrp.State = state
 			lrps = append(lrps, lrp)
 		case rep.TaskLifecycle:
 			domain := container.Tags[rep.DomainTag]
-			state := rep.StateRunning
+			state := models.Task_Running
 			if container.State == executor.StateCompleted {
-				state = rep.StateCompleted
+				state = models.Task_Completed
 			}
 			task := rep.NewTask(container.Guid, domain, resource, placementConstraint)
 			task.State = state

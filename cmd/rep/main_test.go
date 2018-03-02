@@ -610,7 +610,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 						Expect(lrp.PlacementConstraint.VolumeDrivers).To(Equal(volumeDrivers))
 						Expect(lrp.RootFs).To(Equal("foobar"))
 						Expect(lrp.MaxPids).To(BeEquivalentTo(10))
-						Expect(lrp.State).To(BeEquivalentTo("claimed"))
+						Expect(lrp.State).To(BeEquivalentTo("CLAIMED"))
 					})
 				})
 			})
