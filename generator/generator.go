@@ -12,6 +12,7 @@ import (
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
 	"code.cloudfoundry.org/rep/generator/internal"
+	multierror "github.com/hashicorp/go-multierror"
 )
 
 //go:generate counterfeiter -o fake_generator/fake_generator.go . Generator
@@ -64,8 +65,8 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	evacuatingLRPs := make(map[string]models.ActualLRP)
 	tasks := make(map[string]*models.Task)
 
-	errChan := make(chan error, 3)
-
+	routineCount := 3
+	errChan := make(chan error, routineCount)
 	logger.Info("getting-containers-lrps-and-tasks")
 	go func() {
 		foundContainers, err := g.executorClient.ListContainers(logger)
@@ -114,10 +115,10 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	}()
 
 	var err error
-	for i := 0; i < 3; i++ {
+	for i := 0; i < routineCount; i++ {
 		e := <-errChan
-		if err == nil && e != nil {
-			err = e
+		if e != nil {
+			err = multierror.Append(err, e)
 		}
 	}
 
