@@ -84,11 +84,9 @@ var _ = Describe("RepConfig", func() {
 				"loggregator_ca_path": "ca-path",
 				"loggregator_cert_path": "cert-path",
 				"loggregator_key_path": "key-path",
-				"loggregator_job_deployment": "job-deployment",
-				"loggregator_job_name": "job-name",
-				"loggregator_job_index": "job-index",
-				"loggregator_job_ip": "job-ip",
-				"loggregator_job_origin": "job-origin"
+				"loggregator_job_origin": "job-origin",
+				"loggregator_source_id": "my-source-id",
+				"loggregator_instance_id": 1
 			},
 			"max_cache_size_in_bytes": 101,
 			"max_concurrent_downloads": 11,
@@ -229,16 +227,14 @@ var _ = Describe("RepConfig", func() {
 			SupportedProviders:    []string{"provider1", "provider2"},
 			Zone:                  "test-zone",
 			LoggregatorConfig: loggingclient.Config{
-				UseV2API:      true,
-				APIPort:       1234,
-				CACertPath:    "ca-path",
-				CertPath:      "cert-path",
-				KeyPath:       "key-path",
-				JobDeployment: "job-deployment",
-				JobName:       "job-name",
-				JobIndex:      "job-index",
-				JobIP:         "job-ip",
-				JobOrigin:     "job-origin",
+				UseV2API:   true,
+				APIPort:    1234,
+				CACertPath: "ca-path",
+				CertPath:   "cert-path",
+				KeyPath:    "key-path",
+				JobOrigin:  "job-origin",
+				SourceID:   "my-source-id",
+				InstanceID: 1,
 			},
 		}))
 	})
@@ -331,6 +327,9 @@ var _ = Describe("RepConfig", func() {
 					ContainerMetricsReportInterval:     durationjson.Duration(15 * time.Second),
 					CSIPaths:                           []string{"/var/vcap/data/csiplugins"},
 					CSIMountRootDir:                    "/var/vcap/data/csimountroot",
+				},
+				LoggregatorConfig: loggingclient.Config{
+					SourceID: "rep",
 				},
 			}))
 		})

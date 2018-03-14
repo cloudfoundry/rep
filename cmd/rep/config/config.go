@@ -132,6 +132,9 @@ func defaultConfig() RepConfig {
 		LockTTL:                   durationjson.Duration(locket.DefaultSessionTTL),
 		PollingInterval:           durationjson.Duration(30 * time.Second),
 		SessionName:               "rep",
+		LoggregatorConfig: loggingclient.Config{
+			SourceID: "rep",
+		},
 	}
 }
 
