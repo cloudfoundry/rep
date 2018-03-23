@@ -146,7 +146,7 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 
 func (p *taskProcessor) failTask(logger lager.Logger, guid string, reason string) {
 	logger.Info("failing-task")
-	err := p.bbsClient.FailTask(logger, guid, reason)
+	err := p.bbsClient.CompleteTask(logger, guid, p.cellID, true, reason, "")
 	if err != nil {
 		logger.Error("failed-failing-task", err)
 		return

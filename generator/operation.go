@@ -155,6 +155,7 @@ func (o *ResidualJointLRPOperation) Execute() {
 type ResidualTaskOperation struct {
 	logger            lager.Logger
 	TaskGuid          string
+	CellId            string
 	bbsClient         bbs.InternalClient
 	containerDelegate internal.ContainerDelegate
 }
@@ -162,12 +163,14 @@ type ResidualTaskOperation struct {
 func NewResidualTaskOperation(
 	logger lager.Logger,
 	taskGuid string,
+	cellId string,
 	bbsClient bbs.InternalClient,
 	containerDelegate internal.ContainerDelegate,
 ) *ResidualTaskOperation {
 	return &ResidualTaskOperation{
 		logger:            logger,
 		TaskGuid:          taskGuid,
+		CellId:            cellId,
 		bbsClient:         bbsClient,
 		containerDelegate: containerDelegate,
 	}
@@ -190,7 +193,7 @@ func (o *ResidualTaskOperation) Execute() {
 		return
 	}
 
-	err := o.bbsClient.FailTask(logger, o.TaskGuid, internal.TaskCompletionReasonMissingContainer)
+	err := o.bbsClient.CompleteTask(logger, o.TaskGuid, o.CellId, true, internal.TaskCompletionReasonMissingContainer, "")
 	if err != nil {
 		logger.Error("failed-to-fail-task", err)
 	}
