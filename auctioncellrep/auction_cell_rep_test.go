@@ -682,6 +682,27 @@ var _ = Describe("AuctionCellRep", func() {
 							},
 						))
 					})
+
+					Context("when the LRP has unlimited memory and additional memory is allocated for the proxy", func() {
+						BeforeEach(func() {
+							lrpAuctionOne.MemoryMB = 0
+						})
+
+						It("requests an LRP with unlimited memory", func() {
+							_, err := cellRep.Perform(logger, rep.Work{
+								LRPs: lrpAuctions,
+							})
+							Expect(err).NotTo(HaveOccurred())
+
+							expectedResource := executor.NewResource(0, int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), linuxPath)
+
+							_, arg := client.AllocateContainersArgsForCall(0)
+							Expect(arg).ToNot(HaveLen(0))
+
+							resourceOne := arg[0].Resource
+							Expect(resourceOne).To(Equal(expectedResource))
+						})
+					})
 				})
 
 				Context("when the workload's cell ID matches the cell's ID", func() {

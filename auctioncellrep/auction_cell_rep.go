@@ -403,11 +403,12 @@ func (a *AuctionCellRep) lrpsToAllocationRequest(lrps []rep.LRP) ([]executor.All
 
 		var resource executor.Resource
 
-		if a.enableContainerProxy {
-			resource = executor.NewResource(int(lrp.MemoryMB)+a.proxyMemoryAllocation, int(lrp.DiskMB), int(lrp.MaxPids), rootFSPath)
-		} else {
-			resource = executor.NewResource(int(lrp.MemoryMB), int(lrp.DiskMB), int(lrp.MaxPids), rootFSPath)
+		memoryMB := int(lrp.MemoryMB)
+		if a.enableContainerProxy && memoryMB > 0 {
+			memoryMB += a.proxyMemoryAllocation
 		}
+		resource = executor.NewResource(memoryMB, int(lrp.DiskMB), int(lrp.MaxPids), rootFSPath)
+
 		requests = append(requests, executor.NewAllocationRequest(containerGuid, &resource, tags))
 	}
 
