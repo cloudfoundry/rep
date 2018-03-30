@@ -136,7 +136,6 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	for guid, _ := range containers {
 		batch[guid] = g.operationFromContainer(logger, guid)
 	}
-
 	// create operations for instance lrps with no containers
 	for guid, lrp := range instanceLRPs {
 		if _, foundContainer := batch[guid]; foundContainer {
