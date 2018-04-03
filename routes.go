@@ -3,8 +3,9 @@ package rep
 import "github.com/tedsuo/rata"
 
 const (
-	StateRoute   = "STATE"
-	PerformRoute = "PERFORM"
+	StateRoute            = "STATE"
+	ContainerMetricsRoute = "ContainerMetrics"
+	PerformRoute          = "PERFORM"
 
 	StopLRPInstanceRoute = "StopLRPInstance"
 	CancelTaskRoute      = "CancelTask"
@@ -21,6 +22,7 @@ func NewRoutes(networkAccessible bool) rata.Routes {
 	if networkAccessible {
 		routes = append(routes,
 			rata.Route{Path: "/state", Method: "GET", Name: StateRoute},
+			rata.Route{Path: "/container_metrics", Method: "GET", Name: ContainerMetricsRoute},
 			rata.Route{Path: "/work", Method: "POST", Name: PerformRoute},
 
 			rata.Route{Path: "/v1/lrps/:process_guid/instances/:instance_guid/stop", Method: "POST", Name: StopLRPInstanceRoute},

@@ -14,6 +14,7 @@ import (
 	"code.cloudfoundry.org/rep/auctioncellrep/auctioncellrepfakes"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"code.cloudfoundry.org/rep/handlers"
+	"code.cloudfoundry.org/rep/handlers/handlersfakes"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -31,6 +32,8 @@ var server *httptest.Server
 var requestGenerator *rata.RequestGenerator
 var client *http.Client
 var fakeLocalRep *auctioncellrepfakes.FakeAuctionCellClient
+var fakeMetricCollector *handlersfakes.FakeMetricCollector
+var containerMetrics *rep.ContainerMetricsCollection
 var repGuid string
 var logger *lagertest.TestLogger
 
@@ -38,9 +41,10 @@ var _ = BeforeEach(func() {
 	logger = lagertest.NewTestLogger("handlers")
 
 	fakeLocalRep = new(auctioncellrepfakes.FakeAuctionCellClient)
+	fakeMetricCollector = &handlersfakes.FakeMetricCollector{}
 	fakeExecutorClient := new(executorfakes.FakeClient)
 	fakeEvacuatable := new(fake_evacuation_context.FakeEvacuatable)
-	handler, err := rata.NewRouter(rep.Routes, handlers.NewLegacy(fakeLocalRep, fakeExecutorClient, fakeEvacuatable, logger))
+	handler, err := rata.NewRouter(rep.Routes, handlers.NewLegacy(fakeLocalRep, fakeMetricCollector, fakeExecutorClient, fakeEvacuatable, logger))
 	Expect(err).NotTo(HaveOccurred())
 	server = httptest.NewServer(handler)
 

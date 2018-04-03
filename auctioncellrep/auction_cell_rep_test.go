@@ -6,29 +6,32 @@ import (
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/executor"
+	"code.cloudfoundry.org/executor/containermetrics"
 	fake_client "code.cloudfoundry.org/executor/fakes"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/auctioncellrep"
+	fakes "code.cloudfoundry.org/rep/auctioncellrep/auctioncellrepfakes"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context/fake_evacuation_context"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("AuctionCellRep", func() {
-	const (
-		repURL     = "https://foo.cell.service.cf.internal:8888"
-		cellID     = "some-cell-id"
-		linuxStack = "linux"
-		linuxPath  = "/data/rootfs/linux"
-	)
+const (
+	repURL     = "https://foo.cell.service.cf.internal:8888"
+	cellID     = "some-cell-id"
+	linuxStack = "linux"
+	linuxPath  = "/data/rootfs/linux"
+)
 
+var _ = Describe("AuctionCellRep", func() {
 	var (
-		cellRep            auctioncellrep.AuctionCellClient
-		client             *fake_client.FakeClient
-		logger             *lagertest.TestLogger
-		evacuationReporter *fake_evacuation_context.FakeEvacuationReporter
+		cellRep                      *auctioncellrep.AuctionCellRep
+		client                       *fake_client.FakeClient
+		logger                       *lagertest.TestLogger
+		evacuationReporter           *fake_evacuation_context.FakeEvacuationReporter
+		fakeContainerMetricsProvider *fakes.FakeContainerMetricsProvider
 
 		expectedGuid, linuxRootFSURL string
 		commonErr, expectedGuidError error
@@ -44,6 +47,7 @@ var _ = Describe("AuctionCellRep", func() {
 		client = new(fake_client.FakeClient)
 		logger = lagertest.NewTestLogger("test")
 		evacuationReporter = &fake_evacuation_context.FakeEvacuationReporter{}
+		fakeContainerMetricsProvider = new(fakes.FakeContainerMetricsProvider)
 
 		expectedGuid = "container-guid"
 		expectedGuidError = nil
@@ -63,6 +67,7 @@ var _ = Describe("AuctionCellRep", func() {
 			cellID,
 			repURL,
 			rep.StackPathMap{linuxStack: linuxPath},
+			fakeContainerMetricsProvider,
 			[]string{"docker"},
 			"the-zone",
 			fakeGenerateContainerGuid,
@@ -73,6 +78,86 @@ var _ = Describe("AuctionCellRep", func() {
 			proxyMemoryAllocation,
 			enableContainerProxy,
 		)
+	})
+
+	Describe("Metrics", func() {
+		var (
+			// 	containers []executor.Container
+			metrics *rep.ContainerMetricsCollection
+		)
+
+		JustBeforeEach(func() {
+			// client.ListContainersReturns(containers, nil)
+			var err error
+			metrics, err = cellRep.Metrics(logger)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		Context("when the rep has no containers", func() {
+			It("should return the cell-id and empty lrp and task metrics", func() {
+				Expect(metrics.CellID).To(Equal(cellID))
+				Expect(metrics.LRPs).To(BeEmpty())
+				Expect(metrics.Tasks).To(BeEmpty())
+			})
+		})
+
+		Context("when the rep has an lrp container", func() {
+			var metricValues containermetrics.CachedContainerMetrics
+			BeforeEach(func() {
+				metricValues = containermetrics.CachedContainerMetrics{
+					MetricGUID:       "some-metric-guid",
+					CPUUsageFraction: 0.8,
+					DiskUsageBytes:   10,
+					DiskQuotaBytes:   20,
+					MemoryUsageBytes: 5,
+					MemoryQuotaBytes: 10,
+				}
+				container := createContainer(executor.StateRunning, rep.LRPLifecycle)
+				client.ListContainersReturns([]executor.Container{container}, nil)
+				fakeContainerMetricsProvider.MetricsReturns(map[string]*containermetrics.CachedContainerMetrics{
+					"some-container-guid": &metricValues,
+				})
+			})
+
+			It("should return metrics for the running container", func() {
+				Expect(metrics.LRPs).To(HaveLen(1))
+				Expect(metrics.Tasks).To(BeEmpty())
+
+				lrpMetrics := metrics.LRPs[0]
+				Expect(lrpMetrics.ProcessGUID).To(Equal("some-process-guid"))
+				Expect(lrpMetrics.InstanceGUID).To(Equal("some-instance-guid"))
+				Expect(lrpMetrics.Index).To(Equal(int32(1)))
+				Expect(lrpMetrics.CachedContainerMetrics).To(Equal(metricValues))
+			})
+		})
+
+		Context("when the rep has a task container", func() {
+			var metricValues containermetrics.CachedContainerMetrics
+			BeforeEach(func() {
+				metricValues = containermetrics.CachedContainerMetrics{
+					MetricGUID:       "some-metric-guid",
+					CPUUsageFraction: 0.8,
+					DiskUsageBytes:   10,
+					DiskQuotaBytes:   20,
+					MemoryUsageBytes: 5,
+					MemoryQuotaBytes: 10,
+				}
+				container := createContainer(executor.StateRunning, rep.TaskLifecycle)
+				client.ListContainersReturns([]executor.Container{container}, nil)
+				fakeContainerMetricsProvider.MetricsReturns(map[string]*containermetrics.CachedContainerMetrics{
+					"some-container-guid": &metricValues,
+				})
+			})
+
+			It("should return metrics for the running container", func() {
+				Expect(metrics.LRPs).To(BeEmpty())
+				Expect(metrics.Tasks).To(HaveLen(1))
+
+				taskMetrics := metrics.Tasks[0]
+				Expect(taskMetrics.TaskGUID).To(Equal("some-container-guid"))
+				Expect(taskMetrics.CachedContainerMetrics).To(Equal(metricValues))
+			})
+		})
 	})
 
 	Describe("State", func() {
@@ -93,23 +178,6 @@ var _ = Describe("AuctionCellRep", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(healthy).To(BeTrue())
 			})
-
-			createContainer := func(state executor.State, lifecycle string) executor.Container {
-				return executor.Container{
-					Guid:     "first",
-					Resource: executor.NewResource(20, 10, 100, linuxPath),
-					Tags: executor.Tags{
-						rep.LifecycleTag:     lifecycle,
-						rep.ProcessGuidTag:   "some-process-guid",
-						rep.ProcessIndexTag:  "17",
-						rep.DomainTag:        "domain",
-						rep.InstanceGuidTag:  "ig",
-						rep.PlacementTagsTag: `["pt"]`,
-						rep.VolumeDriversTag: `["vd"]`,
-					},
-					State: state,
-				}
-			}
 
 			Context("with TaskLifecycle", func() {
 				createTaskContainer := func(state executor.State) executor.Container {
@@ -1148,6 +1216,23 @@ var _ = Describe("AuctionCellRep", func() {
 		})
 	})
 })
+
+func createContainer(state executor.State, lifecycle string) executor.Container {
+	return executor.Container{
+		Guid:     "some-container-guid",
+		Resource: executor.NewResource(20, 10, 100, linuxPath),
+		Tags: executor.Tags{
+			rep.LifecycleTag:     lifecycle,
+			rep.ProcessGuidTag:   "some-process-guid",
+			rep.ProcessIndexTag:  "1",
+			rep.DomainTag:        "domain",
+			rep.InstanceGuidTag:  "some-instance-guid",
+			rep.PlacementTagsTag: `["pt"]`,
+			rep.VolumeDriversTag: `["vd"]`,
+		},
+		State: state,
+	}
+}
 
 func allocationRequestFromTask(task rep.Task, rootFSPath, placementTags, volumeDrivers string) executor.AllocationRequest {
 	resource := executor.NewResource(int(task.MemoryMB), int(task.DiskMB), int(task.MaxPids), rootFSPath)

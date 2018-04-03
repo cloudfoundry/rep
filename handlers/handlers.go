@@ -13,6 +13,7 @@ import (
 
 func New(
 	localCellClient auctioncellrep.AuctionCellClient,
+	localMetricCollector MetricCollector,
 	executorClient executor.Client,
 	evacuatable evacuation_context.Evacuatable,
 	logger lager.Logger,
@@ -22,12 +23,14 @@ func New(
 	handlers := rata.Handlers{}
 	if secure {
 		stateHandler := &state{rep: localCellClient}
+		containerMetricsHandler := &containerMetrics{rep: localMetricCollector}
 		performHandler := &perform{rep: localCellClient}
 		resetHandler := &reset{rep: localCellClient}
 		stopLrpHandler := NewStopLRPInstanceHandler(executorClient)
 		cancelTaskHandler := NewCancelTaskHandler(executorClient)
 
 		handlers[rep.StateRoute] = logWrap(stateHandler.ServeHTTP, logger)
+		handlers[rep.ContainerMetricsRoute] = logWrap(containerMetricsHandler.ServeHTTP, logger)
 		handlers[rep.PerformRoute] = logWrap(performHandler.ServeHTTP, logger)
 		handlers[rep.SimResetRoute] = logWrap(resetHandler.ServeHTTP, logger)
 
@@ -50,12 +53,13 @@ func New(
 // handlers_suite_test.go
 func NewLegacy(
 	localCellClient auctioncellrep.AuctionCellClient,
+	localMetricCollector MetricCollector,
 	executorClient executor.Client,
 	evacuatable evacuation_context.Evacuatable,
 	logger lager.Logger,
 ) rata.Handlers {
-	insecureHandlers := New(localCellClient, executorClient, evacuatable, logger, false)
-	secureHandlers := New(localCellClient, executorClient, evacuatable, logger, true)
+	insecureHandlers := New(localCellClient, localMetricCollector, executorClient, evacuatable, logger, false)
+	secureHandlers := New(localCellClient, localMetricCollector, executorClient, evacuatable, logger, true)
 	for name, handler := range secureHandlers {
 		insecureHandlers[name] = handler
 	}

@@ -28,25 +28,27 @@ var ErrCellIdMismatch = errors.New("workload cell ID does not match this cell")
 var ErrNotEnoughMemory = errors.New("not enough memory for container and additional memory allocation")
 
 type AuctionCellRep struct {
-	cellID                string
-	repURL                string
-	stackPathMap          rep.StackPathMap
-	rootFSProviders       rep.RootFSProviders
-	stack                 string
-	zone                  string
-	generateInstanceGuid  func() (string, error)
-	client                executor.Client
-	evacuationReporter    evacuation_context.EvacuationReporter
-	placementTags         []string
-	optionalPlacementTags []string
-	proxyMemoryAllocation int
-	enableContainerProxy  bool
+	cellID                   string
+	repURL                   string
+	stackPathMap             rep.StackPathMap
+	rootFSProviders          rep.RootFSProviders
+	containerMetricsProvider rep.ContainerMetricsProvider
+	stack                    string
+	zone                     string
+	generateInstanceGuid     func() (string, error)
+	client                   executor.Client
+	evacuationReporter       evacuation_context.EvacuationReporter
+	placementTags            []string
+	optionalPlacementTags    []string
+	proxyMemoryAllocation    int
+	enableContainerProxy     bool
 }
 
 func New(
 	cellID string,
 	repURL string,
 	preloadedStackPathMap rep.StackPathMap,
+	containerMetricsProvider rep.ContainerMetricsProvider,
 	arbitraryRootFSes []string,
 	zone string,
 	generateInstanceGuid func() (string, error),
@@ -58,10 +60,11 @@ func New(
 	enableContainerProxy bool,
 ) *AuctionCellRep {
 	return &AuctionCellRep{
-		cellID:                cellID,
-		repURL:                repURL,
-		stackPathMap:          preloadedStackPathMap,
-		rootFSProviders:       rootFSProviders(preloadedStackPathMap, arbitraryRootFSes),
+		cellID:                   cellID,
+		repURL:                   repURL,
+		stackPathMap:             preloadedStackPathMap,
+		rootFSProviders:          rootFSProviders(preloadedStackPathMap, arbitraryRootFSes),
+		containerMetricsProvider: containerMetricsProvider,
 		zone:                  zone,
 		generateInstanceGuid:  generateInstanceGuid,
 		client:                client,
@@ -268,6 +271,71 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, bool, error)
 	})
 
 	return state, healthy, nil
+}
+
+func (a *AuctionCellRep) Metrics(logger lager.Logger) (*rep.ContainerMetricsCollection, error) {
+	var lrpMetrics = []rep.LRPMetric{}
+	var taskMetrics = []rep.TaskMetric{}
+
+	logger = logger.Session("metrics-collection")
+	logger.Info("starting")
+	defer logger.Info("complete")
+
+	containers, err := a.client.ListContainers(logger)
+	if err != nil {
+		logger.Error("failed-to-fetch-containers", err)
+		return nil, err
+	}
+
+	metrics := a.containerMetricsProvider.Metrics()
+
+	for _, container := range containers {
+		if container.Tags == nil {
+			logger.Error("failed-to-extract-container-tags", nil)
+			continue
+		}
+
+		guid := container.Guid
+		containerMetrics, ok := metrics[guid]
+		if !ok {
+			logger.Info("failed-to-get-metrics-for-container", lager.Data{"guid": guid})
+			continue
+		}
+
+		switch container.Tags[rep.LifecycleTag] {
+		case rep.LRPLifecycle:
+			key, err := rep.ActualLRPKeyFromTags(container.Tags)
+			if err != nil {
+				logger.Error("failed-to-extract-key", err)
+				continue
+			}
+			instanceKey, err := rep.ActualLRPInstanceKeyFromContainer(container, a.cellID)
+			if err != nil {
+				logger.Error("failed-to-extract-key", err)
+				continue
+			}
+
+			lrpMetric := rep.LRPMetric{
+				ProcessGUID:            key.ProcessGuid,
+				Index:                  key.Index,
+				InstanceGUID:           instanceKey.InstanceGuid,
+				CachedContainerMetrics: *containerMetrics,
+			}
+			lrpMetrics = append(lrpMetrics, lrpMetric)
+		case rep.TaskLifecycle:
+			taskMetric := rep.TaskMetric{
+				TaskGUID:               container.Guid,
+				CachedContainerMetrics: *containerMetrics,
+			}
+			taskMetrics = append(taskMetrics, taskMetric)
+		}
+	}
+
+	return &rep.ContainerMetricsCollection{
+		CellID: a.cellID,
+		LRPs:   lrpMetrics,
+		Tasks:  taskMetrics,
+	}, nil
 }
 
 func containerIsStarting(container *executor.Container) bool {

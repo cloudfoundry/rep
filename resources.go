@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/executor/containermetrics"
 )
 
 var ErrorIncompatibleRootfs = errors.New("rootfs not found")
@@ -289,3 +290,26 @@ type Work struct {
 }
 
 type StackPathMap map[string]string
+
+//go:generate counterfeiter -o auctioncellrep/auctioncellrepfakes/fake_container_metrics_provider.go . ContainerMetricsProvider
+type ContainerMetricsProvider interface {
+	Metrics() map[string]*containermetrics.CachedContainerMetrics
+}
+
+type ContainerMetricsCollection struct {
+	CellID string       `json:"cell_id"`
+	LRPs   []LRPMetric  `json:"lrps"`
+	Tasks  []TaskMetric `json:"tasks"`
+}
+
+type LRPMetric struct {
+	InstanceGUID string `json:"instance_guid"`
+	ProcessGUID  string `json:"process_guid"`
+	Index        int32  `json:"index"`
+	containermetrics.CachedContainerMetrics
+}
+
+type TaskMetric struct {
+	TaskGUID string `json:"task_guid"`
+	containermetrics.CachedContainerMetrics
+}

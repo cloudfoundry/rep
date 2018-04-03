@@ -105,7 +105,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	executorClient, executorMembers, err := executorinit.Initialize(logger, repConfig.ExecutorConfig, repConfig.CellID, gardenHealthcheckRootFS, metronClient, clock)
+	executorClient, containerMetricsProvider, executorMembers, err := executorinit.Initialize(logger, repConfig.ExecutorConfig, repConfig.CellID, gardenHealthcheckRootFS, metronClient, clock)
 	if err != nil {
 		logger.Error("failed-to-initialize-executor", err)
 		os.Exit(1)
@@ -139,6 +139,7 @@ func main() {
 		repConfig.CellID,
 		url,
 		rootFSes.StackPathMap(),
+		containerMetricsProvider,
 		repConfig.SupportedProviders,
 		repConfig.Zone,
 		auctioncellrep.GenerateGuid,
@@ -304,14 +305,14 @@ func initializeCellPresence(
 }
 
 func initializeServer(
-	auctionCellRep auctioncellrep.AuctionCellClient,
+	auctionCellRep *auctioncellrep.AuctionCellRep,
 	executorClient executor.Client,
 	evacuatable evacuation_context.Evacuatable,
 	logger lager.Logger,
 	repConfig config.RepConfig,
 	networkAccessible bool,
 ) ifrit.Runner {
-	handlers := handlers.New(auctionCellRep, executorClient, evacuatable, logger, networkAccessible)
+	handlers := handlers.New(auctionCellRep, auctionCellRep, executorClient, evacuatable, logger, networkAccessible)
 	routes := rep.NewRoutes(networkAccessible)
 	router, err := rata.NewRouter(routes, handlers)
 
