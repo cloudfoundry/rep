@@ -86,7 +86,7 @@ var _ = Describe("RepConfig", func() {
 				"loggregator_key_path": "key-path",
 				"loggregator_job_origin": "job-origin",
 				"loggregator_source_id": "my-source-id",
-				"loggregator_instance_id": 1
+				"loggregator_instance_id": "my-instance-id"
 			},
 			"max_cache_size_in_bytes": 101,
 			"max_concurrent_downloads": 11,
@@ -234,7 +234,7 @@ var _ = Describe("RepConfig", func() {
 				KeyPath:    "key-path",
 				JobOrigin:  "job-origin",
 				SourceID:   "my-source-id",
-				InstanceID: 1,
+				InstanceID: "my-instance-id",
 			},
 		}))
 	})
