@@ -157,6 +157,7 @@ func main() {
 		repConfig.CellID,
 		bbsClient,
 		executorClient,
+		metronClient,
 		evacuationReporter,
 		uint64(time.Duration(repConfig.EvacuationTimeout).Seconds()),
 	)

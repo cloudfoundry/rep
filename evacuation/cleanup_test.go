@@ -2,7 +2,9 @@ package evacuation_test
 
 import (
 	"errors"
+	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"code.cloudfoundry.org/bbs/fake_bbs"
@@ -118,8 +120,15 @@ var _ = Describe("EvacuationCleanup", func() {
 			fakeExecutorClient.ListContainersStub = func(lager.Logger) ([]executor.Container, error) {
 				if fakeExecutorClientCopy.ListContainersCallCount() == 1 {
 					return []executor.Container{
-						{Guid: "container1", State: executor.StateRunning},
-						{Guid: "container2", State: executor.StateRunning},
+						{
+							Guid:    "container1",
+							State:   executor.StateRunning,
+							RunInfo: executor.RunInfo{LogConfig: executor.LogConfig{Guid: "log-guid-1", SourceName: "source-name-1", Index: 0}},
+						},
+						{Guid: "container2",
+							State:   executor.StateRunning,
+							RunInfo: executor.RunInfo{LogConfig: executor.LogConfig{Guid: "log-guid-2", SourceName: "source-name-2", Index: 1}},
+						},
 					}, nil
 				}
 
@@ -173,6 +182,21 @@ var _ = Describe("EvacuationCleanup", func() {
 
 				_, guid = fakeExecutorClient.StopContainerArgsForCall(1)
 				Expect(guid).To(Equal("container2"))
+			})
+
+			It("emits app logs indicating evacuation timeout", func() {
+				Eventually(fakeMetronClient.SendAppLogCallCount).Should(Equal(2))
+				containerGuid, msg, containerSource, containerIndex := fakeMetronClient.SendAppLogArgsForCall(0)
+				Expect(containerGuid).To(Equal("log-guid-1"))
+				Expect(containerSource).To(Equal("source-name-1"))
+				Expect(containerIndex).To(Equal(strconv.Itoa(0)))
+				Expect(msg).To(Equal(fmt.Sprintf("Cell %s reached evacuation timeout for instance %s", cellID, "container1")))
+
+				containerGuid, msg, containerSource, containerIndex = fakeMetronClient.SendAppLogArgsForCall(1)
+				Expect(containerGuid).To(Equal("log-guid-2"))
+				Expect(containerSource).To(Equal("source-name-2"))
+				Expect(containerIndex).To(Equal(strconv.Itoa(1)))
+				Expect(msg).To(Equal(fmt.Sprintf("Cell %s reached evacuation timeout for instance %s", cellID, "container2")))
 			})
 
 			// https://www.pivotaltracker.com/story/show/133061923

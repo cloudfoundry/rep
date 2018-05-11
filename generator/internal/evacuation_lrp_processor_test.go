@@ -7,6 +7,7 @@ import (
 
 	"code.cloudfoundry.org/bbs/fake_bbs"
 	"code.cloudfoundry.org/bbs/models"
+	mfakes "code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep"
@@ -31,14 +32,16 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 			fakeBBS                *fake_bbs.FakeInternalClient
 			fakeContainerDelegate  *fake_internal.FakeContainerDelegate
 			fakeEvacuationReporter *fake_evacuation_context.FakeEvacuationReporter
+			fakeMetronClient       *mfakes.FakeIngressClient
 
 			lrpProcessor internal.LRPProcessor
 
-			processGuid  string
-			desiredLRP   models.DesiredLRP
-			index        int
-			container    executor.Container
-			instanceGuid string
+			processGuid         string
+			desiredLRP          models.DesiredLRP
+			index               int
+			container           executor.Container
+			instanceGuid        string
+			logGuid, sourceName string
 
 			lrpKey         models.ActualLRPKey
 			lrpInstanceKey models.ActualLRPInstanceKey
@@ -53,7 +56,9 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 			fakeEvacuationReporter = &fake_evacuation_context.FakeEvacuationReporter{}
 			fakeEvacuationReporter.EvacuatingReturns(true)
 
-			lrpProcessor = internal.NewLRPProcessor(fakeBBS, fakeContainerDelegate, localCellID, fakeEvacuationReporter, evacuationTTL)
+			fakeMetronClient = new(mfakes.FakeIngressClient)
+
+			lrpProcessor = internal.NewLRPProcessor(fakeBBS, fakeContainerDelegate, fakeMetronClient, localCellID, fakeEvacuationReporter, evacuationTTL)
 
 			processGuid = "process-guid"
 			desiredLRP = models.DesiredLRP{
@@ -67,10 +72,13 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 			}
 
 			instanceGuid = "instance-guid"
+			logGuid = "some-log-guid"
+			sourceName = "some-source-name"
 			index = 0
 
 			container = executor.Container{
-				Guid: rep.LRPContainerGuid(desiredLRP.ProcessGuid, instanceGuid),
+				Guid:    rep.LRPContainerGuid(desiredLRP.ProcessGuid, instanceGuid),
+				RunInfo: executor.RunInfo{LogConfig: executor.LogConfig{Guid: logGuid, SourceName: sourceName, Index: index}},
 				Tags: executor.Tags{
 					rep.LifecycleTag:    rep.LRPLifecycle,
 					rep.DomainTag:       desiredLRP.Domain,
@@ -265,6 +273,15 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 						lrpNetInfo.InstanceAddress,
 					),
 				))
+			})
+
+			It("emits app logs indicating replacement request for instance", func() {
+				Eventually(fakeMetronClient.SendAppLogCallCount).Should(Equal(1))
+				containerGuid, msg, containerSource, containerIndex := fakeMetronClient.SendAppLogArgsForCall(0)
+				Expect(containerGuid).To(Equal(logGuid))
+				Expect(containerSource).To(Equal(sourceName))
+				Expect(containerIndex).To(Equal(strconv.Itoa(index)))
+				Expect(msg).To(Equal(fmt.Sprintf("Cell %s requesting replacement for instance %s", localCellID, instanceGuid)))
 			})
 
 			Context("when the evacuation returns successfully", func() {

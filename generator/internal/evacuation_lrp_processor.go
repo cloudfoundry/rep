@@ -1,8 +1,12 @@
 package internal
 
 import (
+	"fmt"
+
 	"code.cloudfoundry.org/bbs"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/executor"
+	"code.cloudfoundry.org/executor/depot/log_streamer"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/rep"
 )
@@ -10,14 +14,16 @@ import (
 type evacuationLRPProcessor struct {
 	bbsClient              bbs.InternalClient
 	containerDelegate      ContainerDelegate
+	metronClient           loggingclient.IngressClient
 	cellID                 string
 	evacuationTTLInSeconds uint64
 }
 
-func newEvacuationLRPProcessor(bbsClient bbs.InternalClient, containerDelegate ContainerDelegate, cellID string, evacuationTTLInSeconds uint64) LRPProcessor {
+func newEvacuationLRPProcessor(bbsClient bbs.InternalClient, containerDelegate ContainerDelegate, metronClient loggingclient.IngressClient, cellID string, evacuationTTLInSeconds uint64) LRPProcessor {
 	return &evacuationLRPProcessor{
 		bbsClient:              bbsClient,
 		containerDelegate:      containerDelegate,
+		metronClient:           metronClient,
 		cellID:                 cellID,
 		evacuationTTLInSeconds: evacuationTTLInSeconds,
 	}
@@ -29,6 +35,13 @@ func (p *evacuationLRPProcessor) Process(logger lager.Logger, container executor
 		"container-state": container.State,
 	})
 	logger.Debug("start")
+
+	streamer := log_streamer.New(
+		container.RunInfo.LogConfig.Guid,
+		container.RunInfo.LogConfig.SourceName,
+		container.RunInfo.LogConfig.Index,
+		p.metronClient,
+	)
 
 	lrpKey, err := rep.ActualLRPKeyFromTags(container.Tags)
 	if err != nil {
@@ -52,7 +65,7 @@ func (p *evacuationLRPProcessor) Process(logger lager.Logger, container executor
 	case executor.StateCreated:
 		p.processCreatedContainer(logger, lrpContainer)
 	case executor.StateRunning:
-		p.processRunningContainer(logger, lrpContainer)
+		p.processRunningContainer(logger, lrpContainer, streamer)
 	case executor.StateCompleted:
 		p.processCompletedContainer(logger, lrpContainer)
 	default:
@@ -75,7 +88,7 @@ func (p *evacuationLRPProcessor) processCreatedContainer(logger lager.Logger, lr
 	p.evacuateClaimedLRPContainer(logger, lrpContainer)
 }
 
-func (p *evacuationLRPProcessor) processRunningContainer(logger lager.Logger, lrpContainer *lrpContainer) {
+func (p *evacuationLRPProcessor) processRunningContainer(logger lager.Logger, lrpContainer *lrpContainer, streamer log_streamer.LogStreamer) {
 	logger = logger.Session("process-running-container")
 
 	logger.Debug("extracting-net-info-from-container")
@@ -85,6 +98,8 @@ func (p *evacuationLRPProcessor) processRunningContainer(logger lager.Logger, lr
 		return
 	}
 	logger.Debug("succeeded-extracting-net-info-from-container")
+
+	writeToStream(streamer, fmt.Sprintf("Cell %s requesting replacement for instance %s", p.cellID, lrpContainer.ActualLRPInstanceKey.InstanceGuid))
 
 	logger.Info("bbs-evacuate-running-actual-lrp", lager.Data{"net_info": netInfo})
 	keepContainer, err := p.bbsClient.EvacuateRunningActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo, p.evacuationTTLInSeconds)
@@ -125,4 +140,9 @@ func (p *evacuationLRPProcessor) evacuateClaimedLRPContainer(logger lager.Logger
 	}
 
 	p.containerDelegate.DeleteContainer(logger, lrpContainer.Container.Guid)
+}
+
+func writeToStream(streamer log_streamer.LogStreamer, msg string) {
+	fmt.Fprintf(streamer.Stdout(), msg)
+	streamer.Flush()
 }

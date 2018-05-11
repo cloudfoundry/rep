@@ -2,6 +2,7 @@ package evacuation
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"code.cloudfoundry.org/clock"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/executor"
+	"code.cloudfoundry.org/executor/depot/log_streamer"
 	"code.cloudfoundry.org/lager"
 )
 
@@ -156,8 +158,21 @@ func (e *EvacuationCleanup) signalRunningContainers(logger lager.Logger, contain
 	logger.Info("sending-signal-to-containers")
 
 	for _, container := range containers {
+
+		streamer := log_streamer.New(
+			container.RunInfo.LogConfig.Guid,
+			container.RunInfo.LogConfig.SourceName,
+			container.RunInfo.LogConfig.Index,
+			e.metronClient,
+		)
+		writeToStream(streamer, fmt.Sprintf("Cell %s reached evacuation timeout for instance %s", e.cellID, container.Guid))
 		e.executorClient.StopContainer(logger, container.Guid)
 	}
 
 	logger.Info("sent-signal-to-containers")
+}
+
+func writeToStream(streamer log_streamer.LogStreamer, msg string) {
+	fmt.Fprintf(streamer.Stdout(), msg)
+	streamer.Flush()
 }

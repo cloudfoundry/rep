@@ -6,6 +6,7 @@ import (
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/operationq"
@@ -39,11 +40,12 @@ func New(
 	cellID string,
 	bbs bbs.InternalClient,
 	executorClient executor.Client,
+	metronClient loggingclient.IngressClient,
 	evacuationReporter evacuation_context.EvacuationReporter,
 	evacuationTTLInSeconds uint64,
 ) Generator {
 	containerDelegate := internal.NewContainerDelegate(executorClient)
-	lrpProcessor := internal.NewLRPProcessor(bbs, containerDelegate, cellID, evacuationReporter, evacuationTTLInSeconds)
+	lrpProcessor := internal.NewLRPProcessor(bbs, containerDelegate, metronClient, cellID, evacuationReporter, evacuationTTLInSeconds)
 	taskProcessor := internal.NewTaskProcessor(bbs, containerDelegate, cellID)
 
 	return &generator{

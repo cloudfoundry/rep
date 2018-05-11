@@ -3,6 +3,7 @@ package internal
 import (
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
@@ -37,12 +38,13 @@ type lrpProcessor struct {
 func NewLRPProcessor(
 	bbsClient bbs.InternalClient,
 	containerDelegate ContainerDelegate,
+	metronClient loggingclient.IngressClient,
 	cellID string,
 	evacuationReporter evacuation_context.EvacuationReporter,
 	evacuationTTLInSeconds uint64,
 ) LRPProcessor {
 	ordinaryProcessor := newOrdinaryLRPProcessor(bbsClient, containerDelegate, cellID)
-	evacuationProcessor := newEvacuationLRPProcessor(bbsClient, containerDelegate, cellID, evacuationTTLInSeconds)
+	evacuationProcessor := newEvacuationLRPProcessor(bbsClient, containerDelegate, metronClient, cellID, evacuationTTLInSeconds)
 	return &lrpProcessor{
 		evacuationReporter:  evacuationReporter,
 		ordinaryProcessor:   ordinaryProcessor,
