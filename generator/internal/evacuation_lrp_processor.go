@@ -17,6 +17,7 @@ type evacuationLRPProcessor struct {
 	metronClient           loggingclient.IngressClient
 	cellID                 string
 	evacuationTTLInSeconds uint64
+	evacuatedContainers    map[string]struct{}
 }
 
 func newEvacuationLRPProcessor(bbsClient bbs.InternalClient, containerDelegate ContainerDelegate, metronClient loggingclient.IngressClient, cellID string, evacuationTTLInSeconds uint64) LRPProcessor {
@@ -26,6 +27,7 @@ func newEvacuationLRPProcessor(bbsClient bbs.InternalClient, containerDelegate C
 		metronClient:           metronClient,
 		cellID:                 cellID,
 		evacuationTTLInSeconds: evacuationTTLInSeconds,
+		evacuatedContainers:    make(map[string]struct{}),
 	}
 }
 
@@ -99,7 +101,10 @@ func (p *evacuationLRPProcessor) processRunningContainer(logger lager.Logger, lr
 	}
 	logger.Debug("succeeded-extracting-net-info-from-container")
 
-	writeToStream(streamer, fmt.Sprintf("Cell %s requesting replacement for instance %s", p.cellID, lrpContainer.ActualLRPInstanceKey.InstanceGuid))
+	if _, ok := p.evacuatedContainers[lrpContainer.Guid]; !ok {
+		writeToStream(streamer, fmt.Sprintf("Cell %s requesting replacement for instance %s", p.cellID, lrpContainer.ActualLRPInstanceKey.InstanceGuid))
+		p.evacuatedContainers[lrpContainer.Guid] = struct{}{}
+	}
 
 	logger.Info("bbs-evacuate-running-actual-lrp", lager.Data{"net_info": netInfo})
 	keepContainer, err := p.bbsClient.EvacuateRunningActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo, p.evacuationTTLInSeconds)
