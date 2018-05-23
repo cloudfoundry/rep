@@ -211,6 +211,7 @@ var _ = Describe("RepConfig", func() {
 				VolmanDriverPaths:             "/tmp/volman1:/tmp/volman2",
 				CSIPaths:                      []string{"/var/vcap/data/csiplugins"},
 				CSIMountRootDir:               "/var/vcap/data/csimountroot",
+				MapfsPath:                     "/var/vcap/packages/mapfs/bin/mapfs",
 			},
 			LagerConfig: lagerflags.LagerConfig{
 				LogLevel: lagerflags.DEBUG,
@@ -331,6 +332,7 @@ var _ = Describe("RepConfig", func() {
 					ContainerMetricsReportInterval:     durationjson.Duration(15 * time.Second),
 					CSIPaths:                           []string{"/var/vcap/data/csiplugins"},
 					CSIMountRootDir:                    "/var/vcap/data/csimountroot",
+					MapfsPath:                          "/var/vcap/packages/mapfs/bin/mapfs",
 				},
 			}))
 		})
