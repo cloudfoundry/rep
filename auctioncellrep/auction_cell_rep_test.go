@@ -842,7 +842,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 				Context("when all containers can be successfully allocated", func() {
 					BeforeEach(func() {
-						client.AllocateContainersReturns([]executor.AllocationFailure{}, nil)
+						client.AllocateContainersReturns([]executor.AllocationFailure{})
 					})
 
 					It("does not mark any LRP Auctions as failed", func() {
@@ -863,7 +863,7 @@ var _ = Describe("AuctionCellRep", func() {
 							tags,
 						)
 						allocationFailure := executor.NewAllocationFailure(&allocationRequest, commonErr.Error())
-						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure}, nil)
+						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure})
 					})
 
 					It("marks the corresponding LRP Auctions as failed", func() {
@@ -921,7 +921,7 @@ var _ = Describe("AuctionCellRep", func() {
 							tags,
 						)
 						allocationFailure := executor.NewAllocationFailure(&allocationRequest, commonErr.Error())
-						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure}, nil)
+						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure})
 					})
 
 					It("marks the corresponding LRP Auctions as failed", func() {
@@ -998,7 +998,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 				Context("when all remaining containers can be successfully allocated", func() {
 					BeforeEach(func() {
-						client.AllocateContainersReturns([]executor.AllocationFailure{}, nil)
+						client.AllocateContainersReturns([]executor.AllocationFailure{})
 					})
 
 					It("does not mark any additional LRP Auctions as failed", func() {
@@ -1019,7 +1019,7 @@ var _ = Describe("AuctionCellRep", func() {
 							tags,
 						)
 						allocationFailure := executor.NewAllocationFailure(&allocationRequest, commonErr.Error())
-						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure}, nil)
+						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure})
 					})
 
 					It("marks the corresponding LRP Auctions as failed", func() {
@@ -1066,7 +1066,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 				Context("when all containers can be successfully allocated", func() {
 					BeforeEach(func() {
-						client.AllocateContainersReturns([]executor.AllocationFailure{}, nil)
+						client.AllocateContainersReturns([]executor.AllocationFailure{})
 					})
 
 					It("does not mark any Tasks as failed", func() {
@@ -1086,7 +1086,7 @@ var _ = Describe("AuctionCellRep", func() {
 							tags,
 						)
 						allocationFailure := executor.NewAllocationFailure(&allocationRequest, commonErr.Error())
-						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure}, nil)
+						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure})
 					})
 
 					It("marks the corresponding Tasks as failed", func() {
@@ -1122,7 +1122,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 				Context("when all remaining containers can be successfully allocated", func() {
 					BeforeEach(func() {
-						client.AllocateContainersReturns([]executor.AllocationFailure{}, nil)
+						client.AllocateContainersReturns([]executor.AllocationFailure{})
 					})
 
 					It("does not mark any additional Tasks as failed", func() {
@@ -1136,7 +1136,7 @@ var _ = Describe("AuctionCellRep", func() {
 					BeforeEach(func() {
 						request := allocationRequestFromTask(task1, linuxPath, `["pt-1"]`, `["vd-1"]`)
 						allocationFailure := executor.NewAllocationFailure(&request, commonErr.Error())
-						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure}, nil)
+						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure})
 					})
 
 					It("marks the corresponding Tasks as failed", func() {
@@ -1189,7 +1189,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 				Context("when all remaining containers can be successfully allocated", func() {
 					BeforeEach(func() {
-						client.AllocateContainersReturns([]executor.AllocationFailure{}, nil)
+						client.AllocateContainersReturns([]executor.AllocationFailure{})
 					})
 
 					It("does not mark any additional LRP Auctions as failed", func() {
@@ -1203,7 +1203,7 @@ var _ = Describe("AuctionCellRep", func() {
 					BeforeEach(func() {
 						request := allocationRequestFromTask(task1, linuxPath, `["pt-1"]`, `["vd-1"]`)
 						allocationFailure := executor.NewAllocationFailure(&request, commonErr.Error())
-						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure}, nil)
+						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure})
 					})
 
 					It("marks the corresponding Tasks as failed", func() {

@@ -390,18 +390,13 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 		}
 
 		lrpLogger.Info("requesting-container-allocation", lager.Data{"num-requesting-allocation": len(requests)})
-		failures, err := a.client.AllocateContainers(logger, requests)
-		if err != nil {
-			lrpLogger.Error("failed-requesting-container-allocation", err)
-			failedWork.LRPs = work.LRPs
-		} else {
-			lrpLogger.Info("succeeded-requesting-container-allocation", lager.Data{"num-failed-to-allocate": len(failures)})
-			for i := range failures {
-				failure := &failures[i]
-				lrpLogger.Error("container-allocation-failure", failure, lager.Data{"failed-request": &failure.AllocationRequest})
-				if lrp, found := lrpMap[failure.Guid]; found {
-					failedWork.LRPs = append(failedWork.LRPs, *lrp)
-				}
+		failures := a.client.AllocateContainers(logger, requests)
+		lrpLogger.Info("succeeded-requesting-container-allocation", lager.Data{"num-failed-to-allocate": len(failures)})
+		for i := range failures {
+			failure := &failures[i]
+			lrpLogger.Error("container-allocation-failure", failure, lager.Data{"failed-request": &failure.AllocationRequest})
+			if lrp, found := lrpMap[failure.Guid]; found {
+				failedWork.LRPs = append(failedWork.LRPs, *lrp)
 			}
 		}
 	}
@@ -416,18 +411,12 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 		}
 
 		taskLogger.Info("requesting-container-allocation", lager.Data{"num-requesting-allocation": len(requests)})
-		failures, err := a.client.AllocateContainers(logger, requests)
-		if err != nil {
-			taskLogger.Error("failed-requesting-container-allocation", err)
-			failedWork.Tasks = work.Tasks
-		} else {
-			taskLogger.Info("succeeded-requesting-container-allocation", lager.Data{"num-failed-to-allocate": len(failures)})
-			for i := range failures {
-				failure := &failures[i]
-				taskLogger.Error("container-allocation-failure", failure, lager.Data{"failed-request": &failure.AllocationRequest})
-				if task, found := taskMap[failure.Guid]; found {
-					failedWork.Tasks = append(failedWork.Tasks, *task)
-				}
+		failures := a.client.AllocateContainers(logger, requests)
+		for i := range failures {
+			failure := &failures[i]
+			taskLogger.Error("container-allocation-failure", failure, lager.Data{"failed-request": &failure.AllocationRequest})
+			if task, found := taskMap[failure.Guid]; found {
+				failedWork.Tasks = append(failedWork.Tasks, *task)
 			}
 		}
 	}
