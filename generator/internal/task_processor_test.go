@@ -111,10 +111,12 @@ var _ = Describe("TaskProcessor", func() {
 				containerDelegate.RunContainerReturns(false)
 			})
 
-			It("fails the task", func() {
-				Expect(bbsClient.FailTaskCallCount()).To(Equal(1))
-				_, guid, reason := bbsClient.FailTaskArgsForCall(0)
+			It("completes the task with failure", func() {
+				Expect(bbsClient.CompleteTaskCallCount()).To(Equal(1))
+				_, guid, cellId, failed, reason, _ := bbsClient.CompleteTaskArgsForCall(0)
 				Expect(guid).To(Equal(taskGuid))
+				Expect(cellId).To(Equal(expectedCellID))
+				Expect(failed).To(BeTrue())
 				Expect(reason).To(Equal(internal.TaskCompletionReasonFailedToRunContainer))
 			})
 		})
@@ -238,18 +240,33 @@ var _ = Describe("TaskProcessor", func() {
 			Expect(result).To(Equal(""))
 		})
 
+		Context("when the task failed but is retryable", func() {
+			BeforeEach(func() {
+				container.RunResult.Retryable = true
+			})
+
+			It("rejects the task", func() {
+				Expect(bbsClient.RejectTaskCallCount()).To(Equal(1))
+				_, guid, reason := bbsClient.RejectTaskArgsForCall(0)
+				Expect(guid).To(Equal(taskGuid))
+				Expect(reason).To(Equal(internal.TaskRejectionReasonContainerCreationFailed))
+			})
+		})
+
 		Context("when completing the task fails", func() {
 			Context("because of an invalid state transition", func() {
 				BeforeEach(func() {
 					bbsClient.CompleteTaskReturns(models.NewTaskTransitionError(models.Task_Running, models.Task_Completed))
 				})
 
-				It("fails the task", func() {
-					Expect(bbsClient.CompleteTaskCallCount()).To(Equal(1))
-					Expect(bbsClient.FailTaskCallCount()).To(Equal(1))
-					_, guid, reason := bbsClient.FailTaskArgsForCall(0)
+				It("completes the task with failure", func() {
+					Expect(bbsClient.CompleteTaskCallCount()).To(Equal(2))
+					_, guid, cellID, failed, reason, result := bbsClient.CompleteTaskArgsForCall(1)
 					Expect(guid).To(Equal(taskGuid))
+					Expect(cellID).To(Equal(expectedCellID))
+					Expect(failed).To(Equal(true))
 					Expect(reason).To(Equal(internal.TaskCompletionReasonInvalidTransition))
+					Expect(result).To(Equal(""))
 				})
 			})
 		})
@@ -304,12 +321,15 @@ var _ = Describe("TaskProcessor", func() {
 					containerDelegate.FetchContainerResultFileReturns("", errors.New("get outta here"))
 				})
 
-				It("fails the task", func() {
+				It("completes the task with failure", func() {
 					Expect(containerDelegate.FetchContainerResultFileCallCount()).To(Equal(1))
-					Expect(bbsClient.FailTaskCallCount()).To(Equal(1))
-					_, guid, reason := bbsClient.FailTaskArgsForCall(0)
+					Expect(bbsClient.CompleteTaskCallCount()).To(Equal(1))
+					_, guid, cellID, failed, reason, result := bbsClient.CompleteTaskArgsForCall(0)
 					Expect(guid).To(Equal(taskGuid))
+					Expect(cellID).To(Equal(expectedCellID))
+					Expect(failed).To(Equal(true))
 					Expect(reason).To(Equal(internal.TaskCompletionReasonFailedToFetchResult))
+					Expect(result).To(Equal(""))
 				})
 			})
 		})

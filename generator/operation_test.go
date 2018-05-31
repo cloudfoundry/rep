@@ -254,13 +254,14 @@ var _ = Describe("Operation", func() {
 		var (
 			containerDelegate     *fake_internal.FakeContainerDelegate
 			residualTaskOperation *generator.ResidualTaskOperation
-			taskGuid              string
+			taskGuid, cellId      string
 		)
 
 		BeforeEach(func() {
 			taskGuid = "the-task-guid"
+			cellId = "the-cell-id"
 			containerDelegate = new(fake_internal.FakeContainerDelegate)
-			residualTaskOperation = generator.NewResidualTaskOperation(logger, taskGuid, fakeBBS, containerDelegate)
+			residualTaskOperation = generator.NewResidualTaskOperation(logger, taskGuid, cellId, fakeBBS, containerDelegate)
 		})
 
 		Describe("Key", func() {
@@ -293,20 +294,22 @@ var _ = Describe("Operation", func() {
 					containerDelegate.GetContainerReturns(executor.Container{}, false)
 				})
 
-				It("fails the task", func() {
-					Expect(fakeBBS.FailTaskCallCount()).To(Equal(1))
-					_, actualTaskGuid, actualFailureReason := fakeBBS.FailTaskArgsForCall(0)
+				It("completes the task with failure", func() {
+					Expect(fakeBBS.CompleteTaskCallCount()).To(Equal(1))
+					_, actualTaskGuid, actualCellId, failed, actualFailureReason, _ := fakeBBS.CompleteTaskArgsForCall(0)
 					Expect(actualTaskGuid).To(Equal(taskGuid))
+					Expect(actualCellId).To(Equal(cellId))
+					Expect(failed).To(BeTrue())
 					Expect(actualFailureReason).To(Equal(internal.TaskCompletionReasonMissingContainer))
 				})
 
-				Context("when failing the task fails", func() {
+				Context("when completing the task fails", func() {
 					BeforeEach(func() {
-						fakeBBS.FailTaskReturns(errors.New("failed"))
+						fakeBBS.CompleteTaskReturns(errors.New("failed"))
 					})
 
 					It("logs the failure", func() {
-						Expect(logger).To(Say(sessionName + ".failed-to-fail-task"))
+						Expect(logger).To(Say(sessionName + ".failed-to-complete-task"))
 					})
 				})
 			})
@@ -316,8 +319,8 @@ var _ = Describe("Operation", func() {
 					containerDelegate.GetContainerReturns(executor.Container{}, true)
 				})
 
-				It("does not fail the task", func() {
-					Expect(fakeBBS.FailTaskCallCount()).To(Equal(0))
+				It("does not complete the task", func() {
+					Expect(fakeBBS.CompleteTaskCallCount()).To(Equal(0))
 				})
 
 				It("logs that it skipped the operation because the container was found", func() {

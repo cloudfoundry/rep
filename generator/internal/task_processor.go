@@ -13,6 +13,7 @@ const TaskCompletionReasonMissingContainer = "task container does not exist"
 const TaskCompletionReasonFailedToRunContainer = "failed to run container"
 const TaskCompletionReasonInvalidTransition = "invalid state transition"
 const TaskCompletionReasonFailedToFetchResult = "failed to fetch result"
+const TaskRejectionReasonContainerCreationFailed = "failed to create container for task"
 
 //go:generate counterfeiter -o fake_internal/fake_task_processor.go task_processor.go TaskProcessor
 
@@ -82,7 +83,10 @@ func (p *taskProcessor) processActiveContainer(logger lager.Logger, container ex
 
 	ok = p.containerDelegate.RunContainer(logger, &runReq)
 	if !ok {
-		p.failTask(logger, container.Guid, TaskCompletionReasonFailedToRunContainer)
+		err = p.bbsClient.CompleteTask(logger, container.Guid, p.cellID, true, TaskCompletionReasonFailedToRunContainer, "")
+		if err != nil {
+			logger.Error("failed-completing-task", err)
+		}
 	}
 }
 
@@ -120,11 +124,23 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 	var result string
 	var err error
 
+	if container.RunResult.Failed && container.RunResult.Retryable {
+		logger.Info("rejecting-task")
+		err = p.bbsClient.RejectTask(logger, container.Guid, TaskRejectionReasonContainerCreationFailed)
+		if err != nil {
+			logger.Error("failed-rejecting-task", err)
+		}
+		return
+	}
+
 	resultFile := container.Tags[rep.ResultFileTag]
 	if !container.RunResult.Failed && resultFile != "" {
 		result, err = p.containerDelegate.FetchContainerResultFile(logger, container.Guid, resultFile)
 		if err != nil {
-			p.failTask(logger, container.Guid, TaskCompletionReasonFailedToFetchResult)
+			err = p.bbsClient.CompleteTask(logger, container.Guid, p.cellID, true, TaskCompletionReasonFailedToFetchResult, "")
+			if err != nil {
+				logger.Error("failed-completing-task", err)
+			}
 			return
 		}
 	}
@@ -136,21 +152,13 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 
 		bbsErr := models.ConvertError(err)
 		if bbsErr.Type == models.Error_InvalidStateTransition {
-			p.failTask(logger, container.Guid, TaskCompletionReasonInvalidTransition)
+			err = p.bbsClient.CompleteTask(logger, container.Guid, p.cellID, true, TaskCompletionReasonInvalidTransition, "")
+			if err != nil {
+				logger.Error("failed-completing-task", err)
+			}
 		}
 		return
 	}
 
 	logger.Info("succeeded-completing-task")
-}
-
-func (p *taskProcessor) failTask(logger lager.Logger, guid string, reason string) {
-	logger.Info("failing-task")
-	err := p.bbsClient.FailTask(logger, guid, reason)
-	if err != nil {
-		logger.Error("failed-failing-task", err)
-		return
-	}
-
-	logger.Info("succeeded-failing-task")
 }
