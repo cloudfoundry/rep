@@ -13,7 +13,6 @@ const TaskCompletionReasonMissingContainer = "task container does not exist"
 const TaskCompletionReasonFailedToRunContainer = "failed to run container"
 const TaskCompletionReasonInvalidTransition = "invalid state transition"
 const TaskCompletionReasonFailedToFetchResult = "failed to fetch result"
-const TaskRejectionReasonContainerCreationFailed = "failed to create container for task"
 
 //go:generate counterfeiter -o fake_internal/fake_task_processor.go task_processor.go TaskProcessor
 
@@ -126,7 +125,7 @@ func (p *taskProcessor) completeTask(logger lager.Logger, container executor.Con
 
 	if container.RunResult.Failed && container.RunResult.Retryable {
 		logger.Info("rejecting-task")
-		err = p.bbsClient.RejectTask(logger, container.Guid, TaskRejectionReasonContainerCreationFailed)
+		err = p.bbsClient.RejectTask(logger, container.Guid, container.RunResult.FailureReason)
 		if err != nil {
 			logger.Error("failed-rejecting-task", err)
 		}

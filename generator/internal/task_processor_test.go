@@ -243,13 +243,14 @@ var _ = Describe("TaskProcessor", func() {
 		Context("when the task failed but is retryable", func() {
 			BeforeEach(func() {
 				container.RunResult.Retryable = true
+				container.RunResult.FailureReason = "failed really bad!!"
 			})
 
 			It("rejects the task", func() {
 				Expect(bbsClient.RejectTaskCallCount()).To(Equal(1))
 				_, guid, reason := bbsClient.RejectTaskArgsForCall(0)
 				Expect(guid).To(Equal(taskGuid))
-				Expect(reason).To(Equal(internal.TaskRejectionReasonContainerCreationFailed))
+				Expect(reason).To(Equal("failed really bad!!"))
 			})
 		})
 
