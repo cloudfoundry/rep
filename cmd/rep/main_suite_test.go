@@ -48,6 +48,7 @@ var (
 	bbsClient        bbs.InternalClient
 	auctioneerServer *ghttp.Server
 	locketBinPath    string
+	node             int
 
 	sqlProcess    ifrit.Process
 	sqlRunner     sqlrunner.SQLRunner
@@ -72,7 +73,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	return []byte(strings.Join([]string{representative, locketPath, bbsConfig}, ","))
 }, func(pathsByte []byte) {
 
-	node := GinkgoParallelNode()
+	node = GinkgoParallelNode()
 	startPort := 1050 * node
 	portRange := 1000
 	endPort := startPort + portRange

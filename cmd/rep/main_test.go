@@ -144,6 +144,7 @@ var _ = Describe("The Rep", func() {
 			CellRegistrationsLocketEnabled: false,
 			ExecutorConfig: executorinit.ExecutorConfig{
 				PathToTLSCACert:              caFile,
+				CachePath:                    fmt.Sprintf("%s-%d", "/tmp/cache", node),
 				PathToTLSCert:                certFile,
 				PathToTLSKey:                 keyFile,
 				GardenAddr:                   fakeGarden.HTTPTestServer.Listener.Addr().String(),
