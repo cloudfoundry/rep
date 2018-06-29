@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	diego_logging_client "code.cloudfoundry.org/diego-logging-client"
+
 	"code.cloudfoundry.org/bbs"
 	bbstestrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
 	"code.cloudfoundry.org/bbs/models"
@@ -128,6 +130,13 @@ var _ = Describe("The Rep", func() {
 		certFile = path.Join(basePath, "green-certs", "server.crt")
 		keyFile = path.Join(basePath, "green-certs", "server.key")
 
+		metricsPort, err := testIngressServer.Port()
+		Expect(err).NotTo(HaveOccurred())
+
+		metronCAFile := path.Join(fixturesPath, "metron", "CA.crt")
+		metronClientCertFile := path.Join(fixturesPath, "metron", "client.crt")
+		metronClientKeyFile := path.Join(fixturesPath, "metron", "client.key")
+
 		repConfig = config.RepConfig{
 			PreloadedRootFS:       []config.RootFS{{Name: rootFSName, Path: rootFSPath}},
 			SupportedProviders:    []string{"docker"},
@@ -152,6 +161,15 @@ var _ = Describe("The Rep", func() {
 				GardenHealthcheckProcessUser: "me",
 				GardenHealthcheckProcessPath: "ls",
 				ContainerMaxCpuShares:        1024,
+			},
+			LoggregatorConfig: diego_logging_client.Config{
+				BatchFlushInterval: 10 * time.Millisecond,
+				BatchMaxSize:       1,
+				UseV2API:           true,
+				APIPort:            metricsPort,
+				CACertPath:         metronCAFile,
+				KeyPath:            metronClientKeyFile,
+				CertPath:           metronClientCertFile,
 			},
 			LagerConfig: lagerflags.LagerConfig{
 				LogLevel: "debug",
@@ -181,6 +199,17 @@ var _ = Describe("The Rep", func() {
 	Context("the rep doesn't start", func() {
 		BeforeEach(func() {
 			fakeGarden.Start()
+		})
+
+		Context("when the metron agent isn't up", func() {
+			BeforeEach(func() {
+				testIngressServer.Stop()
+			})
+
+			It("logs an error and exit with non-zero status code", func() {
+				Eventually(runner.Session).Should(Exit(1))
+				Expect(runner.Session).To(gbytes.Say("failed-to-initialize-metron-client"))
+			})
 		})
 
 		Context("when locket registration is enabled and locket address is not provided", func() {
