@@ -22,7 +22,6 @@ import (
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
-	"code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/inigo/helpers/portauthority"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
@@ -51,13 +50,9 @@ var (
 	locketBinPath    string
 	node             int
 
-	testIngressServer *testhelpers.TestIngressServer
-
 	sqlProcess    ifrit.Process
 	sqlRunner     sqlrunner.SQLRunner
 	portAllocator portauthority.PortAllocator
-
-	fixturesPath = path.Join(os.Getenv("GOPATH"), "src/code.cloudfoundry.org/rep/cmd/rep/fixtures")
 )
 
 func TestRep(t *testing.T) {
@@ -166,15 +161,6 @@ var _ = BeforeEach(func() {
 
 	bbsRunner = bbstestrunner.New(bbsBinPath, bbsConfig)
 	bbsProcess = ginkgomon.Invoke(bbsRunner)
-
-	metronCAFile := path.Join(fixturesPath, "metron", "CA.crt")
-	metronServerCertFile := path.Join(fixturesPath, "metron", "metron.crt")
-	metronServerKeyFile := path.Join(fixturesPath, "metron", "metron.key")
-
-	var err error
-	testIngressServer, err = testhelpers.NewTestIngressServer(metronServerCertFile, metronServerKeyFile, metronCAFile)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(testIngressServer.Start()).To(Succeed())
 })
 
 var _ = AfterEach(func() {
