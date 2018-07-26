@@ -77,7 +77,6 @@ func ActualLRPNetInfoFromContainer(container executor.Container) (*models.Actual
 	ports := []*models.PortMapping{}
 
 	for _, port := range container.Ports {
-		// todo: do not include proxy ports
 		ports = append(ports, models.NewPortMappingWithTLSProxy(
 			uint32(port.HostPort),
 			uint32(port.ContainerPort),
