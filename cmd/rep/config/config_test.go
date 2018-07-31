@@ -8,8 +8,8 @@ import (
 	"code.cloudfoundry.org/debugserver"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/durationjson"
-	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/executor/initializer/configuration"
+	"code.cloudfoundry.org/executor/model"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
@@ -165,7 +165,7 @@ var _ = Describe("RepConfig", func() {
 			EnableConsulServiceRegistration: true,
 			EvacuationPollingInterval:       durationjson.Duration(13 * time.Second),
 			EvacuationTimeout:               durationjson.Duration(12 * time.Second),
-			ExecutorConfig: executorinit.ExecutorConfig{
+			ExecutorConfig: model.ExecutorConfig{
 				ProxyMemoryAllocationMB:        6,
 				CachePath:                      "/tmp/cache",
 				ContainerInodeLimit:            1000,
@@ -298,7 +298,7 @@ var _ = Describe("RepConfig", func() {
 				BBSClientSessionCacheSize: 0,
 				EvacuationTimeout:         durationjson.Duration(10 * time.Minute),
 				LagerConfig:               lagerflags.DefaultLagerConfig(),
-				ExecutorConfig: executorinit.ExecutorConfig{
+				ExecutorConfig: model.ExecutorConfig{
 					GardenNetwork:                      "unix",
 					GardenAddr:                         "/tmp/garden.sock",
 					MemoryMB:                           configuration.Automatic,

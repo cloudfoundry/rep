@@ -59,6 +59,7 @@ func (p *ordinaryLRPProcessor) Process(logger lager.Logger, container executor.C
 	case executor.StateRunning:
 		p.processRunningContainer(logger, lrpContainer)
 	case executor.StateCompleted:
+		logger.Info("state-judge", lager.Data{"container": container})
 		p.processCompletedContainer(logger, lrpContainer)
 	default:
 		p.processInvalidContainer(logger, lrpContainer)
