@@ -151,6 +151,15 @@ func NewRunRequestFromDesiredLRP(
 		ImagePassword:                 desiredLRP.ImagePassword,
 		EnableContainerProxy:          true,
 	}
+
+	// No need for the envoy proxy if there are no ports.  This flag controls the
+	// step transformation (either prevent or include a run_step to run envoy) as
+	// well as the proxy config handler to avoid generate the config
+	// unecessarily.
+	if len(runInfo.Ports) == 0 {
+		runInfo.EnableContainerProxy = false
+	}
+
 	tags := executor.Tags{}
 	return executor.NewRunRequest(containerGuid, &runInfo, tags), nil
 }

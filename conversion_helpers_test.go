@@ -249,6 +249,7 @@ var _ = Describe("Resources", func() {
 		BeforeEach(func() {
 			containerGuid = "the-container-guid"
 			desiredLRP = model_helpers.NewValidDesiredLRP("the-process-guid")
+			desiredLRP.Ports = []uint32{8080}
 			actualLRP = model_helpers.NewValidActualLRP("the-process-guid", 9)
 			desiredLRP.RootFs = "preloaded://foobar"
 		})
@@ -351,6 +352,18 @@ var _ = Describe("Resources", func() {
 			runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(runReq.EnableContainerProxy).To(BeTrue())
+		})
+
+		Context("when the LRP doesn't have any exposed ports", func() {
+			BeforeEach(func() {
+				desiredLRP.Ports = nil
+			})
+
+			It("disables the envoy proxy", func() {
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.EnableContainerProxy).To(BeFalse())
+			})
 		})
 
 		Context("when the rootfs is preloaded+layer", func() {
