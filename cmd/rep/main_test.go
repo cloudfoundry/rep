@@ -290,6 +290,50 @@ var _ = Describe("The Rep", func() {
 		})
 	})
 
+	Context("validates chained certs", func() {
+		BeforeEach(func() {
+			fakeGarden.Start()
+		})
+
+		Context("when the server cert is chained with the intermediate CA cert", func() {
+			BeforeEach(func() {
+				caFile = path.Join(basePath, "chain-certs", "root-ca.crt")
+				certFile = path.Join(basePath, "chain-certs", "chain.crt")
+				keyFile = path.Join(basePath, "chain-certs", "server.key")
+				repConfig.PathToTLSCACert = caFile
+				repConfig.PathToTLSCert = certFile
+				repConfig.PathToTLSKey = keyFile
+				repConfig.CaCertFile = caFile
+				repConfig.CertFile = certFile
+				repConfig.KeyFile = keyFile
+			})
+
+			It("validates the cert successfully", func() {
+				Consistently(runner.Session.Buffer(), 5).ShouldNot(gbytes.Say("tls-configuration-failed"))
+				Consistently(runner.Session).ShouldNot(Exit())
+			})
+		})
+
+		Context("when a cert in the chain is invalid", func() {
+			BeforeEach(func() {
+				caFile = path.Join(basePath, "chain-certs", "root-ca.crt")
+				certFile = path.Join(basePath, "chain-certs", "bad-chain.crt")
+				keyFile = path.Join(basePath, "chain-certs", "server.key")
+				repConfig.PathToTLSCACert = caFile
+				repConfig.PathToTLSCert = certFile
+				repConfig.PathToTLSKey = keyFile
+				repConfig.CaCertFile = caFile
+				repConfig.CertFile = certFile
+				repConfig.KeyFile = keyFile
+			})
+
+			It("exits with status code 2", func() {
+				Eventually(runner.Session.Buffer()).Should(gbytes.Say("tls-configuration-failed"))
+				Eventually(runner.Session.ExitCode).Should(Equal(2))
+			})
+		})
+	})
+
 	Describe("RootFS for garden healthcheck", func() {
 		var createRequestReceived chan string
 

@@ -476,18 +476,28 @@ func verifyCertificate(serverCertFile string) error {
 		return err
 	}
 
-	block, pemByte := pem.Decode([]byte(strings.TrimSpace(string(certBytes))))
-	pemCertsByte := append(block.Bytes, pemByte...)
-	certs, err := x509.ParseCertificates(pemCertsByte)
-	if err != nil {
-		return err
+	var blocks []byte
+	certBytes = []byte(strings.TrimSpace(string(certBytes)))
+	for {
+		var block *pem.Block
+		block, certBytes = pem.Decode(certBytes)
+		if block == nil {
+			return fmt.Errorf("failed parsing cert")
+		}
+		blocks = append(blocks, block.Bytes...)
+		if len(certBytes) == 0 {
+			break
+		}
 	}
 
-	for _, cert := range certs {
-		for _, ip := range cert.IPAddresses {
-			if ip.Equal(net.ParseIP("127.0.0.1")) {
-				return nil
-			}
+	certs, err := x509.ParseCertificates(blocks)
+	if err != nil {
+		return fmt.Errorf("failed parsing cert: %s", err)
+	}
+
+	for _, ip := range certs[0].IPAddresses {
+		if ip.Equal(net.ParseIP("127.0.0.1")) {
+			return nil
 		}
 	}
 
