@@ -23,7 +23,6 @@ import (
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
 	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/durationjson"
-	"code.cloudfoundry.org/executor/gardenhealth"
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/garden/transport"
@@ -480,41 +479,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 
 			It("starts", func() {
 				Consistently(runner.Session).ShouldNot(Exit())
-			})
-		})
-
-		Context("when starting", func() {
-			var deleteChan chan struct{}
-			BeforeEach(func() {
-				fakeGarden.RouteToHandler("GET", "/containers",
-					func(w http.ResponseWriter, r *http.Request) {
-						r.ParseForm()
-						healthcheckTagQueryParam := gardenhealth.HealthcheckTag
-						if r.FormValue(healthcheckTagQueryParam) == gardenhealth.HealthcheckTagValue {
-							ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{})(w, r)
-						} else {
-							ghttp.RespondWithJSONEncoded(http.StatusOK, map[string][]string{"handles": []string{"cnr1", "cnr2"}})(w, r)
-						}
-					},
-				)
-				deleteChan = make(chan struct{}, 2)
-				fakeGarden.RouteToHandler("DELETE", "/containers/cnr1",
-					ghttp.CombineHandlers(
-						func(http.ResponseWriter, *http.Request) {
-							deleteChan <- struct{}{}
-						},
-						ghttp.RespondWithJSONEncoded(http.StatusOK, &struct{}{})))
-				fakeGarden.RouteToHandler("DELETE", "/containers/cnr2",
-					ghttp.CombineHandlers(
-						func(http.ResponseWriter, *http.Request) {
-							deleteChan <- struct{}{}
-						},
-						ghttp.RespondWithJSONEncoded(http.StatusOK, &struct{}{})))
-			})
-
-			It("destroys any existing containers", func() {
-				Eventually(deleteChan).Should(Receive())
-				Eventually(deleteChan).Should(Receive())
 			})
 		})
 
