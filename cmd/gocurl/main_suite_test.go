@@ -41,7 +41,7 @@ var _ = SynchronizedAfterSuite(func() {
 
 var _ = BeforeEach(func() {
 	apiServer = ghttp.NewUnstartedServer()
-	fixturesPath = path.Join(os.Getenv("GOPATH"), "src/code.cloudfoundry.org/rep/cmd/gocurl/fixtures")
+	fixturesPath = path.Join(os.Getenv("TOPDIR"), "src/code.cloudfoundry.org/rep/cmd/gocurl/fixtures")
 })
 
 var _ = AfterEach(func() {
