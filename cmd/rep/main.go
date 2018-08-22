@@ -159,7 +159,6 @@ func main() {
 		executorClient,
 		metronClient,
 		evacuationReporter,
-		uint64(time.Duration(repConfig.EvacuationTimeout).Seconds()),
 	)
 
 	cleanup := evacuation.NewEvacuationCleanup(

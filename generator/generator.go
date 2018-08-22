@@ -42,10 +42,9 @@ func New(
 	executorClient executor.Client,
 	metronClient loggingclient.IngressClient,
 	evacuationReporter evacuation_context.EvacuationReporter,
-	evacuationTTLInSeconds uint64,
 ) Generator {
 	containerDelegate := internal.NewContainerDelegate(executorClient)
-	lrpProcessor := internal.NewLRPProcessor(bbs, containerDelegate, metronClient, cellID, evacuationReporter, evacuationTTLInSeconds)
+	lrpProcessor := internal.NewLRPProcessor(bbs, containerDelegate, metronClient, cellID, evacuationReporter)
 	taskProcessor := internal.NewTaskProcessor(bbs, containerDelegate, cellID)
 
 	return &generator{

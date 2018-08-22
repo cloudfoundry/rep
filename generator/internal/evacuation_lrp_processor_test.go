@@ -23,8 +23,7 @@ import (
 var _ = Describe("EvacuationLrpProcessor", func() {
 	Describe("Process", func() {
 		const (
-			localCellID   = "cell-α"
-			evacuationTTL = 1234
+			localCellID = "cell-α"
 		)
 
 		var (
@@ -58,7 +57,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			fakeMetronClient = new(mfakes.FakeIngressClient)
 
-			lrpProcessor = internal.NewLRPProcessor(fakeBBS, fakeContainerDelegate, fakeMetronClient, localCellID, fakeEvacuationReporter, evacuationTTL)
+			lrpProcessor = internal.NewLRPProcessor(fakeBBS, fakeContainerDelegate, fakeMetronClient, localCellID, fakeEvacuationReporter)
 
 			processGuid = "process-guid"
 			desiredLRP = models.DesiredLRP{
@@ -258,11 +257,10 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			It("evacuates the lrp", func() {
 				Expect(fakeBBS.EvacuateRunningActualLRPCallCount()).To(Equal(1))
-				_, actualLRPKey, actualLRPContainerKey, actualLRPNetInfo, actualTTL := fakeBBS.EvacuateRunningActualLRPArgsForCall(0)
+				_, actualLRPKey, actualLRPContainerKey, actualLRPNetInfo := fakeBBS.EvacuateRunningActualLRPArgsForCall(0)
 				Expect(*actualLRPKey).To(Equal(lrpKey))
 				Expect(*actualLRPContainerKey).To(Equal(lrpInstanceKey))
 				Expect(*actualLRPNetInfo).To(Equal(lrpNetInfo))
-				Expect(actualTTL).To(Equal(uint64(evacuationTTL)))
 
 				Eventually(logger).Should(Say(
 					fmt.Sprintf(

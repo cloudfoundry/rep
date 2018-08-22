@@ -36,7 +36,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 		containerDelegate = new(fake_internal.FakeContainerDelegate)
 		evacuationReporter = &fake_evacuation_context.FakeEvacuationReporter{}
 		evacuationReporter.EvacuatingReturns(false)
-		processor = internal.NewLRPProcessor(bbsClient, containerDelegate, nil, expectedCellID, evacuationReporter, 124)
+		processor = internal.NewLRPProcessor(bbsClient, containerDelegate, nil, expectedCellID, evacuationReporter)
 		logger = lagertest.NewTestLogger("test")
 	})
 

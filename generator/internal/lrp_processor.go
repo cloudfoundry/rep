@@ -41,10 +41,9 @@ func NewLRPProcessor(
 	metronClient loggingclient.IngressClient,
 	cellID string,
 	evacuationReporter evacuation_context.EvacuationReporter,
-	evacuationTTLInSeconds uint64,
 ) LRPProcessor {
 	ordinaryProcessor := newOrdinaryLRPProcessor(bbsClient, containerDelegate, cellID)
-	evacuationProcessor := newEvacuationLRPProcessor(bbsClient, containerDelegate, metronClient, cellID, evacuationTTLInSeconds)
+	evacuationProcessor := newEvacuationLRPProcessor(bbsClient, containerDelegate, metronClient, cellID)
 	return &lrpProcessor{
 		evacuationReporter:  evacuationReporter,
 		ordinaryProcessor:   ordinaryProcessor,

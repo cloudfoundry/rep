@@ -13,21 +13,19 @@ import (
 )
 
 type evacuationLRPProcessor struct {
-	bbsClient              bbs.InternalClient
-	containerDelegate      ContainerDelegate
-	metronClient           loggingclient.IngressClient
-	cellID                 string
-	evacuationTTLInSeconds uint64
-	evacuatedContainers    sync.Map
+	bbsClient           bbs.InternalClient
+	containerDelegate   ContainerDelegate
+	metronClient        loggingclient.IngressClient
+	cellID              string
+	evacuatedContainers sync.Map
 }
 
-func newEvacuationLRPProcessor(bbsClient bbs.InternalClient, containerDelegate ContainerDelegate, metronClient loggingclient.IngressClient, cellID string, evacuationTTLInSeconds uint64) LRPProcessor {
+func newEvacuationLRPProcessor(bbsClient bbs.InternalClient, containerDelegate ContainerDelegate, metronClient loggingclient.IngressClient, cellID string) LRPProcessor {
 	return &evacuationLRPProcessor{
-		bbsClient:              bbsClient,
-		containerDelegate:      containerDelegate,
-		metronClient:           metronClient,
-		cellID:                 cellID,
-		evacuationTTLInSeconds: evacuationTTLInSeconds,
+		bbsClient:         bbsClient,
+		containerDelegate: containerDelegate,
+		metronClient:      metronClient,
+		cellID:            cellID,
 	}
 }
 
@@ -106,7 +104,7 @@ func (p *evacuationLRPProcessor) processRunningContainer(logger lager.Logger, lr
 	}
 
 	logger.Info("bbs-evacuate-running-actual-lrp", lager.Data{"net_info": netInfo})
-	keepContainer, err := p.bbsClient.EvacuateRunningActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo, p.evacuationTTLInSeconds)
+	keepContainer, err := p.bbsClient.EvacuateRunningActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo)
 	if keepContainer == false {
 		p.containerDelegate.DeleteContainer(logger, lrpContainer.Container.Guid)
 	} else if err != nil {
