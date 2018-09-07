@@ -24,6 +24,7 @@ import (
 	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/durationjson"
 	executorinit "code.cloudfoundry.org/executor/initializer"
+	"code.cloudfoundry.org/executor/initializer/configuration"
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/garden/transport"
 	"code.cloudfoundry.org/lager"
@@ -160,6 +161,38 @@ var _ = Describe("The Rep", func() {
 				GardenHealthcheckProcessUser: "me",
 				GardenHealthcheckProcessPath: "ls",
 				ContainerMaxCpuShares:        1024,
+
+				MemoryMB:                           configuration.Automatic,
+				DiskMB:                             configuration.Automatic,
+				TempDir:                            "/tmp",
+				ReservedExpirationTime:             durationjson.Duration(time.Minute),
+				ContainerReapInterval:              durationjson.Duration(time.Minute),
+				ContainerInodeLimit:                200000,
+				EnableDeclarativeHealthcheck:       false,
+				MaxCacheSizeInBytes:                10 * 1024 * 1024 * 1024,
+				SkipCertVerify:                     false,
+				HealthyMonitoringInterval:          durationjson.Duration(30 * time.Second),
+				UnhealthyMonitoringInterval:        durationjson.Duration(500 * time.Millisecond),
+				ContainerOwnerName:                 "executor",
+				HealthCheckContainerOwnerName:      "executor-health-check",
+				CreateWorkPoolSize:                 32,
+				DeleteWorkPoolSize:                 32,
+				ReadWorkPoolSize:                   64,
+				MetricsWorkPoolSize:                8,
+				HealthCheckWorkPoolSize:            64,
+				MaxConcurrentDownloads:             5,
+				GardenHealthcheckInterval:          durationjson.Duration(10 * time.Minute),
+				GardenHealthcheckEmissionInterval:  durationjson.Duration(30 * time.Second),
+				GardenHealthcheckTimeout:           durationjson.Duration(10 * time.Minute),
+				GardenHealthcheckCommandRetryPause: durationjson.Duration(time.Second),
+				GardenHealthcheckProcessArgs:       []string{},
+				GardenHealthcheckProcessEnv:        []string{},
+				GracefulShutdownInterval:           durationjson.Duration(10 * time.Second),
+				ContainerMetricsReportInterval:     durationjson.Duration(15 * time.Second),
+				EnvoyConfigRefreshDelay:            durationjson.Duration(time.Second),
+				EnvoyDrainTimeout:                  durationjson.Duration(15 * time.Minute),
+				CSIPaths:                           []string{"/var/vcap/data/csiplugins"},
+				CSIMountRootDir:                    "/var/vcap/data/csimountroot",
 			},
 			LoggregatorConfig: diego_logging_client.Config{
 				BatchFlushInterval: 10 * time.Millisecond,
@@ -176,6 +209,14 @@ var _ = Describe("The Rep", func() {
 			ConsulCluster:     consulRunner.ConsulCluster(),
 			PollingInterval:   durationjson.Duration(pollingInterval),
 			EvacuationTimeout: durationjson.Duration(evacuationTimeout),
+
+			AdvertiseDomain:           "cell.service.cf.internal",
+			BBSClientSessionCacheSize: 0,
+			BBSMaxIdleConnsPerHost:    0,
+			CommunicationTimeout:      durationjson.Duration(10 * time.Second),
+			EvacuationPollingInterval: durationjson.Duration(10 * time.Second),
+			LockTTL:                   durationjson.Duration(locket.DefaultSessionTTL),
+			SessionName:               "rep",
 		}
 	})
 

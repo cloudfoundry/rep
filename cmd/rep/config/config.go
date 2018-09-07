@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"code.cloudfoundry.org/debugserver"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
@@ -116,27 +115,8 @@ type RepConfig struct {
 	locket.ClientLocketConfig
 }
 
-func defaultConfig() RepConfig {
-	return RepConfig{
-		AdvertiseDomain:           "cell.service.cf.internal",
-		BBSClientSessionCacheSize: 0,
-		BBSMaxIdleConnsPerHost:    0,
-		CommunicationTimeout:      durationjson.Duration(10 * time.Second),
-		EvacuationPollingInterval: durationjson.Duration(10 * time.Second),
-		EvacuationTimeout:         durationjson.Duration(10 * time.Minute),
-		ExecutorConfig:            executorinit.DefaultConfiguration,
-		LagerConfig:               lagerflags.DefaultLagerConfig(),
-		ListenAddr:                "0.0.0.0:1800",
-		ListenAddrSecurable:       "0.0.0.0:1801",
-		LockRetryInterval:         durationjson.Duration(locket.RetryInterval),
-		LockTTL:                   durationjson.Duration(locket.DefaultSessionTTL),
-		PollingInterval:           durationjson.Duration(30 * time.Second),
-		SessionName:               "rep",
-	}
-}
-
 func NewRepConfig(configPath string) (RepConfig, error) {
-	repConfig := defaultConfig()
+	repConfig := RepConfig{}
 	configFile, err := os.Open(configPath)
 	if err != nil {
 		return RepConfig{}, err

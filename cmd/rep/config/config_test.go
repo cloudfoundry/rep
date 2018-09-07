@@ -5,11 +5,11 @@ import (
 	"os"
 	"time"
 
+	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/debugserver"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/durationjson"
 	executorinit "code.cloudfoundry.org/executor/initializer"
-	"code.cloudfoundry.org/executor/initializer/configuration"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
@@ -42,6 +42,8 @@ var _ = Describe("RepConfig", func() {
 			"container_owner_name": "vcap",
 			"container_reap_interval": "11s",
 			"create_work_pool_size": 15,
+			"csi_paths": ["/var/vcap/data/csiplugins"],
+			"csi_mount_root_dir": "/var/vcap/data/csimountroot",
 			"debug_address": "5.5.5.5:9090",
 			"delete_work_pool_size": 10,
 			"disk_mb": "20000",
@@ -53,6 +55,8 @@ var _ = Describe("RepConfig", func() {
 			"evacuation_timeout" : "12s",
 			"enable_container_proxy": true,
 			"enable_unproxied_port_mappings": true,
+			"envoy_config_refresh_delay": "1s",
+			"envoy_drain_timeout": "15m",
 			"garden_addr": "100.0.0.1",
 			"garden_healthcheck_command_retry_pause": "15s",
 			"garden_healthcheck_emission_interval": "13s",
@@ -64,6 +68,7 @@ var _ = Describe("RepConfig", func() {
 			"garden_healthcheck_process_user": "vcap_health",
 			"garden_healthcheck_timeout": "14s",
 			"garden_network": "test-network",
+			"graceful_shutdown_interval": "10s",
 			"healthcheck_container_owner_name": "vcap_health",
 			"healthcheck_work_pool_size": 10,
 			"healthy_monitoring_interval": "5s",
@@ -140,7 +145,7 @@ var _ = Describe("RepConfig", func() {
 		repConfig, err := config.NewRepConfig(configFilePath)
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(repConfig).To(Equal(config.RepConfig{
+		Expect(repConfig).To(test_helpers.DeepEqual(config.RepConfig{
 			AdvertiseDomain:           "test-domain",
 			BBSAddress:                "1.1.1.1:9091",
 			BBSClientSessionCacheSize: 100,
@@ -271,71 +276,6 @@ var _ = Describe("RepConfig", func() {
 				_, err := config.NewRepConfig(configFilePath)
 				Expect(err).To(HaveOccurred())
 			})
-		})
-	})
-
-	Context("default values", func() {
-		BeforeEach(func() {
-			configData = `{}`
-		})
-
-		It("uses default values when they are not specified", func() {
-			repConfig, err := config.NewRepConfig(configFilePath)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(repConfig).To(Equal(config.RepConfig{
-				SessionName:               "rep",
-				LockTTL:                   durationjson.Duration(locket.DefaultSessionTTL),
-				LockRetryInterval:         durationjson.Duration(locket.RetryInterval),
-				ListenAddr:                "0.0.0.0:1800",
-				ListenAddrSecurable:       "0.0.0.0:1801",
-				PollingInterval:           durationjson.Duration(30 * time.Second),
-				CommunicationTimeout:      durationjson.Duration(10 * time.Second),
-				EvacuationPollingInterval: durationjson.Duration(10 * time.Second),
-				AdvertiseDomain:           "cell.service.cf.internal",
-
-				BBSClientSessionCacheSize: 0,
-				EvacuationTimeout:         durationjson.Duration(10 * time.Minute),
-				LagerConfig:               lagerflags.DefaultLagerConfig(),
-				ExecutorConfig: executorinit.ExecutorConfig{
-					GardenNetwork:                      "unix",
-					GardenAddr:                         "/tmp/garden.sock",
-					MemoryMB:                           configuration.Automatic,
-					DiskMB:                             configuration.Automatic,
-					TempDir:                            "/tmp",
-					ReservedExpirationTime:             durationjson.Duration(time.Minute),
-					ContainerReapInterval:              durationjson.Duration(time.Minute),
-					ContainerInodeLimit:                200000,
-					ContainerMaxCpuShares:              0,
-					CachePath:                          "/tmp/cache",
-					EnableDeclarativeHealthcheck:       false,
-					EnableUnproxiedPortMappings:        false,
-					EnvoyConfigRefreshDelay:            durationjson.Duration(time.Second),
-					EnvoyDrainTimeout:                  durationjson.Duration(15 * time.Minute),
-					MaxCacheSizeInBytes:                10 * 1024 * 1024 * 1024,
-					SkipCertVerify:                     false,
-					HealthyMonitoringInterval:          durationjson.Duration(30 * time.Second),
-					UnhealthyMonitoringInterval:        durationjson.Duration(500 * time.Millisecond),
-					ContainerOwnerName:                 "executor",
-					HealthCheckContainerOwnerName:      "executor-health-check",
-					CreateWorkPoolSize:                 32,
-					DeleteWorkPoolSize:                 32,
-					ReadWorkPoolSize:                   64,
-					MetricsWorkPoolSize:                8,
-					HealthCheckWorkPoolSize:            64,
-					MaxConcurrentDownloads:             5,
-					GardenHealthcheckInterval:          durationjson.Duration(10 * time.Minute),
-					GardenHealthcheckEmissionInterval:  durationjson.Duration(30 * time.Second),
-					GardenHealthcheckTimeout:           durationjson.Duration(10 * time.Minute),
-					GardenHealthcheckCommandRetryPause: durationjson.Duration(1 * time.Second),
-					GardenHealthcheckProcessArgs:       []string{},
-					GardenHealthcheckProcessEnv:        []string{},
-					GracefulShutdownInterval:           durationjson.Duration(10 * time.Second),
-					ContainerMetricsReportInterval:     durationjson.Duration(15 * time.Second),
-					CSIPaths:                           []string{"/var/vcap/data/csiplugins"},
-					CSIMountRootDir:                    "/var/vcap/data/csimountroot",
-				},
-			}))
 		})
 	})
 })
