@@ -106,7 +106,7 @@ var _ = Describe("The Rep", func() {
 		fakeGarden.RouteToHandler("GET", "/containers/bulk_info", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 
 		// The following handlers are needed to fake out the healthcheck containers
-		fakeGarden.RouteToHandler("DELETE", regexp.MustCompile("/containers/check-[-a-f0-9]+"), ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
+		fakeGarden.RouteToHandler("DELETE", regexp.MustCompile("/containers/executor-healthcheck-[-a-f0-9]+"), ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 		fakeGarden.RouteToHandler("POST", "/containers/healthcheck-container/processes", func() http.HandlerFunc {
 			firstResponse, err := json.Marshal(transport.ProcessPayload{})
 			Expect(err).NotTo(HaveOccurred())
@@ -398,7 +398,7 @@ var _ = Describe("The Rep", func() {
 
 		It("sends the correct rootfs when creating the container", func() {
 			Eventually(createRequestReceived).Should(Receive(And(
-				ContainSubstring(`check-`),
+				ContainSubstring(`executor-healthcheck`),
 				ContainSubstring(`"rootfs":"/path/to/rootfs"`),
 			)))
 		})
@@ -413,7 +413,7 @@ var _ = Describe("The Rep", func() {
 
 			It("uses the first rootfs", func() {
 				Eventually(createRequestReceived).Should(Receive(And(
-					ContainSubstring(`check-`),
+					ContainSubstring(`executor-healthcheck`),
 					ContainSubstring(`"rootfs":"/path/to/another/rootfs"`),
 				)))
 			})
