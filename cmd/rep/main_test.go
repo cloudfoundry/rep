@@ -643,6 +643,90 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 				Expect(err).NotTo(HaveOccurred())
 			})
 
+			Context("when container creation takes an arbitrary long time, and reaping of missing/extra containers are occurring often", func() {
+				var blockCh chan struct{}
+				var createTask func(string)
+				var countCreateContainerReqs func() int
+
+				BeforeEach(func() {
+					repConfig.ExecutorConfig.ContainerReapInterval = durationjson.Duration(pollingInterval)
+
+					blockCh = make(chan struct{})
+
+					respondWithSuccessToCreateContainer = false
+					fakeGarden.RouteToHandler("POST", "/containers", ghttp.CombineHandlers(
+						func(rw http.ResponseWriter, req *http.Request) {
+							body, err := ioutil.ReadAll(req.Body)
+							Expect(err).NotTo(HaveOccurred())
+							if !strings.Contains(string(body), "executor-healthcheck") {
+								<-blockCh
+							}
+						},
+						ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{"handle": "healthcheck-container"}),
+					))
+
+					createTask = func(taskGuid string) {
+						task := &models.Task{
+							TaskGuid: taskGuid,
+							Domain:   "domain",
+							TaskDefinition: &models.TaskDefinition{
+								RootFs: "docker://docker/docker:v1",
+								Action: models.WrapAction(&models.RunAction{
+									User:           "user",
+									Path:           "echo",
+									Args:           []string{"hello world"},
+									ResourceLimits: &models.ResourceLimits{},
+								}),
+							},
+						}
+						err := bbsClient.DesireTask(logger, task.TaskGuid, task.Domain, task.TaskDefinition)
+						Expect(err).NotTo(HaveOccurred())
+
+						work := rep.Work{
+							Tasks: []rep.Task{
+								rep.NewTask(
+									task.TaskGuid,
+									"domain",
+									rep.NewResource(100, 100, 10),
+									rep.NewPlacementConstraint("foobar", []string{}, []string{}),
+								),
+							},
+						}
+						failed, err := repClient.Perform(logger, work)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(failed.Tasks).To(HaveLen(0))
+					}
+
+					countCreateContainerReqs = func() int {
+						createCount := 0
+						for _, req := range fakeGarden.ReceivedRequests() {
+							if req.Method == http.MethodPost && req.URL.String() == "/containers" {
+								createCount++
+							}
+						}
+						return createCount
+					}
+				})
+
+				AfterEach(func() {
+					close(blockCh)
+				})
+
+				It("does not block subsequent work from being started", func() {
+					createTask("task-guid-1")
+
+					// check that the first task's container create request is made
+					Eventually(countCreateContainerReqs).Should(Equal(2))
+					// wait to ensure the reaper has run
+					Consistently(countCreateContainerReqs, time.Second).Should(Equal(2))
+
+					createTask("task-guid-2")
+
+					// check that the creation of the first container has not blocked the creation of the second container
+					Eventually(countCreateContainerReqs).Should(Equal(3))
+				})
+			})
+
 			Context("State", func() {
 				It("returns the cell id and rep url in the state info", func() {
 					state, err := repClient.State(logger)
