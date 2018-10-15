@@ -65,14 +65,14 @@ func New(
 		stackPathMap:             preloadedStackPathMap,
 		rootFSProviders:          rootFSProviders(preloadedStackPathMap, arbitraryRootFSes),
 		containerMetricsProvider: containerMetricsProvider,
-		zone:                  zone,
-		generateInstanceGuid:  generateInstanceGuid,
-		client:                client,
-		evacuationReporter:    evacuationReporter,
-		placementTags:         placementTags,
-		optionalPlacementTags: optionalPlacementTags,
-		proxyMemoryAllocation: proxyMemoryAllocation,
-		enableContainerProxy:  enableContainerProxy,
+		zone:                     zone,
+		generateInstanceGuid:     generateInstanceGuid,
+		client:                   client,
+		evacuationReporter:       evacuationReporter,
+		placementTags:            placementTags,
+		optionalPlacementTags:    optionalPlacementTags,
+		proxyMemoryAllocation:    proxyMemoryAllocation,
+		enableContainerProxy:     enableContainerProxy,
 	}
 }
 
