@@ -5,6 +5,7 @@ import (
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
+	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/rep"
 
@@ -250,6 +251,12 @@ var _ = Describe("Resources", func() {
 			containerGuid = "the-container-guid"
 			desiredLRP = model_helpers.NewValidDesiredLRP("the-process-guid")
 			desiredLRP.Ports = []uint32{8080}
+			// This is a lazy way to prevent old tests from failing.  The tests
+			// happily ignored ImageLayer that used to be returned from
+			// NewValidDesiredLRP, but now we are converting to V2 they are
+			// failing because they are getting extra CachedDependencies.  We
+			// test explicitly for V2 conversion in a context below
+			desiredLRP.ImageLayers = nil
 			actualLRP = model_helpers.NewValidActualLRP("the-process-guid", 9)
 			desiredLRP.RootFs = "preloaded://foobar"
 		})
@@ -258,7 +265,7 @@ var _ = Describe("Resources", func() {
 			runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(runReq.Tags).To(Equal(executor.Tags{}))
-			Expect(runReq.RunInfo).To(Equal(executor.RunInfo{
+			Expect(runReq.RunInfo).To(test_helpers.DeepEqual(executor.RunInfo{
 				CPUWeight: uint(desiredLRP.CpuWeight),
 				DiskScope: executor.ExclusiveDiskLimit,
 				Ports:     rep.ConvertPortMappings(desiredLRP.Ports),
@@ -401,12 +408,83 @@ var _ = Describe("Resources", func() {
 				Expect(runReq.DiskScope).To(Equal(executor.TotalDiskLimit))
 			})
 		})
+
+		Context("when the lrp has V3 declarative Resources", func() {
+			var (
+				origSetup *models.Action
+			)
+
+			BeforeEach(func() {
+				desiredLRP.CachedDependencies = nil
+				origSetup = desiredLRP.Setup
+				desiredLRP.ImageLayers = []*models.ImageLayer{
+					{
+						Name:            "app bits",
+						Url:             "blobstore.com/bits/app-bits",
+						DestinationPath: "/usr/local/app",
+						LayerType:       models.LayerTypeShared,
+						MediaType:       models.MediaTypeTgz,
+						DigestAlgorithm: models.DigestAlgorithmSha256,
+						DigestValue:     "some-sha256",
+					},
+					{
+						Name:            "other bits with checksum",
+						Url:             "blobstore.com/bits/other-bits-checksum",
+						DestinationPath: "/usr/local/other",
+						LayerType:       models.LayerTypeExclusive,
+						MediaType:       models.MediaTypeTgz,
+						DigestAlgorithm: models.DigestAlgorithmSha512,
+						DigestValue:     "some-sha512",
+					},
+				}
+			})
+
+			It("converts exclusive resources into download steps", func() {
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.Setup).To(Equal(models.WrapAction(models.Serial(
+					models.Parallel(
+						&models.DownloadAction{
+							Artifact:          "other bits with checksum",
+							From:              "blobstore.com/bits/other-bits-checksum",
+							To:                "/usr/local/other",
+							CacheKey:          "sha512:some-sha512",
+							LogSource:         "",
+							User:              "legacy-dan",
+							ChecksumAlgorithm: "sha512",
+							ChecksumValue:     "some-sha512",
+						},
+					),
+					models.UnwrapAction(origSetup),
+				))))
+			})
+
+			It("converts shared resources into V2 cached dependencies", func() {
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.CachedDependencies).To(ConsistOf(executor.CachedDependency{
+					Name:              "app bits",
+					From:              "blobstore.com/bits/app-bits",
+					To:                "/usr/local/app",
+					CacheKey:          "sha256:some-sha256",
+					LogSource:         "",
+					ChecksumAlgorithm: "sha256",
+					ChecksumValue:     "some-sha256",
+				}))
+			})
+		})
 	})
 
 	Describe("NewRunRequestFromTask", func() {
 		var task *models.Task
 		BeforeEach(func() {
 			task = model_helpers.NewValidTask("task-guid")
+			// This is a lazy way to prevent old tests from failing.  The tests
+			// happily ignored ImageLayer that used to be returned from
+			// NewValidTask, but now we are converting to V2 they are failing
+			// because they are getting extra CachedDependencies.  We test
+			// explicitly for V2 conversion in a context below
+			task.ImageLayers = nil
 			task.RootFs = "preloaded://rootfs"
 		})
 
@@ -514,6 +592,71 @@ var _ = Describe("Resources", func() {
 			It("returns an error", func() {
 				_, err := rep.NewRunRequestFromTask(task)
 				Expect(err).To(MatchError("invalid character '{' looking for beginning of object key string"))
+			})
+		})
+
+		Context("when the task has V3 declarative Resources", func() {
+			var (
+				origAction *models.Action
+			)
+
+			BeforeEach(func() {
+				task.CachedDependencies = nil
+				origAction = task.Action
+				task.ImageLayers = []*models.ImageLayer{
+					{
+						Name:            "app bits",
+						Url:             "blobstore.com/bits/app-bits",
+						DestinationPath: "/usr/local/app",
+						LayerType:       models.LayerTypeShared,
+						MediaType:       models.MediaTypeTgz,
+						DigestAlgorithm: models.DigestAlgorithmSha256,
+						DigestValue:     "some-sha256",
+					},
+					{
+						Name:            "other bits with checksum",
+						Url:             "blobstore.com/bits/other-bits-checksum",
+						DestinationPath: "/usr/local/other",
+						LayerType:       models.LayerTypeExclusive,
+						MediaType:       models.MediaTypeTgz,
+						DigestAlgorithm: models.DigestAlgorithmSha512,
+						DigestValue:     "some-sha512",
+					},
+				}
+			})
+
+			It("converts exclusive resources into download steps", func() {
+				runReq, err := rep.NewRunRequestFromTask(task)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.Action).To(Equal(models.WrapAction(models.Serial(
+					models.Parallel(
+						&models.DownloadAction{
+							Artifact:          "other bits with checksum",
+							From:              "blobstore.com/bits/other-bits-checksum",
+							To:                "/usr/local/other",
+							CacheKey:          "sha512:some-sha512",
+							LogSource:         "",
+							User:              "legacy-jim",
+							ChecksumAlgorithm: "sha512",
+							ChecksumValue:     "some-sha512",
+						},
+					),
+					models.UnwrapAction(origAction),
+				))))
+			})
+
+			It("converts shared resources into V2 cached dependencies", func() {
+				runReq, err := rep.NewRunRequestFromTask(task)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.CachedDependencies).To(ConsistOf(executor.CachedDependency{
+					Name:              "app bits",
+					From:              "blobstore.com/bits/app-bits",
+					To:                "/usr/local/app",
+					CacheKey:          "sha256:some-sha256",
+					LogSource:         "",
+					ChecksumAlgorithm: "sha256",
+					ChecksumValue:     "some-sha256",
+				}))
 			})
 		})
 	})

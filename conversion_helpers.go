@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"code.cloudfoundry.org/bbs/format"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/executor"
 )
@@ -105,6 +106,8 @@ func NewRunRequestFromDesiredLRP(
 	lrpKey *models.ActualLRPKey,
 	lrpInstanceKey *models.ActualLRPInstanceKey,
 ) (executor.RunRequest, error) {
+	desiredLRP = desiredLRP.VersionDownTo(format.V2)
+
 	diskScope, err := diskScopeForRootFS(desiredLRP.RootFs)
 	if err != nil {
 		return executor.RunRequest{}, err
@@ -165,6 +168,8 @@ func NewRunRequestFromDesiredLRP(
 }
 
 func NewRunRequestFromTask(task *models.Task) (executor.RunRequest, error) {
+	task = task.VersionDownTo(format.V2)
+
 	diskScope, err := diskScopeForRootFS(task.RootFs)
 	if err != nil {
 		return executor.RunRequest{}, err
