@@ -14,19 +14,20 @@ import (
 var ErrorIncompatibleRootfs = errors.New("rootfs not found")
 
 type CellState struct {
-	RepURL                 string `json:"rep_url"`
-	CellID                 string `json:"cell_id"`
-	RootFSProviders        RootFSProviders
-	AvailableResources     Resources
-	TotalResources         Resources
-	LRPs                   []LRP
-	Tasks                  []Task
-	StartingContainerCount int
-	Zone                   string
-	Evacuating             bool
-	VolumeDrivers          []string
-	PlacementTags          []string
-	OptionalPlacementTags  []string
+	RepURL                  string `json:"rep_url"`
+	CellID                  string `json:"cell_id"`
+	RootFSProviders         RootFSProviders
+	AvailableResources      Resources
+	TotalResources          Resources
+	LRPs                    []LRP
+	Tasks                   []Task
+	StartingContainerCount  int
+	Zone                    string
+	Evacuating              bool
+	VolumeDrivers           []string
+	PlacementTags           []string
+	OptionalPlacementTags   []string
+	ProxyMemoryAllocationMB int
 }
 
 func NewCellState(
@@ -43,21 +44,23 @@ func NewCellState(
 	volumeDrivers []string,
 	placementTags []string,
 	optionalPlacementTags []string,
+	proxyMemoryAllocation int,
 ) CellState {
 	return CellState{
-		CellID:                 cellID,
-		RepURL:                 repURL,
-		RootFSProviders:        root,
-		AvailableResources:     avail,
-		TotalResources:         total,
-		LRPs:                   lrps,
-		Tasks:                  tasks,
-		Zone:                   zone,
-		StartingContainerCount: startingContainerCount,
-		Evacuating:             isEvac,
-		VolumeDrivers:          volumeDrivers,
-		PlacementTags:          placementTags,
-		OptionalPlacementTags:  optionalPlacementTags,
+		CellID:             cellID,
+		RepURL:             repURL,
+		RootFSProviders:    root,
+		AvailableResources: avail,
+		TotalResources:     total,
+		LRPs:               lrps,
+		Tasks:              tasks,
+		Zone:               zone,
+		StartingContainerCount:  startingContainerCount,
+		Evacuating:              isEvac,
+		VolumeDrivers:           volumeDrivers,
+		PlacementTags:           placementTags,
+		OptionalPlacementTags:   optionalPlacementTags,
+		ProxyMemoryAllocationMB: proxyMemoryAllocation,
 	}
 }
 

@@ -452,6 +452,21 @@ var _ = Describe("AuctionCellRep", func() {
 			}))
 
 			Expect(state.VolumeDrivers).To(ConsistOf(volumeDrivers))
+
+			Expect(state.ProxyMemoryAllocationMB).To(Equal(proxyMemoryAllocation))
+		})
+
+		Context("when the proxyMemoryAllocation has a non-zero value", func() {
+			BeforeEach(func() {
+				proxyMemoryAllocation = 12
+			})
+
+			It("includes that value in the cell state", func() {
+				state, _, err := cellRep.State(logger)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(state.ProxyMemoryAllocationMB).To(Equal(proxyMemoryAllocation))
+			})
 		})
 
 		Context("when the cell is not healthy", func() {

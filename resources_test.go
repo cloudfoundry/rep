@@ -46,6 +46,7 @@ var _ = Describe("Resources", func() {
 			nil,
 			nil,
 			nil,
+			0,
 		)
 	})
 
