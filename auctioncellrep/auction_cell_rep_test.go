@@ -16,6 +16,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 const (
@@ -1042,6 +1043,12 @@ var _ = Describe("AuctionCellRep", func() {
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.LRPs).To(ConsistOf(lrpAuctionOne, lrpAuctionTwo))
 					})
+
+					It("logs the container allocation failure", func() {
+						_, err := cellRep.Perform(logger, rep.Work{LRPs: lrpAuctions})
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(logger).Should(gbytes.Say("container-allocation-failure.*failed-request.*instance-guid-1"))
+					})
 				})
 			})
 		})
@@ -1225,6 +1232,12 @@ var _ = Describe("AuctionCellRep", func() {
 						failedWork, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
 						Expect(err).NotTo(HaveOccurred())
 						Expect(failedWork.Tasks).To(ConsistOf(task1, task2))
+					})
+
+					It("logs the container allocation failure", func() {
+						_, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(logger).Should(gbytes.Say("container-allocation-failure.*failed-request.*the-task-guid-1"))
 					})
 				})
 			})
