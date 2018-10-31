@@ -13,7 +13,6 @@ import (
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -54,7 +53,7 @@ var _ = Describe("RepConfig", func() {
 			"evacuation_polling_interval" : "13s",
 			"evacuation_timeout" : "12s",
 			"enable_container_proxy": true,
-			"container_proxy_ads_servers": ["10.0.0.2:15010", "10.0.0.3:15010"],
+			"container_proxy_ads_addresses": ["10.0.0.2:15010", "10.0.0.3:15010"],
 			"enable_unproxied_port_mappings": true,
 			"envoy_config_refresh_delay": "1s",
 			"envoy_config_reload_duration": "5s",
@@ -148,12 +147,12 @@ var _ = Describe("RepConfig", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(repConfig).To(test_helpers.DeepEqual(config.RepConfig{
-			AdvertiseDomain:           "test-domain",
-			BBSAddress:                "1.1.1.1:9091",
-			BBSClientSessionCacheSize: 100,
-			BBSMaxIdleConnsPerHost:    10,
-			CaCertFile:                "/tmp/ca_cert",
-			CellID:                    "cell_z1/10",
+			AdvertiseDomain:                "test-domain",
+			BBSAddress:                     "1.1.1.1:9091",
+			BBSClientSessionCacheSize:      100,
+			BBSMaxIdleConnsPerHost:         10,
+			CaCertFile:                     "/tmp/ca_cert",
+			CellID:                         "cell_z1/10",
 			CellRegistrationsLocketEnabled: true,
 			ClientLocketConfig: locket.ClientLocketConfig{
 				LocketAddress:        "0.0.0.0:909090909",
@@ -173,16 +172,16 @@ var _ = Describe("RepConfig", func() {
 			EvacuationPollingInterval:       durationjson.Duration(13 * time.Second),
 			EvacuationTimeout:               durationjson.Duration(12 * time.Second),
 			ExecutorConfig: executorinit.ExecutorConfig{
-				ProxyMemoryAllocationMB:        6,
-				CachePath:                      "/tmp/cache",
-				ContainerInodeLimit:            1000,
-				ContainerMaxCpuShares:          4,
-				ContainerMetricsReportInterval: 16000000000,
-				ContainerOwnerName:             "vcap",
-				ContainerReapInterval:          11000000000,
-				CreateWorkPoolSize:             15,
-				DeleteWorkPoolSize:             10,
-				DiskMB:                         "20000",
+				ProxyMemoryAllocationMB:            6,
+				CachePath:                          "/tmp/cache",
+				ContainerInodeLimit:                1000,
+				ContainerMaxCpuShares:              4,
+				ContainerMetricsReportInterval:     16000000000,
+				ContainerOwnerName:                 "vcap",
+				ContainerReapInterval:              11000000000,
+				CreateWorkPoolSize:                 15,
+				DeleteWorkPoolSize:                 10,
+				DiskMB:                             "20000",
 				EnableDeclarativeHealthcheck:       true,
 				DeclarativeHealthcheckPath:         "/var/vcap/packages/healthcheck",
 				EnableContainerProxy:               true,
@@ -217,11 +216,11 @@ var _ = Describe("RepConfig", func() {
 				ReservedExpirationTime:             10000000000,
 				SkipCertVerify:                     true,
 				TempDir:                            "/tmp/test",
-				TrustedSystemCertificatesPath: "/tmp/trusted",
-				UnhealthyMonitoringInterval:   10000000000,
-				VolmanDriverPaths:             "/tmp/volman1:/tmp/volman2",
-				CSIPaths:                      []string{"/var/vcap/data/csiplugins"},
-				CSIMountRootDir:               "/var/vcap/data/csimountroot",
+				TrustedSystemCertificatesPath:      "/tmp/trusted",
+				UnhealthyMonitoringInterval:        10000000000,
+				VolmanDriverPaths:                  "/tmp/volman1:/tmp/volman2",
+				CSIPaths:                           []string{"/var/vcap/data/csiplugins"},
+				CSIMountRootDir:                    "/var/vcap/data/csimountroot",
 			},
 			LagerConfig: lagerflags.LagerConfig{
 				LogLevel: lagerflags.DEBUG,
