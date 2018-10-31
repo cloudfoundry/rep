@@ -58,7 +58,7 @@ var _ = Describe("AuctionCellRep", func() {
 		linuxRootFSURL = models.PreloadedRootFS(linuxStack)
 
 		commonErr = errors.New("Failed to fetch")
-		proxyMemoryAllocation = 0
+		proxyMemoryAllocation = 12
 		enableContainerProxy = false
 		client.HealthyReturns(true)
 	})
@@ -454,15 +454,15 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Expect(state.VolumeDrivers).To(ConsistOf(volumeDrivers))
 
-			Expect(state.ProxyMemoryAllocationMB).To(Equal(proxyMemoryAllocation))
+			Expect(state.ProxyMemoryAllocationMB).To(Equal(0))
 		})
 
-		Context("when the proxyMemoryAllocation has a non-zero value", func() {
+		Context("when enableContainerProxy is true", func() {
 			BeforeEach(func() {
-				proxyMemoryAllocation = 12
+				enableContainerProxy = true
 			})
 
-			It("includes that value in the cell state", func() {
+			It("returns a state with a proxyMemoryAllocation greater than 0", func() {
 				state, _, err := cellRep.State(logger)
 				Expect(err).NotTo(HaveOccurred())
 

@@ -41,7 +41,6 @@ type AuctionCellRep struct {
 	placementTags            []string
 	optionalPlacementTags    []string
 	proxyMemoryAllocation    int
-	enableContainerProxy     bool
 }
 
 func New(
@@ -59,6 +58,9 @@ func New(
 	proxyMemoryAllocation int,
 	enableContainerProxy bool,
 ) *AuctionCellRep {
+	if !enableContainerProxy {
+		proxyMemoryAllocation = 0
+	}
 	return &AuctionCellRep{
 		cellID:                   cellID,
 		repURL:                   repURL,
@@ -72,7 +74,6 @@ func New(
 		placementTags:         placementTags,
 		optionalPlacementTags: optionalPlacementTags,
 		proxyMemoryAllocation: proxyMemoryAllocation,
-		enableContainerProxy:  enableContainerProxy,
 	}
 }
 
@@ -359,18 +360,19 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 		return work, ErrCellIdMismatch
 	}
 
-	if a.enableContainerProxy {
+	if a.proxyMemoryAllocation > 0 {
 		remainingResources, err := a.client.RemainingResources(logger)
 		if err != nil {
 			logger.Error("failed-gathering-remaining-reosurces", err)
 			return work, err
 		}
-		var totalRequiredMemory = int32(0)
 
+		var totalRequiredMemory = int32(0)
 		for _, lrp := range work.LRPs {
 			totalRequiredMemory = totalRequiredMemory + lrp.Resource.MemoryMB
 			totalRequiredMemory += int32(a.proxyMemoryAllocation)
 		}
+
 		if int32(remainingResources.MemoryMB) < totalRequiredMemory {
 			logger.Error("not-enough-memory", ErrNotEnoughMemory)
 			return work, ErrNotEnoughMemory
@@ -462,7 +464,7 @@ func (a *AuctionCellRep) lrpsToAllocationRequest(lrps []rep.LRP) ([]executor.All
 		var resource executor.Resource
 
 		memoryMB := int(lrp.MemoryMB)
-		if a.enableContainerProxy && memoryMB > 0 {
+		if memoryMB > 0 {
 			memoryMB += a.proxyMemoryAllocation
 		}
 		resource = executor.NewResource(memoryMB, int(lrp.DiskMB), int(lrp.MaxPids), rootFSPath)
