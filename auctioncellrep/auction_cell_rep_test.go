@@ -1,8 +1,10 @@
 package auctioncellrep_test
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/executor"
@@ -545,13 +547,14 @@ var _ = Describe("AuctionCellRep", func() {
 	Describe("Perform", func() {
 		var (
 			work rep.Work
-			task rep.Task
 
-			expectedIndex = 1
+			remainingCellMemory int
+			expectedIndex       = 1
 		)
 
 		BeforeEach(func() {
-			client.RemainingResourcesReturns(executor.ExecutorResources{MemoryMB: 8192}, nil)
+			remainingCellMemory = 8192
+			client.RemainingResourcesReturns(executor.ExecutorResources{MemoryMB: remainingCellMemory}, nil)
 		})
 
 		Context("when evacuating", func() {
@@ -588,16 +591,10 @@ var _ = Describe("AuctionCellRep", func() {
 				lrpAuctionOne,
 				lrpAuctionTwo,
 				lrpAuctionThree rep.LRP
-				expectedGuidOne                = "instance-guid-1"
-				expectedGuidTwo                = "instance-guid-2"
-				expectedGuidThree              = "instance-guid-3"
-				expectedIndexOne         int32 = 1
-				expectedIndexTwo         int32 = 2
-				expectedIndexThree       int32 = 3
-				expectedIndexOneString         = "1"
-				expectedIndexTwoString         = "2"
-				expectedIndexThreeString       = "3"
-				lrpAuctions              []rep.LRP
+				expectedGuidOne   = "instance-guid-1"
+				expectedGuidTwo   = "instance-guid-2"
+				expectedGuidThree = "instance-guid-3"
+				lrpAuctions       []rep.LRP
 			)
 
 			BeforeEach(func() {
@@ -609,636 +606,416 @@ var _ = Describe("AuctionCellRep", func() {
 				fakeGenerateContainerGuid = func() (string, error) {
 					return <-guidChan, nil
 				}
-
-				lrpAuctionOne = rep.NewLRP(
-					"ig-1",
-					models.NewActualLRPKey("process-guid", expectedIndexOne, "tests"),
-					rep.NewResource(2048, 1024, 100),
-					rep.NewPlacementConstraint("rootfs", []string{"pt-1"}, []string{"vd-1"}),
-				)
-				lrpAuctionTwo = rep.NewLRP(
-					"ig-2",
-					models.NewActualLRPKey("process-guid", expectedIndexTwo, "tests"),
-					rep.NewResource(2048, 1024, 100),
-					rep.NewPlacementConstraint("rootfs", []string{"pt-2"}, []string{}),
-				)
-				lrpAuctionThree = rep.NewLRP(
-					"ig-3",
-					models.NewActualLRPKey("process-guid", expectedIndexThree, "tests"),
-					rep.NewResource(2048, 1024, 100),
-					rep.NewPlacementConstraint("rootfs", []string{}, []string{"vd-3"}),
-				)
 			})
 
 			JustBeforeEach(func() {
 				lrpAuctions = []rep.LRP{lrpAuctionOne, lrpAuctionTwo, lrpAuctionThree}
 			})
 
-			Context("when all LRP Auctions can be successfully translated to container specs", func() {
+			Context("when envoy needs to be placed in the container", func() {
 				BeforeEach(func() {
-					lrpAuctionOne.RootFs = linuxRootFSURL
-					lrpAuctionTwo.RootFs = "unsupported-arbitrary://still-goes-through"
-					lrpAuctionThree.RootFs = fmt.Sprintf("%s:linux?somekey=somevalue", models.PreloadedOCIRootFSScheme)
-
-					proxyMemoryAllocation = 5
+					enableContainerProxy = true
 				})
 
-				It("makes the correct allocation requests for all LRP Auctions", func() {
+				Context("and the required memory for the work exceeds current capacity", func() {
+					BeforeEach(func() {
+						lrpAuctionOne.MemoryMB = int32(remainingCellMemory - proxyMemoryAllocation + 1)
+					})
+
+					It("should reject the work", func() {
+						_, err := cellRep.Perform(logger, rep.Work{
+							LRPs: []rep.LRP{lrpAuctionOne},
+						})
+						Expect(err).To(HaveOccurred())
+					})
+				})
+			})
+
+			Context("when the workload's cell ID matches the cell's ID", func() {
+				It("accepts the workload", func() {
 					_, err := cellRep.Perform(logger, rep.Work{
-						LRPs: lrpAuctions,
+						LRPs:   lrpAuctions,
+						CellID: cellID,
 					})
 					Expect(err).NotTo(HaveOccurred())
-
-					Expect(client.AllocateContainersCallCount()).To(Equal(1))
-					_, arg := client.AllocateContainersArgsForCall(0)
-					Expect(arg).To(ConsistOf(
-						executor.AllocationRequest{
-							Guid: rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
-							Tags: executor.Tags{
-								rep.LifecycleTag:     rep.LRPLifecycle,
-								rep.DomainTag:        lrpAuctionOne.Domain,
-								rep.ProcessGuidTag:   lrpAuctionOne.ProcessGuid,
-								rep.InstanceGuidTag:  expectedGuidOne,
-								rep.ProcessIndexTag:  expectedIndexOneString,
-								rep.PlacementTagsTag: `["pt-1"]`,
-								rep.VolumeDriversTag: `["vd-1"]`,
-							},
-							Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), linuxPath),
-						},
-						executor.AllocationRequest{
-							Guid: rep.LRPContainerGuid(lrpAuctionTwo.ProcessGuid, expectedGuidTwo),
-							Tags: executor.Tags{
-								rep.LifecycleTag:     rep.LRPLifecycle,
-								rep.DomainTag:        lrpAuctionTwo.Domain,
-								rep.ProcessGuidTag:   lrpAuctionTwo.ProcessGuid,
-								rep.InstanceGuidTag:  expectedGuidTwo,
-								rep.ProcessIndexTag:  expectedIndexTwoString,
-								rep.PlacementTagsTag: `["pt-2"]`,
-								rep.VolumeDriversTag: `[]`,
-							},
-							Resource: executor.NewResource(int(lrpAuctionTwo.MemoryMB), int(lrpAuctionTwo.DiskMB), int(lrpAuctionTwo.MaxPids), "unsupported-arbitrary://still-goes-through"),
-						},
-						executor.AllocationRequest{
-							Guid: rep.LRPContainerGuid(lrpAuctionThree.ProcessGuid, expectedGuidThree),
-							Tags: executor.Tags{
-								rep.LifecycleTag:     rep.LRPLifecycle,
-								rep.DomainTag:        lrpAuctionThree.Domain,
-								rep.ProcessGuidTag:   lrpAuctionThree.ProcessGuid,
-								rep.InstanceGuidTag:  expectedGuidThree,
-								rep.ProcessIndexTag:  expectedIndexThreeString,
-								rep.PlacementTagsTag: `[]`,
-								rep.VolumeDriversTag: `["vd-3"]`,
-							},
-							Resource: executor.NewResource(int(lrpAuctionThree.MemoryMB), int(lrpAuctionThree.DiskMB), int(lrpAuctionThree.MaxPids), fmt.Sprintf("%s:/data/rootfs/linux?somekey=somevalue", models.PreloadedOCIRootFSScheme)),
-						},
-					))
-				})
-
-				Context("when envoy needs to be placed in the container", func() {
-					BeforeEach(func() {
-						lrpAuctionOne.RootFs = linuxRootFSURL
-						lrpAuctionTwo.RootFs = "unsupported-arbitrary://still-goes-through"
-						lrpAuctionThree.RootFs = fmt.Sprintf("%s:linux?somekey=somevalue", models.PreloadedOCIRootFSScheme)
-
-						enableContainerProxy = true
-					})
-
-					Context("when the required memory for the work exceeds current capacity", func() {
-						BeforeEach(func() {
-							lrpAuctionOne.MemoryMB = 8192
-						})
-
-						It("should reject the work", func() {
-							_, err := cellRep.Perform(logger, rep.Work{
-								LRPs: []rep.LRP{lrpAuctionOne},
-							})
-							Expect(err).To(HaveOccurred())
-						})
-					})
-
-					It("makes the correct allocation requests for all LRP Auctions with the additional memory allocation", func() {
-						_, err := cellRep.Perform(logger, rep.Work{
-							LRPs: lrpAuctions,
-						})
-						Expect(err).NotTo(HaveOccurred())
-
-						Expect(client.AllocateContainersCallCount()).To(Equal(1))
-						_, arg := client.AllocateContainersArgsForCall(0)
-						Expect(arg).To(ConsistOf(
-							executor.AllocationRequest{
-								Guid: rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
-								Tags: executor.Tags{
-									rep.LifecycleTag:     rep.LRPLifecycle,
-									rep.DomainTag:        lrpAuctionOne.Domain,
-									rep.ProcessGuidTag:   lrpAuctionOne.ProcessGuid,
-									rep.InstanceGuidTag:  expectedGuidOne,
-									rep.ProcessIndexTag:  expectedIndexOneString,
-									rep.PlacementTagsTag: `["pt-1"]`,
-									rep.VolumeDriversTag: `["vd-1"]`,
-								},
-								Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB+int32(proxyMemoryAllocation)), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), linuxPath),
-							},
-							executor.AllocationRequest{
-								Guid: rep.LRPContainerGuid(lrpAuctionTwo.ProcessGuid, expectedGuidTwo),
-								Tags: executor.Tags{
-									rep.LifecycleTag:     rep.LRPLifecycle,
-									rep.DomainTag:        lrpAuctionTwo.Domain,
-									rep.ProcessGuidTag:   lrpAuctionTwo.ProcessGuid,
-									rep.InstanceGuidTag:  expectedGuidTwo,
-									rep.ProcessIndexTag:  expectedIndexTwoString,
-									rep.PlacementTagsTag: `["pt-2"]`,
-									rep.VolumeDriversTag: `[]`,
-								},
-								Resource: executor.NewResource(int(lrpAuctionTwo.MemoryMB+int32(proxyMemoryAllocation)), int(lrpAuctionTwo.DiskMB), int(lrpAuctionTwo.MaxPids), "unsupported-arbitrary://still-goes-through"),
-							},
-							executor.AllocationRequest{
-								Guid: rep.LRPContainerGuid(lrpAuctionThree.ProcessGuid, expectedGuidThree),
-								Tags: executor.Tags{
-									rep.LifecycleTag:     rep.LRPLifecycle,
-									rep.DomainTag:        lrpAuctionThree.Domain,
-									rep.ProcessGuidTag:   lrpAuctionThree.ProcessGuid,
-									rep.InstanceGuidTag:  expectedGuidThree,
-									rep.ProcessIndexTag:  expectedIndexThreeString,
-									rep.PlacementTagsTag: `[]`,
-									rep.VolumeDriversTag: `["vd-3"]`,
-								},
-								Resource: executor.NewResource(int(lrpAuctionThree.MemoryMB+int32(proxyMemoryAllocation)), int(lrpAuctionThree.DiskMB), int(lrpAuctionThree.MaxPids), fmt.Sprintf("%s:/data/rootfs/linux?somekey=somevalue", models.PreloadedOCIRootFSScheme)),
-							},
-						))
-					})
-
-					Context("when the LRP has unlimited memory and additional memory is allocated for the proxy", func() {
-						BeforeEach(func() {
-							lrpAuctionOne.MemoryMB = 0
-						})
-
-						It("requests an LRP with unlimited memory", func() {
-							_, err := cellRep.Perform(logger, rep.Work{
-								LRPs: lrpAuctions,
-							})
-							Expect(err).NotTo(HaveOccurred())
-
-							expectedResource := executor.NewResource(0, int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), linuxPath)
-
-							_, arg := client.AllocateContainersArgsForCall(0)
-							Expect(arg).ToNot(HaveLen(0))
-
-							resourceOne := arg[0].Resource
-							Expect(resourceOne).To(Equal(expectedResource))
-						})
-					})
-				})
-
-				Context("when the workload's cell ID matches the cell's ID", func() {
-					It("accepts the workload", func() {
-						_, err := cellRep.Perform(logger, rep.Work{
-							LRPs:   lrpAuctions,
-							CellID: cellID,
-						})
-						Expect(err).NotTo(HaveOccurred())
-					})
-				})
-
-				Context("when the workload's cell ID does not match the cell's ID", func() {
-					It("rejects the workload", func() {
-						_, err := cellRep.Perform(logger, rep.Work{
-							LRPs:   lrpAuctions,
-							CellID: "do-not-want-your-work",
-						})
-						Expect(err).To(MatchError(auctioncellrep.ErrCellIdMismatch))
-					})
-				})
-
-				Context("when container proxy is enabled and there is not enough memory for the additional allocation", func() {
-					BeforeEach(func() {
-						enableContainerProxy = true
-						client.RemainingResourcesReturns(executor.ExecutorResources{MemoryMB: 2048}, nil)
-					})
-
-					JustBeforeEach(func() {
-						lrpAuctions = []rep.LRP{lrpAuctionOne}
-					})
-
-					Context("when the lrp uses OCI rootfs scheme", func() {
-						BeforeEach(func() {
-							lrpAuctionOne.RootFs = fmt.Sprintf("%s:linux?somekey=somevalue", models.PreloadedOCIRootFSScheme)
-						})
-
-						It("rejects the workload", func() {
-							_, err := cellRep.Perform(logger, rep.Work{
-								LRPs:   lrpAuctions,
-								CellID: cellID,
-							})
-							Expect(err).To(MatchError(auctioncellrep.ErrNotEnoughMemory))
-						})
-					})
-
-					Context("when the lrp uses docker rootfs scheme", func() {
-						BeforeEach(func() {
-							lrpAuctionOne.RootFs = "docker://cfdiegodocker/grace"
-						})
-
-						It("rejects the workload", func() {
-							_, err := cellRep.Perform(logger, rep.Work{
-								LRPs:   lrpAuctions,
-								CellID: cellID,
-							})
-							Expect(err).To(MatchError(auctioncellrep.ErrNotEnoughMemory))
-						})
-					})
-
-					It("rejects the workload", func() {
-						_, err := cellRep.Perform(logger, rep.Work{
-							LRPs:   lrpAuctions,
-							CellID: cellID,
-						})
-						Expect(err).To(MatchError(auctioncellrep.ErrNotEnoughMemory))
-					})
-				})
-
-				Context("when all containers can be successfully allocated", func() {
-					BeforeEach(func() {
-						client.AllocateContainersReturns([]executor.AllocationFailure{})
-					})
-
-					It("does not mark any LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: lrpAuctions})
-						Expect(err).NotTo(HaveOccurred())
-						Expect(failedWork).To(BeZero())
-					})
-				})
-
-				Context("when a container fails to be allocated", func() {
-					BeforeEach(func() {
-						resource := executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), "rootfs")
-						tags := executor.Tags{}
-						tags[rep.ProcessGuidTag] = lrpAuctionOne.ProcessGuid
-						allocationRequest := executor.NewAllocationRequest(
-							rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
-							&resource,
-							tags,
-						)
-						allocationFailure := executor.NewAllocationFailure(&allocationRequest, commonErr.Error())
-						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure})
-					})
-
-					It("marks the corresponding LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: lrpAuctions})
-						Expect(err).NotTo(HaveOccurred())
-						Expect(failedWork.LRPs).To(ConsistOf(lrpAuctionOne))
-					})
 				})
 			})
 
-			Context("when an LRP Auction specifies a preloaded RootFSes for which it cannot determine a RootFS path", func() {
-				BeforeEach(func() {
-					lrpAuctionOne.RootFs = linuxRootFSURL
-					lrpAuctionTwo.RootFs = "preloaded:not-on-cell"
-					lrpAuctionThree.RootFs = fmt.Sprintf("%s:not-on-cell?somekey=somevalue", models.PreloadedOCIRootFSScheme)
-				})
-
-				It("only makes container allocation requests for the remaining LRP Auctions", func() {
-					_, err := cellRep.Perform(logger, rep.Work{LRPs: lrpAuctions})
-					Expect(err).NotTo(HaveOccurred())
-
-					Expect(client.AllocateContainersCallCount()).To(Equal(1))
-					_, arg := client.AllocateContainersArgsForCall(0)
-					Expect(arg).To(ConsistOf(
-						executor.AllocationRequest{
-							Guid: rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
-							Tags: executor.Tags{
-								rep.LifecycleTag:     rep.LRPLifecycle,
-								rep.DomainTag:        lrpAuctionOne.Domain,
-								rep.ProcessGuidTag:   lrpAuctionOne.ProcessGuid,
-								rep.InstanceGuidTag:  expectedGuidOne,
-								rep.ProcessIndexTag:  expectedIndexOneString,
-								rep.PlacementTagsTag: `["pt-1"]`,
-								rep.VolumeDriversTag: `["vd-1"]`,
-							},
-							Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), linuxPath),
-						},
-					))
-				})
-
-				It("marks the LRP Auction as failed", func() {
-					failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: lrpAuctions})
-					Expect(err).NotTo(HaveOccurred())
-					Expect(failedWork.LRPs).To(ConsistOf(lrpAuctionTwo, lrpAuctionThree))
-				})
-
-				Context("when a remaining container fails to be allocated", func() {
-					BeforeEach(func() {
-						resource := executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), "rootfs")
-						tags := executor.Tags{}
-						tags[rep.ProcessGuidTag] = lrpAuctionOne.ProcessGuid
-						allocationRequest := executor.NewAllocationRequest(
-							rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
-							&resource,
-							tags,
-						)
-						allocationFailure := executor.NewAllocationFailure(&allocationRequest, commonErr.Error())
-						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure})
+			Context("when the workload's cell ID does not match the cell's ID", func() {
+				It("rejects the workload", func() {
+					_, err := cellRep.Perform(logger, rep.Work{
+						LRPs:   lrpAuctions,
+						CellID: "do-not-want-your-work",
 					})
-
-					It("marks the corresponding LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: lrpAuctions})
-						Expect(err).NotTo(HaveOccurred())
-						Expect(failedWork.LRPs).To(ConsistOf(lrpAuctionOne, lrpAuctionTwo, lrpAuctionThree))
-					})
+					Expect(err).To(MatchError(auctioncellrep.ErrCellIdMismatch))
 				})
 			})
+		})
+	})
+})
 
-			Context("when an LRP Auction specifies a blank RootFS URL", func() {
-				BeforeEach(func() {
-					lrpAuctionOne.RootFs = ""
-				})
+var _ = Describe("ContainerAllocator", func() {
+	var (
+		proxyMemoryAllocation     int
+		executorClient            *fake_client.FakeClient
+		linuxRootFSURL            string
+		fakeGenerateContainerGuid func() (string, error)
+		logger                    *lagertest.TestLogger
+		commonErr                 error
 
-				It("makes the correct allocation request for it, passing along the blank path to the executor client", func() {
-					_, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne}})
-					Expect(err).NotTo(HaveOccurred())
+		allocator auctioncellrep.ContainerAllocator
+	)
 
-					Expect(client.AllocateContainersCallCount()).To(Equal(1))
-					_, arg := client.AllocateContainersArgsForCall(0)
-					Expect(arg).To(ConsistOf(
-						executor.AllocationRequest{
-							Guid: rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
-							Tags: executor.Tags{
-								rep.LifecycleTag:     rep.LRPLifecycle,
-								rep.DomainTag:        lrpAuctionOne.Domain,
-								rep.ProcessGuidTag:   lrpAuctionOne.ProcessGuid,
-								rep.InstanceGuidTag:  expectedGuidOne,
-								rep.ProcessIndexTag:  expectedIndexOneString,
-								rep.PlacementTagsTag: `["pt-1"]`,
-								rep.VolumeDriversTag: `["vd-1"]`,
-							},
-							Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), ""),
-						},
-					))
-				})
+	BeforeEach(func() {
+		logger = lagertest.NewTestLogger("test")
+		linuxRootFSURL = models.PreloadedRootFS(linuxStack)
+		proxyMemoryAllocation = 0
+		executorClient = new(fake_client.FakeClient)
+		commonErr = errors.New("Failed to fetch")
+
+		fakeGenerateContainerGuidCallCount := 0
+		fakeGenerateContainerGuid = func() (string, error) {
+			fakeGenerateContainerGuidCallCount += 1
+			return fmt.Sprintf("ig-%d", fakeGenerateContainerGuidCallCount), nil
+		}
+	})
+
+	JustBeforeEach(func() {
+		allocator = auctioncellrep.NewContainerAllocator(
+			fakeGenerateContainerGuid,
+			rep.StackPathMap{linuxStack: linuxPath},
+			proxyMemoryAllocation,
+			executorClient,
+		)
+	})
+
+	Describe("BatchLRPAllocationRequest", func() {
+		var (
+			lrp1, lrp2           rep.LRP
+			lrpIndex1, lrpIndex2 int32
+		)
+
+		BeforeEach(func() {
+			lrpIndex1 = 0
+			lrpIndex2 = 1
+
+			lrp1 = rep.NewLRP(
+				"ig-1",
+				models.NewActualLRPKey("process-guid", lrpIndex1, "tests"),
+				rep.NewResource(2048, 1024, 100),
+				rep.NewPlacementConstraint(linuxRootFSURL, []string{"pt-1"}, []string{"vd-1"}),
+			)
+
+			lrp2 = rep.NewLRP(
+				"ig-2",
+				models.NewActualLRPKey("process-guid", lrpIndex2, "tests"),
+				rep.NewResource(2048, 1024, 100),
+				rep.NewPlacementConstraint("rootfs", []string{"pt-2"}, []string{}),
+			)
+		})
+
+		It("makes the correct allocation requests for all LRPs", func() {
+			allocator.BatchLRPAllocationRequest(logger, []rep.LRP{lrp1, lrp2})
+
+			Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
+			_, arg := executorClient.AllocateContainersArgsForCall(0)
+			Expect(arg).To(ConsistOf(
+				allocationRequestFromLRP(lrp1, linuxPath),
+				allocationRequestFromLRP(lrp2, lrp2.RootFs),
+			))
+		})
+
+		It("does not mark any LRP Auctions as failed", func() {
+			failedWork := allocator.BatchLRPAllocationRequest(logger, []rep.LRP{lrp1, lrp2})
+			Expect(failedWork).To(BeEmpty())
+		})
+
+		Context("when a container fails to be allocated", func() {
+			BeforeEach(func() {
+				allocationRequest := allocationRequestFromLRP(lrp2, lrp2.RootFs)
+				allocationFailure := executor.NewAllocationFailure(&allocationRequest, commonErr.Error())
+				executorClient.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure})
 			})
 
-			Context("when an LRP Auction specifies an invalid RootFS URL", func() {
+			It("marks the corresponding LRP Auctions as failed", func() {
+				failedWork := allocator.BatchLRPAllocationRequest(logger, []rep.LRP{lrp1, lrp2})
+				Expect(failedWork).To(ConsistOf(lrp2))
+			})
+		})
+
+		Context("when envoy needs to be placed in the container", func() {
+			BeforeEach(func() {
+				proxyMemoryAllocation = 32
+			})
+
+			It("makes the correct allocation requests for all LRP Auctions with the additional memory allocation", func() {
+				allocator.BatchLRPAllocationRequest(logger, []rep.LRP{lrp1, lrp2})
+
+				Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
+				_, arg := executorClient.AllocateContainersArgsForCall(0)
+
+				allocationRequest1 := allocationRequestFromLRP(lrp1, linuxPath)
+				allocationRequest2 := allocationRequestFromLRP(lrp2, lrp2.RootFs)
+				allocationRequest1.MemoryMB += proxyMemoryAllocation
+				allocationRequest2.MemoryMB += proxyMemoryAllocation
+
+				Expect(arg).To(ConsistOf(
+					allocationRequest1,
+					allocationRequest2,
+				))
+			})
+
+			Context("when the LRP has unlimited memory and additional memory is allocated for the proxy", func() {
 				BeforeEach(func() {
-					lrpAuctionOne.RootFs = linuxRootFSURL
-					lrpAuctionTwo.RootFs = "%x"
+					lrp1.MemoryMB = 0
 				})
 
-				It("only makes container allocation requests for the remaining LRP Auctions", func() {
-					_, err := cellRep.Perform(logger, rep.Work{LRPs: []rep.LRP{lrpAuctionOne, lrpAuctionTwo}})
-					Expect(err).NotTo(HaveOccurred())
+				It("requests an LRP with unlimited memory", func() {
+					allocator.BatchLRPAllocationRequest(logger, []rep.LRP{lrp1, lrp2})
 
-					Expect(client.AllocateContainersCallCount()).To(Equal(1))
-					_, arg := client.AllocateContainersArgsForCall(0)
-					Expect(arg).To(ConsistOf(
-						executor.AllocationRequest{
-							Guid: rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
-							Tags: executor.Tags{
-								rep.LifecycleTag:     rep.LRPLifecycle,
-								rep.DomainTag:        lrpAuctionOne.Domain,
-								rep.ProcessGuidTag:   lrpAuctionOne.ProcessGuid,
-								rep.InstanceGuidTag:  expectedGuidOne,
-								rep.ProcessIndexTag:  expectedIndexOneString,
-								rep.PlacementTagsTag: `["pt-1"]`,
-								rep.VolumeDriversTag: `["vd-1"]`,
-							},
-							Resource: executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), linuxPath),
-						},
-					))
-				})
+					expectedResource := executor.NewResource(0, int(lrp1.DiskMB), int(lrp1.MaxPids), linuxPath)
 
-				It("marks the LRP Auction as failed", func() {
-					failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: lrpAuctions})
-					Expect(err).NotTo(HaveOccurred())
-					Expect(failedWork.LRPs).To(ContainElement(lrpAuctionTwo))
-				})
+					_, arg := executorClient.AllocateContainersArgsForCall(0)
+					Expect(len(arg)).To(BeNumerically(">=", 1))
 
-				Context("when all remaining containers can be successfully allocated", func() {
-					BeforeEach(func() {
-						client.AllocateContainersReturns([]executor.AllocationFailure{})
-					})
-
-					It("does not mark any additional LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: lrpAuctions})
-						Expect(err).NotTo(HaveOccurred())
-						Expect(failedWork.LRPs).To(ConsistOf(lrpAuctionTwo))
-					})
-				})
-
-				Context("when a remaining container fails to be allocated", func() {
-					BeforeEach(func() {
-						resource := executor.NewResource(int(lrpAuctionOne.MemoryMB), int(lrpAuctionOne.DiskMB), int(lrpAuctionOne.MaxPids), "rootfs")
-						tags := executor.Tags{}
-						tags[rep.ProcessGuidTag] = lrpAuctionOne.ProcessGuid
-						allocationRequest := executor.NewAllocationRequest(
-							rep.LRPContainerGuid(lrpAuctionOne.ProcessGuid, expectedGuidOne),
-							&resource,
-							tags,
-						)
-						allocationFailure := executor.NewAllocationFailure(&allocationRequest, commonErr.Error())
-						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure})
-					})
-
-					It("marks the corresponding LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(logger, rep.Work{LRPs: lrpAuctions})
-						Expect(err).NotTo(HaveOccurred())
-						Expect(failedWork.LRPs).To(ConsistOf(lrpAuctionOne, lrpAuctionTwo))
-					})
-
-					It("logs the container allocation failure", func() {
-						_, err := cellRep.Perform(logger, rep.Work{LRPs: lrpAuctions})
-						Expect(err).NotTo(HaveOccurred())
-						Eventually(logger).Should(gbytes.Say("container-allocation-failure.*failed-request.*instance-guid-1"))
-					})
+					Expect(arg[0].Resource).To(Equal(expectedResource))
 				})
 			})
 		})
 
-		Describe("starting tasks", func() {
-			var task1, task2 rep.Task
+		Describe("handling RootFS paths", func() {
+			var validLRP, invalidLRP rep.LRP
+
+			BeforeEach(func() {
+				validLRP = rep.NewLRP(
+					"ig-1",
+					models.NewActualLRPKey("process-guid", lrpIndex1, "tests"),
+					rep.NewResource(2048, 1024, 100),
+					rep.NewPlacementConstraint(
+						linuxRootFSURL,
+						[]string{"pt-1"},
+						[]string{"vd-1"},
+					),
+				)
+
+				invalidLRP = rep.NewLRP(
+					"ig-2",
+					models.NewActualLRPKey("process-guid", lrpIndex2, "tests"),
+					rep.NewResource(2048, 1024, 100),
+					rep.NewPlacementConstraint("rootfs", []string{"pt-2"}, []string{}),
+				)
+			})
+
+			Context("when an LRP specifies an invalid RootFS URL", func() {
+				BeforeEach(func() {
+					invalidLRP.RootFs = "%x"
+				})
+
+				It("only makes container allocation requests for the remaining LRPs", func() {
+					allocator.BatchLRPAllocationRequest(logger, []rep.LRP{validLRP, invalidLRP})
+
+					Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
+					_, arg := executorClient.AllocateContainersArgsForCall(0)
+					Expect(arg).To(ConsistOf(
+						allocationRequestFromLRP(validLRP, linuxPath),
+					))
+				})
+
+				It("marks the other LRP as failed", func() {
+					failedLRPs := allocator.BatchLRPAllocationRequest(logger, []rep.LRP{validLRP, invalidLRP})
+					Expect(failedLRPs).To(ConsistOf(invalidLRP))
+				})
+			})
+
+			Context("when a LRP specifies a preloaded RootFSes for which it cannot determine a RootFS path", func() {
+				BeforeEach(func() {
+					invalidLRP.RootFs = "preloaded:not-on-cell"
+				})
+
+				It("only makes container allocation requests for the LRPs with valid RootFS paths", func() {
+					allocator.BatchLRPAllocationRequest(logger, []rep.LRP{validLRP, invalidLRP})
+
+					Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
+					_, arg := executorClient.AllocateContainersArgsForCall(0)
+					Expect(arg).To(ConsistOf(
+						allocationRequestFromLRP(validLRP, linuxPath),
+					))
+				})
+
+				It("marks the LRPs with invalid RootFS paths as failed", func() {
+					failedLRPs := allocator.BatchLRPAllocationRequest(logger, []rep.LRP{validLRP, invalidLRP})
+					Expect(failedLRPs).To(HaveLen(1))
+					Expect(failedLRPs).To(ContainElement(invalidLRP))
+				})
+			})
+
+			Context("when a LRP specifies a blank RootFS URL", func() {
+				BeforeEach(func() {
+					validLRP.RootFs = ""
+				})
+
+				It("makes the correct allocation request for it, passing along the blank path to the executor client", func() {
+					allocator.BatchLRPAllocationRequest(logger, []rep.LRP{validLRP})
+
+					Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
+					_, arg := executorClient.AllocateContainersArgsForCall(0)
+					Expect(arg).To(ConsistOf(
+						allocationRequestFromLRP(validLRP, ""),
+					))
+				})
+			})
+
+			Context("when the lrp uses docker rootfs scheme", func() {
+				BeforeEach(func() {
+					validLRP.RootFs = "docker://cfdiegodocker/grace"
+				})
+
+				It("makes the container allocation request with an unchanged rootfs url", func() {
+					allocator.BatchLRPAllocationRequest(logger, []rep.LRP{validLRP})
+
+					Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
+					_, arg := executorClient.AllocateContainersArgsForCall(0)
+					Expect(arg).To(ConsistOf(
+						allocationRequestFromLRP(validLRP, validLRP.RootFs),
+					))
+				})
+			})
+		})
+	})
+
+	Describe("BatchTaskAllocationRequest", func() {
+		var (
+			task1, task2 rep.Task
+		)
+
+		BeforeEach(func() {
+			resource1 := rep.NewResource(256, 512, 256)
+			placement1 := rep.NewPlacementConstraint("tests", []string{"pt-1"}, []string{"vd-1"})
+			task1 = rep.NewTask("the-task-guid-1", "tests", resource1, placement1)
+			task1.RootFs = linuxRootFSURL
+
+			resource2 := rep.NewResource(512, 1024, 256)
+			placement2 := rep.NewPlacementConstraint("linux", []string{"pt-2"}, []string{})
+			task2 = rep.NewTask("the-task-guid-2", "tests", resource2, placement2)
+			task2.RootFs = "unsupported-arbitrary://still-goes-through"
+		})
+
+		It("makes the correct allocation requests for all Tasks", func() {
+			allocator.BatchTaskAllocationRequest(logger, []rep.Task{task1, task2})
+
+			Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
+			_, arg := executorClient.AllocateContainersArgsForCall(0)
+			Expect(arg).To(ConsistOf(
+				allocationRequestFromTask(task1, linuxPath, `["pt-1"]`, `["vd-1"]`),
+				allocationRequestFromTask(task2, task2.RootFs, `["pt-2"]`, `[]`),
+			))
+		})
+
+		Context("when all containers can be successfully allocated", func() {
+			BeforeEach(func() {
+				executorClient.AllocateContainersReturns([]executor.AllocationFailure{})
+			})
+
+			It("does not mark any Tasks as failed", func() {
+				failedTasks := allocator.BatchTaskAllocationRequest(logger, []rep.Task{task1, task2})
+				Expect(failedTasks).To(BeEmpty())
+			})
+		})
+
+		Context("when a container fails to be allocated", func() {
+			BeforeEach(func() {
+				resource := executor.NewResource(int(task1.MemoryMB), int(task1.DiskMB), int(task1.MaxPids), "linux")
+				tags := executor.Tags{}
+				allocationRequest := executor.NewAllocationRequest(
+					task1.TaskGuid,
+					&resource,
+					tags,
+				)
+				allocationFailure := executor.NewAllocationFailure(&allocationRequest, commonErr.Error())
+				executorClient.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure})
+			})
+
+			It("marks the corresponding Tasks as failed", func() {
+				failedTasks := allocator.BatchTaskAllocationRequest(logger, []rep.Task{task1, task2})
+				Expect(failedTasks).To(ConsistOf(task1))
+			})
+
+			It("logs the container allocation failure", func() {
+				allocator.BatchTaskAllocationRequest(logger, []rep.Task{task1, task2})
+				Eventually(logger).Should(gbytes.Say("container-allocation-failure.*failed-request.*the-task-guid-1"))
+			})
+		})
+
+		Describe("handling RootFS paths", func() {
+			var validTask, invalidTask rep.Task
 
 			BeforeEach(func() {
 				resource1 := rep.NewResource(256, 512, 256)
 				placement1 := rep.NewPlacementConstraint("tests", []string{"pt-1"}, []string{"vd-1"})
-				task1 = rep.NewTask("the-task-guid-1", "tests", resource1, placement1)
+				validTask = rep.NewTask("the-task-guid-1", "tests", resource1, placement1)
+				validTask.RootFs = linuxRootFSURL
 
 				resource2 := rep.NewResource(512, 1024, 256)
 				placement2 := rep.NewPlacementConstraint("linux", []string{"pt-2"}, []string{})
-				task2 = rep.NewTask("the-task-guid-2", "tests", resource2, placement2)
-
-				work = rep.Work{Tasks: []rep.Task{task}}
+				invalidTask = rep.NewTask("the-task-guid-2", "tests", resource2, placement2)
 			})
 
-			Context("when all Tasks can be successfully translated to container specs", func() {
+			Context("when a Task specifies an invalid RootFS URL", func() {
 				BeforeEach(func() {
-					task1.RootFs = linuxRootFSURL
-					task2.RootFs = "unsupported-arbitrary://still-goes-through"
+					invalidTask.RootFs = "%x"
 				})
 
-				It("makes the correct allocation requests for all Tasks", func() {
-					_, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
-					Expect(err).NotTo(HaveOccurred())
+				It("only makes container allocation requests for the remaining Tasks", func() {
+					allocator.BatchTaskAllocationRequest(logger, []rep.Task{validTask, invalidTask})
 
-					Expect(client.AllocateContainersCallCount()).To(Equal(1))
-					_, arg := client.AllocateContainersArgsForCall(0)
+					Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
+					_, arg := executorClient.AllocateContainersArgsForCall(0)
 					Expect(arg).To(ConsistOf(
-						allocationRequestFromTask(task1, linuxPath, `["pt-1"]`, `["vd-1"]`),
-						allocationRequestFromTask(task2, task2.RootFs, `["pt-2"]`, `[]`),
+						allocationRequestFromTask(validTask, linuxPath, `["pt-1"]`, `["vd-1"]`),
 					))
 				})
 
-				Context("when all containers can be successfully allocated", func() {
-					BeforeEach(func() {
-						client.AllocateContainersReturns([]executor.AllocationFailure{})
-					})
-
-					It("does not mark any Tasks as failed", func() {
-						failedWork, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
-						Expect(err).NotTo(HaveOccurred())
-						Expect(failedWork).To(BeZero())
-					})
-				})
-
-				Context("when a container fails to be allocated", func() {
-					BeforeEach(func() {
-						resource := executor.NewResource(int(task1.MemoryMB), int(task1.DiskMB), int(task1.MaxPids), "linux")
-						tags := executor.Tags{}
-						allocationRequest := executor.NewAllocationRequest(
-							task1.TaskGuid,
-							&resource,
-							tags,
-						)
-						allocationFailure := executor.NewAllocationFailure(&allocationRequest, commonErr.Error())
-						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure})
-					})
-
-					It("marks the corresponding Tasks as failed", func() {
-						failedWork, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
-						Expect(err).NotTo(HaveOccurred())
-						Expect(failedWork.Tasks).To(ConsistOf(task1))
-					})
+				It("marks the Task as failed", func() {
+					failedTasks := allocator.BatchTaskAllocationRequest(logger, []rep.Task{validTask, invalidTask})
+					Expect(failedTasks).To(ConsistOf(invalidTask))
 				})
 			})
 
 			Context("when a Task specifies a preloaded RootFSes for which it cannot determine a RootFS path", func() {
 				BeforeEach(func() {
-					task1.RootFs = linuxRootFSURL
-					task2.RootFs = "preloaded:not-on-cell"
+					invalidTask.RootFs = "preloaded:not-on-cell"
 				})
 
-				It("only makes container allocation requests for the remaining Tasks", func() {
-					_, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
-					Expect(err).NotTo(HaveOccurred())
+				It("only makes container allocation requests for the tasks with valid RootFS paths", func() {
+					allocator.BatchTaskAllocationRequest(logger, []rep.Task{validTask, invalidTask})
 
-					Expect(client.AllocateContainersCallCount()).To(Equal(1))
-					_, arg := client.AllocateContainersArgsForCall(0)
+					Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
+					_, arg := executorClient.AllocateContainersArgsForCall(0)
 					Expect(arg).To(ConsistOf(
-						allocationRequestFromTask(task1, linuxPath, `["pt-1"]`, `["vd-1"]`),
+						allocationRequestFromTask(validTask, linuxPath, `["pt-1"]`, `["vd-1"]`),
 					))
 				})
 
-				It("marks the Task as failed", func() {
-					failedWork, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
-					Expect(err).NotTo(HaveOccurred())
-					Expect(failedWork.Tasks).To(ContainElement(task2))
-				})
-
-				Context("when all remaining containers can be successfully allocated", func() {
-					BeforeEach(func() {
-						client.AllocateContainersReturns([]executor.AllocationFailure{})
-					})
-
-					It("does not mark any additional Tasks as failed", func() {
-						failedWork, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
-						Expect(err).NotTo(HaveOccurred())
-						Expect(failedWork.Tasks).To(ConsistOf(task2))
-					})
-				})
-
-				Context("when a remaining container fails to be allocated", func() {
-					BeforeEach(func() {
-						request := allocationRequestFromTask(task1, linuxPath, `["pt-1"]`, `["vd-1"]`)
-						allocationFailure := executor.NewAllocationFailure(&request, commonErr.Error())
-						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure})
-					})
-
-					It("marks the corresponding Tasks as failed", func() {
-						failedWork, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
-						Expect(err).NotTo(HaveOccurred())
-						Expect(failedWork.Tasks).To(ConsistOf(task1, task2))
-					})
+				It("marks the tasks with invalid RootFS paths as failed", func() {
+					failedTasks := allocator.BatchTaskAllocationRequest(logger, []rep.Task{validTask, invalidTask})
+					Expect(failedTasks).To(HaveLen(1))
+					Expect(failedTasks).To(ContainElement(invalidTask))
 				})
 			})
 
 			Context("when a Task specifies a blank RootFS URL", func() {
 				BeforeEach(func() {
-					task1.RootFs = ""
+					validTask.RootFs = ""
 				})
 
 				It("makes the correct allocation request for it, passing along the blank path to the executor client", func() {
-					_, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1}})
-					Expect(err).NotTo(HaveOccurred())
+					allocator.BatchTaskAllocationRequest(logger, []rep.Task{validTask})
 
-					Expect(client.AllocateContainersCallCount()).To(Equal(1))
-					_, arg := client.AllocateContainersArgsForCall(0)
+					Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
+					_, arg := executorClient.AllocateContainersArgsForCall(0)
 					Expect(arg).To(ConsistOf(
-						allocationRequestFromTask(task1, "", `["pt-1"]`, `["vd-1"]`),
+						allocationRequestFromTask(validTask, "", `["pt-1"]`, `["vd-1"]`),
 					))
-				})
-			})
-
-			Context("when a Task specifies an invalid RootFS URL", func() {
-				BeforeEach(func() {
-					task1.RootFs = linuxRootFSURL
-					task2.RootFs = "%x"
-				})
-
-				It("only makes container allocation requests for the remaining Tasks", func() {
-					_, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
-					Expect(err).NotTo(HaveOccurred())
-
-					Expect(client.AllocateContainersCallCount()).To(Equal(1))
-					_, arg := client.AllocateContainersArgsForCall(0)
-					Expect(arg).To(ConsistOf(
-						allocationRequestFromTask(task1, linuxPath, `["pt-1"]`, `["vd-1"]`),
-					))
-				})
-
-				It("marks the Task as failed", func() {
-					failedWork, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
-					Expect(err).NotTo(HaveOccurred())
-					Expect(failedWork.Tasks).To(ContainElement(task2))
-				})
-
-				Context("when all remaining containers can be successfully allocated", func() {
-					BeforeEach(func() {
-						client.AllocateContainersReturns([]executor.AllocationFailure{})
-					})
-
-					It("does not mark any additional LRP Auctions as failed", func() {
-						failedWork, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
-						Expect(err).NotTo(HaveOccurred())
-						Expect(failedWork.Tasks).To(ConsistOf(task2))
-					})
-				})
-
-				Context("when a remaining container fails to be allocated", func() {
-					BeforeEach(func() {
-						request := allocationRequestFromTask(task1, linuxPath, `["pt-1"]`, `["vd-1"]`)
-						allocationFailure := executor.NewAllocationFailure(&request, commonErr.Error())
-						client.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure})
-					})
-
-					It("marks the corresponding Tasks as failed", func() {
-						failedWork, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
-						Expect(err).NotTo(HaveOccurred())
-						Expect(failedWork.Tasks).To(ConsistOf(task1, task2))
-					})
-
-					It("logs the container allocation failure", func() {
-						_, err := cellRep.Perform(logger, rep.Work{Tasks: []rep.Task{task1, task2}})
-						Expect(err).NotTo(HaveOccurred())
-						Eventually(logger).Should(gbytes.Say("container-allocation-failure.*failed-request.*the-task-guid-1"))
-					})
 				})
 			})
 		})
@@ -1260,6 +1037,35 @@ func createContainer(state executor.State, lifecycle string) executor.Container 
 		},
 		State: state,
 	}
+}
+
+func allocationRequestFromLRP(lrp rep.LRP, rootFSPath string) executor.AllocationRequest {
+	resource := executor.NewResource(
+		int(lrp.MemoryMB),
+		int(lrp.DiskMB),
+		int(lrp.MaxPids),
+		rootFSPath,
+	)
+
+	placementTagsBytes, err := json.Marshal(lrp.PlacementTags)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	volumeDriversBytes, err := json.Marshal(lrp.VolumeDrivers)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	return executor.NewAllocationRequest(
+		lrp.InstanceGUID,
+		&resource,
+		executor.Tags{
+			rep.LifecycleTag:     rep.LRPLifecycle,
+			rep.DomainTag:        lrp.Domain,
+			rep.PlacementTagsTag: string(placementTagsBytes),
+			rep.VolumeDriversTag: string(volumeDriversBytes),
+			rep.ProcessGuidTag:   lrp.ProcessGuid,
+			rep.ProcessIndexTag:  strconv.Itoa(int(lrp.Index)),
+			rep.InstanceGuidTag:  lrp.InstanceGUID,
+		},
+	)
 }
 
 func allocationRequestFromTask(task rep.Task, rootFSPath, placementTags, volumeDrivers string) executor.AllocationRequest {

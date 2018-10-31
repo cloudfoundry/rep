@@ -383,125 +383,150 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 		return work, nil
 	}
 
+	allocator := NewContainerAllocator(
+		a.generateInstanceGuid,
+		a.stackPathMap,
+		a.proxyMemoryAllocation,
+		a.client,
+	)
+
 	if len(work.LRPs) > 0 {
 		lrpLogger := logger.Session("lrp-allocate-instances")
-
-		requests, lrpMap, untranslatedLRPs := a.lrpsToAllocationRequest(work.LRPs)
-		if len(untranslatedLRPs) > 0 {
-			lrpLogger.Info("failed-to-translate-lrps-to-containers", lager.Data{"num-failed-to-translate": len(untranslatedLRPs)})
-			failedWork.LRPs = untranslatedLRPs
-		}
-
-		lrpLogger.Info("requesting-container-allocation", lager.Data{"num-requesting-allocation": len(requests)})
-		failures := a.client.AllocateContainers(logger, requests)
-		lrpLogger.Info("succeeded-requesting-container-allocation", lager.Data{"num-failed-to-allocate": len(failures)})
-		for i := range failures {
-			failure := &failures[i]
-			lrpLogger.Error("container-allocation-failure", failure, lager.Data{"failed-request": &failure.AllocationRequest})
-			if lrp, found := lrpMap[failure.Guid]; found {
-				failedWork.LRPs = append(failedWork.LRPs, *lrp)
-			}
-		}
+		failedWork.LRPs = allocator.BatchLRPAllocationRequest(lrpLogger, work.LRPs)
 	}
 
 	if len(work.Tasks) > 0 {
 		taskLogger := logger.Session("task-allocate-instances")
-
-		requests, taskMap, failedTasks := a.tasksToAllocationRequests(work.Tasks)
-		if len(failedTasks) > 0 {
-			taskLogger.Info("failed-to-translate-tasks-to-containers", lager.Data{"num-failed-to-translate": len(failedTasks)})
-			failedWork.Tasks = failedTasks
-		}
-
-		taskLogger.Info("requesting-container-allocation", lager.Data{"num-requesting-allocation": len(requests)})
-		failures := a.client.AllocateContainers(logger, requests)
-		for i := range failures {
-			failure := &failures[i]
-			taskLogger.Error("container-allocation-failure", failure, lager.Data{"failed-request": &failure.AllocationRequest})
-			if task, found := taskMap[failure.Guid]; found {
-				failedWork.Tasks = append(failedWork.Tasks, *task)
-			}
-		}
+		failedWork.Tasks = allocator.BatchTaskAllocationRequest(taskLogger, work.Tasks)
 	}
 
 	return failedWork, nil
 }
 
-func (a *AuctionCellRep) lrpsToAllocationRequest(lrps []rep.LRP) ([]executor.AllocationRequest, map[string]*rep.LRP, []rep.LRP) {
+type ContainerAllocator struct {
+	generateInstanceGuid  func() (string, error)
+	stackPathMap          rep.StackPathMap
+	proxyMemoryAllocation int
+	executorClient        executor.Client
+}
+
+func NewContainerAllocator(instanceGuidGenerator func() (string, error), stackPathMap rep.StackPathMap, proxyMemoryAllocation int, executorClient executor.Client) ContainerAllocator {
+	return ContainerAllocator{
+		generateInstanceGuid:  instanceGuidGenerator,
+		stackPathMap:          stackPathMap,
+		proxyMemoryAllocation: proxyMemoryAllocation,
+		executorClient:        executorClient,
+	}
+}
+
+func buildLRPTags(lrp rep.LRP, instanceGuid string) executor.Tags {
+	tags := executor.Tags{}
+	tags[rep.DomainTag] = lrp.Domain
+	tags[rep.ProcessGuidTag] = lrp.ProcessGuid
+	tags[rep.ProcessIndexTag] = strconv.Itoa(int(lrp.Index))
+	tags[rep.LifecycleTag] = rep.LRPLifecycle
+	tags[rep.InstanceGuidTag] = instanceGuid
+
+	placementTags, _ := json.Marshal(lrp.PlacementConstraint.PlacementTags)
+	volumeDrivers, _ := json.Marshal(lrp.PlacementConstraint.VolumeDrivers)
+	tags[rep.PlacementTagsTag] = string(placementTags)
+	tags[rep.VolumeDriversTag] = string(volumeDrivers)
+
+	return tags
+}
+
+func buildTaskTags(task rep.Task) executor.Tags {
+	tags := executor.Tags{}
+	tags[rep.LifecycleTag] = rep.TaskLifecycle
+	tags[rep.DomainTag] = task.Domain
+
+	placementTags, _ := json.Marshal(task.PlacementConstraint.PlacementTags)
+	volumeDrivers, _ := json.Marshal(task.PlacementConstraint.VolumeDrivers)
+	tags[rep.PlacementTagsTag] = string(placementTags)
+	tags[rep.VolumeDriversTag] = string(volumeDrivers)
+	return tags
+}
+
+func (ca ContainerAllocator) BatchLRPAllocationRequest(logger lager.Logger, lrps []rep.LRP) (unallocatedLRPs []rep.LRP) {
 	requests := make([]executor.AllocationRequest, 0, len(lrps))
-	untranslatedLRPs := make([]rep.LRP, 0)
-	lrpMap := make(map[string]*rep.LRP, len(lrps))
-	for i := range lrps {
-		lrp := &lrps[i]
-		tags := executor.Tags{}
+	lrpGuidMap := make(map[string]rep.LRP, len(lrps))
 
-		instanceGuid, err := a.generateInstanceGuid()
+	for _, lrp := range lrps {
+		instanceGuid, err := ca.generateInstanceGuid()
 		if err != nil {
-			untranslatedLRPs = append(untranslatedLRPs, *lrp)
+			unallocatedLRPs = append(unallocatedLRPs, lrp)
 			continue
 		}
 
-		tags[rep.DomainTag] = lrp.Domain
-		tags[rep.ProcessGuidTag] = lrp.ProcessGuid
-		tags[rep.ProcessIndexTag] = strconv.Itoa(int(lrp.Index))
-		tags[rep.LifecycleTag] = rep.LRPLifecycle
-		tags[rep.InstanceGuidTag] = instanceGuid
-
-		placementTags, _ := json.Marshal(lrp.PlacementConstraint.PlacementTags)
-		volumeDrivers, _ := json.Marshal(lrp.PlacementConstraint.VolumeDrivers)
-		tags[rep.PlacementTagsTag] = string(placementTags)
-		tags[rep.VolumeDriversTag] = string(volumeDrivers)
-
-		rootFSPath, err := pathForRootFS(lrp.RootFs, a.stackPathMap)
+		rootFSPath, err := pathForRootFS(lrp.RootFs, ca.stackPathMap)
 		if err != nil {
-			untranslatedLRPs = append(untranslatedLRPs, *lrp)
+			unallocatedLRPs = append(unallocatedLRPs, lrp)
 			continue
 		}
-
-		containerGuid := rep.LRPContainerGuid(lrp.ProcessGuid, instanceGuid)
-		lrpMap[containerGuid] = lrp
-
-		var resource executor.Resource
 
 		memoryMB := int(lrp.MemoryMB)
 		if memoryMB > 0 {
-			memoryMB += a.proxyMemoryAllocation
+			memoryMB += ca.proxyMemoryAllocation
 		}
-		resource = executor.NewResource(memoryMB, int(lrp.DiskMB), int(lrp.MaxPids), rootFSPath)
 
-		requests = append(requests, executor.NewAllocationRequest(containerGuid, &resource, tags))
+		resource := executor.NewResource(memoryMB, int(lrp.DiskMB), int(lrp.MaxPids), rootFSPath)
+		containerGuid := rep.LRPContainerGuid(lrp.ProcessGuid, instanceGuid)
+
+		lrpGuidMap[containerGuid] = lrp
+		requests = append(requests, executor.NewAllocationRequest(containerGuid, &resource, buildLRPTags(lrp, instanceGuid)))
 	}
 
-	return requests, lrpMap, untranslatedLRPs
+	if len(unallocatedLRPs) > 0 {
+		logger.Info("failed-to-translate-lrps-to-containers", lager.Data{"num-failed-to-translate": len(unallocatedLRPs)})
+	}
+
+	logger.Info("requesting-container-allocation", lager.Data{"num-requesting-allocation": len(requests)})
+	failures := ca.executorClient.AllocateContainers(logger, requests)
+	logger.Info("succeeded-requesting-container-allocation", lager.Data{"num-failed-to-allocate": len(failures)})
+
+	for _, failure := range failures {
+		logger.Error("container-allocation-failure", &failure, lager.Data{"failed-request": failure.AllocationRequest})
+		if lrp, found := lrpGuidMap[failure.Guid]; found {
+			unallocatedLRPs = append(unallocatedLRPs, lrp)
+		}
+	}
+
+	return unallocatedLRPs
 }
 
-func (a *AuctionCellRep) tasksToAllocationRequests(tasks []rep.Task) ([]executor.AllocationRequest, map[string]*rep.Task, []rep.Task) {
+func (ca ContainerAllocator) BatchTaskAllocationRequest(logger lager.Logger, tasks []rep.Task) (unallocatedTasks []rep.Task) {
 	failedTasks := make([]rep.Task, 0)
-	taskMap := make(map[string]*rep.Task, len(tasks))
+	taskMap := make(map[string]rep.Task, len(tasks))
 	requests := make([]executor.AllocationRequest, 0, len(tasks))
 
-	for i := range tasks {
-		task := &tasks[i]
+	for _, task := range tasks {
 		taskMap[task.TaskGuid] = task
-		rootFSPath, err := pathForRootFS(task.RootFs, a.stackPathMap)
+		rootFSPath, err := pathForRootFS(task.RootFs, ca.stackPathMap)
 		if err != nil {
-			failedTasks = append(failedTasks, *task)
+			failedTasks = append(failedTasks, task)
 			continue
 		}
-		tags := executor.Tags{}
-		tags[rep.LifecycleTag] = rep.TaskLifecycle
-		tags[rep.DomainTag] = task.Domain
 
-		placementTags, _ := json.Marshal(task.PlacementConstraint.PlacementTags)
-		volumeDrivers, _ := json.Marshal(task.PlacementConstraint.VolumeDrivers)
-		tags[rep.PlacementTagsTag] = string(placementTags)
-		tags[rep.VolumeDriversTag] = string(volumeDrivers)
-
+		tags := buildTaskTags(task)
 		resource := executor.NewResource(int(task.MemoryMB), int(task.DiskMB), int(task.MaxPids), rootFSPath)
 		requests = append(requests, executor.NewAllocationRequest(task.TaskGuid, &resource, tags))
 	}
 
-	return requests, taskMap, failedTasks
+	if len(failedTasks) > 0 {
+		logger.Info("failed-to-translate-tasks-to-containers", lager.Data{"num-failed-to-translate": len(failedTasks)})
+		unallocatedTasks = append(unallocatedTasks, failedTasks...)
+	}
+
+	logger.Info("requesting-container-allocation", lager.Data{"num-requesting-allocation": len(requests)})
+	failures := ca.executorClient.AllocateContainers(logger, requests)
+	for _, failure := range failures {
+		logger.Error("container-allocation-failure", &failure, lager.Data{"failed-request": failure.AllocationRequest})
+		if task, found := taskMap[failure.Guid]; found {
+			unallocatedTasks = append(unallocatedTasks, task)
+		}
+	}
+
+	return unallocatedTasks
 }
 
 func (a *AuctionCellRep) convertResources(resources executor.ExecutorResources) rep.Resources {
