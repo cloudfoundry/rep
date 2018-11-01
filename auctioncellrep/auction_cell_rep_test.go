@@ -36,10 +36,8 @@ var _ = Describe("AuctionCellRep", func() {
 		evacuationReporter           *fake_evacuation_context.FakeEvacuationReporter
 		fakeContainerMetricsProvider *fakes.FakeContainerMetricsProvider
 
-		expectedGuid, linuxRootFSURL string
-		commonErr, expectedGuidError error
-
-		fakeGenerateContainerGuid func() (string, error)
+		linuxRootFSURL string
+		commonErr      error
 
 		placementTags, optionalPlacementTags []string
 		proxyMemoryAllocation                int
@@ -55,11 +53,6 @@ var _ = Describe("AuctionCellRep", func() {
 		fakeContainerMetricsProvider = new(fakes.FakeContainerMetricsProvider)
 		fakeContainerAllocator = new(fakes.FakeBatchContainerAllocator)
 
-		expectedGuid = "container-guid"
-		expectedGuidError = nil
-		fakeGenerateContainerGuid = func() (string, error) {
-			return expectedGuid, expectedGuidError
-		}
 		linuxRootFSURL = models.PreloadedRootFS(linuxStack)
 
 		commonErr = errors.New("Failed to fetch")
@@ -549,15 +542,91 @@ var _ = Describe("AuctionCellRep", func() {
 
 	Describe("Perform", func() {
 		var (
-			work rep.Work
-
 			remainingCellMemory int
-			expectedIndex       = 1
+
+			lrpAuctionOne, lrpAuctionTwo, lrpAuctionThree rep.LRP
+			lrpAuctions                                   []rep.LRP
+			work                                          rep.Work
+
+			successfulLRP, unsuccessfulLRP   rep.LRP
+			successfulTask, unsuccessfulTask rep.Task
 		)
 
 		BeforeEach(func() {
 			remainingCellMemory = 8192
 			client.RemainingResourcesReturns(executor.ExecutorResources{MemoryMB: remainingCellMemory}, nil)
+
+			successfulLRP = rep.NewLRP(
+				"ig-1",
+				models.ActualLRPKey{
+					ProcessGuid: "process-guid",
+					Index:       0,
+					Domain:      "domain",
+				},
+				rep.Resource{},
+				rep.PlacementConstraint{},
+			)
+
+			unsuccessfulLRP = rep.NewLRP(
+				"ig-2",
+				models.ActualLRPKey{
+					ProcessGuid: "process-guid",
+					Index:       1,
+					Domain:      "domain",
+				},
+				rep.Resource{},
+				rep.PlacementConstraint{},
+			)
+
+			successfulTask = rep.NewTask(
+				"ig-1",
+				"domain",
+				rep.Resource{},
+				rep.PlacementConstraint{},
+			)
+
+			unsuccessfulTask = rep.NewTask(
+				"ig-2",
+				"domain",
+				rep.Resource{},
+				rep.PlacementConstraint{},
+			)
+
+		})
+
+		JustBeforeEach(func() {
+			lrpAuctions = []rep.LRP{lrpAuctionOne, lrpAuctionTwo, lrpAuctionThree}
+		})
+
+		It("requests container allocation for all provided LRPs and Tasks", func() {
+			fakeContainerAllocator.BatchLRPAllocationRequestReturns([]rep.LRP{unsuccessfulLRP})
+			fakeContainerAllocator.BatchTaskAllocationRequestReturns([]rep.Task{unsuccessfulTask})
+
+			cellRep.Perform(logger, rep.Work{
+				LRPs:  []rep.LRP{successfulLRP, unsuccessfulLRP},
+				Tasks: []rep.Task{successfulTask, unsuccessfulTask},
+			})
+
+			Expect(fakeContainerAllocator.BatchLRPAllocationRequestCallCount()).To(Equal(1))
+			_, lrpRequests := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
+			Expect(lrpRequests).To(ConsistOf(successfulLRP, unsuccessfulLRP))
+
+			Expect(fakeContainerAllocator.BatchTaskAllocationRequestCallCount()).To(Equal(1))
+			_, taskRequests := fakeContainerAllocator.BatchTaskAllocationRequestArgsForCall(0)
+			Expect(taskRequests).To(ConsistOf(successfulTask, unsuccessfulTask))
+		})
+
+		It("returns LRPs and Tasks that could not be allocated", func() {
+			fakeContainerAllocator.BatchLRPAllocationRequestReturns([]rep.LRP{unsuccessfulLRP})
+			fakeContainerAllocator.BatchTaskAllocationRequestReturns([]rep.Task{unsuccessfulTask})
+
+			failedWork, err := cellRep.Perform(logger, rep.Work{
+				LRPs:  []rep.LRP{successfulLRP, unsuccessfulLRP},
+				Tasks: []rep.Task{successfulTask, unsuccessfulTask},
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(failedWork.LRPs).To(ConsistOf(unsuccessfulLRP))
+			Expect(failedWork.Tasks).To(ConsistOf(unsuccessfulTask))
 		})
 
 		Context("when evacuating", func() {
@@ -566,7 +635,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 				lrp := rep.NewLRP(
 					"ig-1",
-					models.NewActualLRPKey("process-guid", int32(expectedIndex), "tests"),
+					models.NewActualLRPKey("process-guid", 1, "tests"),
 					rep.NewResource(2048, 1024, 100),
 					rep.NewPlacementConstraint(linuxRootFSURL, nil, []string{}),
 				)
@@ -589,69 +658,58 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 		})
 
-		Describe("performing starts", func() {
-			var (
-				lrpAuctionOne,
-				lrpAuctionTwo,
-				lrpAuctionThree rep.LRP
-				expectedGuidOne   = "instance-guid-1"
-				expectedGuidTwo   = "instance-guid-2"
-				expectedGuidThree = "instance-guid-3"
-				lrpAuctions       []rep.LRP
-			)
-
+		Context("when envoy needs to be placed in the container", func() {
 			BeforeEach(func() {
-				guidChan := make(chan string, 3)
-				guidChan <- expectedGuidOne
-				guidChan <- expectedGuidTwo
-				guidChan <- expectedGuidThree
-
-				fakeGenerateContainerGuid = func() (string, error) {
-					return <-guidChan, nil
-				}
+				enableContainerProxy = true
 			})
 
-			JustBeforeEach(func() {
-				lrpAuctions = []rep.LRP{lrpAuctionOne, lrpAuctionTwo, lrpAuctionThree}
-			})
-
-			Context("when envoy needs to be placed in the container", func() {
+			Context("and the required memory for the work exceeds current capacity", func() {
 				BeforeEach(func() {
-					enableContainerProxy = true
+					lrpAuctionOne.MemoryMB = int32(remainingCellMemory - proxyMemoryAllocation + 1)
 				})
 
-				Context("and the required memory for the work exceeds current capacity", func() {
-					BeforeEach(func() {
-						lrpAuctionOne.MemoryMB = int32(remainingCellMemory - proxyMemoryAllocation + 1)
+				It("should reject the work", func() {
+					_, err := cellRep.Perform(logger, rep.Work{
+						LRPs: []rep.LRP{lrpAuctionOne},
 					})
-
-					It("should reject the work", func() {
-						_, err := cellRep.Perform(logger, rep.Work{
-							LRPs: []rep.LRP{lrpAuctionOne},
-						})
-						Expect(err).To(HaveOccurred())
-					})
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(Equal(auctioncellrep.ErrNotEnoughMemory))
 				})
 			})
 
-			Context("when the workload's cell ID matches the cell's ID", func() {
-				It("accepts the workload", func() {
-					_, err := cellRep.Perform(logger, rep.Work{
-						LRPs:   lrpAuctions,
-						CellID: cellID,
+			Context("and the required memory for the work does not exceed current capacity", func() {
+				BeforeEach(func() {
+					lrpAuctionOne.MemoryMB = int32(remainingCellMemory - proxyMemoryAllocation)
+				})
+
+				It("should successfully place the work", func() {
+					failedWork, err := cellRep.Perform(logger, rep.Work{
+						LRPs: []rep.LRP{lrpAuctionOne},
 					})
 					Expect(err).NotTo(HaveOccurred())
+					Expect(failedWork.LRPs).To(BeEmpty())
+					Expect(failedWork.Tasks).To(BeEmpty())
 				})
 			})
+		})
 
-			Context("when the workload's cell ID does not match the cell's ID", func() {
-				It("rejects the workload", func() {
-					_, err := cellRep.Perform(logger, rep.Work{
-						LRPs:   lrpAuctions,
-						CellID: "do-not-want-your-work",
-					})
-					Expect(err).To(MatchError(auctioncellrep.ErrCellIdMismatch))
+		Context("when the workload's cell ID matches the cell's ID", func() {
+			It("accepts the workload", func() {
+				_, err := cellRep.Perform(logger, rep.Work{
+					LRPs:   lrpAuctions,
+					CellID: cellID,
 				})
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when the workload's cell ID does not match the cell's ID", func() {
+			It("rejects the workload", func() {
+				_, err := cellRep.Perform(logger, rep.Work{
+					LRPs:   lrpAuctions,
+					CellID: "do-not-want-your-work",
+				})
+				Expect(err).To(MatchError(auctioncellrep.ErrCellIdMismatch))
 			})
 		})
 	})
