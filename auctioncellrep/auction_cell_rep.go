@@ -389,11 +389,8 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 		return work, nil
 	}
 
-	lrpLogger := logger.Session("lrp-allocate-instances")
-	failedWork.LRPs = a.allocator.BatchLRPAllocationRequest(lrpLogger, work.LRPs)
-
-	taskLogger := logger.Session("task-allocate-instances")
-	failedWork.Tasks = a.allocator.BatchTaskAllocationRequest(taskLogger, work.Tasks)
+	failedWork.LRPs = a.allocator.BatchLRPAllocationRequest(logger, work.LRPs)
+	failedWork.Tasks = a.allocator.BatchTaskAllocationRequest(logger, work.Tasks)
 
 	return failedWork, nil
 }
@@ -443,6 +440,7 @@ func buildTaskTags(task rep.Task) executor.Tags {
 }
 
 func (ca ContainerAllocator) BatchLRPAllocationRequest(logger lager.Logger, lrps []rep.LRP) (unallocatedLRPs []rep.LRP) {
+	logger = logger.Session("lrp-allocate-instances")
 	requests := make([]executor.AllocationRequest, 0, len(lrps))
 	lrpGuidMap := make(map[string]rep.LRP, len(lrps))
 
@@ -480,6 +478,7 @@ func (ca ContainerAllocator) BatchLRPAllocationRequest(logger lager.Logger, lrps
 	if len(requests) > 0 {
 		failures = ca.executorClient.AllocateContainers(logger, requests)
 	}
+
 	logger.Info("succeeded-requesting-container-allocation", lager.Data{"num-failed-to-allocate": len(failures)})
 
 	for _, failure := range failures {
@@ -493,6 +492,8 @@ func (ca ContainerAllocator) BatchLRPAllocationRequest(logger lager.Logger, lrps
 }
 
 func (ca ContainerAllocator) BatchTaskAllocationRequest(logger lager.Logger, tasks []rep.Task) (unallocatedTasks []rep.Task) {
+	logger = logger.Session("task-allocate-instances")
+
 	failedTasks := make([]rep.Task, 0)
 	taskMap := make(map[string]rep.Task, len(tasks))
 	requests := make([]executor.AllocationRequest, 0, len(tasks))
