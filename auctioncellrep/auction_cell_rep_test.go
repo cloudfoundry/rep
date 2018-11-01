@@ -844,6 +844,13 @@ var _ = Describe("ContainerAllocator", func() {
 			})
 		})
 
+		Context("when no requests need to be made", func() {
+			It("doesn't make any requests to the executorClient", func() {
+				allocator.BatchLRPAllocationRequest(logger, []rep.LRP{})
+				Expect(executorClient.AllocateContainersCallCount()).To(Equal(0))
+			})
+		})
+
 		Describe("handling RootFS paths", func() {
 			var validLRP, invalidLRP rep.LRP
 
@@ -1004,6 +1011,13 @@ var _ = Describe("ContainerAllocator", func() {
 			It("logs the container allocation failure", func() {
 				allocator.BatchTaskAllocationRequest(logger, []rep.Task{task1, task2})
 				Eventually(logger).Should(gbytes.Say("container-allocation-failure.*failed-request.*the-task-guid-1"))
+			})
+		})
+
+		Context("when no requests need to be made", func() {
+			It("doesn't make any requests to the executorClient", func() {
+				allocator.BatchTaskAllocationRequest(logger, []rep.Task{})
+				Expect(executorClient.AllocateContainersCallCount()).To(Equal(0))
 			})
 		})
 

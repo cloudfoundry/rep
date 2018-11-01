@@ -389,15 +389,11 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 		return work, nil
 	}
 
-	if len(work.LRPs) > 0 {
-		lrpLogger := logger.Session("lrp-allocate-instances")
-		failedWork.LRPs = a.allocator.BatchLRPAllocationRequest(lrpLogger, work.LRPs)
-	}
+	lrpLogger := logger.Session("lrp-allocate-instances")
+	failedWork.LRPs = a.allocator.BatchLRPAllocationRequest(lrpLogger, work.LRPs)
 
-	if len(work.Tasks) > 0 {
-		taskLogger := logger.Session("task-allocate-instances")
-		failedWork.Tasks = a.allocator.BatchTaskAllocationRequest(taskLogger, work.Tasks)
-	}
+	taskLogger := logger.Session("task-allocate-instances")
+	failedWork.Tasks = a.allocator.BatchTaskAllocationRequest(taskLogger, work.Tasks)
 
 	return failedWork, nil
 }
@@ -480,7 +476,10 @@ func (ca ContainerAllocator) BatchLRPAllocationRequest(logger lager.Logger, lrps
 	}
 
 	logger.Info("requesting-container-allocation", lager.Data{"num-requesting-allocation": len(requests)})
-	failures := ca.executorClient.AllocateContainers(logger, requests)
+	var failures []executor.AllocationFailure
+	if len(requests) > 0 {
+		failures = ca.executorClient.AllocateContainers(logger, requests)
+	}
 	logger.Info("succeeded-requesting-container-allocation", lager.Data{"num-failed-to-allocate": len(failures)})
 
 	for _, failure := range failures {
@@ -517,7 +516,11 @@ func (ca ContainerAllocator) BatchTaskAllocationRequest(logger lager.Logger, tas
 	}
 
 	logger.Info("requesting-container-allocation", lager.Data{"num-requesting-allocation": len(requests)})
-	failures := ca.executorClient.AllocateContainers(logger, requests)
+	var failures []executor.AllocationFailure
+	if len(requests) > 0 {
+		failures = ca.executorClient.AllocateContainers(logger, requests)
+	}
+
 	for _, failure := range failures {
 		logger.Error("container-allocation-failure", &failure, lager.Data{"failed-request": failure.AllocationRequest})
 		if task, found := taskMap[failure.Guid]; found {
