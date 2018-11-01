@@ -22,6 +22,12 @@ type AuctionCellClient interface {
 	Reset() error
 }
 
+//go:generate counterfeiter . BatchContainerAllocator
+type BatchContainerAllocator interface {
+	BatchLRPAllocationRequest(lager.Logger, []rep.LRP) []rep.LRP
+	BatchTaskAllocationRequest(lager.Logger, []rep.Task) []rep.Task
+}
+
 var ErrPreloadedRootFSNotFound = errors.New("preloaded rootfs path not found")
 var ErrCellUnhealthy = errors.New("internal cell healthcheck failed")
 var ErrCellIdMismatch = errors.New("workload cell ID does not match this cell")
@@ -35,12 +41,12 @@ type AuctionCellRep struct {
 	containerMetricsProvider rep.ContainerMetricsProvider
 	stack                    string
 	zone                     string
-	generateInstanceGuid     func() (string, error)
 	client                   executor.Client
 	evacuationReporter       evacuation_context.EvacuationReporter
 	placementTags            []string
 	optionalPlacementTags    []string
 	proxyMemoryAllocation    int
+	allocator                BatchContainerAllocator
 }
 
 func New(
@@ -50,13 +56,13 @@ func New(
 	containerMetricsProvider rep.ContainerMetricsProvider,
 	arbitraryRootFSes []string,
 	zone string,
-	generateInstanceGuid func() (string, error),
 	client executor.Client,
 	evacuationReporter evacuation_context.EvacuationReporter,
 	placementTags []string,
 	optionalPlacementTags []string,
 	proxyMemoryAllocation int,
 	enableContainerProxy bool,
+	allocator BatchContainerAllocator,
 ) *AuctionCellRep {
 	if !enableContainerProxy {
 		proxyMemoryAllocation = 0
@@ -68,12 +74,12 @@ func New(
 		rootFSProviders:          rootFSProviders(preloadedStackPathMap, arbitraryRootFSes),
 		containerMetricsProvider: containerMetricsProvider,
 		zone:                  zone,
-		generateInstanceGuid:  generateInstanceGuid,
 		client:                client,
 		evacuationReporter:    evacuationReporter,
 		placementTags:         placementTags,
 		optionalPlacementTags: optionalPlacementTags,
 		proxyMemoryAllocation: proxyMemoryAllocation,
+		allocator:             allocator,
 	}
 }
 
@@ -383,21 +389,14 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 		return work, nil
 	}
 
-	allocator := NewContainerAllocator(
-		a.generateInstanceGuid,
-		a.stackPathMap,
-		a.proxyMemoryAllocation,
-		a.client,
-	)
-
 	if len(work.LRPs) > 0 {
 		lrpLogger := logger.Session("lrp-allocate-instances")
-		failedWork.LRPs = allocator.BatchLRPAllocationRequest(lrpLogger, work.LRPs)
+		failedWork.LRPs = a.allocator.BatchLRPAllocationRequest(lrpLogger, work.LRPs)
 	}
 
 	if len(work.Tasks) > 0 {
 		taskLogger := logger.Session("task-allocate-instances")
-		failedWork.Tasks = allocator.BatchTaskAllocationRequest(taskLogger, work.Tasks)
+		failedWork.Tasks = a.allocator.BatchTaskAllocationRequest(taskLogger, work.Tasks)
 	}
 
 	return failedWork, nil

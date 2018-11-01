@@ -44,6 +44,8 @@ var _ = Describe("AuctionCellRep", func() {
 		placementTags, optionalPlacementTags []string
 		proxyMemoryAllocation                int
 		enableContainerProxy                 bool
+
+		fakeContainerAllocator *fakes.FakeBatchContainerAllocator
 	)
 
 	BeforeEach(func() {
@@ -51,6 +53,7 @@ var _ = Describe("AuctionCellRep", func() {
 		logger = lagertest.NewTestLogger("test")
 		evacuationReporter = &fake_evacuation_context.FakeEvacuationReporter{}
 		fakeContainerMetricsProvider = new(fakes.FakeContainerMetricsProvider)
+		fakeContainerAllocator = new(fakes.FakeBatchContainerAllocator)
 
 		expectedGuid = "container-guid"
 		expectedGuidError = nil
@@ -73,13 +76,13 @@ var _ = Describe("AuctionCellRep", func() {
 			fakeContainerMetricsProvider,
 			[]string{"docker"},
 			"the-zone",
-			fakeGenerateContainerGuid,
 			client,
 			evacuationReporter,
 			placementTags,
 			optionalPlacementTags,
 			proxyMemoryAllocation,
 			enableContainerProxy,
+			fakeContainerAllocator,
 		)
 	})
 
