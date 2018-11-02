@@ -554,7 +554,6 @@ var _ = Describe("AuctionCellRep", func() {
 
 		BeforeEach(func() {
 			remainingCellMemory = 8192
-			client.RemainingResourcesReturns(executor.ExecutorResources{MemoryMB: remainingCellMemory}, nil)
 
 			successfulLRP = rep.NewLRP(
 				"ig-1",
@@ -595,6 +594,7 @@ var _ = Describe("AuctionCellRep", func() {
 		})
 
 		JustBeforeEach(func() {
+			client.RemainingResourcesReturns(executor.ExecutorResources{MemoryMB: remainingCellMemory}, nil)
 			lrpAuctions = []rep.LRP{lrpAuctionOne, lrpAuctionTwo, lrpAuctionThree}
 		})
 
@@ -658,37 +658,50 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 		})
 
-		Context("when envoy needs to be placed in the container", func() {
+		Context("when the cell only has enough resources to run a subset of the workloads", func() {
+			var smallestLRP, middleLRP, largestLRP rep.LRP
+
 			BeforeEach(func() {
-				enableContainerProxy = true
+				remainingCellMemory = 8192
+				largestLRP = rep.LRP{Resource: rep.Resource{MemoryMB: 6144}}
+				middleLRP = rep.LRP{Resource: rep.Resource{MemoryMB: int32(remainingCellMemory) - largestLRP.MemoryMB}}
+				smallestLRP = rep.LRP{Resource: rep.Resource{MemoryMB: 1}}
 			})
 
-			Context("and the required memory for the work exceeds current capacity", func() {
-				BeforeEach(func() {
-					lrpAuctionOne.MemoryMB = int32(remainingCellMemory - proxyMemoryAllocation + 1)
+			It("allocates containers for the largest workloads it can run", func() {
+				failedWork, err := cellRep.Perform(logger, rep.Work{
+					LRPs:  []rep.LRP{smallestLRP, middleLRP, largestLRP},
+					Tasks: []rep.Task{},
 				})
 
-				It("should reject the work", func() {
-					_, err := cellRep.Perform(logger, rep.Work{
-						LRPs: []rep.LRP{lrpAuctionOne},
-					})
-					Expect(err).To(HaveOccurred())
-					Expect(err).To(Equal(auctioncellrep.ErrNotEnoughMemory))
-				})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(failedWork.LRPs).To(ConsistOf(smallestLRP))
+
+				Expect(fakeContainerAllocator.BatchLRPAllocationRequestCallCount()).To(Equal(1))
+
+				_, requestedLRPs := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
+				Expect(requestedLRPs).To(ConsistOf(largestLRP, middleLRP))
 			})
 
-			Context("and the required memory for the work does not exceed current capacity", func() {
+			Context("when envoy needs to be placed in the container", func() {
 				BeforeEach(func() {
-					lrpAuctionOne.MemoryMB = int32(remainingCellMemory - proxyMemoryAllocation)
+					enableContainerProxy = true
+					proxyMemoryAllocation = remainingCellMemory - int(largestLRP.MemoryMB)
 				})
 
-				It("should successfully place the work", func() {
+				It("accounts for the proxy overhead when determining which workloads to run and which to reject", func() {
 					failedWork, err := cellRep.Perform(logger, rep.Work{
-						LRPs: []rep.LRP{lrpAuctionOne},
+						LRPs:  []rep.LRP{smallestLRP, middleLRP, largestLRP},
+						Tasks: []rep.Task{},
 					})
+
 					Expect(err).NotTo(HaveOccurred())
-					Expect(failedWork.LRPs).To(BeEmpty())
-					Expect(failedWork.Tasks).To(BeEmpty())
+					Expect(failedWork.LRPs).To(ConsistOf(smallestLRP, middleLRP))
+
+					Expect(fakeContainerAllocator.BatchLRPAllocationRequestCallCount()).To(Equal(1))
+
+					_, requestedLRPs := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
+					Expect(requestedLRPs).To(ConsistOf(largestLRP))
 				})
 			})
 		})

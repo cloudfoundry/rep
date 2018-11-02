@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"sort"
 	"strconv"
 
 	"code.cloudfoundry.org/bbs/models"
@@ -366,22 +367,26 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 		return work, ErrCellIdMismatch
 	}
 
-	if a.proxyMemoryAllocation > 0 {
-		remainingResources, err := a.client.RemainingResources(logger)
-		if err != nil {
-			logger.Error("failed-gathering-remaining-reosurces", err)
-			return work, err
-		}
+	remainingResources, err := a.client.RemainingResources(logger)
+	if err != nil {
+		logger.Error("failed-gathering-remaining-reosurces", err)
+		return work, err
+	}
 
-		var totalRequiredMemory = int32(0)
-		for _, lrp := range work.LRPs {
-			totalRequiredMemory = totalRequiredMemory + lrp.Resource.MemoryMB
-			totalRequiredMemory += int32(a.proxyMemoryAllocation)
-		}
+	var lrpRequests []rep.LRP
+	remainingMemory := int32(remainingResources.MemoryMB)
 
-		if int32(remainingResources.MemoryMB) < totalRequiredMemory {
-			logger.Error("not-enough-memory", ErrNotEnoughMemory)
-			return work, ErrNotEnoughMemory
+	sort.SliceStable(work.LRPs, func(i, j int) bool {
+		return work.LRPs[i].MemoryMB > work.LRPs[j].MemoryMB
+	})
+
+	for _, lrp := range work.LRPs {
+		requiredMemory := lrp.MemoryMB + int32(a.proxyMemoryAllocation)
+		if requiredMemory <= remainingMemory {
+			remainingMemory -= requiredMemory
+			lrpRequests = append(lrpRequests, lrp)
+		} else {
+			failedWork.LRPs = append(failedWork.LRPs, lrp)
 		}
 	}
 
@@ -389,7 +394,7 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 		return work, nil
 	}
 
-	failedWork.LRPs = a.allocator.BatchLRPAllocationRequest(logger, work.LRPs)
+	failedWork.LRPs = append(failedWork.LRPs, a.allocator.BatchLRPAllocationRequest(logger, lrpRequests)...)
 	failedWork.Tasks = a.allocator.BatchTaskAllocationRequest(logger, work.Tasks)
 
 	return failedWork, nil
