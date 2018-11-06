@@ -1,8 +1,10 @@
 package auctioncellrep_test
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/executor"
@@ -18,6 +20,7 @@ import (
 
 var _ = Describe("ContainerAllocator", func() {
 	var (
+		enableContainerProxy      bool
 		proxyMemoryAllocation     int
 		executorClient            *fake_client.FakeClient
 		linuxRootFSURL            string
@@ -31,7 +34,8 @@ var _ = Describe("ContainerAllocator", func() {
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
 		linuxRootFSURL = models.PreloadedRootFS(linuxStack)
-		proxyMemoryAllocation = 0
+		enableContainerProxy = false
+		proxyMemoryAllocation = 12
 		executorClient = new(fake_client.FakeClient)
 		commonErr = errors.New("Failed to fetch")
 
@@ -46,7 +50,6 @@ var _ = Describe("ContainerAllocator", func() {
 		allocator = auctioncellrep.NewContainerAllocator(
 			fakeGenerateContainerGuid,
 			rep.StackPathMap{linuxStack: linuxPath},
-			proxyMemoryAllocation,
 			executorClient,
 		)
 	})
@@ -77,7 +80,7 @@ var _ = Describe("ContainerAllocator", func() {
 		})
 
 		It("makes the correct allocation requests for all LRPs", func() {
-			allocator.BatchLRPAllocationRequest(logger, []rep.LRP{lrp1, lrp2})
+			allocator.BatchLRPAllocationRequest(logger, enableContainerProxy, proxyMemoryAllocation, []rep.LRP{lrp1, lrp2})
 
 			Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
 			_, arg := executorClient.AllocateContainersArgsForCall(0)
@@ -88,7 +91,7 @@ var _ = Describe("ContainerAllocator", func() {
 		})
 
 		It("does not mark any LRP Auctions as failed", func() {
-			failedWork := allocator.BatchLRPAllocationRequest(logger, []rep.LRP{lrp1, lrp2})
+			failedWork := allocator.BatchLRPAllocationRequest(logger, enableContainerProxy, proxyMemoryAllocation, []rep.LRP{lrp1, lrp2})
 			Expect(failedWork).To(BeEmpty())
 		})
 
@@ -100,18 +103,19 @@ var _ = Describe("ContainerAllocator", func() {
 			})
 
 			It("marks the corresponding LRP Auctions as failed", func() {
-				failedWork := allocator.BatchLRPAllocationRequest(logger, []rep.LRP{lrp1, lrp2})
+				failedWork := allocator.BatchLRPAllocationRequest(logger, enableContainerProxy, proxyMemoryAllocation, []rep.LRP{lrp1, lrp2})
 				Expect(failedWork).To(ConsistOf(lrp2))
 			})
 		})
 
 		Context("when envoy needs to be placed in the container", func() {
 			BeforeEach(func() {
+				enableContainerProxy = true
 				proxyMemoryAllocation = 32
 			})
 
 			It("makes the correct allocation requests for all LRP Auctions with the additional memory allocation", func() {
-				allocator.BatchLRPAllocationRequest(logger, []rep.LRP{lrp1, lrp2})
+				allocator.BatchLRPAllocationRequest(logger, enableContainerProxy, proxyMemoryAllocation, []rep.LRP{lrp1, lrp2})
 
 				Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
 				_, arg := executorClient.AllocateContainersArgsForCall(0)
@@ -133,7 +137,7 @@ var _ = Describe("ContainerAllocator", func() {
 				})
 
 				It("requests an LRP with unlimited memory", func() {
-					allocator.BatchLRPAllocationRequest(logger, []rep.LRP{lrp1, lrp2})
+					allocator.BatchLRPAllocationRequest(logger, enableContainerProxy, proxyMemoryAllocation, []rep.LRP{lrp1, lrp2})
 
 					expectedResource := executor.NewResource(0, int(lrp1.DiskMB), int(lrp1.MaxPids), linuxPath)
 
@@ -147,7 +151,7 @@ var _ = Describe("ContainerAllocator", func() {
 
 		Context("when no requests need to be made", func() {
 			It("doesn't make any requests to the executorClient", func() {
-				allocator.BatchLRPAllocationRequest(logger, []rep.LRP{})
+				allocator.BatchLRPAllocationRequest(logger, enableContainerProxy, proxyMemoryAllocation, []rep.LRP{})
 				Expect(executorClient.AllocateContainersCallCount()).To(Equal(0))
 			})
 		})
@@ -181,7 +185,7 @@ var _ = Describe("ContainerAllocator", func() {
 				})
 
 				It("only makes container allocation requests for the remaining LRPs", func() {
-					allocator.BatchLRPAllocationRequest(logger, []rep.LRP{validLRP, invalidLRP})
+					allocator.BatchLRPAllocationRequest(logger, enableContainerProxy, proxyMemoryAllocation, []rep.LRP{validLRP, invalidLRP})
 
 					Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
 					_, arg := executorClient.AllocateContainersArgsForCall(0)
@@ -191,7 +195,7 @@ var _ = Describe("ContainerAllocator", func() {
 				})
 
 				It("marks the other LRP as failed", func() {
-					failedLRPs := allocator.BatchLRPAllocationRequest(logger, []rep.LRP{validLRP, invalidLRP})
+					failedLRPs := allocator.BatchLRPAllocationRequest(logger, enableContainerProxy, proxyMemoryAllocation, []rep.LRP{validLRP, invalidLRP})
 					Expect(failedLRPs).To(ConsistOf(invalidLRP))
 				})
 			})
@@ -202,7 +206,7 @@ var _ = Describe("ContainerAllocator", func() {
 				})
 
 				It("only makes container allocation requests for the LRPs with valid RootFS paths", func() {
-					allocator.BatchLRPAllocationRequest(logger, []rep.LRP{validLRP, invalidLRP})
+					allocator.BatchLRPAllocationRequest(logger, enableContainerProxy, proxyMemoryAllocation, []rep.LRP{validLRP, invalidLRP})
 
 					Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
 					_, arg := executorClient.AllocateContainersArgsForCall(0)
@@ -212,7 +216,7 @@ var _ = Describe("ContainerAllocator", func() {
 				})
 
 				It("marks the LRPs with invalid RootFS paths as failed", func() {
-					failedLRPs := allocator.BatchLRPAllocationRequest(logger, []rep.LRP{validLRP, invalidLRP})
+					failedLRPs := allocator.BatchLRPAllocationRequest(logger, enableContainerProxy, proxyMemoryAllocation, []rep.LRP{validLRP, invalidLRP})
 					Expect(failedLRPs).To(HaveLen(1))
 					Expect(failedLRPs).To(ContainElement(invalidLRP))
 				})
@@ -224,7 +228,7 @@ var _ = Describe("ContainerAllocator", func() {
 				})
 
 				It("makes the correct allocation request for it, passing along the blank path to the executor client", func() {
-					allocator.BatchLRPAllocationRequest(logger, []rep.LRP{validLRP})
+					allocator.BatchLRPAllocationRequest(logger, enableContainerProxy, proxyMemoryAllocation, []rep.LRP{validLRP})
 
 					Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
 					_, arg := executorClient.AllocateContainersArgsForCall(0)
@@ -240,7 +244,7 @@ var _ = Describe("ContainerAllocator", func() {
 				})
 
 				It("makes the container allocation request with an unchanged rootfs url", func() {
-					allocator.BatchLRPAllocationRequest(logger, []rep.LRP{validLRP})
+					allocator.BatchLRPAllocationRequest(logger, enableContainerProxy, proxyMemoryAllocation, []rep.LRP{validLRP})
 
 					Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
 					_, arg := executorClient.AllocateContainersArgsForCall(0)
@@ -397,3 +401,46 @@ var _ = Describe("ContainerAllocator", func() {
 		})
 	})
 })
+
+func allocationRequestFromLRP(lrp rep.LRP, rootFSPath string) executor.AllocationRequest {
+	resource := executor.NewResource(
+		int(lrp.MemoryMB),
+		int(lrp.DiskMB),
+		int(lrp.MaxPids),
+		rootFSPath,
+	)
+
+	placementTagsBytes, err := json.Marshal(lrp.PlacementTags)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	volumeDriversBytes, err := json.Marshal(lrp.VolumeDrivers)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	return executor.NewAllocationRequest(
+		lrp.InstanceGUID,
+		&resource,
+		executor.Tags{
+			rep.LifecycleTag:     rep.LRPLifecycle,
+			rep.DomainTag:        lrp.Domain,
+			rep.PlacementTagsTag: string(placementTagsBytes),
+			rep.VolumeDriversTag: string(volumeDriversBytes),
+			rep.ProcessGuidTag:   lrp.ProcessGuid,
+			rep.ProcessIndexTag:  strconv.Itoa(int(lrp.Index)),
+			rep.InstanceGuidTag:  lrp.InstanceGUID,
+		},
+	)
+}
+
+func allocationRequestFromTask(task rep.Task, rootFSPath, placementTags, volumeDrivers string) executor.AllocationRequest {
+	resource := executor.NewResource(int(task.MemoryMB), int(task.DiskMB), int(task.MaxPids), rootFSPath)
+	return executor.NewAllocationRequest(
+		task.TaskGuid,
+		&resource,
+		executor.Tags{
+			rep.LifecycleTag:     rep.TaskLifecycle,
+			rep.DomainTag:        task.Domain,
+			rep.PlacementTagsTag: placementTags,
+			rep.VolumeDriversTag: volumeDrivers,
+		},
+	)
+}

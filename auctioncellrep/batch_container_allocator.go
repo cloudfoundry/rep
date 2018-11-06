@@ -11,23 +11,21 @@ import (
 
 //go:generate counterfeiter . BatchContainerAllocator
 type BatchContainerAllocator interface {
-	BatchLRPAllocationRequest(lager.Logger, []rep.LRP) []rep.LRP
+	BatchLRPAllocationRequest(lager.Logger, bool, int, []rep.LRP) []rep.LRP
 	BatchTaskAllocationRequest(lager.Logger, []rep.Task) []rep.Task
 }
 
 type containerAllocator struct {
-	generateInstanceGuid  func() (string, error)
-	stackPathMap          rep.StackPathMap
-	proxyMemoryAllocation int
-	executorClient        executor.Client
+	generateInstanceGuid func() (string, error)
+	stackPathMap         rep.StackPathMap
+	executorClient       executor.Client
 }
 
-func NewContainerAllocator(instanceGuidGenerator func() (string, error), stackPathMap rep.StackPathMap, proxyMemoryAllocation int, executorClient executor.Client) BatchContainerAllocator {
+func NewContainerAllocator(instanceGuidGenerator func() (string, error), stackPathMap rep.StackPathMap, executorClient executor.Client) BatchContainerAllocator {
 	return containerAllocator{
-		generateInstanceGuid:  instanceGuidGenerator,
-		stackPathMap:          stackPathMap,
-		proxyMemoryAllocation: proxyMemoryAllocation,
-		executorClient:        executorClient,
+		generateInstanceGuid: instanceGuidGenerator,
+		stackPathMap:         stackPathMap,
+		executorClient:       executorClient,
 	}
 }
 
@@ -59,7 +57,7 @@ func buildTaskTags(task rep.Task) executor.Tags {
 	return tags
 }
 
-func (ca containerAllocator) BatchLRPAllocationRequest(logger lager.Logger, lrps []rep.LRP) (unallocatedLRPs []rep.LRP) {
+func (ca containerAllocator) BatchLRPAllocationRequest(logger lager.Logger, enableContainerProxy bool, proxyMemoryAllocation int, lrps []rep.LRP) (unallocatedLRPs []rep.LRP) {
 	logger = logger.Session("lrp-allocate-instances")
 	requests := make([]executor.AllocationRequest, 0, len(lrps))
 	lrpGuidMap := make(map[string]rep.LRP, len(lrps))
@@ -78,8 +76,8 @@ func (ca containerAllocator) BatchLRPAllocationRequest(logger lager.Logger, lrps
 		}
 
 		memoryMB := int(lrp.MemoryMB)
-		if memoryMB > 0 {
-			memoryMB += ca.proxyMemoryAllocation
+		if memoryMB > 0 && enableContainerProxy {
+			memoryMB += proxyMemoryAllocation
 		}
 
 		resource := executor.NewResource(memoryMB, int(lrp.DiskMB), int(lrp.MaxPids), rootFSPath)

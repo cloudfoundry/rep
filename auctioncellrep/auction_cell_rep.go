@@ -39,6 +39,7 @@ type AuctionCellRep struct {
 	evacuationReporter       evacuation_context.EvacuationReporter
 	placementTags            []string
 	optionalPlacementTags    []string
+	enableContainerProxy     bool
 	proxyMemoryAllocation    int
 	allocator                BatchContainerAllocator
 }
@@ -58,9 +59,6 @@ func New(
 	enableContainerProxy bool,
 	allocator BatchContainerAllocator,
 ) *AuctionCellRep {
-	if !enableContainerProxy {
-		proxyMemoryAllocation = 0
-	}
 	return &AuctionCellRep{
 		cellID:                   cellID,
 		repURL:                   repURL,
@@ -72,6 +70,7 @@ func New(
 		evacuationReporter:    evacuationReporter,
 		placementTags:         placementTags,
 		optionalPlacementTags: optionalPlacementTags,
+		enableContainerProxy:  enableContainerProxy,
 		proxyMemoryAllocation: proxyMemoryAllocation,
 		allocator:             allocator,
 	}
@@ -374,7 +373,10 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 	})
 
 	for _, lrp := range work.LRPs {
-		requiredMemory := lrp.MemoryMB + int32(a.proxyMemoryAllocation)
+		requiredMemory := lrp.MemoryMB
+		if a.enableContainerProxy {
+			requiredMemory += int32(a.proxyMemoryAllocation)
+		}
 		if requiredMemory <= remainingMemory {
 			remainingMemory -= requiredMemory
 			lrpRequests = append(lrpRequests, lrp)
@@ -387,7 +389,7 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 		return work, nil
 	}
 
-	failedWork.LRPs = append(failedWork.LRPs, a.allocator.BatchLRPAllocationRequest(logger, lrpRequests)...)
+	failedWork.LRPs = append(failedWork.LRPs, a.allocator.BatchLRPAllocationRequest(logger, a.enableContainerProxy, a.proxyMemoryAllocation, lrpRequests)...)
 	failedWork.Tasks = a.allocator.BatchTaskAllocationRequest(logger, work.Tasks)
 
 	return failedWork, nil

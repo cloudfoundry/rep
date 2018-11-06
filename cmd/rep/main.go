@@ -135,7 +135,7 @@ func main() {
 	url := repURL(repConfig)
 	address := repAddress(logger, repConfig)
 	cellPresence := initializeCellPresence(address, serviceClient, executorClient, logger, repConfig, rootFSNames, url)
-	batchContainerAllocator := auctioncellrep.NewContainerAllocator(auctioncellrep.GenerateGuid, rootFSes.StackPathMap(), repConfig.ProxyMemoryAllocationMB, executorClient)
+	batchContainerAllocator := auctioncellrep.NewContainerAllocator(auctioncellrep.GenerateGuid, rootFSes.StackPathMap(), executorClient)
 	auctionCellRep := auctioncellrep.New(
 		repConfig.CellID,
 		url,

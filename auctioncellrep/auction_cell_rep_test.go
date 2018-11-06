@@ -1,9 +1,7 @@
 package auctioncellrep_test
 
 import (
-	"encoding/json"
 	"errors"
-	"strconv"
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/executor"
@@ -38,8 +36,8 @@ var _ = Describe("AuctionCellRep", func() {
 		commonErr      error
 
 		placementTags, optionalPlacementTags []string
-		proxyMemoryAllocation                int
 		enableContainerProxy                 bool
+		proxyMemoryAllocation                int
 
 		fakeContainerAllocator *fakes.FakeBatchContainerAllocator
 	)
@@ -54,8 +52,8 @@ var _ = Describe("AuctionCellRep", func() {
 		linuxRootFSURL = models.PreloadedRootFS(linuxStack)
 
 		commonErr = errors.New("Failed to fetch")
-		proxyMemoryAllocation = 12
 		enableContainerProxy = false
+		proxyMemoryAllocation = 12
 		client.HealthyReturns(true)
 	})
 
@@ -450,7 +448,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 			Expect(state.VolumeDrivers).To(ConsistOf(volumeDrivers))
 
-			Expect(state.ProxyMemoryAllocationMB).To(Equal(0))
+			Expect(state.ProxyMemoryAllocationMB).To(Equal(proxyMemoryAllocation))
 		})
 
 		Context("when enableContainerProxy is true", func() {
@@ -588,7 +586,6 @@ var _ = Describe("AuctionCellRep", func() {
 				rep.Resource{},
 				rep.PlacementConstraint{},
 			)
-
 		})
 
 		JustBeforeEach(func() {
@@ -606,7 +603,7 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 
 			Expect(fakeContainerAllocator.BatchLRPAllocationRequestCallCount()).To(Equal(1))
-			_, lrpRequests := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
+			_, _, _, lrpRequests := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
 			Expect(lrpRequests).To(ConsistOf(successfulLRP, unsuccessfulLRP))
 
 			Expect(fakeContainerAllocator.BatchTaskAllocationRequestCallCount()).To(Equal(1))
@@ -677,8 +674,10 @@ var _ = Describe("AuctionCellRep", func() {
 
 				Expect(fakeContainerAllocator.BatchLRPAllocationRequestCallCount()).To(Equal(1))
 
-				_, requestedLRPs := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
-				Expect(requestedLRPs).To(ConsistOf(largestLRP, middleLRP))
+				_, proxyEnabledArg, proxyMemFootprintArg, lrpRequests := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
+				Expect(proxyEnabledArg).To(BeFalse())
+				Expect(proxyMemFootprintArg).To(Equal(12))
+				Expect(lrpRequests).To(ConsistOf(largestLRP, middleLRP))
 			})
 
 			Context("when envoy needs to be placed in the container", func() {
@@ -698,8 +697,10 @@ var _ = Describe("AuctionCellRep", func() {
 
 					Expect(fakeContainerAllocator.BatchLRPAllocationRequestCallCount()).To(Equal(1))
 
-					_, requestedLRPs := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
-					Expect(requestedLRPs).To(ConsistOf(largestLRP))
+					_, proxyEnabledArg, proxyMemFootprintArg, lrpRequests := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
+					Expect(proxyEnabledArg).To(BeTrue())
+					Expect(proxyMemFootprintArg).To(Equal(proxyMemoryAllocation))
+					Expect(lrpRequests).To(ConsistOf(largestLRP))
 				})
 			})
 		})
@@ -731,47 +732,4 @@ func createContainer(state executor.State, lifecycle string) executor.Container 
 		},
 		State: state,
 	}
-}
-
-func allocationRequestFromLRP(lrp rep.LRP, rootFSPath string) executor.AllocationRequest {
-	resource := executor.NewResource(
-		int(lrp.MemoryMB),
-		int(lrp.DiskMB),
-		int(lrp.MaxPids),
-		rootFSPath,
-	)
-
-	placementTagsBytes, err := json.Marshal(lrp.PlacementTags)
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-	volumeDriversBytes, err := json.Marshal(lrp.VolumeDrivers)
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-	return executor.NewAllocationRequest(
-		lrp.InstanceGUID,
-		&resource,
-		executor.Tags{
-			rep.LifecycleTag:     rep.LRPLifecycle,
-			rep.DomainTag:        lrp.Domain,
-			rep.PlacementTagsTag: string(placementTagsBytes),
-			rep.VolumeDriversTag: string(volumeDriversBytes),
-			rep.ProcessGuidTag:   lrp.ProcessGuid,
-			rep.ProcessIndexTag:  strconv.Itoa(int(lrp.Index)),
-			rep.InstanceGuidTag:  lrp.InstanceGUID,
-		},
-	)
-}
-
-func allocationRequestFromTask(task rep.Task, rootFSPath, placementTags, volumeDrivers string) executor.AllocationRequest {
-	resource := executor.NewResource(int(task.MemoryMB), int(task.DiskMB), int(task.MaxPids), rootFSPath)
-	return executor.NewAllocationRequest(
-		task.TaskGuid,
-		&resource,
-		executor.Tags{
-			rep.LifecycleTag:     rep.TaskLifecycle,
-			rep.DomainTag:        task.Domain,
-			rep.PlacementTagsTag: placementTags,
-			rep.VolumeDriversTag: volumeDrivers,
-		},
-	)
 }
