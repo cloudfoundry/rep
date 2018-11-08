@@ -241,6 +241,11 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, bool, error)
 		}
 	}
 
+	allocatedProxyMemory := 0
+	if a.enableContainerProxy {
+		allocatedProxyMemory = a.proxyMemoryAllocation
+	}
+
 	state := rep.NewCellState(
 		a.cellID,
 		a.repURL,
@@ -255,7 +260,7 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, bool, error)
 		volumeDrivers,
 		a.placementTags,
 		a.optionalPlacementTags,
-		a.proxyMemoryAllocation,
+		allocatedProxyMemory,
 	)
 
 	healthy := a.client.Healthy(logger)

@@ -447,8 +447,7 @@ var _ = Describe("AuctionCellRep", func() {
 			}))
 
 			Expect(state.VolumeDrivers).To(ConsistOf(volumeDrivers))
-
-			Expect(state.ProxyMemoryAllocationMB).To(Equal(proxyMemoryAllocation))
+			Expect(state.ProxyMemoryAllocationMB).To(Equal(0))
 		})
 
 		Context("when enableContainerProxy is true", func() {
