@@ -297,7 +297,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			Context("when the evacuation returns that it failed to evacuate the LRP", func() {
 				BeforeEach(func() {
-					fakeBBS.EvacuateRunningActualLRPReturns(false, models.ErrActualLRPCannotBeEvacuated)
+					fakeBBS.EvacuateRunningActualLRPReturns(false, models.ErrUnknownError)
 				})
 
 				It("deletes the container", func() {
