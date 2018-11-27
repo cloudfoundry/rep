@@ -596,13 +596,8 @@ var _ = Describe("Resources", func() {
 		})
 
 		Context("when the task has V3 declarative Resources", func() {
-			var (
-				origAction *models.Action
-			)
-
 			BeforeEach(func() {
 				task.CachedDependencies = nil
-				origAction = task.Action
 				task.ImageLayers = []*models.ImageLayer{
 					{
 						Name:            "app bits",
