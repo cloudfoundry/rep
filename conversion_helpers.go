@@ -168,7 +168,7 @@ func NewRunRequestFromDesiredLRP(
 }
 
 func NewRunRequestFromTask(task *models.Task) (executor.RunRequest, error) {
-	task = task.VersionDownTo(format.V2)
+	cachedDependencies, setupAction := convertImageLayers(task.TaskDefinition)
 
 	diskScope, err := diskScopeForRootFS(task.RootFs)
 	if err != nil {
@@ -194,8 +194,9 @@ func NewRunRequestFromTask(task *models.Task) (executor.RunRequest, error) {
 		MetricsConfig: executor.MetricsConfig{
 			Guid: task.MetricsGuid,
 		},
-		CachedDependencies:            ConvertCachedDependencies(task.CachedDependencies),
+		CachedDependencies:            ConvertCachedDependencies(cachedDependencies),
 		Action:                        task.Action,
+		Setup:                         setupAction,
 		Env:                           executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
 		EgressRules:                   task.EgressRules,
 		TrustedSystemCertificatesPath: task.TrustedSystemCertificatesPath,
@@ -227,6 +228,15 @@ func ConvertCachedDependency(modelDep *models.CachedDependency) executor.CachedD
 		ChecksumValue:     modelDep.ChecksumValue,
 		ChecksumAlgorithm: modelDep.ChecksumAlgorithm,
 	}
+}
+
+func convertImageLayers(t *models.TaskDefinition) ([]*models.CachedDependency, *models.Action) {
+	layers := models.ImageLayers(t.ImageLayers)
+
+	cachedDependencies := append(layers.ToCachedDependencies(), t.CachedDependencies...)
+	action := layers.ToDownloadActions(t.LegacyDownloadUser, nil)
+
+	return cachedDependencies, action
 }
 
 func convertVolumeMounts(volumeMounts []*models.VolumeMount) ([]executor.VolumeMount, error) {

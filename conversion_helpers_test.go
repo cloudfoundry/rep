@@ -625,10 +625,10 @@ var _ = Describe("Resources", func() {
 				}
 			})
 
-			It("converts exclusive resources into download steps", func() {
+			It("converts exclusive resources into run requests setup action", func() {
 				runReq, err := rep.NewRunRequestFromTask(task)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(runReq.Action).To(Equal(models.WrapAction(models.Serial(
+				Expect(runReq.Setup).To(Equal(models.WrapAction(
 					models.Parallel(
 						&models.DownloadAction{
 							Artifact:          "other bits with checksum",
@@ -641,8 +641,7 @@ var _ = Describe("Resources", func() {
 							ChecksumValue:     "some-sha512",
 						},
 					),
-					models.UnwrapAction(origAction),
-				))))
+				)))
 			})
 
 			It("converts shared resources into V2 cached dependencies", func() {
