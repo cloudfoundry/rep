@@ -12,10 +12,9 @@ import (
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/auctioncellrep"
-	"github.com/onsi/gomega/gbytes"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("ContainerAllocator", func() {
@@ -85,8 +84,8 @@ var _ = Describe("ContainerAllocator", func() {
 			Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
 			_, arg := executorClient.AllocateContainersArgsForCall(0)
 			Expect(arg).To(ConsistOf(
-				allocationRequestFromLRP(lrp1, linuxPath),
-				allocationRequestFromLRP(lrp2, lrp2.RootFs),
+				allocationRequestFromLRP(lrp1),
+				allocationRequestFromLRP(lrp2),
 			))
 		})
 
@@ -97,7 +96,7 @@ var _ = Describe("ContainerAllocator", func() {
 
 		Context("when a container fails to be allocated", func() {
 			BeforeEach(func() {
-				allocationRequest := allocationRequestFromLRP(lrp2, lrp2.RootFs)
+				allocationRequest := allocationRequestFromLRP(lrp2)
 				allocationFailure := executor.NewAllocationFailure(&allocationRequest, commonErr.Error())
 				executorClient.AllocateContainersReturns([]executor.AllocationFailure{allocationFailure})
 			})
@@ -120,8 +119,8 @@ var _ = Describe("ContainerAllocator", func() {
 				Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
 				_, arg := executorClient.AllocateContainersArgsForCall(0)
 
-				allocationRequest1 := allocationRequestFromLRP(lrp1, linuxPath)
-				allocationRequest2 := allocationRequestFromLRP(lrp2, lrp2.RootFs)
+				allocationRequest1 := allocationRequestFromLRP(lrp1)
+				allocationRequest2 := allocationRequestFromLRP(lrp2)
 				allocationRequest1.MemoryMB += proxyMemoryAllocation
 				allocationRequest2.MemoryMB += proxyMemoryAllocation
 
@@ -139,7 +138,7 @@ var _ = Describe("ContainerAllocator", func() {
 				It("requests an LRP with unlimited memory", func() {
 					allocator.BatchLRPAllocationRequest(logger, enableContainerProxy, proxyMemoryAllocation, []rep.LRP{lrp1, lrp2})
 
-					expectedResource := executor.NewResource(0, int(lrp1.DiskMB), int(lrp1.MaxPids), linuxPath)
+					expectedResource := executor.NewResource(0, int(lrp1.DiskMB), int(lrp1.MaxPids))
 
 					_, arg := executorClient.AllocateContainersArgsForCall(0)
 					Expect(len(arg)).To(BeNumerically(">=", 1))
@@ -190,7 +189,7 @@ var _ = Describe("ContainerAllocator", func() {
 					Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
 					_, arg := executorClient.AllocateContainersArgsForCall(0)
 					Expect(arg).To(ConsistOf(
-						allocationRequestFromLRP(validLRP, linuxPath),
+						allocationRequestFromLRP(validLRP),
 					))
 				})
 
@@ -211,7 +210,7 @@ var _ = Describe("ContainerAllocator", func() {
 					Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
 					_, arg := executorClient.AllocateContainersArgsForCall(0)
 					Expect(arg).To(ConsistOf(
-						allocationRequestFromLRP(validLRP, linuxPath),
+						allocationRequestFromLRP(validLRP),
 					))
 				})
 
@@ -233,7 +232,7 @@ var _ = Describe("ContainerAllocator", func() {
 					Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
 					_, arg := executorClient.AllocateContainersArgsForCall(0)
 					Expect(arg).To(ConsistOf(
-						allocationRequestFromLRP(validLRP, ""),
+						allocationRequestFromLRP(validLRP),
 					))
 				})
 			})
@@ -249,7 +248,7 @@ var _ = Describe("ContainerAllocator", func() {
 					Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
 					_, arg := executorClient.AllocateContainersArgsForCall(0)
 					Expect(arg).To(ConsistOf(
-						allocationRequestFromLRP(validLRP, validLRP.RootFs),
+						allocationRequestFromLRP(validLRP),
 					))
 				})
 			})
@@ -279,8 +278,8 @@ var _ = Describe("ContainerAllocator", func() {
 			Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
 			_, arg := executorClient.AllocateContainersArgsForCall(0)
 			Expect(arg).To(ConsistOf(
-				allocationRequestFromTask(task1, linuxPath, `["pt-1"]`, `["vd-1"]`),
-				allocationRequestFromTask(task2, task2.RootFs, `["pt-2"]`, `[]`),
+				allocationRequestFromTask(task1, `["pt-1"]`, `["vd-1"]`),
+				allocationRequestFromTask(task2, `["pt-2"]`, `[]`),
 			))
 		})
 
@@ -297,7 +296,7 @@ var _ = Describe("ContainerAllocator", func() {
 
 		Context("when a container fails to be allocated", func() {
 			BeforeEach(func() {
-				resource := executor.NewResource(int(task1.MemoryMB), int(task1.DiskMB), int(task1.MaxPids), "linux")
+				resource := executor.NewResource(int(task1.MemoryMB), int(task1.DiskMB), int(task1.MaxPids))
 				tags := executor.Tags{}
 				allocationRequest := executor.NewAllocationRequest(
 					task1.TaskGuid,
@@ -351,7 +350,7 @@ var _ = Describe("ContainerAllocator", func() {
 					Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
 					_, arg := executorClient.AllocateContainersArgsForCall(0)
 					Expect(arg).To(ConsistOf(
-						allocationRequestFromTask(validTask, linuxPath, `["pt-1"]`, `["vd-1"]`),
+						allocationRequestFromTask(validTask, `["pt-1"]`, `["vd-1"]`),
 					))
 				})
 
@@ -372,7 +371,7 @@ var _ = Describe("ContainerAllocator", func() {
 					Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
 					_, arg := executorClient.AllocateContainersArgsForCall(0)
 					Expect(arg).To(ConsistOf(
-						allocationRequestFromTask(validTask, linuxPath, `["pt-1"]`, `["vd-1"]`),
+						allocationRequestFromTask(validTask, `["pt-1"]`, `["vd-1"]`),
 					))
 				})
 
@@ -394,7 +393,7 @@ var _ = Describe("ContainerAllocator", func() {
 					Expect(executorClient.AllocateContainersCallCount()).To(Equal(1))
 					_, arg := executorClient.AllocateContainersArgsForCall(0)
 					Expect(arg).To(ConsistOf(
-						allocationRequestFromTask(validTask, "", `["pt-1"]`, `["vd-1"]`),
+						allocationRequestFromTask(validTask, `["pt-1"]`, `["vd-1"]`),
 					))
 				})
 			})
@@ -402,12 +401,11 @@ var _ = Describe("ContainerAllocator", func() {
 	})
 })
 
-func allocationRequestFromLRP(lrp rep.LRP, rootFSPath string) executor.AllocationRequest {
+func allocationRequestFromLRP(lrp rep.LRP) executor.AllocationRequest {
 	resource := executor.NewResource(
 		int(lrp.MemoryMB),
 		int(lrp.DiskMB),
 		int(lrp.MaxPids),
-		rootFSPath,
 	)
 
 	placementTagsBytes, err := json.Marshal(lrp.PlacementTags)
@@ -431,8 +429,8 @@ func allocationRequestFromLRP(lrp rep.LRP, rootFSPath string) executor.Allocatio
 	)
 }
 
-func allocationRequestFromTask(task rep.Task, rootFSPath, placementTags, volumeDrivers string) executor.AllocationRequest {
-	resource := executor.NewResource(int(task.MemoryMB), int(task.DiskMB), int(task.MaxPids), rootFSPath)
+func allocationRequestFromTask(task rep.Task, placementTags, volumeDrivers string) executor.AllocationRequest {
+	resource := executor.NewResource(int(task.MemoryMB), int(task.DiskMB), int(task.MaxPids))
 	return executor.NewAllocationRequest(
 		task.TaskGuid,
 		&resource,

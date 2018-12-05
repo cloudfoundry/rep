@@ -10,7 +10,6 @@ import (
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"code.cloudfoundry.org/rep/generator"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
@@ -34,7 +33,7 @@ var _ = Describe("Generator", func() {
 		cellID = "some-cell-id"
 		fakeExecutorClient = new(efakes.FakeClient)
 		fakeEvacuationReporter := &fake_evacuation_context.FakeEvacuationReporter{}
-		opGenerator = generator.New(cellID, fakeBBS, fakeExecutorClient, nil, fakeEvacuationReporter)
+		opGenerator = generator.New(cellID, rep.StackPathMap{}, fakeBBS, fakeExecutorClient, nil, fakeEvacuationReporter)
 	})
 
 	Describe("BatchOperations", func() {

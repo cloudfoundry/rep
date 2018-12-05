@@ -8,7 +8,6 @@ import (
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/rep"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -245,6 +244,7 @@ var _ = Describe("Resources", func() {
 			containerGuid string
 			desiredLRP    *models.DesiredLRP
 			actualLRP     *models.ActualLRP
+			stackPathMap  rep.StackPathMap
 		)
 
 		BeforeEach(func() {
@@ -258,17 +258,22 @@ var _ = Describe("Resources", func() {
 			// test explicitly for V2 conversion in a context below
 			desiredLRP.ImageLayers = nil
 			actualLRP = model_helpers.NewValidActualLRP("the-process-guid", 9)
-			desiredLRP.RootFs = "preloaded://foobar"
+			desiredLRP.RootFs = "preloaded:cflinuxfs2"
+
+			stackPathMap = rep.StackPathMap{
+				"cflinuxfs2": "cflinuxfs2:/var/vcap/packages/cflinuxfs2/rootfs.tar",
+			}
 		})
 
 		It("returns a valid run request", func() {
-			runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+			runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(runReq.Tags).To(Equal(executor.Tags{}))
 			Expect(runReq.RunInfo).To(test_helpers.DeepEqual(executor.RunInfo{
-				CPUWeight: uint(desiredLRP.CpuWeight),
-				DiskScope: executor.ExclusiveDiskLimit,
-				Ports:     rep.ConvertPortMappings(desiredLRP.Ports),
+				RootFSPath: stackPathMap["cflinuxfs2"],
+				CPUWeight:  uint(desiredLRP.CpuWeight),
+				DiskScope:  executor.ExclusiveDiskLimit,
+				Ports:      rep.ConvertPortMappings(desiredLRP.Ports),
 				LogConfig: executor.LogConfig{
 					Guid:       desiredLRP.LogGuid,
 					Index:      int(actualLRP.Index),
@@ -326,7 +331,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("sets a nil network on the result", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.Network).To(BeNil())
 			})
@@ -338,7 +343,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("it sets an empty certificate properties on the result", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.CertificateProperties).To(Equal(executor.CertificateProperties{}))
 			})
@@ -350,13 +355,13 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				_, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
 				Expect(err).To(HaveOccurred())
 			})
 		})
 
 		It("enables the envoy proxy", func() {
-			runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+			runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(runReq.EnableContainerProxy).To(BeTrue())
 		})
@@ -367,7 +372,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("disables the envoy proxy", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.EnableContainerProxy).To(BeFalse())
 			})
@@ -379,13 +384,13 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("enables the envoy proxy", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.EnableContainerProxy).To(BeTrue())
 			})
 
 			It("uses ExclusiveDiskLimit as the disk scope", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.DiskScope).To(Equal(executor.ExclusiveDiskLimit))
 			})
@@ -397,13 +402,13 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("enables the envoy proxy", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.EnableContainerProxy).To(BeTrue())
 			})
 
 			It("uses TotalDiskLimit as the disk scope", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.DiskScope).To(Equal(executor.TotalDiskLimit))
 			})
@@ -440,7 +445,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("converts exclusive resources into download steps", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.Setup).To(Equal(models.WrapAction(models.Serial(
 					models.Parallel(
@@ -460,7 +465,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("converts shared resources into V2 cached dependencies", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.CachedDependencies).To(ConsistOf(executor.CachedDependency{
 					Name:              "app bits",
@@ -476,7 +481,11 @@ var _ = Describe("Resources", func() {
 	})
 
 	Describe("NewRunRequestFromTask", func() {
-		var task *models.Task
+		var (
+			task         *models.Task
+			stackPathMap rep.StackPathMap
+		)
+
 		BeforeEach(func() {
 			task = model_helpers.NewValidTask("task-guid")
 			// This is a lazy way to prevent old tests from failing.  The tests
@@ -485,17 +494,22 @@ var _ = Describe("Resources", func() {
 			// because they are getting extra CachedDependencies.  We test
 			// explicitly for V2 conversion in a context below
 			task.ImageLayers = nil
-			task.RootFs = "preloaded://rootfs"
+			task.RootFs = "preloaded:cflinuxfs2"
+
+			stackPathMap = rep.StackPathMap{
+				"cflinuxfs2": "cflinuxfs2:/var/vcap/packages/cflinuxfs2/rootfs.tar",
+			}
 		})
 
 		It("returns a valid run request", func() {
-			runReq, err := rep.NewRunRequestFromTask(task)
+			runReq, err := rep.NewRunRequestFromTask(task, stackPathMap)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(runReq.Tags).To(Equal(executor.Tags{
 				rep.ResultFileTag: task.ResultFile,
 			}))
 
 			Expect(runReq.RunInfo).To(Equal(executor.RunInfo{
+				RootFSPath: stackPathMap["cflinuxfs2"],
 				DiskScope:  executor.ExclusiveDiskLimit,
 				CPUWeight:  uint(task.CpuWeight),
 				Privileged: task.Privileged,
@@ -542,7 +556,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("sets a nil network on the result", func() {
-				runReq, err := rep.NewRunRequestFromTask(task)
+				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.Network).To(BeNil())
 			})
@@ -554,14 +568,14 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("it sets an empty certificate properties on the result", func() {
-				runReq, err := rep.NewRunRequestFromTask(task)
+				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.CertificateProperties).To(Equal(executor.CertificateProperties{}))
 			})
 		})
 
 		It("disables the envoy proxy", func() {
-			runReq, err := rep.NewRunRequestFromTask(task)
+			runReq, err := rep.NewRunRequestFromTask(task, stackPathMap)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(runReq.EnableContainerProxy).To(BeFalse())
 		})
@@ -572,13 +586,13 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("disables the envoy proxy", func() {
-				runReq, err := rep.NewRunRequestFromTask(task)
+				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.EnableContainerProxy).To(BeFalse())
 			})
 
 			It("uses TotalDiskLimit as the disk scope", func() {
-				runReq, err := rep.NewRunRequestFromTask(task)
+				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.DiskScope).To(Equal(executor.TotalDiskLimit))
 			})
@@ -590,7 +604,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := rep.NewRunRequestFromTask(task)
+				_, err := rep.NewRunRequestFromTask(task, stackPathMap)
 				Expect(err).To(MatchError("invalid character '{' looking for beginning of object key string"))
 			})
 		})
@@ -621,7 +635,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("converts exclusive resources into run requests setup action", func() {
-				runReq, err := rep.NewRunRequestFromTask(task)
+				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.Setup).To(Equal(models.WrapAction(
 					models.Parallel(
@@ -640,7 +654,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("converts shared resources into V2 cached dependencies", func() {
-				runReq, err := rep.NewRunRequestFromTask(task)
+				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.CachedDependencies).To(ConsistOf(executor.CachedDependency{
 					Name:              "app bits",

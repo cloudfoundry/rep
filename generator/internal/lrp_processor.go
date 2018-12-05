@@ -6,6 +6,7 @@ import (
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
 )
 
@@ -40,9 +41,10 @@ func NewLRPProcessor(
 	containerDelegate ContainerDelegate,
 	metronClient loggingclient.IngressClient,
 	cellID string,
+	stackPathMap rep.StackPathMap,
 	evacuationReporter evacuation_context.EvacuationReporter,
 ) LRPProcessor {
-	ordinaryProcessor := newOrdinaryLRPProcessor(bbsClient, containerDelegate, cellID)
+	ordinaryProcessor := newOrdinaryLRPProcessor(bbsClient, containerDelegate, cellID, stackPathMap)
 	evacuationProcessor := newEvacuationLRPProcessor(bbsClient, containerDelegate, metronClient, cellID)
 	return &lrpProcessor{
 		evacuationReporter:  evacuationReporter,

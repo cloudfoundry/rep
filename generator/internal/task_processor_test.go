@@ -11,7 +11,6 @@ import (
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/generator/internal"
 	"code.cloudfoundry.org/rep/generator/internal/fake_internal"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -39,10 +38,10 @@ var _ = Describe("TaskProcessor", func() {
 		expectedCellID = "the-cell"
 		taskGuid = "the-guid"
 
-		processor = internal.NewTaskProcessor(bbsClient, containerDelegate, expectedCellID)
+		processor = internal.NewTaskProcessor(bbsClient, containerDelegate, expectedCellID, rep.StackPathMap{})
 
 		task = model_helpers.NewValidTask(taskGuid)
-		expectedRunRequest, err = rep.NewRunRequestFromTask(task)
+		expectedRunRequest, err = rep.NewRunRequestFromTask(task, rep.StackPathMap{})
 		Expect(err).NotTo(HaveOccurred())
 
 		bbsClient.TaskByGuidReturns(task, nil)

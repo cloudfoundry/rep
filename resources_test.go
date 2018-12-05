@@ -1,6 +1,8 @@
 package rep_test
 
 import (
+	"fmt"
+
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/rep"
 	. "github.com/onsi/ginkgo"
@@ -180,6 +182,46 @@ var _ = Describe("Resources", func() {
 		Context("when there is sufficient room", func() {
 			It("does not return an error", func() {
 				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+	})
+
+	Describe("StackPathMap", func() {
+		Describe("PathForRootFS", func() {
+			var stackPathMap rep.StackPathMap
+			BeforeEach(func() {
+				stackPathMap = rep.StackPathMap{
+					"cflinuxfs2": "cflinuxfs2:/var/vcap/packages/cflinuxfs2/rootfs.tar",
+				}
+			})
+			It("returns the resolved path if the RootFS URL scheme is preloaded", func() {
+				p, err := stackPathMap.PathForRootFS("preloaded:cflinuxfs2")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(p).To(Equal("cflinuxfs2:/var/vcap/packages/cflinuxfs2/rootfs.tar"))
+			})
+			It("returns the correct URL if the RootFS URL scheme is preloaded+layer", func() {
+				queryString := "?layer=https://blobstore.internal/layer1.tgz?layer_path=/tmp/asset1&layer_digest=alkjsdflkj"
+				p, err := stackPathMap.PathForRootFS(fmt.Sprintf("preloaded+layer:cflinuxfs2%s", queryString))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(p).To(Equal(fmt.Sprintf("preloaded+layer:cflinuxfs2:/var/vcap/packages/cflinuxfs2/rootfs.tar%s", queryString)))
+			})
+			It("returns a blank string and no error if the RootFS URL is blank", func() {
+				p, err := stackPathMap.PathForRootFS("")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(p).To(Equal(""))
+			})
+			It("returns the same URL and no error if the RootFS scheme is docker", func() {
+				p, err := stackPathMap.PathForRootFS("docker:///cfdiegodocker/grace")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(p).To(Equal("docker:///cfdiegodocker/grace"))
+			})
+			It("returns an error if the RootFS URL is invalid", func() {
+				_, err := stackPathMap.PathForRootFS("%x")
+				Expect(err).To(HaveOccurred())
+			})
+			It("returns an error if the Preloaded RootFS path could not be found in the map", func() {
+				_, err := stackPathMap.PathForRootFS("preloaded:not-on-cell")
+				Expect(err).To(MatchError(rep.ErrPreloadedRootFSNotFound))
 			})
 		})
 	})

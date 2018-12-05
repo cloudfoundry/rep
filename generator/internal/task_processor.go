@@ -1,12 +1,11 @@
 package internal
 
 import (
+	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/executor"
-	"code.cloudfoundry.org/rep"
-
-	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/rep"
 )
 
 const TaskCompletionReasonMissingContainer = "task container does not exist"
@@ -24,13 +23,15 @@ type taskProcessor struct {
 	bbsClient         bbs.InternalClient
 	containerDelegate ContainerDelegate
 	cellID            string
+	stackPathMap      rep.StackPathMap
 }
 
-func NewTaskProcessor(bbs bbs.InternalClient, containerDelegate ContainerDelegate, cellID string) TaskProcessor {
+func NewTaskProcessor(bbs bbs.InternalClient, containerDelegate ContainerDelegate, cellID string, stackPathMap rep.StackPathMap) TaskProcessor {
 	return &taskProcessor{
 		bbsClient:         bbs,
 		containerDelegate: containerDelegate,
 		cellID:            cellID,
+		stackPathMap:      stackPathMap,
 	}
 }
 
@@ -74,7 +75,7 @@ func (p *taskProcessor) processActiveContainer(logger lager.Logger, container ex
 		return
 	}
 
-	runReq, err := rep.NewRunRequestFromTask(task)
+	runReq, err := rep.NewRunRequestFromTask(task, p.stackPathMap)
 	if err != nil {
 		logger.Error("failed-to-construct-run-request", err)
 		return

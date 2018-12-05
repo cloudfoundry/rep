@@ -14,7 +14,6 @@ import (
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"code.cloudfoundry.org/rep/generator/internal"
 	"code.cloudfoundry.org/rep/generator/internal/fake_internal"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
@@ -36,7 +35,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 		containerDelegate = new(fake_internal.FakeContainerDelegate)
 		evacuationReporter = &fake_evacuation_context.FakeEvacuationReporter{}
 		evacuationReporter.EvacuatingReturns(false)
-		processor = internal.NewLRPProcessor(bbsClient, containerDelegate, nil, expectedCellID, evacuationReporter)
+		processor = internal.NewLRPProcessor(bbsClient, containerDelegate, nil, expectedCellID, rep.StackPathMap{}, evacuationReporter)
 		logger = lagertest.NewTestLogger("test")
 	})
 
@@ -133,7 +132,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 					It("runs the container", func() {
 						Expect(containerDelegate.RunContainerCallCount()).To(Equal(1))
 
-						expectedRunRequest, err := rep.NewRunRequestFromDesiredLRP(container.Guid, desiredLRP, &expectedLrpKey, &expectedInstanceKey)
+						expectedRunRequest, err := rep.NewRunRequestFromDesiredLRP(container.Guid, desiredLRP, &expectedLrpKey, &expectedInstanceKey, rep.StackPathMap{})
 						Expect(err).NotTo(HaveOccurred())
 
 						delegateLogger, runRequest := containerDelegate.RunContainerArgsForCall(0)

@@ -69,7 +69,7 @@ func (ca containerAllocator) BatchLRPAllocationRequest(logger lager.Logger, enab
 			continue
 		}
 
-		rootFSPath, err := pathForRootFS(lrp.RootFs, ca.stackPathMap)
+		_, err = ca.stackPathMap.PathForRootFS(lrp.RootFs)
 		if err != nil {
 			unallocatedLRPs = append(unallocatedLRPs, lrp)
 			continue
@@ -80,7 +80,7 @@ func (ca containerAllocator) BatchLRPAllocationRequest(logger lager.Logger, enab
 			memoryMB += proxyMemoryAllocation
 		}
 
-		resource := executor.NewResource(memoryMB, int(lrp.DiskMB), int(lrp.MaxPids), rootFSPath)
+		resource := executor.NewResource(memoryMB, int(lrp.DiskMB), int(lrp.MaxPids))
 		containerGuid := rep.LRPContainerGuid(lrp.ProcessGuid, instanceGuid)
 
 		lrpGuidMap[containerGuid] = lrp
@@ -118,14 +118,14 @@ func (ca containerAllocator) BatchTaskAllocationRequest(logger lager.Logger, tas
 
 	for _, task := range tasks {
 		taskMap[task.TaskGuid] = task
-		rootFSPath, err := pathForRootFS(task.RootFs, ca.stackPathMap)
+		_, err := ca.stackPathMap.PathForRootFS(task.RootFs)
 		if err != nil {
 			failedTasks = append(failedTasks, task)
 			continue
 		}
 
 		tags := buildTaskTags(task)
-		resource := executor.NewResource(int(task.MemoryMB), int(task.DiskMB), int(task.MaxPids), rootFSPath)
+		resource := executor.NewResource(int(task.MemoryMB), int(task.DiskMB), int(task.MaxPids))
 		requests = append(requests, executor.NewAllocationRequest(task.TaskGuid, &resource, tags))
 	}
 

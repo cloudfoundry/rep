@@ -14,7 +14,6 @@ import (
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"code.cloudfoundry.org/rep/generator/internal"
 	"code.cloudfoundry.org/rep/generator/internal/fake_internal"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
@@ -57,7 +56,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			fakeMetronClient = new(mfakes.FakeIngressClient)
 
-			lrpProcessor = internal.NewLRPProcessor(fakeBBS, fakeContainerDelegate, fakeMetronClient, localCellID, fakeEvacuationReporter)
+			lrpProcessor = internal.NewLRPProcessor(fakeBBS, fakeContainerDelegate, fakeMetronClient, localCellID, rep.StackPathMap{}, fakeEvacuationReporter)
 
 			processGuid = "process-guid"
 			desiredLRP = models.DesiredLRP{

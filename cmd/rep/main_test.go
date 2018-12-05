@@ -15,13 +15,12 @@ import (
 	"strings"
 	"time"
 
-	diego_logging_client "code.cloudfoundry.org/diego-logging-client"
-
 	"code.cloudfoundry.org/bbs"
 	bbstestrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
 	"code.cloudfoundry.org/cfhttp"
+	diego_logging_client "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/durationjson"
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/executor/initializer/configuration"
@@ -37,7 +36,6 @@ import (
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
 	"code.cloudfoundry.org/rep/cmd/rep/testrunner"
-
 	"github.com/hashicorp/consul/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -138,18 +136,18 @@ var _ = Describe("The Rep", func() {
 		metronClientKeyFile := path.Join(fixturesPath, "metron", "client.key")
 
 		repConfig = config.RepConfig{
-			PreloadedRootFS:       []config.RootFS{{Name: rootFSName, Path: rootFSPath}},
-			SupportedProviders:    []string{"docker"},
-			PlacementTags:         []string{"test"},
-			OptionalPlacementTags: []string{"optional_tag"},
-			CellID:                cellID,
-			BBSAddress:            bbsURL.String(),
-			ListenAddr:            fmt.Sprintf("0.0.0.0:%d", serverPort),
-			ListenAddrSecurable:   fmt.Sprintf("0.0.0.0:%d", serverPortSecurable),
-			LockRetryInterval:     durationjson.Duration(1 * time.Second),
-			CaCertFile:            caFile,
-			CertFile:              certFile,
-			KeyFile:               keyFile,
+			PreloadedRootFS:                []config.RootFS{{Name: rootFSName, Path: rootFSPath}},
+			SupportedProviders:             []string{"docker"},
+			PlacementTags:                  []string{"test"},
+			OptionalPlacementTags:          []string{"optional_tag"},
+			CellID:                         cellID,
+			BBSAddress:                     bbsURL.String(),
+			ListenAddr:                     fmt.Sprintf("0.0.0.0:%d", serverPort),
+			ListenAddrSecurable:            fmt.Sprintf("0.0.0.0:%d", serverPortSecurable),
+			LockRetryInterval:              durationjson.Duration(1 * time.Second),
+			CaCertFile:                     caFile,
+			CertFile:                       certFile,
+			KeyFile:                        keyFile,
 			CellRegistrationsLocketEnabled: false,
 			ExecutorConfig: executorinit.ExecutorConfig{
 				PathToTLSCACert:              caFile,
@@ -771,7 +769,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 						Expect(lrp.InstanceGUID).NotTo(BeEmpty())
 						Expect(lrp.PlacementConstraint.PlacementTags).To(Equal(placementTags))
 						Expect(lrp.PlacementConstraint.VolumeDrivers).To(Equal(volumeDrivers))
-						Expect(lrp.RootFs).To(Equal("foobar"))
 						Expect(lrp.MaxPids).To(BeEquivalentTo(10))
 						Expect(lrp.State).To(BeEquivalentTo("CLAIMED"))
 					})

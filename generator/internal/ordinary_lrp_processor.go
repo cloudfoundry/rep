@@ -12,17 +12,20 @@ type ordinaryLRPProcessor struct {
 	bbsClient         bbs.InternalClient
 	containerDelegate ContainerDelegate
 	cellID            string
+	stackPathMap      rep.StackPathMap
 }
 
 func newOrdinaryLRPProcessor(
 	bbsClient bbs.InternalClient,
 	containerDelegate ContainerDelegate,
 	cellID string,
+	stackPathMap rep.StackPathMap,
 ) LRPProcessor {
 	return &ordinaryLRPProcessor{
 		bbsClient:         bbsClient,
 		containerDelegate: containerDelegate,
 		cellID:            cellID,
+		stackPathMap:      stackPathMap,
 	}
 }
 
@@ -78,7 +81,7 @@ func (p *ordinaryLRPProcessor) processReservedContainer(logger lager.Logger, lrp
 		return
 	}
 
-	runReq, err := rep.NewRunRequestFromDesiredLRP(lrpContainer.Guid, desired, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
+	runReq, err := rep.NewRunRequestFromDesiredLRP(lrpContainer.Guid, desired, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, p.stackPathMap)
 	if err != nil {
 		logger.Error("failed-to-construct-run-request", err)
 		return

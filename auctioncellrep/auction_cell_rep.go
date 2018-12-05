@@ -22,7 +22,6 @@ type AuctionCellClient interface {
 	Reset() error
 }
 
-var ErrPreloadedRootFSNotFound = errors.New("preloaded rootfs path not found")
 var ErrCellUnhealthy = errors.New("internal cell healthcheck failed")
 var ErrCellIdMismatch = errors.New("workload cell ID does not match this cell")
 var ErrNotEnoughMemory = errors.New("not enough memory for container and additional memory allocation")
@@ -65,14 +64,14 @@ func New(
 		stackPathMap:             preloadedStackPathMap,
 		rootFSProviders:          rootFSProviders(preloadedStackPathMap, arbitraryRootFSes),
 		containerMetricsProvider: containerMetricsProvider,
-		zone:                  zone,
-		client:                client,
-		evacuationReporter:    evacuationReporter,
-		placementTags:         placementTags,
-		optionalPlacementTags: optionalPlacementTags,
-		enableContainerProxy:  enableContainerProxy,
-		proxyMemoryAllocation: proxyMemoryAllocation,
-		allocator:             allocator,
+		zone:                     zone,
+		client:                   client,
+		evacuationReporter:       evacuationReporter,
+		placementTags:            placementTags,
+		optionalPlacementTags:    optionalPlacementTags,
+		enableContainerProxy:     enableContainerProxy,
+		proxyMemoryAllocation:    proxyMemoryAllocation,
+		allocator:                allocator,
 	}
 }
 
@@ -90,34 +89,6 @@ func rootFSProviders(preloaded rep.StackPathMap, arbitrary []string) rep.RootFSP
 	rootFSProviders[models.PreloadedOCIRootFSScheme] = rep.NewFixedSetRootFSProvider(stacks...)
 
 	return rootFSProviders
-}
-
-func pathForRootFS(rootFS string, stackPathMap rep.StackPathMap) (string, error) {
-	if rootFS == "" {
-		return rootFS, nil
-	}
-
-	url, err := url.Parse(rootFS)
-	if err != nil {
-		return "", err
-	}
-
-	if url.Scheme == models.PreloadedRootFSScheme {
-		path, ok := stackPathMap[url.Opaque]
-		if !ok {
-			return "", ErrPreloadedRootFSNotFound
-		}
-		return path, nil
-	} else if url.Scheme == models.PreloadedOCIRootFSScheme {
-		path, ok := stackPathMap[url.Opaque]
-		if !ok {
-			return "", ErrPreloadedRootFSNotFound
-		}
-
-		return fmt.Sprintf("%s:%s?%s", url.Scheme, path, url.RawQuery), nil
-	}
-
-	return rootFS, nil
 }
 
 func rootFSURLFromPath(rootfsPath string, stackPathMap rep.StackPathMap) string {

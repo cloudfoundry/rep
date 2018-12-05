@@ -12,7 +12,6 @@ import (
 	"code.cloudfoundry.org/rep/auctioncellrep"
 	fakes "code.cloudfoundry.org/rep/auctioncellrep/auctioncellrepfakes"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context/fake_evacuation_context"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -719,7 +718,7 @@ var _ = Describe("AuctionCellRep", func() {
 func createContainer(state executor.State, lifecycle string) executor.Container {
 	return executor.Container{
 		Guid:     "some-container-guid",
-		Resource: executor.NewResource(20, 10, 100, linuxPath),
+		Resource: executor.NewResource(20, 10, 100),
 		Tags: executor.Tags{
 			rep.LifecycleTag:     lifecycle,
 			rep.ProcessGuidTag:   "some-process-guid",

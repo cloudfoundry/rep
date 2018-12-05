@@ -47,14 +47,14 @@ func NewCellState(
 	proxyMemoryAllocation int,
 ) CellState {
 	return CellState{
-		CellID:             cellID,
-		RepURL:             repURL,
-		RootFSProviders:    root,
-		AvailableResources: avail,
-		TotalResources:     total,
-		LRPs:               lrps,
-		Tasks:              tasks,
-		Zone:               zone,
+		CellID:                  cellID,
+		RepURL:                  repURL,
+		RootFSProviders:         root,
+		AvailableResources:      avail,
+		TotalResources:          total,
+		LRPs:                    lrps,
+		Tasks:                   tasks,
+		Zone:                    zone,
 		StartingContainerCount:  startingContainerCount,
 		Evacuating:              isEvac,
 		VolumeDrivers:           volumeDrivers,
@@ -292,7 +292,44 @@ type Work struct {
 	CellID string `json:"cell_id,omitempty"`
 }
 
+// StackPathMap maps aliases to rootFS paths on the system.
 type StackPathMap map[string]string
+
+// ErrPreloadedRootFSNotFound is returned when the given hostname of the
+// rootFS could not be resolved if the scheme is the PreloadedRootFSScheme
+// or the PreloadedOCIRootFSScheme. This isn't the error for when the actual
+// path on the system could not be found.
+var ErrPreloadedRootFSNotFound = errors.New("preloaded rootfs path not found")
+
+// PathForRootFS resolves the hostname portion of the RootFS URL to the actual
+// path to the preloaded rootFS on the system according to the StackPathMap
+func (m StackPathMap) PathForRootFS(rootFS string) (string, error) {
+	if rootFS == "" {
+		return rootFS, nil
+	}
+
+	url, err := url.Parse(rootFS)
+	if err != nil {
+		return "", err
+	}
+
+	if url.Scheme == models.PreloadedRootFSScheme {
+		path, ok := m[url.Opaque]
+		if !ok {
+			return "", ErrPreloadedRootFSNotFound
+		}
+		return path, nil
+	} else if url.Scheme == models.PreloadedOCIRootFSScheme {
+		path, ok := m[url.Opaque]
+		if !ok {
+			return "", ErrPreloadedRootFSNotFound
+		}
+
+		return fmt.Sprintf("%s:%s?%s", url.Scheme, path, url.RawQuery), nil
+	}
+
+	return rootFS, nil
+}
 
 //go:generate counterfeiter -o auctioncellrep/auctioncellrepfakes/fake_container_metrics_provider.go . ContainerMetricsProvider
 type ContainerMetricsProvider interface {

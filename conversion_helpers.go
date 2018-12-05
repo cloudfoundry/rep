@@ -105,6 +105,7 @@ func NewRunRequestFromDesiredLRP(
 	desiredLRP *models.DesiredLRP,
 	lrpKey *models.ActualLRPKey,
 	lrpInstanceKey *models.ActualLRPInstanceKey,
+	stackPathMap StackPathMap,
 ) (executor.RunRequest, error) {
 	desiredLRP = desiredLRP.VersionDownTo(format.V2)
 
@@ -118,10 +119,16 @@ func NewRunRequestFromDesiredLRP(
 		return executor.RunRequest{}, err
 	}
 
+	rootFSPath, err := stackPathMap.PathForRootFS(desiredLRP.RootFs)
+	if err != nil {
+		return executor.RunRequest{}, err
+	}
+
 	runInfo := executor.RunInfo{
-		CPUWeight: uint(desiredLRP.CpuWeight),
-		DiskScope: diskScope,
-		Ports:     ConvertPortMappings(desiredLRP.Ports),
+		RootFSPath: rootFSPath,
+		CPUWeight:  uint(desiredLRP.CpuWeight),
+		DiskScope:  diskScope,
+		Ports:      ConvertPortMappings(desiredLRP.Ports),
 		LogConfig: executor.LogConfig{
 			Guid:       desiredLRP.LogGuid,
 			Index:      int(lrpKey.Index),
@@ -167,7 +174,7 @@ func NewRunRequestFromDesiredLRP(
 	return executor.NewRunRequest(containerGuid, &runInfo, tags), nil
 }
 
-func NewRunRequestFromTask(task *models.Task) (executor.RunRequest, error) {
+func NewRunRequestFromTask(task *models.Task, stackPathMap StackPathMap) (executor.RunRequest, error) {
 	cachedDependencies, setupAction := convertImageLayers(task.TaskDefinition)
 
 	diskScope, err := diskScopeForRootFS(task.RootFs)
@@ -180,10 +187,16 @@ func NewRunRequestFromTask(task *models.Task) (executor.RunRequest, error) {
 		return executor.RunRequest{}, err
 	}
 
+	rootFSPath, err := stackPathMap.PathForRootFS(task.RootFs)
+	if err != nil {
+		return executor.RunRequest{}, err
+	}
+
 	tags := executor.Tags{
 		ResultFileTag: task.ResultFile,
 	}
 	runInfo := executor.RunInfo{
+		RootFSPath: rootFSPath,
 		DiskScope:  diskScope,
 		CPUWeight:  uint(task.CpuWeight),
 		Privileged: task.Privileged,
