@@ -33,7 +33,7 @@ var _ = Describe("Generator", func() {
 		cellID = "some-cell-id"
 		fakeExecutorClient = new(efakes.FakeClient)
 		fakeEvacuationReporter := &fake_evacuation_context.FakeEvacuationReporter{}
-		opGenerator = generator.New(cellID, rep.StackPathMap{}, fakeBBS, fakeExecutorClient, nil, fakeEvacuationReporter)
+		opGenerator = generator.New(cellID, rep.StackPathMap{}, "", fakeBBS, fakeExecutorClient, nil, fakeEvacuationReporter)
 	})
 
 	Describe("BatchOperations", func() {

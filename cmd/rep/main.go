@@ -157,6 +157,7 @@ func main() {
 	opGenerator := generator.New(
 		repConfig.CellID,
 		rootFSes.StackPathMap(),
+		repConfig.LayeringMode,
 		bbsClient,
 		executorClient,
 		metronClient,

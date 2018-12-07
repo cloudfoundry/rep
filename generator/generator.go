@@ -39,14 +39,15 @@ type generator struct {
 func New(
 	cellID string,
 	stackPathMap rep.StackPathMap,
+	layeringMode string,
 	bbs bbs.InternalClient,
 	executorClient executor.Client,
 	metronClient loggingclient.IngressClient,
 	evacuationReporter evacuation_context.EvacuationReporter,
 ) Generator {
 	containerDelegate := internal.NewContainerDelegate(executorClient)
-	lrpProcessor := internal.NewLRPProcessor(bbs, containerDelegate, metronClient, cellID, stackPathMap, evacuationReporter)
-	taskProcessor := internal.NewTaskProcessor(bbs, containerDelegate, cellID, stackPathMap)
+	lrpProcessor := internal.NewLRPProcessor(bbs, containerDelegate, metronClient, cellID, stackPathMap, layeringMode, evacuationReporter)
+	taskProcessor := internal.NewTaskProcessor(bbs, containerDelegate, cellID, stackPathMap, layeringMode)
 
 	return &generator{
 		cellID:            cellID,

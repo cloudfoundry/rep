@@ -74,6 +74,7 @@ var _ = Describe("RepConfig", func() {
 			"healthcheck_work_pool_size": 10,
 			"healthy_monitoring_interval": "5s",
 			"healthy_monitoring_interval": "5s",
+			"layering_mode": "single-layer",
 			"listen_addr": "0.0.0.0:8080",
 			"listen_addr_admin": "0.0.0.1:8081",
 			"listen_addr_securable": "0.0.0.0:8081",
@@ -225,6 +226,7 @@ var _ = Describe("RepConfig", func() {
 			LagerConfig: lagerflags.LagerConfig{
 				LogLevel: lagerflags.DEBUG,
 			},
+			LayeringMode:          "single-layer",
 			ListenAddr:            "0.0.0.0:8080",
 			ListenAddrSecurable:   "0.0.0.0:8081",
 			LockRetryInterval:     durationjson.Duration(5 * time.Second),

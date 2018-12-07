@@ -13,6 +13,7 @@ type ordinaryLRPProcessor struct {
 	containerDelegate ContainerDelegate
 	cellID            string
 	stackPathMap      rep.StackPathMap
+	layeringMode      string
 }
 
 func newOrdinaryLRPProcessor(
@@ -20,12 +21,14 @@ func newOrdinaryLRPProcessor(
 	containerDelegate ContainerDelegate,
 	cellID string,
 	stackPathMap rep.StackPathMap,
+	layeringMode string,
 ) LRPProcessor {
 	return &ordinaryLRPProcessor{
 		bbsClient:         bbsClient,
 		containerDelegate: containerDelegate,
 		cellID:            cellID,
 		stackPathMap:      stackPathMap,
+		layeringMode:      layeringMode,
 	}
 }
 
@@ -81,7 +84,7 @@ func (p *ordinaryLRPProcessor) processReservedContainer(logger lager.Logger, lrp
 		return
 	}
 
-	runReq, err := rep.NewRunRequestFromDesiredLRP(lrpContainer.Guid, desired, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, p.stackPathMap)
+	runReq, err := rep.NewRunRequestFromDesiredLRP(lrpContainer.Guid, desired, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, p.stackPathMap, p.layeringMode)
 	if err != nil {
 		logger.Error("failed-to-construct-run-request", err)
 		return

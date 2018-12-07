@@ -38,10 +38,10 @@ var _ = Describe("TaskProcessor", func() {
 		expectedCellID = "the-cell"
 		taskGuid = "the-guid"
 
-		processor = internal.NewTaskProcessor(bbsClient, containerDelegate, expectedCellID, rep.StackPathMap{})
+		processor = internal.NewTaskProcessor(bbsClient, containerDelegate, expectedCellID, rep.StackPathMap{}, "")
 
 		task = model_helpers.NewValidTask(taskGuid)
-		expectedRunRequest, err = rep.NewRunRequestFromTask(task, rep.StackPathMap{})
+		expectedRunRequest, err = rep.NewRunRequestFromTask(task, rep.StackPathMap{}, "")
 		Expect(err).NotTo(HaveOccurred())
 
 		bbsClient.TaskByGuidReturns(task, nil)

@@ -268,7 +268,7 @@ var _ = Describe("Resources", func() {
 		})
 
 		It("returns a valid run request", func() {
-			runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
+			runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(runReq.Tags).To(Equal(executor.Tags{}))
 			Expect(runReq.RunInfo).To(test_helpers.DeepEqual(executor.RunInfo{
@@ -333,7 +333,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("sets a nil network on the result", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.Network).To(BeNil())
 			})
@@ -345,7 +345,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("it sets an empty certificate properties on the result", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.CertificateProperties).To(Equal(executor.CertificateProperties{}))
 			})
@@ -357,13 +357,13 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
+				_, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).To(HaveOccurred())
 			})
 		})
 
 		It("enables the envoy proxy", func() {
-			runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
+			runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(runReq.EnableContainerProxy).To(BeTrue())
 		})
@@ -374,7 +374,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("disables the envoy proxy", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.EnableContainerProxy).To(BeFalse())
 			})
@@ -386,13 +386,13 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("enables the envoy proxy", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.EnableContainerProxy).To(BeTrue())
 			})
 
 			It("uses ExclusiveDiskLimit as the disk scope", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.DiskScope).To(Equal(executor.ExclusiveDiskLimit))
 			})
@@ -404,13 +404,13 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("enables the envoy proxy", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.EnableContainerProxy).To(BeTrue())
 			})
 
 			It("uses TotalDiskLimit as the disk scope", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.DiskScope).To(Equal(executor.TotalDiskLimit))
 			})
@@ -440,14 +440,14 @@ var _ = Describe("Resources", func() {
 						DestinationPath: "/usr/local/other",
 						LayerType:       models.LayerTypeExclusive,
 						MediaType:       models.MediaTypeTgz,
-						DigestAlgorithm: models.DigestAlgorithmSha512,
-						DigestValue:     "some-sha512",
+						DigestAlgorithm: models.DigestAlgorithmSha256,
+						DigestValue:     "some-other-sha256",
 					},
 				}
 			})
 
 			It("converts exclusive resources into download steps", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.Setup).To(Equal(models.WrapAction(models.Serial(
 					models.Parallel(
@@ -455,11 +455,11 @@ var _ = Describe("Resources", func() {
 							Artifact:          "other bits with checksum",
 							From:              "blobstore.com/bits/other-bits-checksum",
 							To:                "/usr/local/other",
-							CacheKey:          "sha512:some-sha512",
+							CacheKey:          "sha256:some-other-sha256",
 							LogSource:         "",
 							User:              "legacy-dan",
-							ChecksumAlgorithm: "sha512",
-							ChecksumValue:     "some-sha512",
+							ChecksumAlgorithm: "sha256",
+							ChecksumValue:     "some-other-sha256",
 						},
 					),
 					models.UnwrapAction(origSetup),
@@ -467,7 +467,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("converts shared resources into V2 cached dependencies", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap)
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.CachedDependencies).To(ConsistOf(executor.CachedDependency{
 					Name:              "app bits",
@@ -478,6 +478,41 @@ var _ = Describe("Resources", func() {
 					ChecksumAlgorithm: "sha256",
 					ChecksumValue:     "some-sha256",
 				}))
+			})
+
+			Context("when the layering mode is 'two-layer'", func() {
+				It("converts the rootfs to a preloaded+layer scheme, and first exclusive resource into the extra layer in the rootfs", func() {
+					runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeTwoLayer)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(runReq.RootFSPath).To(Equal(fmt.Sprintf(
+						"preloaded+layer:%s?layer=%s&layer_path=%s&layer_digest=%s",
+						stackPathMap["cflinuxfs2"],
+						url.QueryEscape(desiredLRP.ImageLayers[1].Url),
+						url.QueryEscape(desiredLRP.ImageLayers[1].DestinationPath),
+						url.QueryEscape(desiredLRP.ImageLayers[1].DigestValue),
+					)))
+				})
+
+				It("excludes the converted exclusive resource from the download steps", func() {
+					runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeTwoLayer)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(runReq.Setup).To(Equal(origSetup))
+				})
+
+				It("converts shared resources into V2 cached dependencies", func() {
+					runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeTwoLayer)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(runReq.CachedDependencies).To(ConsistOf(executor.CachedDependency{
+						Name:              "app bits",
+						From:              "blobstore.com/bits/app-bits",
+						To:                "/usr/local/app",
+						CacheKey:          "sha256:some-sha256",
+						LogSource:         "",
+						ChecksumAlgorithm: "sha256",
+						ChecksumValue:     "some-sha256",
+					}))
+				})
 			})
 		})
 	})
@@ -504,7 +539,7 @@ var _ = Describe("Resources", func() {
 		})
 
 		It("returns a valid run request", func() {
-			runReq, err := rep.NewRunRequestFromTask(task, stackPathMap)
+			runReq, err := rep.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(runReq.Tags).To(Equal(executor.Tags{
 				rep.ResultFileTag: task.ResultFile,
@@ -558,7 +593,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("sets a nil network on the result", func() {
-				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap)
+				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.Network).To(BeNil())
 			})
@@ -570,14 +605,14 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("it sets an empty certificate properties on the result", func() {
-				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap)
+				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.CertificateProperties).To(Equal(executor.CertificateProperties{}))
 			})
 		})
 
 		It("disables the envoy proxy", func() {
-			runReq, err := rep.NewRunRequestFromTask(task, stackPathMap)
+			runReq, err := rep.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(runReq.EnableContainerProxy).To(BeFalse())
 		})
@@ -588,13 +623,13 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("disables the envoy proxy", func() {
-				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap)
+				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.EnableContainerProxy).To(BeFalse())
 			})
 
 			It("uses TotalDiskLimit as the disk scope", func() {
-				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap)
+				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.DiskScope).To(Equal(executor.TotalDiskLimit))
 			})
@@ -606,7 +641,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("returns an error", func() {
-				_, err := rep.NewRunRequestFromTask(task, stackPathMap)
+				_, err := rep.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).To(MatchError("invalid character '{' looking for beginning of object key string"))
 			})
 		})
@@ -630,14 +665,14 @@ var _ = Describe("Resources", func() {
 						DestinationPath: "/usr/local/other",
 						LayerType:       models.LayerTypeExclusive,
 						MediaType:       models.MediaTypeTgz,
-						DigestAlgorithm: models.DigestAlgorithmSha512,
-						DigestValue:     "some-sha512",
+						DigestAlgorithm: models.DigestAlgorithmSha256,
+						DigestValue:     "some-other-sha256",
 					},
 				}
 			})
 
 			It("converts exclusive resources into run requests setup action", func() {
-				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap)
+				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.Setup).To(Equal(models.WrapAction(
 					models.Parallel(
@@ -645,18 +680,18 @@ var _ = Describe("Resources", func() {
 							Artifact:          "other bits with checksum",
 							From:              "blobstore.com/bits/other-bits-checksum",
 							To:                "/usr/local/other",
-							CacheKey:          "sha512:some-sha512",
+							CacheKey:          "sha256:some-other-sha256",
 							LogSource:         "",
 							User:              "legacy-jim",
-							ChecksumAlgorithm: "sha512",
-							ChecksumValue:     "some-sha512",
+							ChecksumAlgorithm: "sha256",
+							ChecksumValue:     "some-other-sha256",
 						},
 					),
 				)))
 			})
 
 			It("converts shared resources into V2 cached dependencies", func() {
-				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap)
+				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.CachedDependencies).To(ConsistOf(executor.CachedDependency{
 					Name:              "app bits",
@@ -667,6 +702,41 @@ var _ = Describe("Resources", func() {
 					ChecksumAlgorithm: "sha256",
 					ChecksumValue:     "some-sha256",
 				}))
+			})
+
+			Context("when the layering mode is 'two-layer'", func() {
+				It("converts the rootfs to a preloaded+layer scheme, and first exclusive resource into the extra layer in the rootfs", func() {
+					runReq, err := rep.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeTwoLayer)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(runReq.RootFSPath).To(Equal(fmt.Sprintf(
+						"preloaded+layer:%s?layer=%s&layer_path=%s&layer_digest=%s",
+						stackPathMap["cflinuxfs2"],
+						url.QueryEscape(task.ImageLayers[1].Url),
+						url.QueryEscape(task.ImageLayers[1].DestinationPath),
+						url.QueryEscape(task.ImageLayers[1].DigestValue),
+					)))
+				})
+
+				It("excludes the converted exclusive resource from the setup actions", func() {
+					runReq, err := rep.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeTwoLayer)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(runReq.Setup).To(BeNil())
+				})
+
+				It("converts shared resources into V2 cached dependencies", func() {
+					runReq, err := rep.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeTwoLayer)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(runReq.CachedDependencies).To(ConsistOf(executor.CachedDependency{
+						Name:              "app bits",
+						From:              "blobstore.com/bits/app-bits",
+						To:                "/usr/local/app",
+						CacheKey:          "sha256:some-sha256",
+						LogSource:         "",
+						ChecksumAlgorithm: "sha256",
+						ChecksumValue:     "some-sha256",
+					}))
+				})
 			})
 		})
 	})

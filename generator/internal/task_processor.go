@@ -24,14 +24,16 @@ type taskProcessor struct {
 	containerDelegate ContainerDelegate
 	cellID            string
 	stackPathMap      rep.StackPathMap
+	layeringMode      string
 }
 
-func NewTaskProcessor(bbs bbs.InternalClient, containerDelegate ContainerDelegate, cellID string, stackPathMap rep.StackPathMap) TaskProcessor {
+func NewTaskProcessor(bbs bbs.InternalClient, containerDelegate ContainerDelegate, cellID string, stackPathMap rep.StackPathMap, layeringMode string) TaskProcessor {
 	return &taskProcessor{
 		bbsClient:         bbs,
 		containerDelegate: containerDelegate,
 		cellID:            cellID,
 		stackPathMap:      stackPathMap,
+		layeringMode:      layeringMode,
 	}
 }
 
@@ -75,7 +77,7 @@ func (p *taskProcessor) processActiveContainer(logger lager.Logger, container ex
 		return
 	}
 
-	runReq, err := rep.NewRunRequestFromTask(task, p.stackPathMap)
+	runReq, err := rep.NewRunRequestFromTask(task, p.stackPathMap, p.layeringMode)
 	if err != nil {
 		logger.Error("failed-to-construct-run-request", err)
 		return

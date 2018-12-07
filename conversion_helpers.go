@@ -157,7 +157,11 @@ func NewRunRequestFromDesiredLRP(
 	lrpKey *models.ActualLRPKey,
 	lrpInstanceKey *models.ActualLRPInstanceKey,
 	stackPathMap StackPathMap,
+	layeringMode string,
 ) (executor.RunRequest, error) {
+	desiredLRPCopy := *desiredLRP
+	desiredLRP = &desiredLRPCopy
+	desiredLRP.RootFs, desiredLRP.ImageLayers = ConvertPreloadedRootFS(desiredLRP.RootFs, desiredLRP.ImageLayers, layeringMode)
 	desiredLRP = desiredLRP.VersionDownTo(format.V2)
 
 	diskScope, err := diskScopeForRootFS(desiredLRP.RootFs)
@@ -225,7 +229,12 @@ func NewRunRequestFromDesiredLRP(
 	return executor.NewRunRequest(containerGuid, &runInfo, tags), nil
 }
 
-func NewRunRequestFromTask(task *models.Task, stackPathMap StackPathMap) (executor.RunRequest, error) {
+func NewRunRequestFromTask(task *models.Task, stackPathMap StackPathMap, layeringMode string) (executor.RunRequest, error) {
+	taskDefinitionCopy := *task.TaskDefinition
+	taskCopy := *task
+	task = &taskCopy
+	task.TaskDefinition = &taskDefinitionCopy
+	task.RootFs, task.ImageLayers = ConvertPreloadedRootFS(task.RootFs, task.ImageLayers, layeringMode)
 	cachedDependencies, setupAction := convertImageLayers(task.TaskDefinition)
 
 	diskScope, err := diskScopeForRootFS(task.RootFs)

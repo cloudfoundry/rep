@@ -92,6 +92,7 @@ type RepConfig struct {
 	EnableConsulServiceRegistration bool                  `json:"enable_consul_service_registration,omitempty"`
 	EvacuationPollingInterval       durationjson.Duration `json:"evacuation_polling_interval,omitempty"`
 	EvacuationTimeout               durationjson.Duration `json:"evacuation_timeout,omitempty"`
+	LayeringMode                    string                `json:"layering_mode,omitempty"`
 	ListenAddr                      string                `json:"listen_addr,omitempty"`
 	ListenAddrSecurable             string                `json:"listen_addr_securable,omitempty"`
 	LockRetryInterval               durationjson.Duration `json:"lock_retry_interval,omitempty"`

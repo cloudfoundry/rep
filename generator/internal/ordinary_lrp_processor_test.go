@@ -35,7 +35,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 		containerDelegate = new(fake_internal.FakeContainerDelegate)
 		evacuationReporter = &fake_evacuation_context.FakeEvacuationReporter{}
 		evacuationReporter.EvacuatingReturns(false)
-		processor = internal.NewLRPProcessor(bbsClient, containerDelegate, nil, expectedCellID, rep.StackPathMap{}, evacuationReporter)
+		processor = internal.NewLRPProcessor(bbsClient, containerDelegate, nil, expectedCellID, rep.StackPathMap{}, "", evacuationReporter)
 		logger = lagertest.NewTestLogger("test")
 	})
 
@@ -132,7 +132,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 					It("runs the container", func() {
 						Expect(containerDelegate.RunContainerCallCount()).To(Equal(1))
 
-						expectedRunRequest, err := rep.NewRunRequestFromDesiredLRP(container.Guid, desiredLRP, &expectedLrpKey, &expectedInstanceKey, rep.StackPathMap{})
+						expectedRunRequest, err := rep.NewRunRequestFromDesiredLRP(container.Guid, desiredLRP, &expectedLrpKey, &expectedInstanceKey, rep.StackPathMap{}, "")
 						Expect(err).NotTo(HaveOccurred())
 
 						delegateLogger, runRequest := containerDelegate.RunContainerArgsForCall(0)

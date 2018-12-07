@@ -42,9 +42,10 @@ func NewLRPProcessor(
 	metronClient loggingclient.IngressClient,
 	cellID string,
 	stackPathMap rep.StackPathMap,
+	layeringMode string,
 	evacuationReporter evacuation_context.EvacuationReporter,
 ) LRPProcessor {
-	ordinaryProcessor := newOrdinaryLRPProcessor(bbsClient, containerDelegate, cellID, stackPathMap)
+	ordinaryProcessor := newOrdinaryLRPProcessor(bbsClient, containerDelegate, cellID, stackPathMap, layeringMode)
 	evacuationProcessor := newEvacuationLRPProcessor(bbsClient, containerDelegate, metronClient, cellID)
 	return &lrpProcessor{
 		evacuationReporter:  evacuationReporter,
