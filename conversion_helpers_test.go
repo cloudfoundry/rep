@@ -1,6 +1,8 @@
 package rep_test
 
 import (
+	"fmt"
+	"net/url"
 	"strconv"
 
 	"code.cloudfoundry.org/bbs/models"
@@ -665,6 +667,153 @@ var _ = Describe("Resources", func() {
 					ChecksumAlgorithm: "sha256",
 					ChecksumValue:     "some-sha256",
 				}))
+			})
+		})
+	})
+
+	Describe("ConvertPreloadedRootFS", func() {
+		var imageLayers []*models.ImageLayer
+		BeforeEach(func() {
+			imageLayers = []*models.ImageLayer{
+				&models.ImageLayer{
+					Name:            "bpal-tgz",
+					Url:             "http://file-server.service.cf.internal:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
+					DestinationPath: "/tmp/lifecycle",
+					LayerType:       models.LayerTypeShared,
+					MediaType:       models.MediaTypeTgz,
+				},
+				&models.ImageLayer{
+					Name:            "bpal-tar",
+					Url:             "http://file-server.internal/buildpack_app_lifecycle/b.tar",
+					DestinationPath: "/tmp/lifecycle2",
+					DigestAlgorithm: models.DigestAlgorithmSha512,
+					DigestValue:     "long-digest",
+					LayerType:       models.LayerTypeExclusive,
+					MediaType:       models.MediaTypeTar,
+				},
+				&models.ImageLayer{
+					Name:            "droplet",
+					Url:             "https://droplet.com/download",
+					DigestAlgorithm: models.DigestAlgorithmSha256,
+					DigestValue:     "the-real-digest",
+					DestinationPath: "/home/vcap",
+					LayerType:       models.LayerTypeExclusive,
+					MediaType:       models.MediaTypeTgz,
+				},
+				&models.ImageLayer{
+					Name:            "ruby_buildpack",
+					Url:             "https://blobstore.internal/ruby_buildpack.zip",
+					DestinationPath: "/tmp/buildpacks/ruby_buildpack",
+					DigestAlgorithm: models.DigestAlgorithmSha256,
+					DigestValue:     "ruby-buildpack-digest",
+					LayerType:       models.LayerTypeExclusive,
+					MediaType:       models.MediaTypeZip,
+				},
+			}
+		})
+
+		Context("when the layering mode is single-layer", func() {
+			var layeringMode string
+			BeforeEach(func() {
+				layeringMode = rep.LayeringModeSingleLayer
+			})
+
+			It("doesn't convert preloaded+layer rootfs URLs ", func() {
+				rootFS := "preloaded+layer:cflinuxfs2?layer=https://blobstore.internal/layer1.tgz?layer_path=/tmp/asset1&layer_digest=asdlfkjsf"
+				newRootFS, newImageLayers := rep.ConvertPreloadedRootFS(rootFS, imageLayers, layeringMode)
+				Expect(newRootFS).To(Equal(rootFS))
+				Expect(newImageLayers).To(Equal(imageLayers))
+			})
+
+			It("doesn't convert docker rootfs URLs", func() {
+				rootFS := "docker:///cfdiegodocker/grace"
+				newRootFS, newImageLayers := rep.ConvertPreloadedRootFS(rootFS, imageLayers, layeringMode)
+				Expect(newRootFS).To(Equal(rootFS))
+				Expect(newImageLayers).To(Equal(imageLayers))
+			})
+
+			It("doesn't convert preloaded rootfs URLs", func() {
+				rootFS := "preloaded:cflinuxfs2"
+				newRootFS, newImageLayers := rep.ConvertPreloadedRootFS(rootFS, imageLayers, layeringMode)
+				Expect(newRootFS).To(Equal(rootFS))
+				Expect(newImageLayers).To(Equal(imageLayers))
+			})
+		})
+
+		Context("when the layering mode is two-layer", func() {
+			var layeringMode string
+			BeforeEach(func() {
+				layeringMode = rep.LayeringModeTwoLayer
+			})
+
+			It("doesn't convert preloaded+layer rootfs URLs ", func() {
+				rootFS := "preloaded+layer:cflinuxfs2?layer=https://blobstore.internal/layer1.tgz?layer_path=/tmp/asset1&layer_digest=asdlfkjsf"
+				newRootFS, newImageLayers := rep.ConvertPreloadedRootFS(rootFS, imageLayers, layeringMode)
+				Expect(newRootFS).To(Equal(rootFS))
+				Expect(newImageLayers).To(Equal(imageLayers))
+			})
+
+			It("doesn't convert docker rootfs URLs", func() {
+				rootFS := "docker:///cfdiegodocker/grace"
+				newRootFS, newImageLayers := rep.ConvertPreloadedRootFS(rootFS, imageLayers, layeringMode)
+				Expect(newRootFS).To(Equal(rootFS))
+				Expect(newImageLayers).To(Equal(imageLayers))
+			})
+
+			Context("when the rootfs scheme is 'preloaded'", func() {
+				var rootFS string
+				BeforeEach(func() {
+					rootFS = "preloaded:cflinuxfs2"
+				})
+
+				It("converts the rootfs URL scheme to 'preloaded+layer' and converts the first exclusive sha256 tgz layer to the extra layer", func() {
+					newRootFS, newImageLayers := rep.ConvertPreloadedRootFS(rootFS, imageLayers, layeringMode)
+					expectedRootFS := fmt.Sprintf("preloaded+layer:cflinuxfs2?layer=%s&layer_path=%s&layer_digest=the-real-digest", url.QueryEscape("https://droplet.com/download"), url.QueryEscape("/home/vcap"))
+					expectedLayers := []*models.ImageLayer{
+						imageLayers[0],
+						imageLayers[1],
+						imageLayers[3],
+					}
+					Expect(newRootFS).To(Equal(expectedRootFS))
+					Expect(newImageLayers).To(Equal(expectedLayers))
+				})
+
+				Context("when the image layers are only shared image types", func() {
+					BeforeEach(func() {
+						imageLayers[1].LayerType = models.LayerTypeShared
+						imageLayers[2].LayerType = models.LayerTypeShared
+						imageLayers[3].LayerType = models.LayerTypeShared
+					})
+
+					It("doesn't convert rootfs URLs", func() {
+						newRootFS, newImageLayers := rep.ConvertPreloadedRootFS(rootFS, imageLayers, layeringMode)
+						Expect(newRootFS).To(Equal(rootFS))
+						Expect(newImageLayers).To(Equal(imageLayers))
+					})
+				})
+
+				Context("when there is no layer with a tgz media type", func() {
+					BeforeEach(func() {
+						imageLayers[2].MediaType = models.MediaTypeZip
+					})
+
+					It("doesn't convert rootfs URLs", func() {
+						newRootFS, newImageLayers := rep.ConvertPreloadedRootFS(rootFS, imageLayers, layeringMode)
+						Expect(newRootFS).To(Equal(rootFS))
+						Expect(newImageLayers).To(Equal(imageLayers))
+					})
+				})
+				Context("when there is no layer with a sha256 digest algorithm", func() {
+					BeforeEach(func() {
+						imageLayers[2].DigestAlgorithm = models.DigestAlgorithmInvalid
+					})
+
+					It("doesn't convert rootfs URLs", func() {
+						newRootFS, newImageLayers := rep.ConvertPreloadedRootFS(rootFS, imageLayers, layeringMode)
+						Expect(newRootFS).To(Equal(rootFS))
+						Expect(newImageLayers).To(Equal(imageLayers))
+					})
+				})
 			})
 		})
 	})

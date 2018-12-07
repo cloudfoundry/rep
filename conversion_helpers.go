@@ -3,8 +3,10 @@ package rep
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"code.cloudfoundry.org/bbs/format"
 	"code.cloudfoundry.org/bbs/models"
@@ -98,6 +100,55 @@ func ActualLRPNetInfoFromContainer(container executor.Container) (*models.Actual
 
 func LRPContainerGuid(processGuid, instanceGuid string) string {
 	return instanceGuid
+}
+
+const (
+	LayeringModeSingleLayer = "single-layer"
+	LayeringModeTwoLayer    = "two-layer"
+)
+
+// ConvertPreloadedRootFS takes in a rootFS URL and a list of image layers and in most cases
+// just returns the same rootFS URL and list of image layers.
+//
+// In the case where all of the following are true:
+// - layeringMode == LayeringModeTwoLayer
+// - the rootfs URL has a `preloaded` scheme
+// - the list of image layers contains at least one image layer that has
+//   an `exclusive` layer type, `tgz` media type, and a `sha256` digest algorithm.
+// then the rootfs URL will be converted to have a `preloaded+layer` scheme and
+// a query string that references the first image layer that matches all of those
+// restrictions. This image layer will also be removed from the list.
+func ConvertPreloadedRootFS(rootFS string, imageLayers []*models.ImageLayer, layeringMode string) (string, []*models.ImageLayer) {
+	if layeringMode != LayeringModeTwoLayer {
+		return rootFS, imageLayers
+	}
+	if !strings.HasPrefix(rootFS, "preloaded:") {
+		return rootFS, imageLayers
+	}
+
+	newImageLayers := []*models.ImageLayer{}
+	var newRootFS string
+	for _, v := range imageLayers {
+		isExclusiveLayer := v.GetLayerType() == models.LayerTypeExclusive
+		isMediaTypeTgz := v.GetMediaType() == models.MediaTypeTgz
+		isSha256 := v.GetDigestAlgorithm() == models.DigestAlgorithmSha256
+		suitableLayer := isExclusiveLayer && isMediaTypeTgz && isSha256
+		if suitableLayer && newRootFS == "" {
+			rootFSArray := strings.Split(rootFS, ":")
+			newRootFS = fmt.Sprintf("preloaded+layer:%s?layer=%s&layer_path=%s&layer_digest=%s",
+				rootFSArray[1],
+				url.QueryEscape(v.GetUrl()),
+				url.QueryEscape(v.DestinationPath),
+				url.QueryEscape(v.DigestValue),
+			)
+			continue
+		}
+		newImageLayers = append(newImageLayers, v)
+	}
+	if newRootFS == "" {
+		return rootFS, imageLayers
+	}
+	return newRootFS, newImageLayers
 }
 
 func NewRunRequestFromDesiredLRP(
