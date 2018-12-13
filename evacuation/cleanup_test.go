@@ -92,29 +92,23 @@ var _ = Describe("EvacuationCleanup", func() {
 
 	Context("when the process is signalled", func() {
 		var (
-			actualLRPGroups                          []*models.ActualLRPGroup
-			actualLRPGroup, evacuatingActualLRPGroup *models.ActualLRPGroup
+			evacuatingActualLRP, evacuatingActualLRPWithReplacement *models.ActualLRP
 		)
 
 		BeforeEach(func() {
-			runningActualLRPGroup := &models.ActualLRPGroup{
-				Instance: model_helpers.NewValidActualLRP("running-process-guid", 0),
-			}
-			evacuatingActualLRPGroup = &models.ActualLRPGroup{
-				Evacuating: model_helpers.NewValidActualLRP("evacuating-process-guid", 0),
-			}
-			actualLRPGroup = &models.ActualLRPGroup{
-				Instance:   model_helpers.NewValidActualLRP("process-guid", 0),
-				Evacuating: model_helpers.NewValidActualLRP("process-guid", 0),
+			evacuatingActualLRP = model_helpers.NewValidEvacuatingActualLRP("evacuating-process-guid", 0)
+
+			evacuatingActualLRPWithReplacementProcessGuid := "process-guid"
+			evacuatingActualLRPWithReplacement = model_helpers.NewValidEvacuatingActualLRP(evacuatingActualLRPWithReplacementProcessGuid, 0)
+
+			actualLRPs := []*models.ActualLRP{
+				model_helpers.NewValidActualLRP("running-process-guid", 0),
+				evacuatingActualLRP,
+				evacuatingActualLRPWithReplacement,
+				model_helpers.NewValidActualLRP(evacuatingActualLRPWithReplacementProcessGuid, 0),
 			}
 
-			actualLRPGroups = []*models.ActualLRPGroup{
-				runningActualLRPGroup,
-				evacuatingActualLRPGroup,
-				actualLRPGroup,
-			}
-
-			fakeBBSClient.ActualLRPGroupsReturns(actualLRPGroups, nil)
+			fakeBBSClient.ActualLRPsReturns(actualLRPs, nil)
 
 			fakeExecutorClientCopy := fakeExecutorClient
 			fakeExecutorClient.ListContainersStub = func(lager.Logger) ([]executor.Container, error) {
@@ -145,19 +139,19 @@ var _ = Describe("EvacuationCleanup", func() {
 
 		It("removes all evacuating actual lrps associated with the cell", func() {
 			Eventually(errCh).Should(Receive(nil))
-			Expect(fakeBBSClient.ActualLRPGroupsCallCount()).To(Equal(1))
-			_, filter := fakeBBSClient.ActualLRPGroupsArgsForCall(0)
+			Expect(fakeBBSClient.ActualLRPsCallCount()).To(Equal(1))
+			_, filter := fakeBBSClient.ActualLRPsArgsForCall(0)
 			Expect(filter).To(Equal(models.ActualLRPFilter{CellID: cellID}))
 
 			Expect(fakeBBSClient.RemoveEvacuatingActualLRPCallCount()).To(Equal(2))
 
 			_, lrpKey, lrpInstanceKey := fakeBBSClient.RemoveEvacuatingActualLRPArgsForCall(0)
-			Expect(*lrpKey).To(Equal(evacuatingActualLRPGroup.Evacuating.ActualLRPKey))
-			Expect(*lrpInstanceKey).To(Equal(evacuatingActualLRPGroup.Evacuating.ActualLRPInstanceKey))
+			Expect(*lrpKey).To(Equal(evacuatingActualLRP.ActualLRPKey))
+			Expect(*lrpInstanceKey).To(Equal(evacuatingActualLRP.ActualLRPInstanceKey))
 
 			_, lrpKey, lrpInstanceKey = fakeBBSClient.RemoveEvacuatingActualLRPArgsForCall(1)
-			Expect(*lrpKey).To(Equal(actualLRPGroup.Evacuating.ActualLRPKey))
-			Expect(*lrpInstanceKey).To(Equal(actualLRPGroup.Evacuating.ActualLRPInstanceKey))
+			Expect(*lrpKey).To(Equal(evacuatingActualLRPWithReplacement.ActualLRPKey))
+			Expect(*lrpInstanceKey).To(Equal(evacuatingActualLRPWithReplacement.ActualLRPInstanceKey))
 		})
 
 		It("logs the number of stranded evacuating actual lrps", func() {
@@ -284,7 +278,7 @@ var _ = Describe("EvacuationCleanup", func() {
 
 		Describe("when fetching the actual lrp groups fails", func() {
 			BeforeEach(func() {
-				fakeBBSClient.ActualLRPGroupsReturns(nil, errors.New("failed"))
+				fakeBBSClient.ActualLRPsReturns(nil, errors.New("failed"))
 			})
 
 			It("exits with an error", func() {

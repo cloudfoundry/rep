@@ -86,19 +86,17 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	}()
 
 	go func() {
-		filter := models.ActualLRPFilter{CellID: g.cellID}
-		groups, err := g.bbs.ActualLRPGroups(logger, filter)
+		lrps, err := g.bbs.ActualLRPs(logger, models.ActualLRPFilter{CellID: g.cellID})
 		if err != nil {
-			logger.Error("failed-to-retrieve-lrp-groups", err)
+			logger.Error("failed-to-retrieve-lrps", err)
 			err = fmt.Errorf("failed to retrieve lrps: %s", err.Error())
 		}
 
-		for _, group := range groups {
-			if group.Instance != nil {
-				instanceLRPs[rep.LRPContainerGuid(group.Instance.GetProcessGuid(), group.Instance.GetInstanceGuid())] = *group.Instance
-			}
-			if group.Evacuating != nil {
-				evacuatingLRPs[rep.LRPContainerGuid(group.Evacuating.GetProcessGuid(), group.Evacuating.GetInstanceGuid())] = *group.Evacuating
+		for _, lrp := range lrps {
+			if lrp.GetPresence() == models.ActualLRP_Evacuating {
+				evacuatingLRPs[lrp.GetInstanceGuid()] = *lrp
+			} else {
+				instanceLRPs[lrp.GetInstanceGuid()] = *lrp
 			}
 		}
 		errChan <- err

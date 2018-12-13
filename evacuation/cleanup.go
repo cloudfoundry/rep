@@ -64,20 +64,19 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 		logger.Info("signalled", lager.Data{"signal": signal})
 	}
 
-	actualLRPGroups, err := e.bbsClient.ActualLRPGroups(logger, models.ActualLRPFilter{CellID: e.cellID})
+	actualLRPs, err := e.bbsClient.ActualLRPs(logger, models.ActualLRPFilter{CellID: e.cellID})
 	if err != nil {
 		logger.Error("failed-fetching-actual-lrp-groups", err)
 		return err
 	}
 
 	strandedEvacuationCount := 0
-	for _, group := range actualLRPGroups {
-		if group.Evacuating == nil {
+	for _, actualLRP := range actualLRPs {
+		if actualLRP.GetPresence() != models.ActualLRP_Evacuating {
 			continue
 		}
 
 		strandedEvacuationCount++
-		actualLRP := group.Evacuating
 		err = e.bbsClient.RemoveEvacuatingActualLRP(logger, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
 		if err != nil {
 			logger.Error("failed-removing-evacuating-actual-lrp", err, lager.Data{"lrp-key": actualLRP.ActualLRPKey})

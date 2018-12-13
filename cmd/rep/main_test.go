@@ -65,11 +65,11 @@ var _ = Describe("The Rep", func() {
 		flushEvents chan struct{}
 	)
 
-	var getActualLRPGroups = func(logger lager.Logger) func() []*models.ActualLRPGroup {
-		return func() []*models.ActualLRPGroup {
-			actualLRPGroups, err := bbsClient.ActualLRPGroups(logger, models.ActualLRPFilter{})
+	var getActualLRPs = func(logger lager.Logger) func() []*models.ActualLRP {
+		return func() []*models.ActualLRP {
+			actualLRPs, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{})
 			Expect(err).NotTo(HaveOccurred())
-			return actualLRPGroups
+			return actualLRPs
 		}
 	}
 
@@ -92,7 +92,7 @@ var _ = Describe("The Rep", func() {
 		bbsClient, err = bbs.NewClient(bbsURL.String(), caFile, clientCertFile, clientKeyFile, 0, 0)
 		Expect(err).NotTo(HaveOccurred())
 
-		Eventually(getActualLRPGroups(logger), 5*pollingInterval).Should(BeEmpty())
+		Eventually(getActualLRPs(logger), 5*pollingInterval).Should(BeEmpty())
 		flushEvents = make(chan struct{})
 		fakeGarden = ghttp.NewUnstartedServer()
 		// these tests only look for the start of a sequence of requests
@@ -859,7 +859,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 			})
 
 			It("eventually reaps actual LRPs with no corresponding container", func() {
-				Eventually(getActualLRPGroups(logger), 5*pollingInterval).Should(BeEmpty())
+				Eventually(getActualLRPs(logger), 5*pollingInterval).Should(BeEmpty())
 			})
 		})
 
