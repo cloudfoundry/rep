@@ -179,6 +179,11 @@ func NewRunRequestFromDesiredLRP(
 		return executor.RunRequest{}, err
 	}
 
+	metricTags := convertMetricTags(desiredLRP.MetricTags, availableDynamicMetricTags{
+		index:        lrpKey.Index,
+		instanceGuid: lrpInstanceKey.InstanceGuid,
+	})
+
 	runInfo := executor.RunInfo{
 		RootFSPath: rootFSPath,
 		CPUWeight:  uint(desiredLRP.CpuWeight),
@@ -193,6 +198,7 @@ func NewRunRequestFromDesiredLRP(
 		MetricsConfig: executor.MetricsConfig{
 			Guid:  desiredLRP.MetricsGuid,
 			Index: int(lrpKey.Index),
+			Tags:  metricTags,
 		},
 		StartTimeoutMs:     uint(desiredLRP.StartTimeoutMs),
 		Privileged:         desiredLRP.Privileged,
@@ -409,4 +415,26 @@ func diskScopeForRootFS(rootFS string) (executor.DiskLimitScope, error) {
 		return executor.ExclusiveDiskLimit, nil
 	}
 	return executor.TotalDiskLimit, nil
+}
+
+type availableDynamicMetricTags struct {
+	index        int32
+	instanceGuid string
+}
+
+func convertMetricTags(metricTags map[string]*models.MetricTagValue, info availableDynamicMetricTags) map[string]string {
+	tags := make(map[string]string)
+	for k, v := range metricTags {
+		if v.Dynamic > 0 {
+			switch v.Dynamic {
+			case models.MetricTagDynamicValueIndex:
+				tags[k] = strconv.FormatInt(int64(info.index), 10)
+			case models.MetricTagDynamicValueInstanceGuid:
+				tags[k] = info.instanceGuid
+			}
+		} else {
+			tags[k] = v.Static
+		}
+	}
+	return tags
 }

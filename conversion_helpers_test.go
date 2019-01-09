@@ -284,6 +284,9 @@ var _ = Describe("Resources", func() {
 				MetricsConfig: executor.MetricsConfig{
 					Guid:  desiredLRP.MetricsGuid,
 					Index: int(actualLRP.Index),
+					Tags: map[string]string{
+						"source_id": "some-metrics-guid",
+					},
 				},
 				StartTimeoutMs: uint(desiredLRP.StartTimeoutMs),
 				Privileged:     desiredLRP.Privileged,
@@ -513,6 +516,29 @@ var _ = Describe("Resources", func() {
 						ChecksumValue:     "some-sha256",
 					}))
 				})
+			})
+		})
+
+		Context("when metric tags are specified", func() {
+			BeforeEach(func() {
+				desiredLRP.MetricTags = map[string]*models.MetricTagValue{
+					"tag1":         {Static: "foo"},
+					"index":        {Dynamic: models.MetricTagDynamicValueIndex},
+					"instanceGuid": {Dynamic: models.MetricTagDynamicValueInstanceGuid},
+				}
+			})
+
+			It("converts static tags directly to the provided string", func() {
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.RunInfo.MetricsConfig.Tags).To(HaveKeyWithValue("tag1", "foo"))
+			})
+
+			It("populates tags with dynamic values according its enum value ", func() {
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.RunInfo.MetricsConfig.Tags).To(HaveKeyWithValue("index", "9"))
+				Expect(runReq.RunInfo.MetricsConfig.Tags).To(HaveKeyWithValue("instanceGuid", "some-guid"))
 			})
 		})
 	})
