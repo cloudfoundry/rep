@@ -184,7 +184,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		LagerConfig: lagerflags.LagerConfig{
 			LogLevel: "info",
 		},
-		GenerateSuspectActualLRPs: false,
 	}
 })
 
