@@ -49,10 +49,6 @@ import (
 	"github.com/tedsuo/rata"
 )
 
-const (
-	bbsPingTimeout = 5 * time.Minute
-)
-
 var configFilePath = flag.String(
 	"config",
 	"",
@@ -349,19 +345,6 @@ func startTLSServer(addr string, handler http.Handler, tlsConfig *tls.Config) if
 			return err
 		}
 		listener = tls.NewListener(listener, tlsConfig)
-		close(ready)
-		go http.Serve(listener, handler)
-		<-signals
-		return listener.Close()
-	})
-}
-
-func startServer(addr string, handler http.Handler) ifrit.Runner {
-	return ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
-		listener, err := net.Listen("tcp", addr)
-		if err != nil {
-			return err
-		}
 		close(ready)
 		go http.Serve(listener, handler)
 		<-signals

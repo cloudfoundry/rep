@@ -1,6 +1,7 @@
 package rep_test
 
 import (
+	"testing"
 	"time"
 
 	"code.cloudfoundry.org/cfhttp"
@@ -10,16 +11,12 @@ import (
 	"code.cloudfoundry.org/rep/repfakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"testing"
 )
 
 var (
 	cfHttpTimeout time.Duration
 	auctionRep    *repfakes.FakeClient
 	factory       rep.ClientFactory
-
-	client, clientForServerThatErrors rep.Client
 
 	fakeExecutorClient *executorfakes.FakeClient
 	fakeEvacuatable    *fake_evacuation_context.FakeEvacuatable

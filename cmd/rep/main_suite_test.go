@@ -13,8 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"google.golang.org/grpc/grpclog"
-
 	"code.cloudfoundry.org/bbs"
 	bbsconfig "code.cloudfoundry.org/bbs/cmd/bbs/config"
 	bbstestrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
@@ -34,12 +32,12 @@ import (
 	"github.com/onsi/gomega/ghttp"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
+	"google.golang.org/grpc/grpclog"
 )
 
 var (
 	cellID              string
 	representativePath  string
-	natsPort            int
 	serverPort          uint16
 	serverPortSecurable uint16
 	consulRunner        *consulrunner.ClusterRunner

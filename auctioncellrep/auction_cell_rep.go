@@ -32,7 +32,6 @@ type AuctionCellRep struct {
 	stackPathMap             rep.StackPathMap
 	rootFSProviders          rep.RootFSProviders
 	containerMetricsProvider rep.ContainerMetricsProvider
-	stack                    string
 	zone                     string
 	client                   executor.Client
 	evacuationReporter       evacuation_context.EvacuationReporter

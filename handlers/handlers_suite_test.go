@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"testing"
 
 	executorfakes "code.cloudfoundry.org/executor/fakes"
 	"code.cloudfoundry.org/lager/lagertest"
@@ -15,12 +16,9 @@ import (
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"code.cloudfoundry.org/rep/handlers"
 	"code.cloudfoundry.org/rep/handlers/handlersfakes"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/rata"
-
-	"testing"
 )
 
 func TestAuctionHttpHandlers(t *testing.T) {
@@ -33,8 +31,6 @@ var requestGenerator *rata.RequestGenerator
 var client *http.Client
 var fakeLocalRep *auctioncellrepfakes.FakeAuctionCellClient
 var fakeMetricCollector *handlersfakes.FakeMetricCollector
-var containerMetrics *rep.ContainerMetricsCollection
-var repGuid string
 var logger *lagertest.TestLogger
 
 var _ = BeforeEach(func() {

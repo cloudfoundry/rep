@@ -3,17 +3,15 @@ package harmonizer
 import (
 	"os"
 
-	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/operationq"
 	"code.cloudfoundry.org/rep/generator"
 )
 
 type EventConsumer struct {
-	logger         lager.Logger
-	executorClient executor.Client
-	generator      generator.Generator
-	queue          operationq.Queue
+	logger    lager.Logger
+	generator generator.Generator
+	queue     operationq.Queue
 }
 
 func NewEventConsumer(
