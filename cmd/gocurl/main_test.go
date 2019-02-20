@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"code.cloudfoundry.org/cfhttp"
+	"code.cloudfoundry.org/tlsconfig"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
@@ -91,7 +91,10 @@ var _ = Describe("Drain", func() {
 			tlsCertPath = filepath.Join(fixturesPath, "localhost.crt")
 			tlsKeyPath = filepath.Join(fixturesPath, "localhost.key")
 
-			tlsConfig, err := cfhttp.NewTLSConfig(tlsCertPath, tlsKeyPath, tlsCACertPath)
+			tlsConfig, err := tlsconfig.Build(
+				tlsconfig.WithInternalServiceDefaults(),
+				tlsconfig.WithIdentityFromFile(tlsCertPath, tlsKeyPath),
+			).Server(tlsconfig.WithClientAuthenticationFromFile(tlsCACertPath))
 			Expect(err).NotTo(HaveOccurred())
 
 			apiServer.HTTPTestServer.TLS = tlsConfig

@@ -41,6 +41,7 @@ import (
 	"code.cloudfoundry.org/rep/handlers"
 	"code.cloudfoundry.org/rep/harmonizer"
 	"code.cloudfoundry.org/rep/maintain"
+	"code.cloudfoundry.org/tlsconfig"
 	"github.com/hashicorp/consul/api"
 	"github.com/nu7hatch/gouuid"
 	"github.com/tedsuo/ifrit"
@@ -331,7 +332,10 @@ func initializeServer(
 		}
 	}
 
-	tlsConfig, err := cfhttp.NewTLSConfig(repConfig.CertFile, repConfig.KeyFile, repConfig.CaCertFile)
+	tlsConfig, err := tlsconfig.Build(
+		tlsconfig.WithInternalServiceDefaults(),
+		tlsconfig.WithIdentityFromFile(repConfig.CertFile, repConfig.KeyFile),
+	).Server(tlsconfig.WithClientAuthenticationFromFile(repConfig.CaCertFile))
 	if err != nil {
 		logger.Fatal("tls-configuration-failed", err)
 	}

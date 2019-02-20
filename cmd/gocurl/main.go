@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 
-	"code.cloudfoundry.org/cfhttp"
+	"code.cloudfoundry.org/tlsconfig"
 )
 
 var (
@@ -29,7 +29,10 @@ func main() {
 	var tlsConfig *tls.Config
 	var err error
 	if *tlsKeyPath != "" || *tlsCertPath != "" || *tlsCACertPath != "" {
-		tlsConfig, err = cfhttp.NewTLSConfig(*tlsCertPath, *tlsKeyPath, *tlsCACertPath)
+		tlsConfig, err = tlsconfig.Build(
+			tlsconfig.WithInternalServiceDefaults(),
+			tlsconfig.WithIdentityFromFile(*tlsCertPath, *tlsKeyPath),
+		).Client(tlsconfig.WithAuthorityFromFile(*tlsCACertPath))
 		if err != nil {
 			log.Printf("TLS config mismatch: %s\n", err)
 			os.Exit(1)

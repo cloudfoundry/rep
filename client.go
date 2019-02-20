@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
-	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/tlsconfig"
 	"github.com/tedsuo/rata"
 )
 
@@ -85,7 +85,10 @@ func (tlsConfig *TLSConfig) modifyTransport(client *http.Client) error {
 	}
 
 	if transport, ok := client.Transport.(*http.Transport); ok {
-		config, err := cfhttp.NewTLSConfig(tlsConfig.CertFile, tlsConfig.KeyFile, tlsConfig.CaCertFile)
+		config, err := tlsconfig.Build(
+			tlsconfig.WithInternalServiceDefaults(),
+			tlsconfig.WithIdentityFromFile(tlsConfig.CertFile, tlsConfig.KeyFile),
+		).Client(tlsconfig.WithAuthorityFromFile(tlsConfig.CaCertFile))
 		if err != nil {
 			return err
 		}

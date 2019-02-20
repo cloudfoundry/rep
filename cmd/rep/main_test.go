@@ -36,6 +36,7 @@ import (
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
 	"code.cloudfoundry.org/rep/cmd/rep/testrunner"
+	"code.cloudfoundry.org/tlsconfig"
 	"github.com/hashicorp/consul/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -78,7 +79,10 @@ var _ = Describe("The Rep", func() {
 		caFile = path.Join(basePath, "green-certs", "server-ca.crt")
 		certFile = path.Join(basePath, "green-certs", "server.crt")
 		keyFile = path.Join(basePath, "green-certs", "server.key")
-		tlsConfig, err := cfhttp.NewTLSConfig(certFile, keyFile, caFile)
+		tlsConfig, err := tlsconfig.Build(
+			tlsconfig.WithInternalServiceDefaults(),
+			tlsconfig.WithIdentityFromFile(certFile, keyFile),
+		).Client(tlsconfig.WithAuthorityFromFile(caFile))
 		Expect(err).NotTo(HaveOccurred())
 		client = &http.Client{Transport: &http.Transport{TLSClientConfig: tlsConfig}}
 
