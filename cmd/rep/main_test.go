@@ -19,7 +19,7 @@ import (
 	bbstestrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
-	"code.cloudfoundry.org/cfhttp"
+	cfhttp "code.cloudfoundry.org/cfhttp/v2"
 	diego_logging_client "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/durationjson"
 	executorinit "code.cloudfoundry.org/executor/initializer"
@@ -633,7 +633,13 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					KeyFile:    keyFile,
 					CaCertFile: caFile,
 				}
-				factory, err := rep.NewClientFactory(cfhttp.NewClient(), cfhttp.NewCustomTimeoutClient(time.Second), tlsConfig)
+
+				httpClient := cfhttp.NewClient()
+				stateClient := cfhttp.NewClient(
+					cfhttp.WithRequestTimeout(time.Second),
+				)
+
+				factory, err := rep.NewClientFactory(httpClient, stateClient, tlsConfig)
 
 				Expect(err).NotTo(HaveOccurred())
 				u, err := url.Parse(cellSet[cellID].RepUrl)

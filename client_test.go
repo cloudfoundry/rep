@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
-	"code.cloudfoundry.org/cfhttp"
+	cfhttp "code.cloudfoundry.org/cfhttp/v2"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep"
 
@@ -35,7 +35,9 @@ var _ = Describe("ClientFactory", func() {
 	Describe("NewClientFactory", func() {
 		Context("when no TLS configuration is provided", func() {
 			It("returns a new client", func() {
-				httpClient = cfhttp.NewClient()
+				httpClient = cfhttp.NewClient(
+					cfhttp.WithRequestTimeout(cfHttpTimeout),
+				)
 				client, err := rep.NewClientFactory(httpClient, httpClient, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(client).NotTo(BeNil())
@@ -46,7 +48,9 @@ var _ = Describe("ClientFactory", func() {
 			var tlsConfig *rep.TLSConfig
 			BeforeEach(func() {
 				tlsConfig = &rep.TLSConfig{RequireTLS: false}
-				httpClient = cfhttp.NewClient()
+				httpClient = cfhttp.NewClient(
+					cfhttp.WithRequestTimeout(cfHttpTimeout),
+				)
 			})
 
 			Context("no cert files are provided", func() {

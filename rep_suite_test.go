@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"code.cloudfoundry.org/cfhttp"
+	cfhttp "code.cloudfoundry.org/cfhttp/v2"
 	executorfakes "code.cloudfoundry.org/executor/fakes"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context/fake_evacuation_context"
@@ -27,18 +27,16 @@ func TestRep(t *testing.T) {
 	RunSpecs(t, "Rep Suite")
 }
 
-var _ = BeforeSuite(func() {
-	cfHttpTimeout = 1 * time.Second
-	cfhttp.Initialize(cfHttpTimeout)
-})
-
 var _ = BeforeEach(func() {
 	auctionRep = &repfakes.FakeClient{}
 	fakeExecutorClient = &executorfakes.FakeClient{}
 	fakeEvacuatable = &fake_evacuation_context.FakeEvacuatable{}
 
+	cfHttpTimeout = 1 * time.Second
 	var err error
-	httpClient := cfhttp.NewClient()
+	httpClient := cfhttp.NewClient(
+		cfhttp.WithRequestTimeout(cfHttpTimeout),
+	)
 	factory, err = rep.NewClientFactory(httpClient, httpClient, nil)
 	Expect(err).NotTo(HaveOccurred())
 })
