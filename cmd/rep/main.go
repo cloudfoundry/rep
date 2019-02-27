@@ -17,7 +17,6 @@ import (
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
-	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/debugserver"
@@ -73,8 +72,6 @@ func main() {
 	if *zoneOverride != "" {
 		repConfig.Zone = *zoneOverride
 	}
-
-	cfhttp.Initialize(time.Duration(repConfig.CommunicationTimeout))
 
 	clock := clock.NewClock()
 	logger, reconfigurableSink := lagerflags.NewFromConfig(repConfig.SessionName, repConfig.LagerConfig)
@@ -360,14 +357,16 @@ func initializeBBSClient(
 	logger lager.Logger,
 	repConfig config.RepConfig,
 ) bbs.InternalClient {
-	bbsClient, err := bbs.NewClient(
-		repConfig.BBSAddress,
-		repConfig.CaCertFile,
-		repConfig.CertFile,
-		repConfig.KeyFile,
-		repConfig.BBSClientSessionCacheSize,
-		repConfig.BBSMaxIdleConnsPerHost,
-	)
+	bbsClient, err := bbs.NewClientWithConfig(bbs.ClientConfig{
+		URL:                    repConfig.BBSAddress,
+		IsTLS:                  true,
+		CAFile:                 repConfig.CaCertFile,
+		CertFile:               repConfig.CertFile,
+		KeyFile:                repConfig.KeyFile,
+		ClientSessionCacheSize: repConfig.BBSClientSessionCacheSize,
+		MaxIdleConnsPerHost:    repConfig.BBSMaxIdleConnsPerHost,
+		RequestTimeout:         time.Duration(repConfig.CommunicationTimeout),
+	})
 	if err != nil {
 		logger.Fatal("failed-to-configure-secure-BBS-client", err)
 	}
