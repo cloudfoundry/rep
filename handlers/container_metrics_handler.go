@@ -3,8 +3,10 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/locket/metrics/helpers"
 	"code.cloudfoundry.org/rep"
 )
 
@@ -14,18 +16,32 @@ type MetricCollector interface {
 }
 
 type containerMetrics struct {
-	rep MetricCollector
+	rep     MetricCollector
+	metrics helpers.RequestMetrics
+}
+
+func newContainerMetricsHandler(rep MetricCollector, metrics helpers.RequestMetrics) *containerMetrics {
+	return &containerMetrics{rep: rep, metrics: metrics}
 }
 
 func (h *containerMetrics) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
+	var deferErr error
+
+	start := time.Now()
+	requestType := "ContainerMetrics"
+	startMetrics(h.metrics, requestType)
+	defer stopMetrics(h.metrics, requestType, time.Since(start), &deferErr)
+
 	logger = logger.Session("container-metrics-handler")
 
-	m, err := h.rep.Metrics(logger)
-	if err != nil {
+	var metricsCollector *rep.ContainerMetricsCollection
+
+	metricsCollector, deferErr = h.rep.Metrics(logger)
+	if deferErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		logger.Error("failed-to-fetch-container-metrics", err)
+		logger.Error("failed-to-fetch-container-metrics", deferErr)
 		return
 	}
 
-	json.NewEncoder(w).Encode(m)
+	json.NewEncoder(w).Encode(metricsCollector)
 }

@@ -2,17 +2,28 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/locket/metrics/helpers"
 )
 
-type PingHandler struct{}
-
-// Ping Handler serves a route that is called by the rep ctl script
-func NewPingHandler() *PingHandler {
-	return &PingHandler{}
+type pingHandler struct {
+	metrics helpers.RequestMetrics
 }
 
-func (h PingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
+// Ping Handler serves a route that is called by the rep ctl script
+func newPingHandler(metrics helpers.RequestMetrics) *pingHandler {
+	return &pingHandler{
+		metrics: metrics,
+	}
+}
+
+func (h *pingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
+	start := time.Now()
+	requestType := "Ping"
+	startMetrics(h.metrics, requestType)
+	defer stopMetrics(h.metrics, requestType, time.Since(start), nil)
+
 	w.WriteHeader(http.StatusOK)
 }

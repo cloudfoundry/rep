@@ -2,43 +2,53 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/locket/metrics/helpers"
 )
 
-type CancelTaskHandler struct {
+type cancelTaskHandler struct {
 	executorClient executor.Client
+	metrics        helpers.RequestMetrics
 }
 
-func NewCancelTaskHandler(executorClient executor.Client) *CancelTaskHandler {
-	return &CancelTaskHandler{
+func newCancelTaskHandler(executorClient executor.Client, requestMetrics helpers.RequestMetrics) *cancelTaskHandler {
+	return &cancelTaskHandler{
 		executorClient: executorClient,
+		metrics:        requestMetrics,
 	}
 }
 
-func (h CancelTaskHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
-	taskGuid := r.FormValue(":task_guid")
+func (h *cancelTaskHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
+	start := time.Now()
+	requestType := "CancelTask"
+	startMetrics(h.metrics, requestType)
+	defer func() {
+		h.metrics.DecrementRequestsInFlightCounter(requestType, 1)
+		h.metrics.UpdateLatency(requestType, time.Since(start))
+	}()
 
-	logger = logger.Session("cancel-task", lager.Data{
-		"instance-guid": taskGuid,
-	})
+	taskGuid := r.FormValue(":task_guid")
+	logger = logger.Session("cancel-task", lager.Data{"instance-guid": taskGuid})
 
 	w.WriteHeader(http.StatusAccepted)
 
 	go func() {
 		logger.Info("deleting-container")
+
 		err := h.executorClient.DeleteContainer(logger, taskGuid)
-		if err == executor.ErrContainerNotFound {
+		switch err {
+		case nil:
+			logger.Info("succeeded-deleting-container")
+			h.metrics.IncrementRequestsSucceededCounter(requestType, 1)
+		case executor.ErrContainerNotFound:
 			logger.Info("container-not-found")
-			return
-		}
-
-		if err != nil {
+			h.metrics.IncrementRequestsSucceededCounter(requestType, 1)
+		default:
 			logger.Error("failed-deleting-container", err)
-			return
+			h.metrics.IncrementRequestsFailedCounter(requestType, 1)
 		}
-
-		logger.Info("succeeded-deleting-container")
 	}()
 }

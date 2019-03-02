@@ -28,12 +28,13 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 
 	BeforeEach(func() {
 		var err error
+
 		fakeClient = &executorfakes.FakeClient{}
 
 		logger = lagertest.NewTestLogger("test")
 		logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 
-		stopInstanceHandler = handlers.NewStopLRPInstanceHandler(fakeClient)
+		stopInstanceHandler = handlers.NewStopLRPInstanceHandler(fakeClient, fakeRequestMetrics)
 
 		resp = httptest.NewRecorder()
 
@@ -71,6 +72,34 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 				Expect(processGuid).To(Equal(processGuid))
 				Expect(instanceGuid).To(Equal(instanceGuid))
 			})
+
+			It("emits the request metrics", func() {
+				Expect(fakeRequestMetrics.IncrementRequestsStartedCounterCallCount()).To(Equal(1))
+				calledRequestType, delta := fakeRequestMetrics.IncrementRequestsStartedCounterArgsForCall(0)
+				Expect(delta).To(Equal(1))
+				Expect(calledRequestType).To(Equal("StopLRPInstance"))
+
+				Expect(fakeRequestMetrics.IncrementRequestsInFlightCounterCallCount()).To(Equal(1))
+				calledRequestType, delta = fakeRequestMetrics.IncrementRequestsInFlightCounterArgsForCall(0)
+				Expect(delta).To(Equal(1))
+				Expect(calledRequestType).To(Equal("StopLRPInstance"))
+
+				Expect(fakeRequestMetrics.DecrementRequestsInFlightCounterCallCount()).To(Equal(1))
+				calledRequestType, delta = fakeRequestMetrics.DecrementRequestsInFlightCounterArgsForCall(0)
+				Expect(delta).To(Equal(1))
+				Expect(calledRequestType).To(Equal("StopLRPInstance"))
+
+				Expect(fakeRequestMetrics.UpdateLatencyCallCount()).To(Equal(1))
+				calledRequestType, _ = fakeRequestMetrics.UpdateLatencyArgsForCall(0)
+				Expect(calledRequestType).To(Equal("StopLRPInstance"))
+
+				Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(1))
+				calledRequestType, delta = fakeRequestMetrics.IncrementRequestsSucceededCounterArgsForCall(0)
+				Expect(delta).To(Equal(1))
+				Expect(calledRequestType).To(Equal("StopLRPInstance"))
+
+				Expect(fakeRequestMetrics.IncrementRequestsFailedCounterCallCount()).To(Equal(0))
+			})
 		})
 
 		Context("but StopContainer fails", func() {
@@ -80,6 +109,15 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 
 			It("responds with 500 Internal Server Error", func() {
 				Expect(resp.Code).To(Equal(http.StatusInternalServerError))
+			})
+
+			It("emits the failed request metrics", func() {
+				Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(0))
+
+				Expect(fakeRequestMetrics.IncrementRequestsFailedCounterCallCount()).To(Equal(1))
+				calledRequestType, delta := fakeRequestMetrics.IncrementRequestsFailedCounterArgsForCall(0)
+				Expect(delta).To(Equal(1))
+				Expect(calledRequestType).To(Equal("StopLRPInstance"))
 			})
 		})
 	})
@@ -95,6 +133,15 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 
 		It("does not attempt to stop the instance", func() {
 			Expect(fakeClient.StopContainerCallCount()).To(Equal(0))
+		})
+
+		It("emits the failed request metrics", func() {
+			Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(0))
+
+			Expect(fakeRequestMetrics.IncrementRequestsFailedCounterCallCount()).To(Equal(1))
+			calledRequestType, delta := fakeRequestMetrics.IncrementRequestsFailedCounterArgsForCall(0)
+			Expect(delta).To(Equal(1))
+			Expect(calledRequestType).To(Equal("StopLRPInstance"))
 		})
 	})
 })
