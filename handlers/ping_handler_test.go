@@ -2,34 +2,45 @@ package handlers_test
 
 import (
 	"net/http"
-	"net/http/httptest"
 
-	"code.cloudfoundry.org/lager/lagertest"
-	"code.cloudfoundry.org/rep/handlers"
+	"code.cloudfoundry.org/rep"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("PingHandler", func() {
-	var (
-		pingHandler *handlers.PingHandler
-		resp        *httptest.ResponseRecorder
-		req         *http.Request
-	)
-
-	JustBeforeEach(func() {
-		logger := lagertest.NewTestLogger("ping-handler")
-		pingHandler = handlers.NewPingHandler()
-		resp = httptest.NewRecorder()
-
-		var err error
-		req, err = http.NewRequest("GET", "/ping", nil)
-		Expect(err).NotTo(HaveOccurred())
-
-		pingHandler.ServeHTTP(resp, req, logger)
+	It("responds with 200 OK", func() {
+		status, _ := Request(rep.PingRoute, nil, nil)
+		Expect(status).To(Equal(http.StatusOK))
 	})
 
-	It("responds with 200 OK", func() {
-		Expect(resp.Code).To(Equal(http.StatusOK))
+	It("emits the request metrics", func() {
+		Request(rep.PingRoute, nil, nil)
+
+		Expect(fakeRequestMetrics.IncrementRequestsStartedCounterCallCount()).To(Equal(1))
+		calledRequestType, delta := fakeRequestMetrics.IncrementRequestsStartedCounterArgsForCall(0)
+		Expect(delta).To(Equal(1))
+		Expect(calledRequestType).To(Equal("Ping"))
+
+		Expect(fakeRequestMetrics.IncrementRequestsInFlightCounterCallCount()).To(Equal(1))
+		calledRequestType, delta = fakeRequestMetrics.IncrementRequestsInFlightCounterArgsForCall(0)
+		Expect(delta).To(Equal(1))
+		Expect(calledRequestType).To(Equal("Ping"))
+
+		Expect(fakeRequestMetrics.DecrementRequestsInFlightCounterCallCount()).To(Equal(1))
+		calledRequestType, delta = fakeRequestMetrics.DecrementRequestsInFlightCounterArgsForCall(0)
+		Expect(delta).To(Equal(1))
+		Expect(calledRequestType).To(Equal("Ping"))
+
+		Expect(fakeRequestMetrics.UpdateLatencyCallCount()).To(Equal(1))
+		calledRequestType, _ = fakeRequestMetrics.UpdateLatencyArgsForCall(0)
+		Expect(calledRequestType).To(Equal("Ping"))
+
+		Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(1))
+		calledRequestType, delta = fakeRequestMetrics.IncrementRequestsSucceededCounterArgsForCall(0)
+		Expect(delta).To(Equal(1))
+		Expect(calledRequestType).To(Equal("Ping"))
+
+		Expect(fakeRequestMetrics.IncrementRequestsFailedCounterCallCount()).To(Equal(0))
 	})
 })

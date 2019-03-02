@@ -42,8 +42,6 @@ var _ = Describe("Perform", func() {
 			})
 
 			It("succeeds, returning any failed work", func() {
-				Expect(fakeLocalRep.PerformCallCount()).To(Equal(0))
-
 				status, body := Request(rep.PerformRoute, nil, JSONReaderFor(requestedWork))
 				Expect(status).To(Equal(http.StatusOK))
 				Expect(body).To(MatchJSON(JSONFor(failedWork)))
@@ -60,8 +58,6 @@ var _ = Describe("Perform", func() {
 			})
 
 			It("fails, returning nothing", func() {
-				Expect(fakeLocalRep.PerformCallCount()).To(Equal(0))
-
 				status, body := Request(rep.PerformRoute, nil, JSONReaderFor(requestedWork))
 				Expect(status).To(Equal(http.StatusInternalServerError))
 				Expect(body).To(BeEmpty())
@@ -70,18 +66,68 @@ var _ = Describe("Perform", func() {
 				_, actualWork := fakeLocalRep.PerformArgsForCall(0)
 				Expect(actualWork).To(Equal(requestedWork))
 			})
+
+			It("emits the failed request metrics", func() {
+				Request(rep.PerformRoute, nil, JSONReaderFor(requestedWork))
+
+				Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(0))
+
+				Expect(fakeRequestMetrics.IncrementRequestsFailedCounterCallCount()).To(Equal(1))
+				calledRequestType, delta := fakeRequestMetrics.IncrementRequestsFailedCounterArgsForCall(0)
+				Expect(delta).To(Equal(1))
+				Expect(calledRequestType).To(Equal("Perform"))
+			})
+		})
+
+		It("emits the request metrics", func() {
+			Request(rep.PerformRoute, nil, JSONReaderFor(requestedWork))
+
+			Expect(fakeRequestMetrics.IncrementRequestsStartedCounterCallCount()).To(Equal(1))
+			calledRequestType, delta := fakeRequestMetrics.IncrementRequestsStartedCounterArgsForCall(0)
+			Expect(delta).To(Equal(1))
+			Expect(calledRequestType).To(Equal("Perform"))
+
+			Expect(fakeRequestMetrics.IncrementRequestsInFlightCounterCallCount()).To(Equal(1))
+			calledRequestType, delta = fakeRequestMetrics.IncrementRequestsInFlightCounterArgsForCall(0)
+			Expect(delta).To(Equal(1))
+			Expect(calledRequestType).To(Equal("Perform"))
+
+			Expect(fakeRequestMetrics.DecrementRequestsInFlightCounterCallCount()).To(Equal(1))
+			calledRequestType, delta = fakeRequestMetrics.DecrementRequestsInFlightCounterArgsForCall(0)
+			Expect(delta).To(Equal(1))
+			Expect(calledRequestType).To(Equal("Perform"))
+
+			Expect(fakeRequestMetrics.UpdateLatencyCallCount()).To(Equal(1))
+			calledRequestType, _ = fakeRequestMetrics.UpdateLatencyArgsForCall(0)
+			Expect(calledRequestType).To(Equal("Perform"))
+
+			Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(1))
+			calledRequestType, delta = fakeRequestMetrics.IncrementRequestsSucceededCounterArgsForCall(0)
+			Expect(delta).To(Equal(1))
+			Expect(calledRequestType).To(Equal("Perform"))
+
+			Expect(fakeRequestMetrics.IncrementRequestsFailedCounterCallCount()).To(Equal(0))
 		})
 	})
 
 	Context("with invalid JSON", func() {
 		It("fails", func() {
-			Expect(fakeLocalRep.PerformCallCount()).To(Equal(0))
-
 			status, body := Request(rep.PerformRoute, nil, bytes.NewBufferString("∆"))
 			Expect(status).To(Equal(http.StatusBadRequest))
 			Expect(body).To(BeEmpty())
 
 			Expect(fakeLocalRep.PerformCallCount()).To(Equal(0))
+		})
+
+		It("emits the failed request metric", func() {
+			Request(rep.PerformRoute, nil, bytes.NewBufferString("∆"))
+
+			Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(0))
+
+			Expect(fakeRequestMetrics.IncrementRequestsFailedCounterCallCount()).To(Equal(1))
+			calledRequestType, delta := fakeRequestMetrics.IncrementRequestsFailedCounterArgsForCall(0)
+			Expect(delta).To(Equal(1))
+			Expect(calledRequestType).To(Equal("Perform"))
 		})
 	})
 })

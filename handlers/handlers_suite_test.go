@@ -11,6 +11,7 @@ import (
 
 	executorfakes "code.cloudfoundry.org/executor/fakes"
 	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/locket/metrics/helpers/helpersfakes"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/auctioncellrep/auctioncellrepfakes"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context/fake_evacuation_context"
@@ -26,27 +27,33 @@ func TestAuctionHttpHandlers(t *testing.T) {
 	RunSpecs(t, "AuctionHttpHandlers Suite")
 }
 
-var server *httptest.Server
-var requestGenerator *rata.RequestGenerator
-var client *http.Client
-var fakeLocalRep *auctioncellrepfakes.FakeAuctionCellClient
-var fakeMetricCollector *handlersfakes.FakeMetricCollector
-var logger *lagertest.TestLogger
+var (
+	server              *httptest.Server
+	requestGenerator    *rata.RequestGenerator
+	client              *http.Client
+	fakeLocalRep        *auctioncellrepfakes.FakeAuctionCellClient
+	fakeMetricCollector *handlersfakes.FakeMetricCollector
+	fakeExecutorClient  *executorfakes.FakeClient
+	fakeEvacuatable     *fake_evacuation_context.FakeEvacuatable
+	fakeRequestMetrics  *helpersfakes.FakeRequestMetrics
+	logger              *lagertest.TestLogger
+)
 
 var _ = BeforeEach(func() {
 	logger = lagertest.NewTestLogger("handlers")
 
 	fakeLocalRep = new(auctioncellrepfakes.FakeAuctionCellClient)
-	fakeMetricCollector = &handlersfakes.FakeMetricCollector{}
-	fakeExecutorClient := new(executorfakes.FakeClient)
-	fakeEvacuatable := new(fake_evacuation_context.FakeEvacuatable)
-	handler, err := rata.NewRouter(rep.Routes, handlers.NewLegacy(fakeLocalRep, fakeMetricCollector, fakeExecutorClient, fakeEvacuatable, logger))
+	fakeMetricCollector = new(handlersfakes.FakeMetricCollector)
+	fakeExecutorClient = new(executorfakes.FakeClient)
+	fakeEvacuatable = new(fake_evacuation_context.FakeEvacuatable)
+	fakeRequestMetrics = new(helpersfakes.FakeRequestMetrics)
+
+	handler, err := rata.NewRouter(rep.Routes, handlers.NewLegacy(fakeLocalRep, fakeMetricCollector, fakeExecutorClient, fakeEvacuatable, fakeRequestMetrics, logger))
 	Expect(err).NotTo(HaveOccurred())
+
 	server = httptest.NewServer(handler)
-
 	requestGenerator = rata.NewRequestGenerator(server.URL, rep.Routes)
-
-	client = &http.Client{}
+	client = new(http.Client)
 })
 
 var _ = AfterEach(func() {

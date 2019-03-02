@@ -26,6 +26,35 @@ var _ = Describe("State", func() {
 		Expect(body).To(MatchJSON(JSONFor(repState)))
 		Expect(fakeLocalRep.StateCallCount()).To(Equal(1))
 	})
+	It("emits the request metrics", func() {
+		Request(rep.StateRoute, nil, nil)
+
+		Expect(fakeRequestMetrics.IncrementRequestsStartedCounterCallCount()).To(Equal(1))
+		calledRequestType, delta := fakeRequestMetrics.IncrementRequestsStartedCounterArgsForCall(0)
+		Expect(delta).To(Equal(1))
+		Expect(calledRequestType).To(Equal("State"))
+
+		Expect(fakeRequestMetrics.IncrementRequestsInFlightCounterCallCount()).To(Equal(1))
+		calledRequestType, delta = fakeRequestMetrics.IncrementRequestsInFlightCounterArgsForCall(0)
+		Expect(delta).To(Equal(1))
+		Expect(calledRequestType).To(Equal("State"))
+
+		Expect(fakeRequestMetrics.DecrementRequestsInFlightCounterCallCount()).To(Equal(1))
+		calledRequestType, delta = fakeRequestMetrics.DecrementRequestsInFlightCounterArgsForCall(0)
+		Expect(delta).To(Equal(1))
+		Expect(calledRequestType).To(Equal("State"))
+
+		Expect(fakeRequestMetrics.UpdateLatencyCallCount()).To(Equal(1))
+		calledRequestType, _ = fakeRequestMetrics.UpdateLatencyArgsForCall(0)
+		Expect(calledRequestType).To(Equal("State"))
+
+		Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(1))
+		calledRequestType, delta = fakeRequestMetrics.IncrementRequestsSucceededCounterArgsForCall(0)
+		Expect(delta).To(Equal(1))
+		Expect(calledRequestType).To(Equal("State"))
+
+		Expect(fakeRequestMetrics.IncrementRequestsFailedCounterCallCount()).To(Equal(0))
+	})
 
 	Context("when the state call is not healthy", func() {
 		BeforeEach(func() {
@@ -41,14 +70,24 @@ var _ = Describe("State", func() {
 	})
 
 	Context("when the state call fails", func() {
-		It("fails", func() {
+		BeforeEach(func() {
 			fakeLocalRep.StateReturns(rep.CellState{}, false, errors.New("boom"))
-			Expect(fakeLocalRep.StateCallCount()).To(Equal(0))
-
+		})
+		It("fails", func() {
 			status, body := Request(rep.StateRoute, nil, nil)
 			Expect(status).To(Equal(http.StatusInternalServerError))
 			Expect(body).To(BeEmpty())
 			Expect(fakeLocalRep.StateCallCount()).To(Equal(1))
+		})
+		It("emits the failed request metrics", func() {
+			Request(rep.StateRoute, nil, nil)
+
+			Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(0))
+
+			Expect(fakeRequestMetrics.IncrementRequestsFailedCounterCallCount()).To(Equal(1))
+			calledRequestType, delta := fakeRequestMetrics.IncrementRequestsFailedCounterArgsForCall(0)
+			Expect(delta).To(Equal(1))
+			Expect(calledRequestType).To(Equal("State"))
 		})
 	})
 })

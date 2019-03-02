@@ -5,6 +5,7 @@ import (
 
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/locket/metrics/helpers"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/auctioncellrep"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
@@ -16,18 +17,20 @@ func New(
 	localMetricCollector MetricCollector,
 	executorClient executor.Client,
 	evacuatable evacuation_context.Evacuatable,
+	requestMetrics helpers.RequestMetrics,
 	logger lager.Logger,
 	secure bool,
 ) rata.Handlers {
 
+	// requestMetrics := helpers.NewRequestMetricsNotifier(logger, clock, metronClient, 60*time.Second, []string{"state"})
 	handlers := rata.Handlers{}
 	if secure {
-		stateHandler := &state{rep: localCellClient}
-		containerMetricsHandler := &containerMetrics{rep: localMetricCollector}
-		performHandler := &perform{rep: localCellClient}
-		resetHandler := &reset{rep: localCellClient}
-		stopLrpHandler := NewStopLRPInstanceHandler(executorClient)
-		cancelTaskHandler := NewCancelTaskHandler(executorClient)
+		stateHandler := newStateHandler(localCellClient, requestMetrics)
+		containerMetricsHandler := newContainerMetricsHandler(localMetricCollector, requestMetrics)
+		performHandler := newPerformHandler(localCellClient, requestMetrics)
+		resetHandler := newResetHandler(localCellClient, requestMetrics)
+		stopLrpHandler := NewStopLRPInstanceHandler(executorClient, requestMetrics)
+		cancelTaskHandler := newCancelTaskHandler(executorClient, requestMetrics)
 
 		handlers[rep.StateRoute] = logWrap(stateHandler.ServeHTTP, logger)
 		handlers[rep.ContainerMetricsRoute] = logWrap(containerMetricsHandler.ServeHTTP, logger)
@@ -37,8 +40,8 @@ func New(
 		handlers[rep.StopLRPInstanceRoute] = logWrap(stopLrpHandler.ServeHTTP, logger)
 		handlers[rep.CancelTaskRoute] = logWrap(cancelTaskHandler.ServeHTTP, logger)
 	} else {
-		pingHandler := NewPingHandler()
-		evacuationHandler := NewEvacuationHandler(evacuatable)
+		pingHandler := newPingHandler(requestMetrics)
+		evacuationHandler := newEvacuationHandler(evacuatable, requestMetrics)
 
 		handlers[rep.PingRoute] = logWrap(pingHandler.ServeHTTP, logger)
 		handlers[rep.EvacuateRoute] = logWrap(evacuationHandler.ServeHTTP, logger)
@@ -56,10 +59,11 @@ func NewLegacy(
 	localMetricCollector MetricCollector,
 	executorClient executor.Client,
 	evacuatable evacuation_context.Evacuatable,
+	requestMetrics helpers.RequestMetrics,
 	logger lager.Logger,
 ) rata.Handlers {
-	insecureHandlers := New(localCellClient, localMetricCollector, executorClient, evacuatable, logger, false)
-	secureHandlers := New(localCellClient, localMetricCollector, executorClient, evacuatable, logger, true)
+	insecureHandlers := New(localCellClient, localMetricCollector, executorClient, evacuatable, requestMetrics, logger, false)
+	secureHandlers := New(localCellClient, localMetricCollector, executorClient, evacuatable, requestMetrics, logger, true)
 	for name, handler := range secureHandlers {
 		insecureHandlers[name] = handler
 	}

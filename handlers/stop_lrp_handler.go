@@ -3,23 +3,36 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/locket/metrics/helpers"
 	"code.cloudfoundry.org/rep"
 )
 
+// This is public for testing purpose
 type StopLRPInstanceHandler struct {
-	client executor.Client
+	client  executor.Client
+	metrics helpers.RequestMetrics
 }
 
-func NewStopLRPInstanceHandler(client executor.Client) *StopLRPInstanceHandler {
+// This is public for testing purpose
+func NewStopLRPInstanceHandler(client executor.Client, metrics helpers.RequestMetrics) *StopLRPInstanceHandler {
 	return &StopLRPInstanceHandler{
-		client: client,
+		client:  client,
+		metrics: metrics,
 	}
 }
 
-func (h StopLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
+func (h *StopLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
+	var deferErr error
+
+	start := time.Now()
+	requestType := "StopLRPInstance"
+	startMetrics(h.metrics, requestType)
+	defer stopMetrics(h.metrics, requestType, time.Since(start), &deferErr)
+
 	processGuid := r.FormValue(":process_guid")
 	instanceGuid := r.FormValue(":instance_guid")
 
@@ -29,21 +42,23 @@ func (h StopLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	})
 
 	if processGuid == "" {
-		logger.Error("missing-process-guid", errors.New("process_guid missing from request"))
+		deferErr = errors.New("process_guid missing from request")
+		logger.Error("missing-process-guid", deferErr)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	if instanceGuid == "" {
-		logger.Error("missing-instance-guid", errors.New("instance_guid missing from request"))
+		deferErr = errors.New("instance_guid missing from request")
+		logger.Error("missing-instance-guid", deferErr)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	err := h.client.StopContainer(logger, rep.LRPContainerGuid(processGuid, instanceGuid))
-	if err != nil {
+	deferErr = h.client.StopContainer(logger, rep.LRPContainerGuid(processGuid, instanceGuid))
+	if deferErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		logger.Error("failed-to-stop-container", err)
+		logger.Error("failed-to-stop-container", deferErr)
 		return
 	}
 

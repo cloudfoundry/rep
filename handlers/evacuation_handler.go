@@ -4,32 +4,42 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/locket/metrics/helpers"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
 )
 
-type EvacuationHandler struct {
+type evacuationHandler struct {
 	evacuatable evacuation_context.Evacuatable
+	metrics     helpers.RequestMetrics
 }
 
 // Evacuation Handler serves a route that is called by the rep drain script
-func NewEvacuationHandler(
-	evacuatable evacuation_context.Evacuatable,
-) *EvacuationHandler {
-	return &EvacuationHandler{
+func newEvacuationHandler(evacuatable evacuation_context.Evacuatable, requestMetrics helpers.RequestMetrics) *evacuationHandler {
+	return &evacuationHandler{
 		evacuatable: evacuatable,
+		metrics:     requestMetrics,
 	}
 }
 
-func (h *EvacuationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
+func (h *evacuationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
+	var deferErr error
+
+	start := time.Now()
+	requestType := "Evacuation"
+	startMetrics(h.metrics, requestType)
+	defer stopMetrics(h.metrics, requestType, time.Since(start), &deferErr)
+
 	logger = logger.Session("handling-evacuation")
 
 	h.evacuatable.Evacuate()
 
-	jsonBytes, err := json.Marshal(map[string]string{"ping_path": "/ping"})
-	if err != nil {
-		logger.Error("failed-to-marshal-response-payload", err)
+	var jsonBytes []byte
+	jsonBytes, deferErr = json.Marshal(map[string]string{"ping_path": "/ping"})
+	if deferErr != nil {
+		logger.Error("failed-to-marshal-response-payload", deferErr)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
