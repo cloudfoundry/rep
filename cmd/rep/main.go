@@ -30,6 +30,7 @@ import (
 	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/locket/lock"
+	"code.cloudfoundry.org/locket/metrics/helpers"
 	locketmodels "code.cloudfoundry.org/locket/models"
 	"code.cloudfoundry.org/operationq"
 	"code.cloudfoundry.org/rep"
@@ -149,8 +150,14 @@ func main() {
 		repConfig.EnableContainerProxy,
 		batchContainerAllocator,
 	)
-	httpServer := initializeServer(auctionCellRep, executorClient, evacuatable, logger, repConfig, false)
-	httpsServer := initializeServer(auctionCellRep, executorClient, evacuatable, logger, repConfig, true)
+
+	requestTypes := []string{
+		"State", "ContainerMetrics", "Perform", "Reset", "StopLRPInstance", "CancelTask", //over https
+		"Ping", "Evacuation", //over http
+	}
+	requestMetrics := helpers.NewRequestMetricsNotifier(logger, clock, metronClient, time.Duration(repConfig.ReportInterval), requestTypes)
+	httpServer := initializeServer(auctionCellRep, executorClient, evacuatable, requestMetrics, logger, repConfig, false)
+	httpsServer := initializeServer(auctionCellRep, executorClient, evacuatable, requestMetrics, logger, repConfig, true)
 
 	opGenerator := generator.New(
 		repConfig.CellID,
@@ -200,6 +207,7 @@ func main() {
 		{"bulker", bulker},
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 		{"evacuator", evacuator},
+		{"request-metrics-notifier", requestMetrics},
 	}
 
 	if repConfig.EnableConsulServiceRegistration {
@@ -309,11 +317,12 @@ func initializeServer(
 	auctionCellRep *auctioncellrep.AuctionCellRep,
 	executorClient executor.Client,
 	evacuatable evacuation_context.Evacuatable,
+	requestMetrics helpers.RequestMetrics,
 	logger lager.Logger,
 	repConfig config.RepConfig,
 	networkAccessible bool,
 ) ifrit.Runner {
-	handlers := handlers.New(auctionCellRep, auctionCellRep, executorClient, evacuatable, logger, networkAccessible)
+	handlers := handlers.New(auctionCellRep, auctionCellRep, executorClient, evacuatable, requestMetrics, logger, networkAccessible)
 	routes := rep.NewRoutes(networkAccessible)
 	router, err := rata.NewRouter(routes, handlers)
 

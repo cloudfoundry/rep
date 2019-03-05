@@ -21,6 +21,7 @@ import (
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
 	cfhttp "code.cloudfoundry.org/cfhttp/v2"
 	diego_logging_client "code.cloudfoundry.org/diego-logging-client"
+	"code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/durationjson"
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/executor/initializer/configuration"
@@ -211,6 +212,7 @@ var _ = Describe("The Rep", func() {
 			ConsulCluster:     consulRunner.ConsulCluster(),
 			PollingInterval:   durationjson.Duration(pollingInterval),
 			EvacuationTimeout: durationjson.Duration(evacuationTimeout),
+			ReportInterval:    durationjson.Duration(2 * time.Second),
 
 			AdvertiseDomain:           "cell.service.cf.internal",
 			BBSClientSessionCacheSize: 0,
@@ -814,6 +816,14 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 						}))
 					})
 				})
+			})
+
+			It("starts emitting metrics", func() {
+				Eventually(testMetricsChan).Should(Receive(
+					testhelpers.MatchV2Metric(
+						testhelpers.MetricAndValue{Name: "RequestsSucceeded"},
+					),
+				))
 			})
 		})
 

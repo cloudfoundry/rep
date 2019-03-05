@@ -22,6 +22,7 @@ import (
 	"code.cloudfoundry.org/consuladapter/consulrunner"
 	"code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/durationjson"
+	"code.cloudfoundry.org/go-loggregator/rpc/loggregator_v2"
 	"code.cloudfoundry.org/inigo/helpers/portauthority"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
@@ -53,6 +54,9 @@ var (
 	node             int
 
 	testIngressServer *testhelpers.TestIngressServer
+
+	testMetricsChan   chan *loggregator_v2.Envelope
+	signalMetricsChan chan struct{}
 
 	sqlProcess    ifrit.Process
 	sqlRunner     sqlrunner.SQLRunner
@@ -200,6 +204,10 @@ var _ = BeforeEach(func() {
 	testIngressServer, err = testhelpers.NewTestIngressServer(metronServerCertFile, metronServerKeyFile, metronCAFile)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(testIngressServer.Start()).To(Succeed())
+
+	receiversChan := testIngressServer.Receivers()
+
+	testMetricsChan, signalMetricsChan = testhelpers.TestMetricChan(receiversChan)
 })
 
 var _ = AfterEach(func() {

@@ -108,6 +108,7 @@ type RepConfig struct {
 	SessionName                     string                `json:"session_name,omitempty"`
 	SupportedProviders              []string              `json:"supported_providers"`
 	Zone                            string                `json:"zone"`
+	ReportInterval                  durationjson.Duration `json:"report_interval,omitempty"`
 	LoggregatorConfig               loggingclient.Config  `json:"loggregator"`
 	CellRegistrationsLocketEnabled  bool                  `json:"cell_registrations_locket_enabled"`
 	debugserver.DebugServerConfig

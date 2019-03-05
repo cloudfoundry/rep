@@ -120,7 +120,8 @@ var _ = Describe("RepConfig", func() {
 			"trusted_system_certificates_path": "/tmp/trusted",
 			"unhealthy_monitoring_interval": "10s",
 			"volman_driver_paths": "/tmp/volman1:/tmp/volman2",
-			"zone": "test-zone"
+			"zone": "test-zone",
+			"report_interval": "2m"
 		}`
 	})
 
@@ -240,6 +241,7 @@ var _ = Describe("RepConfig", func() {
 			SessionName:           "test",
 			SupportedProviders:    []string{"provider1", "provider2"},
 			Zone:                  "test-zone",
+			ReportInterval:        durationjson.Duration(2 * time.Minute),
 			LoggregatorConfig: loggingclient.Config{
 				UseV2API:      true,
 				APIPort:       1234,
