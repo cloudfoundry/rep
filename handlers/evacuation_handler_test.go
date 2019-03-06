@@ -30,35 +30,5 @@ var _ = Describe("EvacuationHandler", func() {
 			Expect(responseValues).To(HaveKey("ping_path"))
 			Expect(responseValues["ping_path"]).To(Equal("/ping"))
 		})
-
-		It("emits the request metrics", func() {
-			Request(rep.EvacuateRoute, nil, nil)
-
-			Expect(fakeRequestMetrics.IncrementRequestsStartedCounterCallCount()).To(Equal(1))
-			calledRequestType, delta := fakeRequestMetrics.IncrementRequestsStartedCounterArgsForCall(0)
-			Expect(delta).To(Equal(1))
-			Expect(calledRequestType).To(Equal("Evacuation"))
-
-			Expect(fakeRequestMetrics.IncrementRequestsInFlightCounterCallCount()).To(Equal(1))
-			calledRequestType, delta = fakeRequestMetrics.IncrementRequestsInFlightCounterArgsForCall(0)
-			Expect(delta).To(Equal(1))
-			Expect(calledRequestType).To(Equal("Evacuation"))
-
-			Expect(fakeRequestMetrics.DecrementRequestsInFlightCounterCallCount()).To(Equal(1))
-			calledRequestType, delta = fakeRequestMetrics.DecrementRequestsInFlightCounterArgsForCall(0)
-			Expect(delta).To(Equal(1))
-			Expect(calledRequestType).To(Equal("Evacuation"))
-
-			Expect(fakeRequestMetrics.UpdateLatencyCallCount()).To(Equal(1))
-			calledRequestType, _ = fakeRequestMetrics.UpdateLatencyArgsForCall(0)
-			Expect(calledRequestType).To(Equal("Evacuation"))
-
-			Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(1))
-			calledRequestType, delta = fakeRequestMetrics.IncrementRequestsSucceededCounterArgsForCall(0)
-			Expect(delta).To(Equal(1))
-			Expect(calledRequestType).To(Equal("Evacuation"))
-
-			Expect(fakeRequestMetrics.IncrementRequestsFailedCounterCallCount()).To(Equal(0))
-		})
 	})
 })

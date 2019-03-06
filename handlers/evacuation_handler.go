@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"time"
 
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/locket/metrics/helpers"
@@ -26,12 +25,6 @@ func newEvacuationHandler(evacuatable evacuation_context.Evacuatable, requestMet
 
 func (h *evacuationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
 	var deferErr error
-
-	start := time.Now()
-	requestType := "Evacuation"
-	startMetrics(h.metrics, requestType)
-	defer stopMetrics(h.metrics, requestType, time.Since(start), &deferErr)
-
 	logger = logger.Session("handling-evacuation")
 
 	h.evacuatable.Evacuate()
