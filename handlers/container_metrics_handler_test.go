@@ -33,7 +33,7 @@ var _ = Describe("ContainerMetrics", func() {
 				},
 			},
 		}
-		requestLatency = 500 * time.Millisecond
+		requestLatency = 50 * time.Millisecond
 
 		fakeMetricCollector.MetricsStub = func(logger lager.Logger) (*rep.ContainerMetricsCollection, error) {
 			time.Sleep(requestLatency)
@@ -90,7 +90,7 @@ var _ = Describe("ContainerMetrics", func() {
 		Expect(fakeRequestMetrics.UpdateLatencyCallCount()).To(Equal(1))
 		calledRequestType, calledLatency := fakeRequestMetrics.UpdateLatencyArgsForCall(0)
 		Expect(calledRequestType).To(Equal("ContainerMetrics"))
-		Expect(calledLatency).To(BeNumerically("~", requestLatency, 5*time.Millisecond))
+		Expect(calledLatency).To(BeNumerically("~", requestLatency, 1*time.Millisecond))
 
 		Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(1))
 		calledRequestType, delta = fakeRequestMetrics.IncrementRequestsSucceededCounterArgsForCall(0)
