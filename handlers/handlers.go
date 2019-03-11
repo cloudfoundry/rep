@@ -22,7 +22,6 @@ func New(
 	secure bool,
 ) rata.Handlers {
 
-	// requestMetrics := helpers.NewRequestMetricsNotifier(logger, clock, metronClient, 60*time.Second, []string{"state"})
 	handlers := rata.Handlers{}
 	if secure {
 		stateHandler := newStateHandler(localCellClient, requestMetrics)
