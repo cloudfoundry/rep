@@ -31,7 +31,7 @@ func (h *StopLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	start := time.Now()
 	requestType := "StopLRPInstance"
 	startMetrics(h.metrics, requestType)
-	defer stopMetrics(h.metrics, requestType, time.Since(start), &deferErr)
+	defer stopMetrics(h.metrics, requestType, start, &deferErr)
 
 	processGuid := r.FormValue(":process_guid")
 	instanceGuid := r.FormValue(":instance_guid")

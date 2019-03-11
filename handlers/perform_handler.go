@@ -26,7 +26,7 @@ func (h *perform) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager
 	start := time.Now()
 	requestType := "Perform"
 	startMetrics(h.metrics, requestType)
-	defer stopMetrics(h.metrics, requestType, time.Since(start), &deferErr)
+	defer stopMetrics(h.metrics, requestType, start, &deferErr)
 
 	logger = logger.Session("auction-perform-work")
 	var work rep.Work

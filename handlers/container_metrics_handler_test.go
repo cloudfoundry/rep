@@ -3,7 +3,9 @@ package handlers_test
 import (
 	"errors"
 	"net/http"
+	"time"
 
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/rep"
 
 	. "github.com/onsi/ginkgo"
@@ -13,6 +15,7 @@ import (
 var _ = Describe("ContainerMetrics", func() {
 	var (
 		containerMetrics *rep.ContainerMetricsCollection
+		requestLatency   time.Duration
 	)
 
 	BeforeEach(func() {
@@ -30,7 +33,12 @@ var _ = Describe("ContainerMetrics", func() {
 				},
 			},
 		}
-		fakeMetricCollector.MetricsReturns(containerMetrics, nil)
+		requestLatency = 500 * time.Millisecond
+
+		fakeMetricCollector.MetricsStub = func(logger lager.Logger) (*rep.ContainerMetricsCollection, error) {
+			time.Sleep(requestLatency)
+			return containerMetrics, nil
+		}
 	})
 
 	It("has the right field names", func() {
@@ -61,10 +69,42 @@ var _ = Describe("ContainerMetrics", func() {
 		Expect(fakeMetricCollector.MetricsCallCount()).To(Equal(1))
 	})
 
+	It("emits the request metrics", func() {
+		Request(rep.ContainerMetricsRoute, nil, nil)
+
+		Expect(fakeRequestMetrics.IncrementRequestsStartedCounterCallCount()).To(Equal(1))
+		calledRequestType, delta := fakeRequestMetrics.IncrementRequestsStartedCounterArgsForCall(0)
+		Expect(delta).To(Equal(1))
+		Expect(calledRequestType).To(Equal("ContainerMetrics"))
+
+		Expect(fakeRequestMetrics.IncrementRequestsInFlightCounterCallCount()).To(Equal(1))
+		calledRequestType, delta = fakeRequestMetrics.IncrementRequestsInFlightCounterArgsForCall(0)
+		Expect(delta).To(Equal(1))
+		Expect(calledRequestType).To(Equal("ContainerMetrics"))
+
+		Expect(fakeRequestMetrics.DecrementRequestsInFlightCounterCallCount()).To(Equal(1))
+		calledRequestType, delta = fakeRequestMetrics.DecrementRequestsInFlightCounterArgsForCall(0)
+		Expect(delta).To(Equal(1))
+		Expect(calledRequestType).To(Equal("ContainerMetrics"))
+
+		Expect(fakeRequestMetrics.UpdateLatencyCallCount()).To(Equal(1))
+		calledRequestType, calledLatency := fakeRequestMetrics.UpdateLatencyArgsForCall(0)
+		Expect(calledRequestType).To(Equal("ContainerMetrics"))
+		Expect(calledLatency).To(BeNumerically("~", requestLatency, 5*time.Millisecond))
+
+		Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(1))
+		calledRequestType, delta = fakeRequestMetrics.IncrementRequestsSucceededCounterArgsForCall(0)
+		Expect(delta).To(Equal(1))
+		Expect(calledRequestType).To(Equal("ContainerMetrics"))
+
+		Expect(fakeRequestMetrics.IncrementRequestsFailedCounterCallCount()).To(Equal(0))
+	})
+
 	Context("when the container_metrics call fails", func() {
 		BeforeEach(func() {
 			fakeMetricCollector.MetricsReturns(nil, errors.New("some-err"))
 		})
+
 		It("fails", func() {
 			Expect(fakeMetricCollector.MetricsCallCount()).To(Equal(0))
 
@@ -85,35 +125,4 @@ var _ = Describe("ContainerMetrics", func() {
 			Expect(calledRequestType).To(Equal("ContainerMetrics"))
 		})
 	})
-
-	It("emits the request metrics", func() {
-		Request(rep.ContainerMetricsRoute, nil, nil)
-
-		Expect(fakeRequestMetrics.IncrementRequestsStartedCounterCallCount()).To(Equal(1))
-		calledRequestType, delta := fakeRequestMetrics.IncrementRequestsStartedCounterArgsForCall(0)
-		Expect(delta).To(Equal(1))
-		Expect(calledRequestType).To(Equal("ContainerMetrics"))
-
-		Expect(fakeRequestMetrics.IncrementRequestsInFlightCounterCallCount()).To(Equal(1))
-		calledRequestType, delta = fakeRequestMetrics.IncrementRequestsInFlightCounterArgsForCall(0)
-		Expect(delta).To(Equal(1))
-		Expect(calledRequestType).To(Equal("ContainerMetrics"))
-
-		Expect(fakeRequestMetrics.DecrementRequestsInFlightCounterCallCount()).To(Equal(1))
-		calledRequestType, delta = fakeRequestMetrics.DecrementRequestsInFlightCounterArgsForCall(0)
-		Expect(delta).To(Equal(1))
-		Expect(calledRequestType).To(Equal("ContainerMetrics"))
-
-		Expect(fakeRequestMetrics.UpdateLatencyCallCount()).To(Equal(1))
-		calledRequestType, _ = fakeRequestMetrics.UpdateLatencyArgsForCall(0)
-		Expect(calledRequestType).To(Equal("ContainerMetrics"))
-
-		Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(1))
-		calledRequestType, delta = fakeRequestMetrics.IncrementRequestsSucceededCounterArgsForCall(0)
-		Expect(delta).To(Equal(1))
-		Expect(calledRequestType).To(Equal("ContainerMetrics"))
-
-		Expect(fakeRequestMetrics.IncrementRequestsFailedCounterCallCount()).To(Equal(0))
-	})
-
 })

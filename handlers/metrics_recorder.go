@@ -11,9 +11,9 @@ func startMetrics(metrics helpers.RequestMetrics, requestType string) {
 	metrics.IncrementRequestsInFlightCounter(requestType, 1)
 }
 
-func stopMetrics(metrics helpers.RequestMetrics, requestType string, since time.Duration, deferErr *error) {
+func stopMetrics(metrics helpers.RequestMetrics, requestType string, start time.Time, deferErr *error) {
 	metrics.DecrementRequestsInFlightCounter(requestType, 1)
-	metrics.UpdateLatency(requestType, since)
+	metrics.UpdateLatency(requestType, time.Since(start))
 
 	if deferErr == nil || *deferErr == nil {
 		metrics.IncrementRequestsSucceededCounter(requestType, 1)

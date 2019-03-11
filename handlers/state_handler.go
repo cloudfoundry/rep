@@ -26,7 +26,7 @@ func (h *state) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.L
 	start := time.Now()
 	requestType := "State"
 	startMetrics(h.metrics, requestType)
-	defer stopMetrics(h.metrics, requestType, time.Since(start), &deferErr)
+	defer stopMetrics(h.metrics, requestType, start, &deferErr)
 
 	logger = logger.Session("auction-fetch-state")
 

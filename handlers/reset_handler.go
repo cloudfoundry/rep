@@ -24,7 +24,7 @@ func (h *reset) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.L
 	start := time.Now()
 	requestType := "Reset"
 	startMetrics(h.metrics, requestType)
-	defer stopMetrics(h.metrics, requestType, time.Since(start), &deferErr)
+	defer stopMetrics(h.metrics, requestType, start, &deferErr)
 
 	logger = logger.Session("sim-reset")
 

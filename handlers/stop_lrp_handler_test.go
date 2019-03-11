@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"time"
 
 	executorfakes "code.cloudfoundry.org/executor/fakes"
 	"code.cloudfoundry.org/lager"
@@ -47,8 +48,7 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 	})
 
 	Context("when the request is valid", func() {
-		var processGuid string
-		var instanceGuid string
+		var processGuid, instanceGuid string
 
 		BeforeEach(func() {
 			processGuid = "process-guid"
@@ -61,6 +61,16 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 		})
 
 		Context("and StopContainer succeeds", func() {
+			var requestLatency time.Duration
+
+			BeforeEach(func() {
+				requestLatency = 500 * time.Millisecond
+				fakeClient.StopContainerStub = func(logger lager.Logger, guid string) error {
+					time.Sleep(requestLatency)
+					return nil
+				}
+			})
+
 			It("responds with 202 Accepted", func() {
 				Expect(resp.Code).To(Equal(http.StatusAccepted))
 			})
@@ -90,8 +100,9 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 				Expect(calledRequestType).To(Equal("StopLRPInstance"))
 
 				Expect(fakeRequestMetrics.UpdateLatencyCallCount()).To(Equal(1))
-				calledRequestType, _ = fakeRequestMetrics.UpdateLatencyArgsForCall(0)
+				calledRequestType, calledLatency := fakeRequestMetrics.UpdateLatencyArgsForCall(0)
 				Expect(calledRequestType).To(Equal("StopLRPInstance"))
+				Expect(calledLatency).To(BeNumerically("~", requestLatency, 5*time.Millisecond))
 
 				Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(1))
 				calledRequestType, delta = fakeRequestMetrics.IncrementRequestsSucceededCounterArgsForCall(0)
