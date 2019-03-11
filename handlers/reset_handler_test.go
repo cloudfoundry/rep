@@ -51,7 +51,7 @@ var _ = Describe("Reset", func() {
 			Expect(fakeRequestMetrics.UpdateLatencyCallCount()).To(Equal(1))
 			calledRequestType, calledLatency := fakeRequestMetrics.UpdateLatencyArgsForCall(0)
 			Expect(calledRequestType).To(Equal("Reset"))
-			Expect(calledLatency).To(BeNumerically("~", requestLatency, 1*time.Millisecond))
+			Expect(calledLatency).To(BeNumerically("~", requestLatency, 5*time.Millisecond))
 
 			Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(1))
 			calledRequestType, delta = fakeRequestMetrics.IncrementRequestsSucceededCounterArgsForCall(0)
