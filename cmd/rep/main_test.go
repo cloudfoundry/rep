@@ -177,7 +177,7 @@ var _ = Describe("The Rep", func() {
 				HealthyMonitoringInterval:          durationjson.Duration(30 * time.Second),
 				UnhealthyMonitoringInterval:        durationjson.Duration(500 * time.Millisecond),
 				ContainerOwnerName:                 "executor",
-				HealthCheckContainerOwnerName:      "executor-health-check",
+				HealthCheckContainerOwnerName:      "check",
 				CreateWorkPoolSize:                 32,
 				DeleteWorkPoolSize:                 32,
 				ReadWorkPoolSize:                   64,
@@ -668,7 +668,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 						func(rw http.ResponseWriter, req *http.Request) {
 							body, err := ioutil.ReadAll(req.Body)
 							Expect(err).NotTo(HaveOccurred())
-							if !strings.Contains(string(body), "executor-healthcheck") {
+							if !strings.Contains(string(body), "check") {
 								<-blockCh
 							}
 						},
