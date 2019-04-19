@@ -191,19 +191,19 @@ var _ = Describe("Resources", func() {
 			var stackPathMap rep.StackPathMap
 			BeforeEach(func() {
 				stackPathMap = rep.StackPathMap{
-					"cflinuxfs2": "cflinuxfs2:/var/vcap/packages/cflinuxfs2/rootfs.tar",
+					"cflinuxfs3": "cflinuxfs3:/var/vcap/packages/cflinuxfs3/rootfs.tar",
 				}
 			})
 			It("returns the resolved path if the RootFS URL scheme is preloaded", func() {
-				p, err := stackPathMap.PathForRootFS("preloaded:cflinuxfs2")
+				p, err := stackPathMap.PathForRootFS("preloaded:cflinuxfs3")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(p).To(Equal("cflinuxfs2:/var/vcap/packages/cflinuxfs2/rootfs.tar"))
+				Expect(p).To(Equal("cflinuxfs3:/var/vcap/packages/cflinuxfs3/rootfs.tar"))
 			})
 			It("returns the correct URL if the RootFS URL scheme is preloaded+layer", func() {
 				queryString := "?layer=https://blobstore.internal/layer1.tgz?layer_path=/tmp/asset1&layer_digest=alkjsdflkj"
-				p, err := stackPathMap.PathForRootFS(fmt.Sprintf("preloaded+layer:cflinuxfs2%s", queryString))
+				p, err := stackPathMap.PathForRootFS(fmt.Sprintf("preloaded+layer:cflinuxfs3%s", queryString))
 				Expect(err).NotTo(HaveOccurred())
-				Expect(p).To(Equal(fmt.Sprintf("preloaded+layer:cflinuxfs2:/var/vcap/packages/cflinuxfs2/rootfs.tar%s", queryString)))
+				Expect(p).To(Equal(fmt.Sprintf("preloaded+layer:cflinuxfs3:/var/vcap/packages/cflinuxfs3/rootfs.tar%s", queryString)))
 			})
 			It("returns a blank string and no error if the RootFS URL is blank", func() {
 				p, err := stackPathMap.PathForRootFS("")

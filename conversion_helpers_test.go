@@ -260,10 +260,10 @@ var _ = Describe("Resources", func() {
 			// test explicitly for V2 conversion in a context below
 			desiredLRP.ImageLayers = nil
 			actualLRP = model_helpers.NewValidActualLRP("the-process-guid", 9)
-			desiredLRP.RootFs = "preloaded:cflinuxfs2"
+			desiredLRP.RootFs = "preloaded:cflinuxfs3"
 
 			stackPathMap = rep.StackPathMap{
-				"cflinuxfs2": "cflinuxfs2:/var/vcap/packages/cflinuxfs2/rootfs.tar",
+				"cflinuxfs3": "cflinuxfs3:/var/vcap/packages/cflinuxfs3/rootfs.tar",
 			}
 		})
 
@@ -272,7 +272,7 @@ var _ = Describe("Resources", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(runReq.Tags).To(Equal(executor.Tags{}))
 			Expect(runReq.RunInfo).To(test_helpers.DeepEqual(executor.RunInfo{
-				RootFSPath: stackPathMap["cflinuxfs2"],
+				RootFSPath: stackPathMap["cflinuxfs3"],
 				CPUWeight:  uint(desiredLRP.CpuWeight),
 				DiskScope:  executor.ExclusiveDiskLimit,
 				Ports:      rep.ConvertPortMappings(desiredLRP.Ports),
@@ -385,7 +385,7 @@ var _ = Describe("Resources", func() {
 
 		Context("when the rootfs is preloaded+layer", func() {
 			BeforeEach(func() {
-				desiredLRP.RootFs = "preloaded+layer:cflinuxfs2?layer=http://file-server/layer.tgz&layer_digest=some-digest&layer_path=/path/in/container"
+				desiredLRP.RootFs = "preloaded+layer:cflinuxfs3?layer=http://file-server/layer.tgz&layer_digest=some-digest&layer_path=/path/in/container"
 			})
 
 			It("enables the envoy proxy", func() {
@@ -490,7 +490,7 @@ var _ = Describe("Resources", func() {
 
 					Expect(runReq.RootFSPath).To(Equal(fmt.Sprintf(
 						"preloaded+layer:%s?layer=%s&layer_path=%s&layer_digest=%s",
-						stackPathMap["cflinuxfs2"],
+						stackPathMap["cflinuxfs3"],
 						url.QueryEscape(desiredLRP.ImageLayers[1].Url),
 						url.QueryEscape(desiredLRP.ImageLayers[1].DestinationPath),
 						url.QueryEscape(desiredLRP.ImageLayers[1].DigestValue),
@@ -557,10 +557,10 @@ var _ = Describe("Resources", func() {
 			// because they are getting extra CachedDependencies.  We test
 			// explicitly for V2 conversion in a context below
 			task.ImageLayers = nil
-			task.RootFs = "preloaded:cflinuxfs2"
+			task.RootFs = "preloaded:cflinuxfs3"
 
 			stackPathMap = rep.StackPathMap{
-				"cflinuxfs2": "cflinuxfs2:/var/vcap/packages/cflinuxfs2/rootfs.tar",
+				"cflinuxfs3": "cflinuxfs3:/var/vcap/packages/cflinuxfs3/rootfs.tar",
 			}
 		})
 
@@ -572,7 +572,7 @@ var _ = Describe("Resources", func() {
 			}))
 
 			Expect(runReq.RunInfo).To(Equal(executor.RunInfo{
-				RootFSPath: stackPathMap["cflinuxfs2"],
+				RootFSPath: stackPathMap["cflinuxfs3"],
 				DiskScope:  executor.ExclusiveDiskLimit,
 				CPUWeight:  uint(task.CpuWeight),
 				Privileged: task.Privileged,
@@ -737,7 +737,7 @@ var _ = Describe("Resources", func() {
 
 					Expect(runReq.RootFSPath).To(Equal(fmt.Sprintf(
 						"preloaded+layer:%s?layer=%s&layer_path=%s&layer_digest=%s",
-						stackPathMap["cflinuxfs2"],
+						stackPathMap["cflinuxfs3"],
 						url.QueryEscape(task.ImageLayers[1].Url),
 						url.QueryEscape(task.ImageLayers[1].DestinationPath),
 						url.QueryEscape(task.ImageLayers[1].DigestValue),
@@ -815,7 +815,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("doesn't convert preloaded+layer rootfs URLs ", func() {
-				rootFS := "preloaded+layer:cflinuxfs2?layer=https://blobstore.internal/layer1.tgz?layer_path=/tmp/asset1&layer_digest=asdlfkjsf"
+				rootFS := "preloaded+layer:cflinuxfs3?layer=https://blobstore.internal/layer1.tgz?layer_path=/tmp/asset1&layer_digest=asdlfkjsf"
 				newRootFS, newImageLayers := rep.ConvertPreloadedRootFS(rootFS, imageLayers, layeringMode)
 				Expect(newRootFS).To(Equal(rootFS))
 				Expect(newImageLayers).To(Equal(imageLayers))
@@ -829,7 +829,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("doesn't convert preloaded rootfs URLs", func() {
-				rootFS := "preloaded:cflinuxfs2"
+				rootFS := "preloaded:cflinuxfs3"
 				newRootFS, newImageLayers := rep.ConvertPreloadedRootFS(rootFS, imageLayers, layeringMode)
 				Expect(newRootFS).To(Equal(rootFS))
 				Expect(newImageLayers).To(Equal(imageLayers))
@@ -843,7 +843,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("doesn't convert preloaded+layer rootfs URLs ", func() {
-				rootFS := "preloaded+layer:cflinuxfs2?layer=https://blobstore.internal/layer1.tgz?layer_path=/tmp/asset1&layer_digest=asdlfkjsf"
+				rootFS := "preloaded+layer:cflinuxfs3?layer=https://blobstore.internal/layer1.tgz?layer_path=/tmp/asset1&layer_digest=asdlfkjsf"
 				newRootFS, newImageLayers := rep.ConvertPreloadedRootFS(rootFS, imageLayers, layeringMode)
 				Expect(newRootFS).To(Equal(rootFS))
 				Expect(newImageLayers).To(Equal(imageLayers))
@@ -859,12 +859,12 @@ var _ = Describe("Resources", func() {
 			Context("when the rootfs scheme is 'preloaded'", func() {
 				var rootFS string
 				BeforeEach(func() {
-					rootFS = "preloaded:cflinuxfs2"
+					rootFS = "preloaded:cflinuxfs3"
 				})
 
 				It("converts the rootfs URL scheme to 'preloaded+layer' and converts the first exclusive sha256 tgz layer to the extra layer", func() {
 					newRootFS, newImageLayers := rep.ConvertPreloadedRootFS(rootFS, imageLayers, layeringMode)
-					expectedRootFS := fmt.Sprintf("preloaded+layer:cflinuxfs2?layer=%s&layer_path=%s&layer_digest=the-real-digest", url.QueryEscape("https://droplet.com/download"), url.QueryEscape("/home/vcap"))
+					expectedRootFS := fmt.Sprintf("preloaded+layer:cflinuxfs3?layer=%s&layer_path=%s&layer_digest=the-real-digest", url.QueryEscape("https://droplet.com/download"), url.QueryEscape("/home/vcap"))
 					expectedLayers := []*models.ImageLayer{
 						imageLayers[0],
 						imageLayers[1],
