@@ -1,10 +1,12 @@
 package main_test
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"code.cloudfoundry.org/tlsconfig"
 	. "github.com/onsi/ginkgo"
@@ -183,6 +185,61 @@ var _ = Describe("Drain", func() {
 			err := drainCmd("-X", "POST", apiAddress)
 			Expect(err).NotTo(HaveOccurred())
 
+			Expect(apiServer.ReceivedRequests()).To(HaveLen(1))
+		})
+	})
+
+	Context("when the max-time is defined", func() {
+		BeforeEach(func() {
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/ping"),
+					func(w http.ResponseWriter, r *http.Request) {
+						time.Sleep(10 * time.Second)
+						w.WriteHeader(http.StatusOK)
+						w.Write([]byte("Ok"))
+					},
+				),
+			)
+			apiServer.Start()
+			apiAddress = fmt.Sprintf("%s%s", apiServer.URL(), "/ping")
+		})
+
+		It("gets", func() {
+			var stdout, stderr bytes.Buffer
+			cmd := exec.Command(drainPath, "-max-time", "0.1s", apiAddress)
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			err := cmd.Run()
+			Expect(err).To(HaveOccurred())
+			Expect(stderr.String()).To(ContainSubstring("Client.Timeout exceeded while"))
+
+			Expect(apiServer.ReceivedRequests()).To(HaveLen(1))
+		})
+	})
+
+	Context("when the customer header is defined", func() {
+		BeforeEach(func() {
+			apiServer.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/ping"),
+					func(w http.ResponseWriter, r *http.Request) {
+						w.Write([]byte(r.Header.Get("Custom")))
+					},
+				),
+			)
+			apiServer.Start()
+			apiAddress = fmt.Sprintf("%s%s", apiServer.URL(), "/ping")
+		})
+
+		It("gets", func() {
+			var stdout, stderr bytes.Buffer
+			cmd := exec.Command(drainPath, "-H", "Custom=something", apiAddress)
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			err := cmd.Run()
+			Expect(err).NotTo(HaveOccurred(), stderr.String())
+			Expect(stdout.String()).To(Equal("something"))
 			Expect(apiServer.ReceivedRequests()).To(HaveLen(1))
 		})
 	})
