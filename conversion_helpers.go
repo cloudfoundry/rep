@@ -88,7 +88,7 @@ func ActualLRPNetInfoFromContainer(container executor.Container) (*models.Actual
 		))
 	}
 
-	actualLRPNetInfo := models.NewActualLRPNetInfo(container.ExternalIP, container.InternalIP, ports...)
+	actualLRPNetInfo := models.NewActualLRPNetInfo(container.ExternalIP, container.InternalIP, container.AdvertisePreferenceForInstanceAddress, ports...)
 
 	err := actualLRPNetInfo.Validate()
 	if err != nil {
