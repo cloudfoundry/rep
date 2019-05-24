@@ -664,16 +664,16 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					blockCh = make(chan struct{})
 
 					respondWithSuccessToCreateContainer = false
-					fakeGarden.RouteToHandler("POST", "/containers", ghttp.CombineHandlers(
-						func(rw http.ResponseWriter, req *http.Request) {
-							body, err := ioutil.ReadAll(req.Body)
-							Expect(err).NotTo(HaveOccurred())
-							if !strings.Contains(string(body), "check") {
-								<-blockCh
-							}
-						},
-						ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{"handle": "healthcheck-container"}),
-					))
+					fakeGarden.RouteToHandler("POST", "/containers", func(rw http.ResponseWriter, req *http.Request) {
+						body, err := ioutil.ReadAll(req.Body)
+						Expect(err).NotTo(HaveOccurred())
+						fmt.Printf("-----Body %s\n", string(body))
+						if !strings.Contains(string(body), "check") {
+							<-blockCh
+							return
+						}
+						ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{"handle": "healthcheck-container"}).ServeHTTP(rw, req)
+					})
 
 					createTask = func(taskGuid string) {
 						task := &models.Task{
