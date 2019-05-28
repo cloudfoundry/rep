@@ -175,9 +175,10 @@ var _ = Describe("Resources", func() {
 
 		BeforeEach(func() {
 			container = executor.Container{
-				Guid:       "some-instance-guid",
-				ExternalIP: "some-external-ip",
-				InternalIP: "container-ip",
+				Guid:                                  "some-instance-guid",
+				ExternalIP:                            "some-external-ip",
+				InternalIP:                            "container-ip",
+				AdvertisePreferenceForInstanceAddress: true,
 				Tags: executor.Tags{
 					rep.LifecycleTag:    rep.LRPLifecycle,
 					rep.DomainTag:       "my-domain",
@@ -212,8 +213,9 @@ var _ = Describe("Resources", func() {
 							HostPort:      6789,
 						},
 					},
-					Address:         "some-external-ip",
-					InstanceAddress: "container-ip",
+					Address:                               "some-external-ip",
+					InstanceAddress:                       "container-ip",
+					AdvertisePreferenceForInstanceAddress: true,
 				}
 
 				Expect(*lrpNetInfo).To(Equal(expectedNetInfo))
