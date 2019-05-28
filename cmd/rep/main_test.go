@@ -667,7 +667,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					fakeGarden.RouteToHandler("POST", "/containers", func(rw http.ResponseWriter, req *http.Request) {
 						body, err := ioutil.ReadAll(req.Body)
 						Expect(err).NotTo(HaveOccurred())
-						fmt.Printf("-----Body %s\n", string(body))
 						if !strings.Contains(string(body), "check") {
 							<-blockCh
 							return
