@@ -88,7 +88,12 @@ func ActualLRPNetInfoFromContainer(container executor.Container) (*models.Actual
 		))
 	}
 
-	actualLRPNetInfo := models.NewActualLRPNetInfo(container.ExternalIP, container.InternalIP, container.AdvertisePreferenceForInstanceAddress, ports...)
+	preferredAddress := models.ActualLRPNetInfo_PreferredAddressHost
+	if container.AdvertisePreferenceForInstanceAddress {
+		preferredAddress = models.ActualLRPNetInfo_PreferredAddressInstance
+	}
+
+	actualLRPNetInfo := models.NewActualLRPNetInfo(container.ExternalIP, container.InternalIP, preferredAddress, ports...)
 
 	err := actualLRPNetInfo.Validate()
 	if err != nil {

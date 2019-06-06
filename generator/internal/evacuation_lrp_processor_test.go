@@ -248,12 +248,11 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				container.State = executor.StateRunning
 				externalIP := "executor-ip"
 				internalIP := "container-ip"
-				advertisePreferenceForInstanceAddress := false
 				container.ExternalIP = externalIP
 				container.InternalIP = internalIP
-				container.AdvertisePreferenceForInstanceAddress = advertisePreferenceForInstanceAddress
+				container.AdvertisePreferenceForInstanceAddress = false
 				container.Ports = []executor.PortMapping{{ContainerPort: 1357, HostPort: 8642}}
-				lrpNetInfo = models.NewActualLRPNetInfo(externalIP, internalIP, advertisePreferenceForInstanceAddress, models.NewPortMapping(8642, 1357))
+				lrpNetInfo = models.NewActualLRPNetInfo(externalIP, internalIP, models.ActualLRPNetInfo_PreferredAddressHost, models.NewPortMapping(8642, 1357))
 			})
 
 			It("evacuates the lrp", func() {
@@ -265,12 +264,12 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 				Eventually(logger).Should(Say(
 					fmt.Sprintf(
-						`"net_info":\{"address":"%s","ports":\[\{"container_port":%d,"host_port":%d\}\],"instance_address":"%s","advertise_preference_for_instance_address":%t\}`,
+						`"net_info":\{"address":"%s","ports":\[\{"container_port":%d,"host_port":%d\}\],"instance_address":"%s","preferred_address":"%s"\}`,
 						lrpNetInfo.Address,
 						lrpNetInfo.Ports[0].ContainerPort,
 						lrpNetInfo.Ports[0].HostPort,
 						lrpNetInfo.InstanceAddress,
-						lrpNetInfo.AdvertisePreferenceForInstanceAddress,
+						lrpNetInfo.PreferredAddress,
 					),
 				))
 			})

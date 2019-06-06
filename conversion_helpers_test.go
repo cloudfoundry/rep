@@ -213,12 +213,22 @@ var _ = Describe("Resources", func() {
 							HostPort:      6789,
 						},
 					},
-					Address:                               "some-external-ip",
-					InstanceAddress:                       "container-ip",
-					AdvertisePreferenceForInstanceAddress: true,
+					Address:          "some-external-ip",
+					InstanceAddress:  "container-ip",
+					PreferredAddress: models.ActualLRPNetInfo_PreferredAddressInstance,
 				}
 
 				Expect(*lrpNetInfo).To(Equal(expectedNetInfo))
+			})
+
+			Context("when advertisePreferenceForInstanceAddress set to false", func() {
+				BeforeEach(func() {
+					container.AdvertisePreferenceForInstanceAddress = false
+				})
+
+				It("sets PreferredAddress as host", func() {
+					Expect((*lrpNetInfo).PreferredAddress).To(Equal(models.ActualLRPNetInfo_PreferredAddressHost))
+				})
 			})
 		})
 
