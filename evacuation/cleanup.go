@@ -162,6 +162,7 @@ func (e *EvacuationCleanup) signalRunningContainers(logger lager.Logger, contain
 			container.RunInfo.LogConfig.Guid,
 			container.RunInfo.LogConfig.SourceName,
 			container.RunInfo.LogConfig.Index,
+			container.RunInfo.LogConfig.Tags,
 			e.metronClient,
 		)
 		writeToStream(streamer, fmt.Sprintf("Cell %s reached evacuation timeout for instance %s", e.cellID, container.Guid))

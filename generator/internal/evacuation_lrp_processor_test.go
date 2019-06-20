@@ -276,10 +276,10 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			It("emits single log line indicating replacement request for instance", func() {
 				Eventually(fakeMetronClient.SendAppLogCallCount).Should(Equal(1))
-				containerGuid, msg, containerSource, containerIndex := fakeMetronClient.SendAppLogArgsForCall(0)
-				Expect(containerGuid).To(Equal(logGuid))
+				msg, containerSource, tags := fakeMetronClient.SendAppLogArgsForCall(0)
+				Expect(tags["source_id"]).To(Equal(logGuid))
 				Expect(containerSource).To(Equal(sourceName))
-				Expect(containerIndex).To(Equal(strconv.Itoa(index)))
+				Expect(tags["instance_id"]).To(Equal(strconv.Itoa(index)))
 				Expect(msg).To(Equal(fmt.Sprintf("Cell %s requesting replacement for instance %s", localCellID, instanceGuid)))
 
 				lrpProcessor.Process(logger, container)

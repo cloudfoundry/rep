@@ -180,16 +180,16 @@ var _ = Describe("EvacuationCleanup", func() {
 
 			It("emits app logs indicating evacuation timeout", func() {
 				Eventually(fakeMetronClient.SendAppLogCallCount).Should(Equal(2))
-				containerGuid, msg, containerSource, containerIndex := fakeMetronClient.SendAppLogArgsForCall(0)
-				Expect(containerGuid).To(Equal("log-guid-1"))
+				msg, containerSource, tags := fakeMetronClient.SendAppLogArgsForCall(0)
+				Expect(tags["source_id"]).To(Equal("log-guid-1"))
 				Expect(containerSource).To(Equal("source-name-1"))
-				Expect(containerIndex).To(Equal(strconv.Itoa(0)))
+				Expect(tags["instance_id"]).To(Equal(strconv.Itoa(0)))
 				Expect(msg).To(Equal(fmt.Sprintf("Cell %s reached evacuation timeout for instance %s", cellID, "container1")))
 
-				containerGuid, msg, containerSource, containerIndex = fakeMetronClient.SendAppLogArgsForCall(1)
-				Expect(containerGuid).To(Equal("log-guid-2"))
+				msg, containerSource, tags = fakeMetronClient.SendAppLogArgsForCall(1)
+				Expect(tags["source_id"]).To(Equal("log-guid-2"))
 				Expect(containerSource).To(Equal("source-name-2"))
-				Expect(containerIndex).To(Equal(strconv.Itoa(1)))
+				Expect(tags["instance_id"]).To(Equal(strconv.Itoa(1)))
 				Expect(msg).To(Equal(fmt.Sprintf("Cell %s reached evacuation timeout for instance %s", cellID, "container2")))
 			})
 

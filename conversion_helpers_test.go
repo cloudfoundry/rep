@@ -292,6 +292,9 @@ var _ = Describe("Resources", func() {
 					Guid:       desiredLRP.LogGuid,
 					Index:      int(actualLRP.Index),
 					SourceName: desiredLRP.LogSource,
+					Tags: map[string]string{
+						"source_id": "some-metrics-guid",
+					},
 				},
 				MetricsConfig: executor.MetricsConfig{
 					Guid:  desiredLRP.MetricsGuid,
@@ -544,6 +547,7 @@ var _ = Describe("Resources", func() {
 				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.RunInfo.MetricsConfig.Tags).To(HaveKeyWithValue("tag1", "foo"))
+				Expect(runReq.RunInfo.LogConfig.Tags).To(HaveKeyWithValue("tag1", "foo"))
 			})
 
 			It("populates tags with dynamic values according its enum value ", func() {
@@ -551,6 +555,8 @@ var _ = Describe("Resources", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(runReq.RunInfo.MetricsConfig.Tags).To(HaveKeyWithValue("index", "9"))
 				Expect(runReq.RunInfo.MetricsConfig.Tags).To(HaveKeyWithValue("instanceGuid", "some-guid"))
+				Expect(runReq.RunInfo.LogConfig.Tags).To(HaveKeyWithValue("index", "9"))
+				Expect(runReq.RunInfo.LogConfig.Tags).To(HaveKeyWithValue("instanceGuid", "some-guid"))
 			})
 		})
 	})

@@ -40,6 +40,7 @@ func (p *evacuationLRPProcessor) Process(logger lager.Logger, container executor
 		container.RunInfo.LogConfig.Guid,
 		container.RunInfo.LogConfig.SourceName,
 		container.RunInfo.LogConfig.Index,
+		container.RunInfo.LogConfig.Tags,
 		p.metronClient,
 	)
 
