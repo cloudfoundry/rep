@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"code.cloudfoundry.org/bbs"
@@ -90,22 +91,22 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 
 	logger.Info("finished-evacuating", lager.Data{"stranded-evacuating-actual-lrps": strandedEvacuationCount})
 
-	logger.Info("stopping-all-containers")
+	logger.Info("deleting-all-containers")
 
 	exitTimer := e.clock.NewTimer(e.exitTimeout)
 
 	checkRunningContainersTimer := e.clock.NewTicker(1 * time.Second)
 	containersSignalled := make(chan struct{})
-	containersStopped := make(chan struct{})
-	go e.signalRunningContainers(logger, containersSignalled)
-	go e.checkRunningContainers(logger, checkRunningContainersTimer.C(), containersSignalled, containersStopped)
+	containersDeleted := make(chan struct{})
+	go e.deleteRunningContainers(logger, containersSignalled)
+	go e.checkRunningContainers(logger, checkRunningContainersTimer.C(), containersSignalled, containersDeleted)
 
 	select {
 	case <-exitTimer.C():
 		logger.Info("failed-to-cleanup-all-containers")
 		return errors.New("failed-to-cleanup-all-containers")
-	case <-containersStopped:
-		logger.Info("stopped-containers-successfully")
+	case <-containersDeleted:
+		logger.Info("deleted-containers-successfully")
 		return nil
 	}
 }
@@ -114,7 +115,7 @@ func (e *EvacuationCleanup) checkRunningContainers(
 	logger lager.Logger,
 	ticker <-chan time.Time,
 	containersSignalled <-chan struct{},
-	containersStopped chan<- struct{},
+	containersDeleted chan<- struct{},
 ) {
 	hasRunningContainers := func() bool {
 		containers, err := e.executorClient.ListContainers(logger)
@@ -133,19 +134,19 @@ func (e *EvacuationCleanup) checkRunningContainers(
 		return false
 	}
 
-	defer close(containersStopped)
+	defer close(containersDeleted)
 
 	// wait for all containers to be signalled, this only makes the tests easier
 	// to write since they depend on the signalling and checking to happen
 	// sequentially, but isn't necessary for the operation of the cleanup
 	<-containersSignalled
 	for hasRunningContainers() {
-		logger.Info("waiting-for-containers-to-stop")
+		logger.Info("waiting-for-containers-to-delete")
 		<-ticker
 	}
 }
 
-func (e *EvacuationCleanup) signalRunningContainers(logger lager.Logger, containersSignalled chan<- struct{}) {
+func (e *EvacuationCleanup) deleteRunningContainers(logger lager.Logger, containersSignalled chan<- struct{}) {
 	defer close(containersSignalled)
 
 	containers, err := e.executorClient.ListContainers(logger)
@@ -156,8 +157,8 @@ func (e *EvacuationCleanup) signalRunningContainers(logger lager.Logger, contain
 
 	logger.Info("sending-signal-to-containers")
 
+	var wg sync.WaitGroup
 	for _, container := range containers {
-
 		streamer := log_streamer.New(
 			container.RunInfo.LogConfig.Guid,
 			container.RunInfo.LogConfig.SourceName,
@@ -166,10 +167,18 @@ func (e *EvacuationCleanup) signalRunningContainers(logger lager.Logger, contain
 			e.metronClient,
 		)
 		writeToStream(streamer, fmt.Sprintf("Cell %s reached evacuation timeout for instance %s", e.cellID, container.Guid))
-		e.executorClient.StopContainer(logger, container.Guid)
+		wg.Add(1)
+		go func(logger lager.Logger, containerGuid string) {
+			defer wg.Done()
+			err := e.executorClient.DeleteContainer(logger, containerGuid)
+			if err != nil {
+				logger.Error("failed-to-delete-container", err, lager.Data{"container-guid": containerGuid})
+			}
+		}(logger, container.Guid)
 	}
 
 	logger.Info("sent-signal-to-containers")
+	wg.Wait()
 }
 
 func writeToStream(streamer log_streamer.LogStreamer, msg string) {

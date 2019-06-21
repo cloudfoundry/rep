@@ -165,17 +165,17 @@ var _ = Describe("EvacuationCleanup", func() {
 			Expect(value).To(BeEquivalentTo(2))
 		})
 
-		Describe("stopping running containers", func() {
-			It("should stop all of the containers that are still running", func() {
+		Describe("deleting running containers", func() {
+			It("should delete all of the containers that are still running", func() {
 				Eventually(errCh).Should(Receive(nil))
 				Expect(fakeExecutorClient.ListContainersCallCount()).To(Equal(2))
-				Expect(fakeExecutorClient.StopContainerCallCount()).To(Equal(2))
+				Expect(fakeExecutorClient.DeleteContainerCallCount()).To(Equal(2))
 
-				_, guid := fakeExecutorClient.StopContainerArgsForCall(0)
-				Expect(guid).To(Equal("container1"))
-
-				_, guid = fakeExecutorClient.StopContainerArgsForCall(1)
-				Expect(guid).To(Equal("container2"))
+				//TODO: potential race condition
+				_, c1 := fakeExecutorClient.DeleteContainerArgsForCall(0)
+				_, c2 := fakeExecutorClient.DeleteContainerArgsForCall(1)
+				containers := []string{c1, c2}
+				Expect(containers).To(ConsistOf("container1", "container2"))
 			})
 
 			It("emits app logs indicating evacuation timeout", func() {
@@ -193,10 +193,9 @@ var _ = Describe("EvacuationCleanup", func() {
 				Expect(msg).To(Equal(fmt.Sprintf("Cell %s reached evacuation timeout for instance %s", cellID, "container2")))
 			})
 
-			// https://www.pivotaltracker.com/story/show/133061923
-			Describe("when StopContainer hangs", func() {
+			Describe("when DeleteContainer hangs", func() {
 				BeforeEach(func() {
-					fakeExecutorClient.StopContainerStub = func(lager.Logger, string) error {
+					fakeExecutorClient.DeleteContainerStub = func(lager.Logger, string) error {
 						time.Sleep(time.Minute)
 						return nil
 					}
@@ -204,6 +203,17 @@ var _ = Describe("EvacuationCleanup", func() {
 
 				It("gives up after the graceful shutdown interval expires", func() {
 					fakeClock.WaitForNWatchersAndIncrement(exitTimeoutInterval, 2)
+					Eventually(doneCh).Should(BeClosed())
+				})
+			})
+
+			Describe("when DeleteContainer fails", func() {
+				BeforeEach(func() {
+					fakeExecutorClient.DeleteContainerReturnsOnCall(0, errors.New("some-error"))
+				})
+
+				It("gives up after the graceful shutdown interval expires", func() {
+					Eventually(logger).Should(gbytes.Say(".*failed-to-delete-container\".*some-error"))
 					Eventually(doneCh).Should(BeClosed())
 				})
 			})
@@ -247,7 +257,7 @@ var _ = Describe("EvacuationCleanup", func() {
 				})
 			})
 
-			Context("when the containers do not stop in time", func() {
+			Context("when the containers do not delete in time", func() {
 				BeforeEach(func() {
 					fakeExecutorClient.ListContainersStub = func(lager.Logger) ([]executor.Container, error) {
 						return []executor.Container{
@@ -259,7 +269,7 @@ var _ = Describe("EvacuationCleanup", func() {
 
 				It("gives up after the graceful shutdown interval expires", func() {
 					Eventually(fakeExecutorClient.ListContainersCallCount).Should(Equal(2))
-					Expect(fakeExecutorClient.StopContainerCallCount()).To(Equal(2))
+					Expect(fakeExecutorClient.DeleteContainerCallCount()).To(Equal(2))
 					Consistently(errCh).ShouldNot(Receive())
 
 					exitTimeoutTicker := int(exitTimeoutInterval / time.Second)
