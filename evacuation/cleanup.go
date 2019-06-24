@@ -125,13 +125,11 @@ func (e *EvacuationCleanup) checkRunningContainers(
 			return false
 		}
 
-		for _, container := range containers {
-			if container.State == executor.StateRunning {
-				return true
-			}
+		if len(containers) > 0 {
+			return true
+		} else {
+			return false
 		}
-
-		return false
 	}
 
 	defer close(containersDeleted)

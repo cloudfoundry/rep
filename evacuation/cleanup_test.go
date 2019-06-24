@@ -110,27 +110,21 @@ var _ = Describe("EvacuationCleanup", func() {
 
 			fakeBBSClient.ActualLRPsReturns(actualLRPs, nil)
 
-			fakeExecutorClientCopy := fakeExecutorClient
-			fakeExecutorClient.ListContainersStub = func(lager.Logger) ([]executor.Container, error) {
-				if fakeExecutorClientCopy.ListContainersCallCount() == 1 {
-					return []executor.Container{
-						{
-							Guid:    "container1",
-							State:   executor.StateRunning,
-							RunInfo: executor.RunInfo{LogConfig: executor.LogConfig{Guid: "log-guid-1", SourceName: "source-name-1", Index: 0}},
-						},
-						{Guid: "container2",
-							State:   executor.StateRunning,
-							RunInfo: executor.RunInfo{LogConfig: executor.LogConfig{Guid: "log-guid-2", SourceName: "source-name-2", Index: 1}},
-						},
-					}, nil
-				}
-
-				return []executor.Container{
-					{Guid: "container1", State: executor.StateCompleted},
-					{Guid: "container2", State: executor.StateCompleted},
-				}, nil
-			}
+			fakeExecutorClient.ListContainersReturnsOnCall(0,
+				[]executor.Container{
+					{
+						Guid:    "container1",
+						State:   executor.StateRunning,
+						RunInfo: executor.RunInfo{LogConfig: executor.LogConfig{Guid: "log-guid-1", SourceName: "source-name-1", Index: 0}},
+					},
+					{Guid: "container2",
+						State:   executor.StateRunning,
+						RunInfo: executor.RunInfo{LogConfig: executor.LogConfig{Guid: "log-guid-2", SourceName: "source-name-2", Index: 1}},
+					},
+				},
+				nil,
+			)
+			fakeExecutorClient.ListContainersReturnsOnCall(1, []executor.Container{}, nil)
 		})
 
 		JustBeforeEach(func() {
@@ -167,11 +161,29 @@ var _ = Describe("EvacuationCleanup", func() {
 
 		Describe("deleting running containers", func() {
 			It("should delete all of the containers that are still running", func() {
+				fakeExecutorClient.ListContainersReturnsOnCall(1,
+					[]executor.Container{
+						{
+							Guid:    "container1",
+							State:   executor.StateRunning,
+							RunInfo: executor.RunInfo{LogConfig: executor.LogConfig{Guid: "log-guid-1", SourceName: "source-name-1", Index: 0}},
+						},
+						{Guid: "container2",
+							State:   executor.StateCompleted,
+							RunInfo: executor.RunInfo{LogConfig: executor.LogConfig{Guid: "log-guid-2", SourceName: "source-name-2", Index: 1}},
+						},
+					},
+					nil,
+				)
+				fakeExecutorClient.ListContainersReturnsOnCall(2, []executor.Container{}, nil)
+
+				Consistently(errCh).ShouldNot(Receive())
+				fakeClock.Increment(time.Second * 1)
+
 				Eventually(errCh).Should(Receive(nil))
-				Expect(fakeExecutorClient.ListContainersCallCount()).To(Equal(2))
+				Expect(fakeExecutorClient.ListContainersCallCount()).To(Equal(3))
 				Expect(fakeExecutorClient.DeleteContainerCallCount()).To(Equal(2))
 
-				//TODO: potential race condition
 				_, c1 := fakeExecutorClient.DeleteContainerArgsForCall(0)
 				_, c2 := fakeExecutorClient.DeleteContainerArgsForCall(1)
 				containers := []string{c1, c2}
