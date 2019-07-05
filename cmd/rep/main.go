@@ -172,6 +172,7 @@ func main() {
 		logger,
 		repConfig.CellID,
 		time.Duration(repConfig.GracefulShutdownInterval),
+		time.Duration(repConfig.ExecutorConfig.EnvoyConfigReloadDuration),
 		bbsClient,
 		executorClient,
 		clock,

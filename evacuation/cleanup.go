@@ -36,6 +36,7 @@ func NewEvacuationCleanup(
 	logger lager.Logger,
 	cellID string,
 	gracefulShutdownInterval time.Duration,
+	proxyReloadDuration time.Duration,
 	bbsClient bbs.InternalClient,
 	executorClient executor.Client,
 	clock clock.Clock,
@@ -44,7 +45,7 @@ func NewEvacuationCleanup(
 	return &EvacuationCleanup{
 		logger:         logger,
 		cellID:         cellID,
-		exitTimeout:    gracefulShutdownInterval + exitTimeoutOffset,
+		exitTimeout:    gracefulShutdownInterval + proxyReloadDuration + exitTimeoutOffset,
 		bbsClient:      bbsClient,
 		executorClient: executorClient,
 		clock:          clock,

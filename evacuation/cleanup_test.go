@@ -33,6 +33,7 @@ var _ = Describe("EvacuationCleanup", func() {
 		logger                   *lagertest.TestLogger
 		cellID                   string
 		gracefulShutdownInterval time.Duration
+		proxyReloadDuration      time.Duration
 		exitTimeoutInterval      time.Duration
 
 		fakeClock          *fakeclock.FakeClock
@@ -51,7 +52,8 @@ var _ = Describe("EvacuationCleanup", func() {
 		cellID = "the-cell-id"
 		logger = lagertest.NewTestLogger("cleanup")
 		gracefulShutdownInterval = 20 * time.Second
-		exitTimeoutInterval = gracefulShutdownInterval + exitTimeoutOffset
+		proxyReloadDuration = 10 * time.Second
+		exitTimeoutInterval = gracefulShutdownInterval + proxyReloadDuration + exitTimeoutOffset
 
 		fakeClock = fakeclock.NewFakeClock(time.Now())
 		fakeBBSClient = &fake_bbs.FakeInternalClient{}
@@ -64,6 +66,7 @@ var _ = Describe("EvacuationCleanup", func() {
 			logger,
 			cellID,
 			gracefulShutdownInterval,
+			proxyReloadDuration,
 			fakeBBSClient,
 			fakeExecutorClient,
 			fakeClock,
