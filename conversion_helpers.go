@@ -169,11 +169,6 @@ func NewRunRequestFromDesiredLRP(
 	desiredLRP.RootFs, desiredLRP.ImageLayers = ConvertPreloadedRootFS(desiredLRP.RootFs, desiredLRP.ImageLayers, layeringMode)
 	desiredLRP = desiredLRP.VersionDownTo(format.V2)
 
-	diskScope, err := diskScopeForRootFS(desiredLRP.RootFs)
-	if err != nil {
-		return executor.RunRequest{}, err
-	}
-
 	mounts, err := convertVolumeMounts(desiredLRP.VolumeMounts)
 	if err != nil {
 		return executor.RunRequest{}, err
@@ -195,7 +190,6 @@ func NewRunRequestFromDesiredLRP(
 	runInfo := executor.RunInfo{
 		RootFSPath: rootFSPath,
 		CPUWeight:  uint(desiredLRP.CpuWeight),
-		DiskScope:  diskScope,
 		Ports:      ConvertPortMappings(desiredLRP.Ports),
 		LogConfig: executor.LogConfig{
 			Guid:       desiredLRP.LogGuid,
@@ -252,11 +246,6 @@ func NewRunRequestFromTask(task *models.Task, stackPathMap StackPathMap, layerin
 	task.RootFs, task.ImageLayers = ConvertPreloadedRootFS(task.RootFs, task.ImageLayers, layeringMode)
 	cachedDependencies, setupAction := convertImageLayers(task.TaskDefinition)
 
-	diskScope, err := diskScopeForRootFS(task.RootFs)
-	if err != nil {
-		return executor.RunRequest{}, err
-	}
-
 	mounts, err := convertVolumeMounts(task.VolumeMounts)
 	if err != nil {
 		return executor.RunRequest{}, err
@@ -272,7 +261,6 @@ func NewRunRequestFromTask(task *models.Task, stackPathMap StackPathMap, layerin
 	}
 	runInfo := executor.RunInfo{
 		RootFSPath: rootFSPath,
-		DiskScope:  diskScope,
 		CPUWeight:  uint(task.CpuWeight),
 		Privileged: task.Privileged,
 		LogConfig: executor.LogConfig{
@@ -397,31 +385,4 @@ func ConvertPortMappings(containerPorts []uint32) []executor.PortMapping {
 	}
 
 	return out
-}
-
-func IsPreloadedRootFS(rootFS string) (bool, error) {
-	preloaded := false
-
-	url, err := url.Parse(rootFS)
-	if err != nil {
-		return false, err
-	}
-
-	if url.Scheme == models.PreloadedRootFSScheme || url.Scheme == models.PreloadedOCIRootFSScheme {
-		preloaded = true
-	}
-
-	return preloaded, nil
-}
-
-func diskScopeForRootFS(rootFS string) (executor.DiskLimitScope, error) {
-	preloaded, err := IsPreloadedRootFS(rootFS)
-	if err != nil {
-		return executor.ExclusiveDiskLimit, err
-	}
-
-	if preloaded {
-		return executor.ExclusiveDiskLimit, nil
-	}
-	return executor.TotalDiskLimit, nil
 }

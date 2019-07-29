@@ -286,7 +286,6 @@ var _ = Describe("Resources", func() {
 			Expect(runReq.RunInfo).To(test_helpers.DeepEqual(executor.RunInfo{
 				RootFSPath: stackPathMap["cflinuxfs3"],
 				CPUWeight:  uint(desiredLRP.CpuWeight),
-				DiskScope:  executor.ExclusiveDiskLimit,
 				Ports:      rep.ConvertPortMappings(desiredLRP.Ports),
 				LogConfig: executor.LogConfig{
 					Guid:       desiredLRP.LogGuid,
@@ -409,10 +408,9 @@ var _ = Describe("Resources", func() {
 				Expect(runReq.EnableContainerProxy).To(BeTrue())
 			})
 
-			It("uses ExclusiveDiskLimit as the disk scope", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
+			It("uses TotalDiskLimit as the disk scope", func() {
+				_, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(runReq.DiskScope).To(Equal(executor.ExclusiveDiskLimit))
 			})
 		})
 
@@ -428,9 +426,8 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("uses TotalDiskLimit as the disk scope", func() {
-				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
+				_, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(runReq.DiskScope).To(Equal(executor.TotalDiskLimit))
 			})
 		})
 
@@ -591,7 +588,6 @@ var _ = Describe("Resources", func() {
 
 			Expect(runReq.RunInfo).To(Equal(executor.RunInfo{
 				RootFSPath: stackPathMap["cflinuxfs3"],
-				DiskScope:  executor.ExclusiveDiskLimit,
 				CPUWeight:  uint(task.CpuWeight),
 				Privileged: task.Privileged,
 				CachedDependencies: []executor.CachedDependency{
@@ -673,9 +669,8 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("uses TotalDiskLimit as the disk scope", func() {
-				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
+				_, err := rep.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(runReq.DiskScope).To(Equal(executor.TotalDiskLimit))
 			})
 		})
 

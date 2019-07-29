@@ -104,12 +104,14 @@ var _ = Describe("The Rep", func() {
 		fakeGarden.AllowUnhandledRequests = false
 		fakeGarden.RouteToHandler("GET", "/ping", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 		fakeGarden.RouteToHandler("GET", "/containers", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
+		fakeGarden.RouteToHandler("GET", "/containers/bulk_metrics", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 		fakeGarden.RouteToHandler("GET", "/capacity", ghttp.RespondWithJSONEncoded(http.StatusOK,
 			garden.Capacity{MemoryInBytes: 1024 * 1024 * 1024, DiskInBytes: 20 * 1024 * 1024 * 1024, MaxContainers: 4}))
 		fakeGarden.RouteToHandler("GET", "/containers/bulk_info", ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 
 		// The following handlers are needed to fake out the healthcheck containers
 		fakeGarden.RouteToHandler("DELETE", regexp.MustCompile("/containers/check-[-a-f0-9]+"), ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
+		fakeGarden.RouteToHandler("DELETE", regexp.MustCompile("/containers/rootfs-c-[-a-f0-9]+"), ghttp.RespondWithJSONEncoded(http.StatusOK, struct{}{}))
 		fakeGarden.RouteToHandler("POST", "/containers/healthcheck-container/processes", func() http.HandlerFunc {
 			firstResponse, err := json.Marshal(transport.ProcessPayload{})
 			Expect(err).NotTo(HaveOccurred())
@@ -378,6 +380,45 @@ var _ = Describe("The Rep", func() {
 		})
 	})
 
+	Describe("creates containers to retrieve the sizes of the configured preloaded rootfses", func() {
+		var createRequestReceived chan string
+
+		BeforeEach(func() {
+			fakeGarden.Start()
+			respondWithSuccessToCreateContainer = false
+			createRequestReceived = make(chan string)
+			fakeGarden.RouteToHandler("POST", "/containers",
+				ghttp.CombineHandlers(
+					func(w http.ResponseWriter, req *http.Request) {
+						body, err := ioutil.ReadAll(req.Body)
+						req.Body.Close()
+						Expect(err).ShouldNot(HaveOccurred())
+						createRequestReceived <- string(body)
+					},
+					ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{}),
+				),
+			)
+
+			fakeGarden.AllowUnhandledRequests = true
+
+			repConfig.PreloadedRootFS = append(repConfig.PreloadedRootFS, config.RootFS{
+				Name: "another",
+				Path: "/path/to/another/rootfs",
+			})
+		})
+
+		It("creates containers with the correct rootfses", func() {
+			Eventually(createRequestReceived).Should(Receive(And(
+				ContainSubstring(`rootfs-c`),
+				ContainSubstring(`"image":{"uri":"/path/to/rootfs"}`),
+			)))
+			Eventually(createRequestReceived).Should(Receive(And(
+				ContainSubstring(`rootfs-c`),
+				ContainSubstring(`"image":{"uri":"/path/to/another/rootfs"}`),
+			)))
+		})
+	})
+
 	Describe("RootFS for garden healthcheck", func() {
 		var createRequestReceived chan string
 
@@ -385,15 +426,15 @@ var _ = Describe("The Rep", func() {
 			fakeGarden.Start()
 			respondWithSuccessToCreateContainer = false
 			createRequestReceived = make(chan string)
-			fakeGarden.AppendHandlers(
+			fakeGarden.RouteToHandler("POST", "/containers",
 				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("POST", "/containers", ""),
 					func(w http.ResponseWriter, req *http.Request) {
 						body, err := ioutil.ReadAll(req.Body)
 						req.Body.Close()
 						Expect(err).ShouldNot(HaveOccurred())
 						createRequestReceived <- string(body)
 					},
+					ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{}),
 				),
 			)
 
@@ -418,7 +459,7 @@ var _ = Describe("The Rep", func() {
 			It("uses the first rootfs", func() {
 				Eventually(createRequestReceived).Should(Receive(And(
 					ContainSubstring(`check-`),
-					ContainSubstring(`"rootfs":"/path/to/another/rootfs"`),
+					ContainSubstring(`/rootfs`),
 				)))
 			})
 		})
@@ -667,7 +708,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					fakeGarden.RouteToHandler("POST", "/containers", func(rw http.ResponseWriter, req *http.Request) {
 						body, err := ioutil.ReadAll(req.Body)
 						Expect(err).NotTo(HaveOccurred())
-						if !strings.Contains(string(body), "check") {
+						if !strings.Contains(string(body), "check") && !strings.Contains(string(body), "rootfs-c") {
 							<-blockCh
 							return
 						}
@@ -725,14 +766,14 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					createTask("task-guid-1")
 
 					// check that the first task's container create request is made
-					Eventually(countCreateContainerReqs).Should(Equal(2))
+					Eventually(countCreateContainerReqs).Should(Equal(3))
 					// wait to ensure the reaper has run
-					Consistently(countCreateContainerReqs, time.Second).Should(Equal(2))
+					Consistently(countCreateContainerReqs, time.Second).Should(Equal(3))
 
 					createTask("task-guid-2")
 
 					// check that the creation of the first container has not blocked the creation of the second container
-					Eventually(countCreateContainerReqs).Should(Equal(3))
+					Eventually(countCreateContainerReqs).Should(Equal(4))
 				})
 			})
 

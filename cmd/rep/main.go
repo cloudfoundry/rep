@@ -81,14 +81,6 @@ func main() {
 	clock := clock.NewClock()
 	logger, reconfigurableSink := lagerflags.NewFromConfig(repConfig.SessionName, repConfig.LagerConfig)
 
-	var gardenHealthcheckRootFS string
-
-	rootFSes := repConfig.PreloadedRootFS
-	rootFSNames := rootFSes.Names()
-	if len(rootFSNames) > 0 {
-		firstRootFS := rootFSNames[0]
-		gardenHealthcheckRootFS = rootFSes.StackPathMap()[firstRootFS]
-	}
 	if !repConfig.ExecutorConfig.Validate(logger) {
 		logger.Fatal("", errors.New("failed-to-configure-executor"))
 	}
@@ -104,7 +96,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	executorClient, containerMetricsProvider, executorMembers, err := executorinit.Initialize(logger, repConfig.ExecutorConfig, repConfig.CellID, repConfig.Zone, gardenHealthcheckRootFS, metronClient, clock)
+	rootFSMap := repConfig.PreloadedRootFS.StackPathMap()
+
+	executorClient, containerMetricsProvider, executorMembers, err := executorinit.Initialize(logger, repConfig.ExecutorConfig, repConfig.CellID, repConfig.Zone, rootFSMap, metronClient, clock)
 	if err != nil {
 		logger.Error("failed-to-initialize-executor", err)
 		os.Exit(1)
@@ -133,12 +127,12 @@ func main() {
 	bbsClient := initializeBBSClient(logger, repConfig)
 	url := repURL(repConfig)
 	address := repAddress(logger, repConfig)
-	cellPresence := initializeCellPresence(address, serviceClient, executorClient, logger, repConfig, rootFSNames, url)
-	batchContainerAllocator := auctioncellrep.NewContainerAllocator(auctioncellrep.GenerateGuid, rootFSes.StackPathMap(), executorClient)
+	cellPresence := initializeCellPresence(address, serviceClient, executorClient, logger, repConfig, repConfig.PreloadedRootFS.Names(), url)
+	batchContainerAllocator := auctioncellrep.NewContainerAllocator(auctioncellrep.GenerateGuid, rootFSMap, executorClient)
 	auctionCellRep := auctioncellrep.New(
 		repConfig.CellID,
 		url,
-		rootFSes.StackPathMap(),
+		rootFSMap,
 		containerMetricsProvider,
 		repConfig.SupportedProviders,
 		repConfig.Zone,
@@ -160,7 +154,7 @@ func main() {
 
 	opGenerator := generator.New(
 		repConfig.CellID,
-		rootFSes.StackPathMap(),
+		rootFSMap,
 		repConfig.LayeringMode,
 		bbsClient,
 		executorClient,
