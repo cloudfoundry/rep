@@ -224,6 +224,7 @@ func NewRunRequestFromDesiredLRP(
 		ImageUsername:                 desiredLRP.ImageUsername,
 		ImagePassword:                 desiredLRP.ImagePassword,
 		EnableContainerProxy:          true,
+		Sidecars:                      convertSidecars(desiredLRP.Sidecars),
 	}
 
 	// No need for the envoy proxy if there are no ports.  This flag controls the
@@ -374,6 +375,19 @@ func convertCertificateProperties(props *models.CertificateProperties) executor.
 	return executor.CertificateProperties{
 		OrganizationalUnit: props.OrganizationalUnit,
 	}
+}
+
+func convertSidecars(sidecars []*models.Sidecar) []executor.Sidecar {
+	es := []executor.Sidecar{}
+	for _, sidecar := range sidecars {
+		es = append(es, executor.Sidecar{
+			Action:   sidecar.Action,
+			MemoryMB: sidecar.MemoryMb,
+			DiskMB:   sidecar.DiskMb,
+		})
+	}
+
+	return es
 }
 
 func ConvertPortMappings(containerPorts []uint32) []executor.PortMapping {

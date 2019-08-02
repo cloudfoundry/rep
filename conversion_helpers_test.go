@@ -277,6 +277,19 @@ var _ = Describe("Resources", func() {
 			stackPathMap = rep.StackPathMap{
 				"cflinuxfs3": "cflinuxfs3:/var/vcap/packages/cflinuxfs3/rootfs.tar",
 			}
+
+			desiredLRP.Sidecars = []*models.Sidecar{
+				{
+					Action:   models.WrapAction(&models.RunAction{Path: "sidecar-1"}),
+					MemoryMb: 3,
+					DiskMb:   4,
+				},
+				{
+					Action:   models.WrapAction(&models.RunAction{Path: "sidecar-2"}),
+					MemoryMb: 5,
+					DiskMb:   6,
+				},
+			}
 		})
 
 		It("returns a valid run request", func() {
@@ -341,6 +354,18 @@ var _ = Describe("Resources", func() {
 				ImageUsername:        "image-username",
 				ImagePassword:        "image-password",
 				EnableContainerProxy: true,
+				Sidecars: []executor.Sidecar{
+					{
+						Action:   desiredLRP.Sidecars[0].Action,
+						MemoryMB: 3,
+						DiskMB:   4,
+					},
+					{
+						Action:   desiredLRP.Sidecars[1].Action,
+						MemoryMB: 5,
+						DiskMB:   6,
+					},
+				},
 			}))
 		})
 
