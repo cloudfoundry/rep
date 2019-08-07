@@ -14,6 +14,16 @@ certstrap request-cert --common-name "server" --passphrase "" --ip "127.0.0.1" -
 certstrap sign server --CA "server-ca"
 
 mv -f out/* ./blue-certs/
+
+certstrap init --common-name "root-ca" --passphrase ""
+certstrap request-cert --common-name "intermed-ca" --passphrase "" --ip "127.0.0.1"
+certstrap sign intermed-ca --CA "root-ca" --intermediate
+certstrap request-cert --common-name "server" --passphrase "" --ip "127.0.0.1"
+certstrap sign server --CA "intermed-ca"
+cat out/server.crt out/intermed-ca.crt > ./chain-certs/chain.crt
+cat out/server.crt > ./chain-certs/bad-chain.crt && tail -n5 out/intermed-ca.crt >> ./chain-certs/bad-chain.crt
+
+mv -f out/* ./chain-certs/
 rm -rf out
 
 popd
