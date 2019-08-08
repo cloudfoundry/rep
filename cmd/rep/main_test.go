@@ -408,14 +408,19 @@ var _ = Describe("The Rep", func() {
 		})
 
 		It("creates containers with the correct rootfses", func() {
-			Eventually(createRequestReceived).Should(Receive(And(
-				ContainSubstring(`rootfs-c`),
-				ContainSubstring(`"image":{"uri":"/path/to/rootfs"}`),
-			)))
-			Eventually(createRequestReceived).Should(Receive(And(
-				ContainSubstring(`rootfs-c`),
-				ContainSubstring(`"image":{"uri":"/path/to/another/rootfs"}`),
-			)))
+			var createRequest1, createRequest2 string
+			Eventually(createRequestReceived).Should(Receive(&createRequest1))
+			Eventually(createRequestReceived).Should(Receive(&createRequest2))
+			Expect([]string{createRequest1, createRequest2}).To(ConsistOf(
+				And(
+					ContainSubstring(`rootfs-c`),
+					ContainSubstring(`"image":{"uri":"/path/to/another/rootfs"}`),
+				),
+				And(
+					ContainSubstring(`rootfs-c`),
+					ContainSubstring(`"image":{"uri":"/path/to/rootfs"}`),
+				),
+			))
 		})
 	})
 
