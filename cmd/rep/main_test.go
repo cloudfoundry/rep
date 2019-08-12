@@ -196,8 +196,6 @@ var _ = Describe("The Rep", func() {
 				ContainerMetricsReportInterval:     durationjson.Duration(15 * time.Second),
 				EnvoyConfigRefreshDelay:            durationjson.Duration(time.Second),
 				EnvoyDrainTimeout:                  durationjson.Duration(15 * time.Minute),
-				CSIPaths:                           []string{"/var/vcap/data/csiplugins"},
-				CSIMountRootDir:                    "/var/vcap/data/csimountroot",
 			},
 			LoggregatorConfig: diego_logging_client.Config{
 				BatchFlushInterval: 10 * time.Millisecond,

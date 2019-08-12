@@ -41,8 +41,6 @@ var _ = Describe("RepConfig", func() {
 			"container_owner_name": "vcap",
 			"container_reap_interval": "11s",
 			"create_work_pool_size": 15,
-			"csi_paths": ["/var/vcap/data/csiplugins"],
-			"csi_mount_root_dir": "/var/vcap/data/csimountroot",
 			"debug_address": "5.5.5.5:9090",
 			"delete_work_pool_size": 10,
 			"disk_mb": "20000",
@@ -221,8 +219,6 @@ var _ = Describe("RepConfig", func() {
 				TrustedSystemCertificatesPath:      "/tmp/trusted",
 				UnhealthyMonitoringInterval:        10000000000,
 				VolmanDriverPaths:                  "/tmp/volman1:/tmp/volman2",
-				CSIPaths:                           []string{"/var/vcap/data/csiplugins"},
-				CSIMountRootDir:                    "/var/vcap/data/csimountroot",
 			},
 			LagerConfig: lagerflags.LagerConfig{
 				LogLevel: lagerflags.DEBUG,
