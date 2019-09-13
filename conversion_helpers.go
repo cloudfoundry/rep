@@ -1,16 +1,24 @@
 package rep
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"code.cloudfoundry.org/bbs/format"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/executor"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
+	awssession "github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ecr"
+	ecrapi "github.com/awslabs/amazon-ecr-credential-helper/ecr-login/api"
 )
 
 const (
@@ -27,6 +35,8 @@ const (
 
 	VolumeDriversTag = "volume-drivers"
 	PlacementTagsTag = "placement-tags"
+
+	ECR_REPO_REGEX = `[a-zA-Z0-9][a-zA-Z0-9_-]*\.dkr\.ecr\.[a-zA-Z0-9][a-zA-Z0-9_-]*\.amazonaws\.com(\.cn)?[^ ]*`
 )
 
 var (
@@ -187,6 +197,11 @@ func NewRunRequestFromDesiredLRP(
 		return executor.RunRequest{}, err
 	}
 
+	username, password, err := convertCredentials(rootFSPath, desiredLRP.ImageUsername, desiredLRP.ImagePassword)
+	if err != nil {
+		return executor.RunRequest{}, err
+	}
+
 	runInfo := executor.RunInfo{
 		RootFSPath: rootFSPath,
 		CPUWeight:  uint(desiredLRP.CpuWeight),
@@ -221,8 +236,8 @@ func NewRunRequestFromDesiredLRP(
 		VolumeMounts:                  mounts,
 		Network:                       convertNetwork(desiredLRP.Network),
 		CertificateProperties:         convertCertificateProperties(desiredLRP.CertificateProperties),
-		ImageUsername:                 desiredLRP.ImageUsername,
-		ImagePassword:                 desiredLRP.ImagePassword,
+		ImageUsername:                 username,
+		ImagePassword:                 password,
 		EnableContainerProxy:          true,
 		Sidecars:                      convertSidecars(desiredLRP.Sidecars),
 	}
@@ -257,6 +272,11 @@ func NewRunRequestFromTask(task *models.Task, stackPathMap StackPathMap, layerin
 		return executor.RunRequest{}, err
 	}
 
+	username, password, err := convertCredentials(rootFSPath, task.ImageUsername, task.ImagePassword)
+	if err != nil {
+		return executor.RunRequest{}, err
+	}
+
 	tags := executor.Tags{
 		ResultFileTag: task.ResultFile,
 	}
@@ -280,8 +300,8 @@ func NewRunRequestFromTask(task *models.Task, stackPathMap StackPathMap, layerin
 		VolumeMounts:                  mounts,
 		Network:                       convertNetwork(task.Network),
 		CertificateProperties:         convertCertificateProperties(task.CertificateProperties),
-		ImageUsername:                 task.ImageUsername,
-		ImagePassword:                 task.ImagePassword,
+		ImageUsername:                 username,
+		ImagePassword:                 password,
 		EnableContainerProxy:          false,
 	}
 	return executor.NewRunRequest(task.TaskGuid, &runInfo, tags), nil
@@ -314,6 +334,25 @@ func convertImageLayers(t *models.TaskDefinition) ([]*models.CachedDependency, *
 	action := layers.ToDownloadActions(t.LegacyDownloadUser, nil)
 
 	return cachedDependencies, action
+}
+
+func convertCredentials(rootFS string, username string, password string) (string, string, error) {
+	rECRRepo, err := regexp.Compile(ECR_REPO_REGEX)
+	if err != nil {
+		return "", "", err
+	}
+
+	if !rECRRepo.MatchString(rootFS) {
+		return username, password, nil
+	}
+
+	username, password, err = getECRCredentials(rootFS, username, password)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get ECR authorization token: %s", err.Error())
+	}
+
+	return username, password, nil
+
 }
 
 func convertVolumeMounts(volumeMounts []*models.VolumeMount) ([]executor.VolumeMount, error) {
@@ -399,4 +438,67 @@ func ConvertPortMappings(containerPorts []uint32) []executor.PortMapping {
 	}
 
 	return out
+}
+
+func getECRCredentials(rootFS string, username string, password string) (string, string, error) {
+	rootFSURL, err := url.Parse(rootFS)
+	if err != nil {
+		return "", "", err
+	}
+	rootFSURL.Scheme = ""
+	ecrRequestURL := strings.TrimLeft(rootFSURL.String(), "/")
+
+	registry, err := ecrapi.ExtractRegistry(ecrRequestURL)
+	if err != nil {
+		return "", "", err
+	}
+
+	awsSession := awssession.New(&aws.Config{
+		Credentials: credentials.NewStaticCredentials(username, password, ""),
+	})
+
+	awsConfig := &aws.Config{Region: aws.String(registry.Region)}
+	if registry.FIPS {
+		resolver := endpoints.DefaultResolver()
+		endpoint, err := resolver.EndpointFor("ecr-fips", registry.Region, func(opts *endpoints.Options) {
+			opts.ResolveUnknownService = true
+		})
+		if err != nil {
+			return "", "", err
+		}
+		awsConfig = awsConfig.WithEndpoint(endpoint.URL)
+	}
+
+	ecrClient := ecr.New(awsSession, awsConfig)
+
+	input := &ecr.GetAuthorizationTokenInput{}
+	if registry.ID != "" {
+		input.RegistryIds = []*string{aws.String(registry.ID)}
+	}
+	output, err := ecrClient.GetAuthorizationToken(input)
+	if err != nil {
+		return "", "", err
+	}
+	if output == nil {
+		return "", "", fmt.Errorf("missing AuthorizationData in response")
+	}
+
+	for _, authData := range output.AuthorizationData {
+		if authData.ProxyEndpoint != nil && authData.AuthorizationToken != nil {
+			token := aws.StringValue(authData.AuthorizationToken)
+			decodedToken, err := base64.StdEncoding.DecodeString(token)
+			if err != nil {
+				return "", "", err
+			}
+
+			parts := strings.SplitN(string(decodedToken), ":", 2)
+			if len(parts) < 2 {
+				return "", "", fmt.Errorf("invalid authorization token")
+			}
+
+			return parts[0], parts[1], nil
+		}
+	}
+
+	return "", "", fmt.Errorf("no authorization token found")
 }

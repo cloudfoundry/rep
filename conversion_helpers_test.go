@@ -3,6 +3,7 @@ package rep_test
 import (
 	"fmt"
 	"net/url"
+	"os"
 	"strconv"
 
 	"code.cloudfoundry.org/bbs/models"
@@ -456,6 +457,31 @@ var _ = Describe("Resources", func() {
 			})
 		})
 
+		Context("when the rootfs is ECR repo URL", func() {
+			BeforeEach(func() {
+				dockerUser := os.Getenv("ECR_TEST_AWS_ACCESS_KEY_ID")
+				dockerPassword := os.Getenv("ECR_TEST_AWS_SECRET_ACCESS_KEY")
+				dockerRef := os.Getenv("ECR_TEST_REPO_URI")
+
+				if dockerUser == "" ||
+					dockerPassword == "" ||
+					dockerRef == "" {
+					Skip("ECR_TEST_AWS_ACCESS_KEY_ID, ECR_TEST_AWS_SECRET_ACCESS_KEY and ECR_TEST_REPO_URI should be set")
+				}
+				desiredLRP.RootFs = fmt.Sprintf("docker://%s", dockerRef)
+				desiredLRP.ImageUsername = dockerUser
+				desiredLRP.ImagePassword = dockerPassword
+			})
+
+			It("sets username and password to ECR provided username and password", func() {
+				runReq, err := rep.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.ImageUsername).To(Equal("AWS"))
+				Expect(runReq.ImagePassword).ToNot(BeEmpty())
+				Expect(runReq.ImagePassword).ToNot(Equal(desiredLRP.ImagePassword))
+			})
+		})
+
 		Context("when the lrp has V3 declarative Resources", func() {
 			var (
 				origSetup *models.Action
@@ -696,6 +722,31 @@ var _ = Describe("Resources", func() {
 			It("uses TotalDiskLimit as the disk scope", func() {
 				_, err := rep.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when the rootfs is ECR repo URL", func() {
+			BeforeEach(func() {
+				dockerUser := os.Getenv("ECR_TEST_AWS_ACCESS_KEY_ID")
+				dockerPassword := os.Getenv("ECR_TEST_AWS_SECRET_ACCESS_KEY")
+				dockerRef := os.Getenv("ECR_TEST_REPO_URI")
+
+				if dockerUser == "" ||
+					dockerPassword == "" ||
+					dockerRef == "" {
+					Skip("ECR_TEST_AWS_ACCESS_KEY_ID, ECR_TEST_AWS_SECRET_ACCESS_KEY and ECR_TEST_REPO_URI should be set")
+				}
+				task.RootFs = fmt.Sprintf("docker://%s", dockerRef)
+				task.ImageUsername = dockerUser
+				task.ImagePassword = dockerPassword
+			})
+
+			It("sets username and password to ECR provided username and password", func() {
+				runReq, err := rep.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.ImageUsername).To(Equal("AWS"))
+				Expect(runReq.ImagePassword).ToNot(BeEmpty())
+				Expect(runReq.ImagePassword).ToNot(Equal(task.ImagePassword))
 			})
 		})
 
