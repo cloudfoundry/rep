@@ -3,6 +3,7 @@ package internal
 import (
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/ecrhelper"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/rep"
@@ -20,20 +21,24 @@ type TaskProcessor interface {
 }
 
 type taskProcessor struct {
-	bbsClient         bbs.InternalClient
-	containerDelegate ContainerDelegate
-	cellID            string
-	stackPathMap      rep.StackPathMap
-	layeringMode      string
+	bbsClient                  bbs.InternalClient
+	containerDelegate          ContainerDelegate
+	cellID                     string
+	stackPathMap               rep.StackPathMap
+	layeringMode               string
+	runRequestConversionHelper rep.RunRequestConversionHelper
 }
 
 func NewTaskProcessor(bbs bbs.InternalClient, containerDelegate ContainerDelegate, cellID string, stackPathMap rep.StackPathMap, layeringMode string) TaskProcessor {
+	runRequestConversionHelper := rep.RunRequestConversionHelper{ECRHelper: ecrhelper.NewECRHelper()}
+
 	return &taskProcessor{
-		bbsClient:         bbs,
-		containerDelegate: containerDelegate,
-		cellID:            cellID,
-		stackPathMap:      stackPathMap,
-		layeringMode:      layeringMode,
+		bbsClient:                  bbs,
+		containerDelegate:          containerDelegate,
+		cellID:                     cellID,
+		stackPathMap:               stackPathMap,
+		layeringMode:               layeringMode,
+		runRequestConversionHelper: runRequestConversionHelper,
 	}
 }
 
@@ -77,7 +82,7 @@ func (p *taskProcessor) processActiveContainer(logger lager.Logger, container ex
 		return
 	}
 
-	runReq, err := rep.NewRunRequestFromTask(task, p.stackPathMap, p.layeringMode)
+	runReq, err := p.runRequestConversionHelper.NewRunRequestFromTask(task, p.stackPathMap, p.layeringMode)
 	if err != nil {
 		logger.Error("failed-to-construct-run-request", err)
 		return

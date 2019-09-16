@@ -8,6 +8,7 @@ import (
 	"code.cloudfoundry.org/bbs/fake_bbs"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
+	fakeecrhelper "code.cloudfoundry.org/ecrhelper/fakes"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep"
@@ -132,7 +133,8 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 					It("runs the container", func() {
 						Expect(containerDelegate.RunContainerCallCount()).To(Equal(1))
 
-						expectedRunRequest, err := rep.NewRunRequestFromDesiredLRP(container.Guid, desiredLRP, &expectedLrpKey, &expectedInstanceKey, rep.StackPathMap{}, "")
+						runRequestConversionHelper := rep.RunRequestConversionHelper{ECRHelper: &fakeecrhelper.FakeECRHelper{}}
+						expectedRunRequest, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(container.Guid, desiredLRP, &expectedLrpKey, &expectedInstanceKey, rep.StackPathMap{}, "")
 						Expect(err).NotTo(HaveOccurred())
 
 						delegateLogger, runRequest := containerDelegate.RunContainerArgsForCall(0)

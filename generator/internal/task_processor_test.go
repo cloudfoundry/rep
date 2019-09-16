@@ -6,6 +6,7 @@ import (
 	"code.cloudfoundry.org/bbs/fake_bbs"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/bbs/models/test/model_helpers"
+	fakeecrhelper "code.cloudfoundry.org/ecrhelper/fakes"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep"
@@ -41,7 +42,8 @@ var _ = Describe("TaskProcessor", func() {
 		processor = internal.NewTaskProcessor(bbsClient, containerDelegate, expectedCellID, rep.StackPathMap{}, "")
 
 		task = model_helpers.NewValidTask(taskGuid)
-		expectedRunRequest, err = rep.NewRunRequestFromTask(task, rep.StackPathMap{}, "")
+		runRequestConversionHelper := rep.RunRequestConversionHelper{ECRHelper: &fakeecrhelper.FakeECRHelper{}}
+		expectedRunRequest, err = runRequestConversionHelper.NewRunRequestFromTask(task, rep.StackPathMap{}, "")
 		Expect(err).NotTo(HaveOccurred())
 
 		bbsClient.TaskByGuidReturns(task, nil)

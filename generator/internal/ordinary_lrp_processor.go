@@ -3,17 +3,19 @@ package internal
 import (
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/ecrhelper"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/rep"
 )
 
 type ordinaryLRPProcessor struct {
-	bbsClient         bbs.InternalClient
-	containerDelegate ContainerDelegate
-	cellID            string
-	stackPathMap      rep.StackPathMap
-	layeringMode      string
+	bbsClient                  bbs.InternalClient
+	containerDelegate          ContainerDelegate
+	cellID                     string
+	stackPathMap               rep.StackPathMap
+	layeringMode               string
+	runRequestConversionHelper rep.RunRequestConversionHelper
 }
 
 func newOrdinaryLRPProcessor(
@@ -23,12 +25,15 @@ func newOrdinaryLRPProcessor(
 	stackPathMap rep.StackPathMap,
 	layeringMode string,
 ) LRPProcessor {
+	runRequestConversionHelper := rep.RunRequestConversionHelper{ECRHelper: ecrhelper.NewECRHelper()}
+
 	return &ordinaryLRPProcessor{
-		bbsClient:         bbsClient,
-		containerDelegate: containerDelegate,
-		cellID:            cellID,
-		stackPathMap:      stackPathMap,
-		layeringMode:      layeringMode,
+		bbsClient:                  bbsClient,
+		containerDelegate:          containerDelegate,
+		cellID:                     cellID,
+		stackPathMap:               stackPathMap,
+		layeringMode:               layeringMode,
+		runRequestConversionHelper: runRequestConversionHelper,
 	}
 }
 
@@ -84,7 +89,7 @@ func (p *ordinaryLRPProcessor) processReservedContainer(logger lager.Logger, lrp
 		return
 	}
 
-	runReq, err := rep.NewRunRequestFromDesiredLRP(lrpContainer.Guid, desired, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, p.stackPathMap, p.layeringMode)
+	runReq, err := p.runRequestConversionHelper.NewRunRequestFromDesiredLRP(lrpContainer.Guid, desired, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, p.stackPathMap, p.layeringMode)
 	if err != nil {
 		logger.Error("failed-to-construct-run-request", err)
 		return
