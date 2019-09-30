@@ -30,6 +30,7 @@ var _ = Describe("RepConfig", func() {
 			"ca_cert_file": "/tmp/ca_cert",
 			"cache_path": "/tmp/cache",
 			"cell_id" : "cell_z1/10",
+			"cell_index": 10,
 			"communication_timeout": "11s",
 			"consul_ca_cert": "/tmp/consul_ca_cert",
 			"consul_client_cert": "/tmp/consul_client_cert",
@@ -155,6 +156,7 @@ var _ = Describe("RepConfig", func() {
 			BBSMaxIdleConnsPerHost:         10,
 			CaCertFile:                     "/tmp/ca_cert",
 			CellID:                         "cell_z1/10",
+			CellIndex:                      10,
 			CellRegistrationsLocketEnabled: true,
 			ClientLocketConfig: locket.ClientLocketConfig{
 				LocketAddress:        "0.0.0.0:909090909",

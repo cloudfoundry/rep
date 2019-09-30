@@ -131,6 +131,7 @@ func main() {
 	batchContainerAllocator := auctioncellrep.NewContainerAllocator(auctioncellrep.GenerateGuid, rootFSMap, executorClient)
 	auctionCellRep := auctioncellrep.New(
 		repConfig.CellID,
+		repConfig.CellIndex,
 		url,
 		rootFSMap,
 		containerMetricsProvider,

@@ -36,6 +36,7 @@ var _ = Describe("Resources", func() {
 
 		cellState = rep.NewCellState(
 			"cell-id",
+			0,
 			"https://foo.cell.service.cf.internal",
 			linuxOnlyRootFSProviders,
 			avail,

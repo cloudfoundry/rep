@@ -28,6 +28,7 @@ var ErrNotEnoughMemory = errors.New("not enough memory for container and additio
 
 type AuctionCellRep struct {
 	cellID                   string
+	cellIndex                int
 	repURL                   string
 	stackPathMap             rep.StackPathMap
 	rootFSProviders          rep.RootFSProviders
@@ -44,6 +45,7 @@ type AuctionCellRep struct {
 
 func New(
 	cellID string,
+	cellIndex int,
 	repURL string,
 	preloadedStackPathMap rep.StackPathMap,
 	containerMetricsProvider rep.ContainerMetricsProvider,
@@ -59,6 +61,7 @@ func New(
 ) *AuctionCellRep {
 	return &AuctionCellRep{
 		cellID:                   cellID,
+		cellIndex:                cellIndex,
 		repURL:                   repURL,
 		stackPathMap:             preloadedStackPathMap,
 		rootFSProviders:          rootFSProviders(preloadedStackPathMap, arbitraryRootFSes),
@@ -218,6 +221,7 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, bool, error)
 
 	state := rep.NewCellState(
 		a.cellID,
+		a.cellIndex,
 		a.repURL,
 		a.rootFSProviders,
 		a.convertResources(availableResources),

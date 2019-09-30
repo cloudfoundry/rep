@@ -84,6 +84,7 @@ type RepConfig struct {
 	BBSClientKeyFile                string                `json:"bbs_client_key_file"`  // DEPRECATED. Kept around for dusts compatability
 	CaCertFile                      string                `json:"ca_cert_file"`
 	CellID                          string                `json:"cell_id"`
+	CellIndex                       int                   `json:"cell_index"`
 	CommunicationTimeout            durationjson.Duration `json:"communication_timeout,omitempty"`
 	ConsulCACert                    string                `json:"consul_ca_cert"`
 	ConsulClientCert                string                `json:"consul_client_cert"`

@@ -16,6 +16,7 @@ var ErrorIncompatibleRootfs = errors.New("rootfs not found")
 type CellState struct {
 	RepURL                  string `json:"rep_url"`
 	CellID                  string `json:"cell_id"`
+	CellIndex               int    `json:"cell_index"`
 	RootFSProviders         RootFSProviders
 	AvailableResources      Resources
 	TotalResources          Resources
@@ -32,6 +33,7 @@ type CellState struct {
 
 func NewCellState(
 	cellID string,
+	cellIndex int,
 	repURL string,
 	root RootFSProviders,
 	avail Resources,
@@ -48,6 +50,7 @@ func NewCellState(
 ) CellState {
 	return CellState{
 		CellID:                  cellID,
+		CellIndex:               cellIndex,
 		RepURL:                  repURL,
 		RootFSProviders:         root,
 		AvailableResources:      avail,

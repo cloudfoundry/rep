@@ -19,6 +19,7 @@ import (
 const (
 	repURL     = "https://foo.cell.service.cf.internal:8888"
 	cellID     = "some-cell-id"
+	cellIndex  = 0
 	linuxStack = "linux"
 	linuxPath  = "/data/rootfs/linux"
 )
@@ -59,6 +60,7 @@ var _ = Describe("AuctionCellRep", func() {
 	JustBeforeEach(func() {
 		cellRep = auctioncellrep.New(
 			cellID,
+			cellIndex,
 			repURL,
 			rep.StackPathMap{linuxStack: linuxPath},
 			fakeContainerMetricsProvider,
@@ -424,6 +426,7 @@ var _ = Describe("AuctionCellRep", func() {
 			Expect(healthy).To(BeTrue())
 
 			Expect(state.CellID).To(Equal(cellID))
+			Expect(state.CellIndex).To(Equal(cellIndex))
 			Expect(state.RepURL).To(Equal(repURL))
 
 			Expect(state.Evacuating).To(BeTrue())
