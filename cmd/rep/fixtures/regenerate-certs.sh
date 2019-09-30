@@ -24,6 +24,39 @@ cat out/server.crt out/intermed-ca.crt > ./chain-certs/chain.crt
 cat out/server.crt > ./chain-certs/bad-chain.crt && tail -n5 out/intermed-ca.crt >> ./chain-certs/bad-chain.crt
 
 mv -f out/* ./chain-certs/
+
+certstrap init --common-name "CA" --passphrase ""
+certstrap request-cert --common-name "metron" --passphrase ""
+certstrap sign metron --CA "CA"
+certstrap request-cert --common-name "client" --passphrase ""
+certstrap sign client --CA "CA"
+
+mv -f out/* ./metron/
+
+certstrap init --common-name "server-ca" --passphrase ""
+certstrap request-cert --common-name "server" --passphrase ""
+certstrap sign server --CA "server-ca"
+certstrap request-cert --common-name "client" --passphrase ""
+certstrap sign client --CA "server-ca"
+
+mv -f out/* ./rouge-certs/
+
+certstrap init --common-name "bbsCA" --passphrase ""
+certstrap request-cert --common-name "server" --passphrase "" --ip "127.0.0.1" --domain "*.bbs.service.cf.internal"
+certstrap sign server --CA "bbsCA"
+certstrap request-cert --common-name "client" --passphrase "" --ip "127.0.0.1"
+certstrap sign client --CA "bbsCA"
+mv ./out/bbsCA.crt ./out/server-ca.crt
+
+mv -f out/* ./green-certs/
+
+certstrap init --common-name "server-ca" --passphrase ""
+certstrap request-cert --common-name "server" --passphrase ""
+certstrap sign server --CA "server-ca"
+certstrap request-cert --common-name "client" --passphrase "" --domain "localhost"
+certstrap sign client --CA "server-ca"
+
+mv -f out/* ./dnssan-certs/
 rm -rf out
 
 popd
