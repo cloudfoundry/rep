@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"errors"
 	"fmt"
+	"io"
 
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager"
@@ -97,15 +98,29 @@ func (d *containerDelegate) FetchContainerResultFile(logger lager.Logger, guid s
 		return "", err
 	}
 
+	// make the buffer 1 byte larger than the MAX_RESULT_SIZE so we can
+	// tell when we are at the exact size limit vs. over the limit
+	// tarReader.Read will return '0, nil' when it has filled our buffer
+	// instead of '0, io.EOF'
 	buf := make([]byte, MAX_RESULT_SIZE+1)
-	n, err := tarReader.Read(buf)
-	if n > MAX_RESULT_SIZE {
-		logInfoOrError(logger, "failed-fetching-container-result-too-large", err)
-		return "", ErrResultFileTooLarge
+	var readErr error
+	numBytesRead := 0
+	for readErr == nil {
+		n := 0
+		n, readErr = tarReader.Read(buf[numBytesRead:])
+		numBytesRead += n
+		if numBytesRead > MAX_RESULT_SIZE {
+			logger.Error("failed-fetching-container-result-too-large", readErr)
+			return "", ErrResultFileTooLarge
+		}
+	}
+	if readErr != io.EOF {
+		logger.Error("failed-reading-container-result-file", readErr)
+		return "", readErr
 	}
 
 	logger.Info("succeeded-fetching-container-result")
-	return string(buf[:n]), nil
+	return string(buf[:numBytesRead]), nil
 }
 
 func logInfoOrError(logger lager.Logger, msg string, err error) {

@@ -2,6 +2,7 @@ package internal_test
 
 import (
 	"errors"
+	"io"
 	"strings"
 
 	"code.cloudfoundry.org/archiver/extractor/test_helper"
@@ -223,6 +224,17 @@ var _ = Describe("ContainerDelegate", func() {
 					Expect(logger).To(gbytes.Say(sessionPrefix + ".fetching-container-result"))
 					Expect(logger).To(gbytes.Say(sessionPrefix + ".succeeded-fetching-container-result"))
 				})
+
+				Context("and a single read does not return the whole file contents", func() {
+					BeforeEach(func() {
+						ir := incompleteReadCloser{r: fileStream, bytesPerRead: 2}
+						executorClient.GetFilesReturns(ir, nil)
+					})
+
+					It("reads the whole file contents", func() {
+						Expect(result).To(Equal("some result"))
+					})
+				})
 			})
 
 			Context("but the payload is too large", func() {
@@ -231,7 +243,7 @@ var _ = Describe("ContainerDelegate", func() {
 						fileStream,
 						[]test_helper.ArchiveFile{{
 							Name: "some-file",
-							Body: strings.Repeat("x", internal.MAX_RESULT_SIZE+1),
+							Body: strings.Repeat("x", internal.MAX_RESULT_SIZE+100),
 							Mode: 0600,
 						}},
 					)
@@ -247,6 +259,48 @@ var _ = Describe("ContainerDelegate", func() {
 
 				It("logs the failure", func() {
 					Expect(logger).To(gbytes.Say(sessionPrefix + ".failed-fetching-container-result-too-large"))
+				})
+
+				Context("and a single read does not return the whole file contents", func() {
+					BeforeEach(func() {
+						ir := incompleteReadCloser{r: fileStream, bytesPerRead: 1024}
+						executorClient.GetFilesReturns(ir, nil)
+					})
+
+					It("reads up to the size of the buffer and detects the size is too large", func() {
+						Expect(fetchErr).To(HaveOccurred())
+						Expect(logger).To(gbytes.Say(sessionPrefix + ".failed-fetching-container-result-too-large"))
+					})
+				})
+			})
+
+			Context("when the reader returns an error", func() {
+				var errorReader *errorReadCloser
+
+				BeforeEach(func() {
+					test_helper.WriteTar(
+						fileStream,
+						[]test_helper.ArchiveFile{{
+							Name: "some-file",
+							Body: "some result",
+							Mode: 0600,
+						}},
+					)
+
+					errorReader = &errorReadCloser{r: fileStream}
+					executorClient.GetFilesReturns(errorReader, nil)
+				})
+
+				It("returns an error", func() {
+					Expect(fetchErr).To(HaveOccurred())
+				})
+
+				It("closes the result stream", func() {
+					Expect(fileStream.Closed()).To(BeTrue())
+				})
+
+				It("logs the failure", func() {
+					Expect(logger).To(gbytes.Say(sessionPrefix + ".failed-reading-container-result-file"))
 				})
 			})
 
@@ -278,3 +332,39 @@ var _ = Describe("ContainerDelegate", func() {
 		})
 	})
 })
+
+type errorReadCloser struct {
+	r          io.ReadCloser
+	failOnCall bool
+}
+
+func (i *errorReadCloser) Read(p []byte) (int, error) {
+	if i.failOnCall {
+		return 0, errors.New("stubbed-error")
+	}
+	i.failOnCall = true
+	return i.r.Read(p)
+}
+
+func (i *errorReadCloser) Close() error {
+	return i.r.Close()
+}
+
+type incompleteReadCloser struct {
+	r            io.ReadCloser
+	bytesPerRead int
+}
+
+func (i incompleteReadCloser) Read(p []byte) (int, error) {
+	smallerBuf := make([]byte, i.bytesPerRead)
+	n, err := i.r.Read(smallerBuf)
+	if err != nil {
+		return n, err
+	}
+	copied := copy(p, smallerBuf)
+	return copied, nil
+}
+
+func (i incompleteReadCloser) Close() error {
+	return i.r.Close()
+}
