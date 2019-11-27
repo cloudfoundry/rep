@@ -47,14 +47,16 @@ func (fake *FakeGenerator) BatchOperations(arg1 lager.Logger) (map[string]operat
 		arg1 lager.Logger
 	}{arg1})
 	fake.recordInvocation("BatchOperations", []interface{}{arg1})
+	batchOperationsStubCopy := fake.BatchOperationsStub
 	fake.batchOperationsMutex.Unlock()
-	if fake.BatchOperationsStub != nil {
-		return fake.BatchOperationsStub(arg1)
+	if batchOperationsStubCopy != nil {
+		return batchOperationsStubCopy(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.batchOperationsReturns.result1, fake.batchOperationsReturns.result2
+	fakeReturns := fake.batchOperationsReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *FakeGenerator) BatchOperationsCallCount() int {
@@ -63,13 +65,22 @@ func (fake *FakeGenerator) BatchOperationsCallCount() int {
 	return len(fake.batchOperationsArgsForCall)
 }
 
+func (fake *FakeGenerator) BatchOperationsCalls(stub func(lager.Logger) (map[string]operationq.Operation, error)) {
+	fake.batchOperationsMutex.Lock()
+	defer fake.batchOperationsMutex.Unlock()
+	fake.BatchOperationsStub = stub
+}
+
 func (fake *FakeGenerator) BatchOperationsArgsForCall(i int) lager.Logger {
 	fake.batchOperationsMutex.RLock()
 	defer fake.batchOperationsMutex.RUnlock()
-	return fake.batchOperationsArgsForCall[i].arg1
+	argsForCall := fake.batchOperationsArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *FakeGenerator) BatchOperationsReturns(result1 map[string]operationq.Operation, result2 error) {
+	fake.batchOperationsMutex.Lock()
+	defer fake.batchOperationsMutex.Unlock()
 	fake.BatchOperationsStub = nil
 	fake.batchOperationsReturns = struct {
 		result1 map[string]operationq.Operation
@@ -78,6 +89,8 @@ func (fake *FakeGenerator) BatchOperationsReturns(result1 map[string]operationq.
 }
 
 func (fake *FakeGenerator) BatchOperationsReturnsOnCall(i int, result1 map[string]operationq.Operation, result2 error) {
+	fake.batchOperationsMutex.Lock()
+	defer fake.batchOperationsMutex.Unlock()
 	fake.BatchOperationsStub = nil
 	if fake.batchOperationsReturnsOnCall == nil {
 		fake.batchOperationsReturnsOnCall = make(map[int]struct {
@@ -98,14 +111,16 @@ func (fake *FakeGenerator) OperationStream(arg1 lager.Logger) (<-chan operationq
 		arg1 lager.Logger
 	}{arg1})
 	fake.recordInvocation("OperationStream", []interface{}{arg1})
+	operationStreamStubCopy := fake.OperationStreamStub
 	fake.operationStreamMutex.Unlock()
-	if fake.OperationStreamStub != nil {
-		return fake.OperationStreamStub(arg1)
+	if operationStreamStubCopy != nil {
+		return operationStreamStubCopy(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.operationStreamReturns.result1, fake.operationStreamReturns.result2
+	fakeReturns := fake.operationStreamReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *FakeGenerator) OperationStreamCallCount() int {
@@ -114,13 +129,22 @@ func (fake *FakeGenerator) OperationStreamCallCount() int {
 	return len(fake.operationStreamArgsForCall)
 }
 
+func (fake *FakeGenerator) OperationStreamCalls(stub func(lager.Logger) (<-chan operationq.Operation, error)) {
+	fake.operationStreamMutex.Lock()
+	defer fake.operationStreamMutex.Unlock()
+	fake.OperationStreamStub = stub
+}
+
 func (fake *FakeGenerator) OperationStreamArgsForCall(i int) lager.Logger {
 	fake.operationStreamMutex.RLock()
 	defer fake.operationStreamMutex.RUnlock()
-	return fake.operationStreamArgsForCall[i].arg1
+	argsForCall := fake.operationStreamArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *FakeGenerator) OperationStreamReturns(result1 <-chan operationq.Operation, result2 error) {
+	fake.operationStreamMutex.Lock()
+	defer fake.operationStreamMutex.Unlock()
 	fake.OperationStreamStub = nil
 	fake.operationStreamReturns = struct {
 		result1 <-chan operationq.Operation
@@ -129,6 +153,8 @@ func (fake *FakeGenerator) OperationStreamReturns(result1 <-chan operationq.Oper
 }
 
 func (fake *FakeGenerator) OperationStreamReturnsOnCall(i int, result1 <-chan operationq.Operation, result2 error) {
+	fake.operationStreamMutex.Lock()
+	defer fake.operationStreamMutex.Unlock()
 	fake.OperationStreamStub = nil
 	if fake.operationStreamReturnsOnCall == nil {
 		fake.operationStreamReturnsOnCall = make(map[int]struct {

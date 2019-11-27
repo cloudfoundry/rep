@@ -10,8 +10,9 @@ import (
 type FakeEvacuationNotifier struct {
 	EvacuateNotifyStub        func() <-chan struct{}
 	evacuateNotifyMutex       sync.RWMutex
-	evacuateNotifyArgsForCall []struct{}
-	evacuateNotifyReturns     struct {
+	evacuateNotifyArgsForCall []struct {
+	}
+	evacuateNotifyReturns struct {
 		result1 <-chan struct{}
 	}
 	evacuateNotifyReturnsOnCall map[int]struct {
@@ -24,16 +25,19 @@ type FakeEvacuationNotifier struct {
 func (fake *FakeEvacuationNotifier) EvacuateNotify() <-chan struct{} {
 	fake.evacuateNotifyMutex.Lock()
 	ret, specificReturn := fake.evacuateNotifyReturnsOnCall[len(fake.evacuateNotifyArgsForCall)]
-	fake.evacuateNotifyArgsForCall = append(fake.evacuateNotifyArgsForCall, struct{}{})
+	fake.evacuateNotifyArgsForCall = append(fake.evacuateNotifyArgsForCall, struct {
+	}{})
 	fake.recordInvocation("EvacuateNotify", []interface{}{})
+	evacuateNotifyStubCopy := fake.EvacuateNotifyStub
 	fake.evacuateNotifyMutex.Unlock()
-	if fake.EvacuateNotifyStub != nil {
-		return fake.EvacuateNotifyStub()
+	if evacuateNotifyStubCopy != nil {
+		return evacuateNotifyStubCopy()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.evacuateNotifyReturns.result1
+	fakeReturns := fake.evacuateNotifyReturns
+	return fakeReturns.result1
 }
 
 func (fake *FakeEvacuationNotifier) EvacuateNotifyCallCount() int {
@@ -42,7 +46,15 @@ func (fake *FakeEvacuationNotifier) EvacuateNotifyCallCount() int {
 	return len(fake.evacuateNotifyArgsForCall)
 }
 
+func (fake *FakeEvacuationNotifier) EvacuateNotifyCalls(stub func() <-chan struct{}) {
+	fake.evacuateNotifyMutex.Lock()
+	defer fake.evacuateNotifyMutex.Unlock()
+	fake.EvacuateNotifyStub = stub
+}
+
 func (fake *FakeEvacuationNotifier) EvacuateNotifyReturns(result1 <-chan struct{}) {
+	fake.evacuateNotifyMutex.Lock()
+	defer fake.evacuateNotifyMutex.Unlock()
 	fake.EvacuateNotifyStub = nil
 	fake.evacuateNotifyReturns = struct {
 		result1 <-chan struct{}
@@ -50,6 +62,8 @@ func (fake *FakeEvacuationNotifier) EvacuateNotifyReturns(result1 <-chan struct{
 }
 
 func (fake *FakeEvacuationNotifier) EvacuateNotifyReturnsOnCall(i int, result1 <-chan struct{}) {
+	fake.evacuateNotifyMutex.Lock()
+	defer fake.evacuateNotifyMutex.Unlock()
 	fake.EvacuateNotifyStub = nil
 	if fake.evacuateNotifyReturnsOnCall == nil {
 		fake.evacuateNotifyReturnsOnCall = make(map[int]struct {

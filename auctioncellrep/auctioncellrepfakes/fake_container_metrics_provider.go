@@ -11,8 +11,9 @@ import (
 type FakeContainerMetricsProvider struct {
 	MetricsStub        func() map[string]*containermetrics.CachedContainerMetrics
 	metricsMutex       sync.RWMutex
-	metricsArgsForCall []struct{}
-	metricsReturns     struct {
+	metricsArgsForCall []struct {
+	}
+	metricsReturns struct {
 		result1 map[string]*containermetrics.CachedContainerMetrics
 	}
 	metricsReturnsOnCall map[int]struct {
@@ -25,16 +26,19 @@ type FakeContainerMetricsProvider struct {
 func (fake *FakeContainerMetricsProvider) Metrics() map[string]*containermetrics.CachedContainerMetrics {
 	fake.metricsMutex.Lock()
 	ret, specificReturn := fake.metricsReturnsOnCall[len(fake.metricsArgsForCall)]
-	fake.metricsArgsForCall = append(fake.metricsArgsForCall, struct{}{})
+	fake.metricsArgsForCall = append(fake.metricsArgsForCall, struct {
+	}{})
 	fake.recordInvocation("Metrics", []interface{}{})
+	metricsStubCopy := fake.MetricsStub
 	fake.metricsMutex.Unlock()
-	if fake.MetricsStub != nil {
-		return fake.MetricsStub()
+	if metricsStubCopy != nil {
+		return metricsStubCopy()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.metricsReturns.result1
+	fakeReturns := fake.metricsReturns
+	return fakeReturns.result1
 }
 
 func (fake *FakeContainerMetricsProvider) MetricsCallCount() int {
@@ -43,7 +47,15 @@ func (fake *FakeContainerMetricsProvider) MetricsCallCount() int {
 	return len(fake.metricsArgsForCall)
 }
 
+func (fake *FakeContainerMetricsProvider) MetricsCalls(stub func() map[string]*containermetrics.CachedContainerMetrics) {
+	fake.metricsMutex.Lock()
+	defer fake.metricsMutex.Unlock()
+	fake.MetricsStub = stub
+}
+
 func (fake *FakeContainerMetricsProvider) MetricsReturns(result1 map[string]*containermetrics.CachedContainerMetrics) {
+	fake.metricsMutex.Lock()
+	defer fake.metricsMutex.Unlock()
 	fake.MetricsStub = nil
 	fake.metricsReturns = struct {
 		result1 map[string]*containermetrics.CachedContainerMetrics
@@ -51,6 +63,8 @@ func (fake *FakeContainerMetricsProvider) MetricsReturns(result1 map[string]*con
 }
 
 func (fake *FakeContainerMetricsProvider) MetricsReturnsOnCall(i int, result1 map[string]*containermetrics.CachedContainerMetrics) {
+	fake.metricsMutex.Lock()
+	defer fake.metricsMutex.Unlock()
 	fake.MetricsStub = nil
 	if fake.metricsReturnsOnCall == nil {
 		fake.metricsReturnsOnCall = make(map[int]struct {

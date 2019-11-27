@@ -10,26 +10,11 @@ import (
 )
 
 type FakeAuctionCellClient struct {
-	StateStub        func(logger lager.Logger) (rep.CellState, bool, error)
-	stateMutex       sync.RWMutex
-	stateArgsForCall []struct {
-		logger lager.Logger
-	}
-	stateReturns struct {
-		result1 rep.CellState
-		result2 bool
-		result3 error
-	}
-	stateReturnsOnCall map[int]struct {
-		result1 rep.CellState
-		result2 bool
-		result3 error
-	}
-	PerformStub        func(logger lager.Logger, work rep.Work) (rep.Work, error)
+	PerformStub        func(lager.Logger, rep.Work) (rep.Work, error)
 	performMutex       sync.RWMutex
 	performArgsForCall []struct {
-		logger lager.Logger
-		work   rep.Work
+		arg1 lager.Logger
+		arg2 rep.Work
 	}
 	performReturns struct {
 		result1 rep.Work
@@ -41,87 +26,51 @@ type FakeAuctionCellClient struct {
 	}
 	ResetStub        func() error
 	resetMutex       sync.RWMutex
-	resetArgsForCall []struct{}
-	resetReturns     struct {
+	resetArgsForCall []struct {
+	}
+	resetReturns struct {
 		result1 error
 	}
 	resetReturnsOnCall map[int]struct {
 		result1 error
 	}
+	StateStub        func(lager.Logger) (rep.CellState, bool, error)
+	stateMutex       sync.RWMutex
+	stateArgsForCall []struct {
+		arg1 lager.Logger
+	}
+	stateReturns struct {
+		result1 rep.CellState
+		result2 bool
+		result3 error
+	}
+	stateReturnsOnCall map[int]struct {
+		result1 rep.CellState
+		result2 bool
+		result3 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeAuctionCellClient) State(logger lager.Logger) (rep.CellState, bool, error) {
-	fake.stateMutex.Lock()
-	ret, specificReturn := fake.stateReturnsOnCall[len(fake.stateArgsForCall)]
-	fake.stateArgsForCall = append(fake.stateArgsForCall, struct {
-		logger lager.Logger
-	}{logger})
-	fake.recordInvocation("State", []interface{}{logger})
-	fake.stateMutex.Unlock()
-	if fake.StateStub != nil {
-		return fake.StateStub(logger)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2, ret.result3
-	}
-	return fake.stateReturns.result1, fake.stateReturns.result2, fake.stateReturns.result3
-}
-
-func (fake *FakeAuctionCellClient) StateCallCount() int {
-	fake.stateMutex.RLock()
-	defer fake.stateMutex.RUnlock()
-	return len(fake.stateArgsForCall)
-}
-
-func (fake *FakeAuctionCellClient) StateArgsForCall(i int) lager.Logger {
-	fake.stateMutex.RLock()
-	defer fake.stateMutex.RUnlock()
-	return fake.stateArgsForCall[i].logger
-}
-
-func (fake *FakeAuctionCellClient) StateReturns(result1 rep.CellState, result2 bool, result3 error) {
-	fake.StateStub = nil
-	fake.stateReturns = struct {
-		result1 rep.CellState
-		result2 bool
-		result3 error
-	}{result1, result2, result3}
-}
-
-func (fake *FakeAuctionCellClient) StateReturnsOnCall(i int, result1 rep.CellState, result2 bool, result3 error) {
-	fake.StateStub = nil
-	if fake.stateReturnsOnCall == nil {
-		fake.stateReturnsOnCall = make(map[int]struct {
-			result1 rep.CellState
-			result2 bool
-			result3 error
-		})
-	}
-	fake.stateReturnsOnCall[i] = struct {
-		result1 rep.CellState
-		result2 bool
-		result3 error
-	}{result1, result2, result3}
-}
-
-func (fake *FakeAuctionCellClient) Perform(logger lager.Logger, work rep.Work) (rep.Work, error) {
+func (fake *FakeAuctionCellClient) Perform(arg1 lager.Logger, arg2 rep.Work) (rep.Work, error) {
 	fake.performMutex.Lock()
 	ret, specificReturn := fake.performReturnsOnCall[len(fake.performArgsForCall)]
 	fake.performArgsForCall = append(fake.performArgsForCall, struct {
-		logger lager.Logger
-		work   rep.Work
-	}{logger, work})
-	fake.recordInvocation("Perform", []interface{}{logger, work})
+		arg1 lager.Logger
+		arg2 rep.Work
+	}{arg1, arg2})
+	fake.recordInvocation("Perform", []interface{}{arg1, arg2})
+	performStubCopy := fake.PerformStub
 	fake.performMutex.Unlock()
-	if fake.PerformStub != nil {
-		return fake.PerformStub(logger, work)
+	if performStubCopy != nil {
+		return performStubCopy(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.performReturns.result1, fake.performReturns.result2
+	fakeReturns := fake.performReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *FakeAuctionCellClient) PerformCallCount() int {
@@ -130,13 +79,22 @@ func (fake *FakeAuctionCellClient) PerformCallCount() int {
 	return len(fake.performArgsForCall)
 }
 
+func (fake *FakeAuctionCellClient) PerformCalls(stub func(lager.Logger, rep.Work) (rep.Work, error)) {
+	fake.performMutex.Lock()
+	defer fake.performMutex.Unlock()
+	fake.PerformStub = stub
+}
+
 func (fake *FakeAuctionCellClient) PerformArgsForCall(i int) (lager.Logger, rep.Work) {
 	fake.performMutex.RLock()
 	defer fake.performMutex.RUnlock()
-	return fake.performArgsForCall[i].logger, fake.performArgsForCall[i].work
+	argsForCall := fake.performArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *FakeAuctionCellClient) PerformReturns(result1 rep.Work, result2 error) {
+	fake.performMutex.Lock()
+	defer fake.performMutex.Unlock()
 	fake.PerformStub = nil
 	fake.performReturns = struct {
 		result1 rep.Work
@@ -145,6 +103,8 @@ func (fake *FakeAuctionCellClient) PerformReturns(result1 rep.Work, result2 erro
 }
 
 func (fake *FakeAuctionCellClient) PerformReturnsOnCall(i int, result1 rep.Work, result2 error) {
+	fake.performMutex.Lock()
+	defer fake.performMutex.Unlock()
 	fake.PerformStub = nil
 	if fake.performReturnsOnCall == nil {
 		fake.performReturnsOnCall = make(map[int]struct {
@@ -161,16 +121,19 @@ func (fake *FakeAuctionCellClient) PerformReturnsOnCall(i int, result1 rep.Work,
 func (fake *FakeAuctionCellClient) Reset() error {
 	fake.resetMutex.Lock()
 	ret, specificReturn := fake.resetReturnsOnCall[len(fake.resetArgsForCall)]
-	fake.resetArgsForCall = append(fake.resetArgsForCall, struct{}{})
+	fake.resetArgsForCall = append(fake.resetArgsForCall, struct {
+	}{})
 	fake.recordInvocation("Reset", []interface{}{})
+	resetStubCopy := fake.ResetStub
 	fake.resetMutex.Unlock()
-	if fake.ResetStub != nil {
-		return fake.ResetStub()
+	if resetStubCopy != nil {
+		return resetStubCopy()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.resetReturns.result1
+	fakeReturns := fake.resetReturns
+	return fakeReturns.result1
 }
 
 func (fake *FakeAuctionCellClient) ResetCallCount() int {
@@ -179,7 +142,15 @@ func (fake *FakeAuctionCellClient) ResetCallCount() int {
 	return len(fake.resetArgsForCall)
 }
 
+func (fake *FakeAuctionCellClient) ResetCalls(stub func() error) {
+	fake.resetMutex.Lock()
+	defer fake.resetMutex.Unlock()
+	fake.ResetStub = stub
+}
+
 func (fake *FakeAuctionCellClient) ResetReturns(result1 error) {
+	fake.resetMutex.Lock()
+	defer fake.resetMutex.Unlock()
 	fake.ResetStub = nil
 	fake.resetReturns = struct {
 		result1 error
@@ -187,6 +158,8 @@ func (fake *FakeAuctionCellClient) ResetReturns(result1 error) {
 }
 
 func (fake *FakeAuctionCellClient) ResetReturnsOnCall(i int, result1 error) {
+	fake.resetMutex.Lock()
+	defer fake.resetMutex.Unlock()
 	fake.ResetStub = nil
 	if fake.resetReturnsOnCall == nil {
 		fake.resetReturnsOnCall = make(map[int]struct {
@@ -198,15 +171,82 @@ func (fake *FakeAuctionCellClient) ResetReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *FakeAuctionCellClient) State(arg1 lager.Logger) (rep.CellState, bool, error) {
+	fake.stateMutex.Lock()
+	ret, specificReturn := fake.stateReturnsOnCall[len(fake.stateArgsForCall)]
+	fake.stateArgsForCall = append(fake.stateArgsForCall, struct {
+		arg1 lager.Logger
+	}{arg1})
+	fake.recordInvocation("State", []interface{}{arg1})
+	stateStubCopy := fake.StateStub
+	fake.stateMutex.Unlock()
+	if stateStubCopy != nil {
+		return stateStubCopy(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2, ret.result3
+	}
+	fakeReturns := fake.stateReturns
+	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
+}
+
+func (fake *FakeAuctionCellClient) StateCallCount() int {
+	fake.stateMutex.RLock()
+	defer fake.stateMutex.RUnlock()
+	return len(fake.stateArgsForCall)
+}
+
+func (fake *FakeAuctionCellClient) StateCalls(stub func(lager.Logger) (rep.CellState, bool, error)) {
+	fake.stateMutex.Lock()
+	defer fake.stateMutex.Unlock()
+	fake.StateStub = stub
+}
+
+func (fake *FakeAuctionCellClient) StateArgsForCall(i int) lager.Logger {
+	fake.stateMutex.RLock()
+	defer fake.stateMutex.RUnlock()
+	argsForCall := fake.stateArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeAuctionCellClient) StateReturns(result1 rep.CellState, result2 bool, result3 error) {
+	fake.stateMutex.Lock()
+	defer fake.stateMutex.Unlock()
+	fake.StateStub = nil
+	fake.stateReturns = struct {
+		result1 rep.CellState
+		result2 bool
+		result3 error
+	}{result1, result2, result3}
+}
+
+func (fake *FakeAuctionCellClient) StateReturnsOnCall(i int, result1 rep.CellState, result2 bool, result3 error) {
+	fake.stateMutex.Lock()
+	defer fake.stateMutex.Unlock()
+	fake.StateStub = nil
+	if fake.stateReturnsOnCall == nil {
+		fake.stateReturnsOnCall = make(map[int]struct {
+			result1 rep.CellState
+			result2 bool
+			result3 error
+		})
+	}
+	fake.stateReturnsOnCall[i] = struct {
+		result1 rep.CellState
+		result2 bool
+		result3 error
+	}{result1, result2, result3}
+}
+
 func (fake *FakeAuctionCellClient) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.stateMutex.RLock()
-	defer fake.stateMutex.RUnlock()
 	fake.performMutex.RLock()
 	defer fake.performMutex.RUnlock()
 	fake.resetMutex.RLock()
 	defer fake.resetMutex.RUnlock()
+	fake.stateMutex.RLock()
+	defer fake.stateMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

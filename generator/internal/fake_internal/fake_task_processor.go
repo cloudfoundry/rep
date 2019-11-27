@@ -27,9 +27,10 @@ func (fake *FakeTaskProcessor) Process(arg1 lager.Logger, arg2 executor.Containe
 		arg2 executor.Container
 	}{arg1, arg2})
 	fake.recordInvocation("Process", []interface{}{arg1, arg2})
+	processStubCopy := fake.ProcessStub
 	fake.processMutex.Unlock()
-	if fake.ProcessStub != nil {
-		fake.ProcessStub(arg1, arg2)
+	if processStubCopy != nil {
+		processStubCopy(arg1, arg2)
 	}
 }
 
@@ -39,10 +40,17 @@ func (fake *FakeTaskProcessor) ProcessCallCount() int {
 	return len(fake.processArgsForCall)
 }
 
+func (fake *FakeTaskProcessor) ProcessCalls(stub func(lager.Logger, executor.Container)) {
+	fake.processMutex.Lock()
+	defer fake.processMutex.Unlock()
+	fake.ProcessStub = stub
+}
+
 func (fake *FakeTaskProcessor) ProcessArgsForCall(i int) (lager.Logger, executor.Container) {
 	fake.processMutex.RLock()
 	defer fake.processMutex.RUnlock()
-	return fake.processArgsForCall[i].arg1, fake.processArgsForCall[i].arg2
+	argsForCall := fake.processArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *FakeTaskProcessor) Invocations() map[string][][]interface{} {

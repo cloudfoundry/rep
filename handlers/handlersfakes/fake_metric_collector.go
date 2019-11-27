@@ -10,10 +10,10 @@ import (
 )
 
 type FakeMetricCollector struct {
-	MetricsStub        func(logger lager.Logger) (*rep.ContainerMetricsCollection, error)
+	MetricsStub        func(lager.Logger) (*rep.ContainerMetricsCollection, error)
 	metricsMutex       sync.RWMutex
 	metricsArgsForCall []struct {
-		logger lager.Logger
+		arg1 lager.Logger
 	}
 	metricsReturns struct {
 		result1 *rep.ContainerMetricsCollection
@@ -27,21 +27,23 @@ type FakeMetricCollector struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeMetricCollector) Metrics(logger lager.Logger) (*rep.ContainerMetricsCollection, error) {
+func (fake *FakeMetricCollector) Metrics(arg1 lager.Logger) (*rep.ContainerMetricsCollection, error) {
 	fake.metricsMutex.Lock()
 	ret, specificReturn := fake.metricsReturnsOnCall[len(fake.metricsArgsForCall)]
 	fake.metricsArgsForCall = append(fake.metricsArgsForCall, struct {
-		logger lager.Logger
-	}{logger})
-	fake.recordInvocation("Metrics", []interface{}{logger})
+		arg1 lager.Logger
+	}{arg1})
+	fake.recordInvocation("Metrics", []interface{}{arg1})
+	metricsStubCopy := fake.MetricsStub
 	fake.metricsMutex.Unlock()
-	if fake.MetricsStub != nil {
-		return fake.MetricsStub(logger)
+	if metricsStubCopy != nil {
+		return metricsStubCopy(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.metricsReturns.result1, fake.metricsReturns.result2
+	fakeReturns := fake.metricsReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *FakeMetricCollector) MetricsCallCount() int {
@@ -50,13 +52,22 @@ func (fake *FakeMetricCollector) MetricsCallCount() int {
 	return len(fake.metricsArgsForCall)
 }
 
+func (fake *FakeMetricCollector) MetricsCalls(stub func(lager.Logger) (*rep.ContainerMetricsCollection, error)) {
+	fake.metricsMutex.Lock()
+	defer fake.metricsMutex.Unlock()
+	fake.MetricsStub = stub
+}
+
 func (fake *FakeMetricCollector) MetricsArgsForCall(i int) lager.Logger {
 	fake.metricsMutex.RLock()
 	defer fake.metricsMutex.RUnlock()
-	return fake.metricsArgsForCall[i].logger
+	argsForCall := fake.metricsArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *FakeMetricCollector) MetricsReturns(result1 *rep.ContainerMetricsCollection, result2 error) {
+	fake.metricsMutex.Lock()
+	defer fake.metricsMutex.Unlock()
 	fake.MetricsStub = nil
 	fake.metricsReturns = struct {
 		result1 *rep.ContainerMetricsCollection
@@ -65,6 +76,8 @@ func (fake *FakeMetricCollector) MetricsReturns(result1 *rep.ContainerMetricsCol
 }
 
 func (fake *FakeMetricCollector) MetricsReturnsOnCall(i int, result1 *rep.ContainerMetricsCollection, result2 error) {
+	fake.metricsMutex.Lock()
+	defer fake.metricsMutex.Unlock()
 	fake.MetricsStub = nil
 	if fake.metricsReturnsOnCall == nil {
 		fake.metricsReturnsOnCall = make(map[int]struct {

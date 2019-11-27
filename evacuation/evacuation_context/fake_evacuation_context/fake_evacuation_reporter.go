@@ -10,8 +10,9 @@ import (
 type FakeEvacuationReporter struct {
 	EvacuatingStub        func() bool
 	evacuatingMutex       sync.RWMutex
-	evacuatingArgsForCall []struct{}
-	evacuatingReturns     struct {
+	evacuatingArgsForCall []struct {
+	}
+	evacuatingReturns struct {
 		result1 bool
 	}
 	evacuatingReturnsOnCall map[int]struct {
@@ -24,16 +25,19 @@ type FakeEvacuationReporter struct {
 func (fake *FakeEvacuationReporter) Evacuating() bool {
 	fake.evacuatingMutex.Lock()
 	ret, specificReturn := fake.evacuatingReturnsOnCall[len(fake.evacuatingArgsForCall)]
-	fake.evacuatingArgsForCall = append(fake.evacuatingArgsForCall, struct{}{})
+	fake.evacuatingArgsForCall = append(fake.evacuatingArgsForCall, struct {
+	}{})
 	fake.recordInvocation("Evacuating", []interface{}{})
+	evacuatingStubCopy := fake.EvacuatingStub
 	fake.evacuatingMutex.Unlock()
-	if fake.EvacuatingStub != nil {
-		return fake.EvacuatingStub()
+	if evacuatingStubCopy != nil {
+		return evacuatingStubCopy()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.evacuatingReturns.result1
+	fakeReturns := fake.evacuatingReturns
+	return fakeReturns.result1
 }
 
 func (fake *FakeEvacuationReporter) EvacuatingCallCount() int {
@@ -42,7 +46,15 @@ func (fake *FakeEvacuationReporter) EvacuatingCallCount() int {
 	return len(fake.evacuatingArgsForCall)
 }
 
+func (fake *FakeEvacuationReporter) EvacuatingCalls(stub func() bool) {
+	fake.evacuatingMutex.Lock()
+	defer fake.evacuatingMutex.Unlock()
+	fake.EvacuatingStub = stub
+}
+
 func (fake *FakeEvacuationReporter) EvacuatingReturns(result1 bool) {
+	fake.evacuatingMutex.Lock()
+	defer fake.evacuatingMutex.Unlock()
 	fake.EvacuatingStub = nil
 	fake.evacuatingReturns = struct {
 		result1 bool
@@ -50,6 +62,8 @@ func (fake *FakeEvacuationReporter) EvacuatingReturns(result1 bool) {
 }
 
 func (fake *FakeEvacuationReporter) EvacuatingReturnsOnCall(i int, result1 bool) {
+	fake.evacuatingMutex.Lock()
+	defer fake.evacuatingMutex.Unlock()
 	fake.EvacuatingStub = nil
 	if fake.evacuatingReturnsOnCall == nil {
 		fake.evacuatingReturnsOnCall = make(map[int]struct {

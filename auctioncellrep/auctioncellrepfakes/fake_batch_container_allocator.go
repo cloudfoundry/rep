@@ -55,14 +55,16 @@ func (fake *FakeBatchContainerAllocator) BatchLRPAllocationRequest(arg1 lager.Lo
 		arg4 []rep.LRP
 	}{arg1, arg2, arg3, arg4Copy})
 	fake.recordInvocation("BatchLRPAllocationRequest", []interface{}{arg1, arg2, arg3, arg4Copy})
+	batchLRPAllocationRequestStubCopy := fake.BatchLRPAllocationRequestStub
 	fake.batchLRPAllocationRequestMutex.Unlock()
-	if fake.BatchLRPAllocationRequestStub != nil {
-		return fake.BatchLRPAllocationRequestStub(arg1, arg2, arg3, arg4)
+	if batchLRPAllocationRequestStubCopy != nil {
+		return batchLRPAllocationRequestStubCopy(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.batchLRPAllocationRequestReturns.result1
+	fakeReturns := fake.batchLRPAllocationRequestReturns
+	return fakeReturns.result1
 }
 
 func (fake *FakeBatchContainerAllocator) BatchLRPAllocationRequestCallCount() int {
@@ -71,13 +73,22 @@ func (fake *FakeBatchContainerAllocator) BatchLRPAllocationRequestCallCount() in
 	return len(fake.batchLRPAllocationRequestArgsForCall)
 }
 
+func (fake *FakeBatchContainerAllocator) BatchLRPAllocationRequestCalls(stub func(lager.Logger, bool, int, []rep.LRP) []rep.LRP) {
+	fake.batchLRPAllocationRequestMutex.Lock()
+	defer fake.batchLRPAllocationRequestMutex.Unlock()
+	fake.BatchLRPAllocationRequestStub = stub
+}
+
 func (fake *FakeBatchContainerAllocator) BatchLRPAllocationRequestArgsForCall(i int) (lager.Logger, bool, int, []rep.LRP) {
 	fake.batchLRPAllocationRequestMutex.RLock()
 	defer fake.batchLRPAllocationRequestMutex.RUnlock()
-	return fake.batchLRPAllocationRequestArgsForCall[i].arg1, fake.batchLRPAllocationRequestArgsForCall[i].arg2, fake.batchLRPAllocationRequestArgsForCall[i].arg3, fake.batchLRPAllocationRequestArgsForCall[i].arg4
+	argsForCall := fake.batchLRPAllocationRequestArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *FakeBatchContainerAllocator) BatchLRPAllocationRequestReturns(result1 []rep.LRP) {
+	fake.batchLRPAllocationRequestMutex.Lock()
+	defer fake.batchLRPAllocationRequestMutex.Unlock()
 	fake.BatchLRPAllocationRequestStub = nil
 	fake.batchLRPAllocationRequestReturns = struct {
 		result1 []rep.LRP
@@ -85,6 +96,8 @@ func (fake *FakeBatchContainerAllocator) BatchLRPAllocationRequestReturns(result
 }
 
 func (fake *FakeBatchContainerAllocator) BatchLRPAllocationRequestReturnsOnCall(i int, result1 []rep.LRP) {
+	fake.batchLRPAllocationRequestMutex.Lock()
+	defer fake.batchLRPAllocationRequestMutex.Unlock()
 	fake.BatchLRPAllocationRequestStub = nil
 	if fake.batchLRPAllocationRequestReturnsOnCall == nil {
 		fake.batchLRPAllocationRequestReturnsOnCall = make(map[int]struct {
@@ -109,14 +122,16 @@ func (fake *FakeBatchContainerAllocator) BatchTaskAllocationRequest(arg1 lager.L
 		arg2 []rep.Task
 	}{arg1, arg2Copy})
 	fake.recordInvocation("BatchTaskAllocationRequest", []interface{}{arg1, arg2Copy})
+	batchTaskAllocationRequestStubCopy := fake.BatchTaskAllocationRequestStub
 	fake.batchTaskAllocationRequestMutex.Unlock()
-	if fake.BatchTaskAllocationRequestStub != nil {
-		return fake.BatchTaskAllocationRequestStub(arg1, arg2)
+	if batchTaskAllocationRequestStubCopy != nil {
+		return batchTaskAllocationRequestStubCopy(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.batchTaskAllocationRequestReturns.result1
+	fakeReturns := fake.batchTaskAllocationRequestReturns
+	return fakeReturns.result1
 }
 
 func (fake *FakeBatchContainerAllocator) BatchTaskAllocationRequestCallCount() int {
@@ -125,13 +140,22 @@ func (fake *FakeBatchContainerAllocator) BatchTaskAllocationRequestCallCount() i
 	return len(fake.batchTaskAllocationRequestArgsForCall)
 }
 
+func (fake *FakeBatchContainerAllocator) BatchTaskAllocationRequestCalls(stub func(lager.Logger, []rep.Task) []rep.Task) {
+	fake.batchTaskAllocationRequestMutex.Lock()
+	defer fake.batchTaskAllocationRequestMutex.Unlock()
+	fake.BatchTaskAllocationRequestStub = stub
+}
+
 func (fake *FakeBatchContainerAllocator) BatchTaskAllocationRequestArgsForCall(i int) (lager.Logger, []rep.Task) {
 	fake.batchTaskAllocationRequestMutex.RLock()
 	defer fake.batchTaskAllocationRequestMutex.RUnlock()
-	return fake.batchTaskAllocationRequestArgsForCall[i].arg1, fake.batchTaskAllocationRequestArgsForCall[i].arg2
+	argsForCall := fake.batchTaskAllocationRequestArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *FakeBatchContainerAllocator) BatchTaskAllocationRequestReturns(result1 []rep.Task) {
+	fake.batchTaskAllocationRequestMutex.Lock()
+	defer fake.batchTaskAllocationRequestMutex.Unlock()
 	fake.BatchTaskAllocationRequestStub = nil
 	fake.batchTaskAllocationRequestReturns = struct {
 		result1 []rep.Task
@@ -139,6 +163,8 @@ func (fake *FakeBatchContainerAllocator) BatchTaskAllocationRequestReturns(resul
 }
 
 func (fake *FakeBatchContainerAllocator) BatchTaskAllocationRequestReturnsOnCall(i int, result1 []rep.Task) {
+	fake.batchTaskAllocationRequestMutex.Lock()
+	defer fake.batchTaskAllocationRequestMutex.Unlock()
 	fake.BatchTaskAllocationRequestStub = nil
 	if fake.batchTaskAllocationRequestReturnsOnCall == nil {
 		fake.batchTaskAllocationRequestReturnsOnCall = make(map[int]struct {

@@ -10,18 +10,21 @@ import (
 type FakeEvacuatable struct {
 	EvacuateStub        func()
 	evacuateMutex       sync.RWMutex
-	evacuateArgsForCall []struct{}
-	invocations         map[string][][]interface{}
-	invocationsMutex    sync.RWMutex
+	evacuateArgsForCall []struct {
+	}
+	invocations      map[string][][]interface{}
+	invocationsMutex sync.RWMutex
 }
 
 func (fake *FakeEvacuatable) Evacuate() {
 	fake.evacuateMutex.Lock()
-	fake.evacuateArgsForCall = append(fake.evacuateArgsForCall, struct{}{})
+	fake.evacuateArgsForCall = append(fake.evacuateArgsForCall, struct {
+	}{})
 	fake.recordInvocation("Evacuate", []interface{}{})
+	evacuateStubCopy := fake.EvacuateStub
 	fake.evacuateMutex.Unlock()
-	if fake.EvacuateStub != nil {
-		fake.EvacuateStub()
+	if evacuateStubCopy != nil {
+		evacuateStubCopy()
 	}
 }
 
@@ -29,6 +32,12 @@ func (fake *FakeEvacuatable) EvacuateCallCount() int {
 	fake.evacuateMutex.RLock()
 	defer fake.evacuateMutex.RUnlock()
 	return len(fake.evacuateArgsForCall)
+}
+
+func (fake *FakeEvacuatable) EvacuateCalls(stub func()) {
+	fake.evacuateMutex.Lock()
+	defer fake.evacuateMutex.Unlock()
+	fake.EvacuateStub = stub
 }
 
 func (fake *FakeEvacuatable) Invocations() map[string][][]interface{} {

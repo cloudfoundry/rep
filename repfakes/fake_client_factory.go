@@ -8,11 +8,11 @@ import (
 )
 
 type FakeClientFactory struct {
-	CreateClientStub        func(address, url string) (rep.Client, error)
+	CreateClientStub        func(string, string) (rep.Client, error)
 	createClientMutex       sync.RWMutex
 	createClientArgsForCall []struct {
-		address string
-		url     string
+		arg1 string
+		arg2 string
 	}
 	createClientReturns struct {
 		result1 rep.Client
@@ -26,22 +26,24 @@ type FakeClientFactory struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeClientFactory) CreateClient(address string, url string) (rep.Client, error) {
+func (fake *FakeClientFactory) CreateClient(arg1 string, arg2 string) (rep.Client, error) {
 	fake.createClientMutex.Lock()
 	ret, specificReturn := fake.createClientReturnsOnCall[len(fake.createClientArgsForCall)]
 	fake.createClientArgsForCall = append(fake.createClientArgsForCall, struct {
-		address string
-		url     string
-	}{address, url})
-	fake.recordInvocation("CreateClient", []interface{}{address, url})
+		arg1 string
+		arg2 string
+	}{arg1, arg2})
+	fake.recordInvocation("CreateClient", []interface{}{arg1, arg2})
+	createClientStubCopy := fake.CreateClientStub
 	fake.createClientMutex.Unlock()
-	if fake.CreateClientStub != nil {
-		return fake.CreateClientStub(address, url)
+	if createClientStubCopy != nil {
+		return createClientStubCopy(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.createClientReturns.result1, fake.createClientReturns.result2
+	fakeReturns := fake.createClientReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *FakeClientFactory) CreateClientCallCount() int {
@@ -50,13 +52,22 @@ func (fake *FakeClientFactory) CreateClientCallCount() int {
 	return len(fake.createClientArgsForCall)
 }
 
+func (fake *FakeClientFactory) CreateClientCalls(stub func(string, string) (rep.Client, error)) {
+	fake.createClientMutex.Lock()
+	defer fake.createClientMutex.Unlock()
+	fake.CreateClientStub = stub
+}
+
 func (fake *FakeClientFactory) CreateClientArgsForCall(i int) (string, string) {
 	fake.createClientMutex.RLock()
 	defer fake.createClientMutex.RUnlock()
-	return fake.createClientArgsForCall[i].address, fake.createClientArgsForCall[i].url
+	argsForCall := fake.createClientArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *FakeClientFactory) CreateClientReturns(result1 rep.Client, result2 error) {
+	fake.createClientMutex.Lock()
+	defer fake.createClientMutex.Unlock()
 	fake.CreateClientStub = nil
 	fake.createClientReturns = struct {
 		result1 rep.Client
@@ -65,6 +76,8 @@ func (fake *FakeClientFactory) CreateClientReturns(result1 rep.Client, result2 e
 }
 
 func (fake *FakeClientFactory) CreateClientReturnsOnCall(i int, result1 rep.Client, result2 error) {
+	fake.createClientMutex.Lock()
+	defer fake.createClientMutex.Unlock()
 	fake.CreateClientStub = nil
 	if fake.createClientReturnsOnCall == nil {
 		fake.createClientReturnsOnCall = make(map[int]struct {
