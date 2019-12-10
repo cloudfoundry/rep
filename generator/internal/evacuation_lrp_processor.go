@@ -42,6 +42,7 @@ func (p *evacuationLRPProcessor) Process(logger lager.Logger, container executor
 		container.RunInfo.LogConfig.Index,
 		container.RunInfo.LogConfig.Tags,
 		p.metronClient,
+		0,
 	)
 
 	lrpKey, err := rep.ActualLRPKeyFromTags(container.Tags)

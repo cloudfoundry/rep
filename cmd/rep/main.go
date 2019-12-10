@@ -44,7 +44,7 @@ import (
 	"code.cloudfoundry.org/rep/maintain"
 	"code.cloudfoundry.org/tlsconfig"
 	"github.com/hashicorp/consul/api"
-	"github.com/nu7hatch/gouuid"
+	uuid "github.com/nu7hatch/gouuid"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/sigmon"
