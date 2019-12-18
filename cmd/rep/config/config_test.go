@@ -96,6 +96,7 @@ var _ = Describe("RepConfig", func() {
 				"loggregator_job_ip": "job-ip",
 				"loggregator_job_origin": "job-origin"
 			},
+			"log_rate_limit_exceeded_report_interval": "5m",
 			"max_cache_size_in_bytes": 101,
 			"max_concurrent_downloads": 11,
 			"max_log_lines_per_second": 200,
@@ -206,6 +207,7 @@ var _ = Describe("RepConfig", func() {
 				HealthCheckContainerOwnerName:      "vcap_health",
 				HealthCheckWorkPoolSize:            10,
 				HealthyMonitoringInterval:          5000000000,
+				LogRateLimitExceededReportInterval: durationjson.Duration(5 * time.Minute),
 				MaxCacheSizeInBytes:                101,
 				MaxConcurrentDownloads:             11,
 				MaxLogLinesPerSecond:               200,

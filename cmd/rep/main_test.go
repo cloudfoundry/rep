@@ -185,6 +185,7 @@ var _ = Describe("The Rep", func() {
 				ReadWorkPoolSize:                   64,
 				MetricsWorkPoolSize:                8,
 				MaxLogLinesPerSecond:               200,
+				LogRateLimitExceededReportInterval: durationjson.Duration(5 * time.Minute),
 				HealthCheckWorkPoolSize:            64,
 				MaxConcurrentDownloads:             5,
 				GardenHealthcheckInterval:          durationjson.Duration(10 * time.Minute),
