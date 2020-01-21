@@ -9,7 +9,11 @@ The Rep
 
 The Rep bids on tasks and schedules them on an associated Executor.
 
-####Learn more about Diego and its components at [diego-design-notes](https://github.com/cloudfoundry/diego-design-notes)
+## Reporting issues and requesting features
+
+Please report all issues and feature requests in [cloudfoundry/diego-release](https://github.com/cloudfoundry/diego-release/issues).
+
+#### Learn more about Diego and its components at [diego-design-notes](https://github.com/cloudfoundry/diego-design-notes)
 
 
 ## Run Tests
