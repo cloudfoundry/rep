@@ -19,7 +19,7 @@ import (
 const (
 	repURL     = "https://foo.cell.service.cf.internal:8888"
 	cellID     = "some-cell-id"
-	cellIndex  = 0
+	cellIndex  = 15
 	linuxStack = "linux"
 	linuxPath  = "/data/rootfs/linux"
 )
