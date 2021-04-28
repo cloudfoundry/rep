@@ -217,7 +217,7 @@ var _ = AfterEach(func() {
 })
 
 var _ = SynchronizedAfterSuite(func() {
-	ginkgomon.Kill(sqlProcess)
+	ginkgomon.Kill(sqlProcess, "10s")
 	if consulRunner != nil {
 		consulRunner.Stop()
 	}
