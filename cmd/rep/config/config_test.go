@@ -23,6 +23,7 @@ var _ = Describe("RepConfig", func() {
 	BeforeEach(func() {
 		configData = `{
 			"proxy_memory_allocation_mb": 6,
+			"proxy_enable_http2": true,
 			"advertise_domain": "test-domain",
 			"bbs_address": "1.1.1.1:9091",
 			"bbs_client_session_cache_size": 100,
@@ -177,6 +178,7 @@ var _ = Describe("RepConfig", func() {
 			EvacuationTimeout:               durationjson.Duration(12 * time.Second),
 			ExecutorConfig: executorinit.ExecutorConfig{
 				ProxyMemoryAllocationMB:            6,
+				ProxyEnableHttp2:                   true,
 				CachePath:                          "/tmp/cache",
 				ContainerInodeLimit:                1000,
 				ContainerMaxCpuShares:              4,
