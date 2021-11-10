@@ -10,7 +10,7 @@ import (
 	"code.cloudfoundry.org/lager"
 )
 
-const MAX_RESULT_SIZE = 1024 * 20
+const MAX_RESULT_SIZE = 1024 * 50
 
 var ErrResultFileTooLarge = errors.New(
 	fmt.Sprintf("result file is too large (over %d bytes)", MAX_RESULT_SIZE),
