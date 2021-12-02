@@ -1,6 +1,7 @@
 package rep_test
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	fakeecrhelper "code.cloudfoundry.org/ecrhelper/fakes"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/rep"
+	"code.cloudfoundry.org/routing-info/internalroutes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -632,6 +634,23 @@ var _ = Describe("Resources", func() {
 					Expect(runReq.RunInfo.LogConfig.Tags).To(HaveKeyWithValue("index", "9"))
 					Expect(runReq.RunInfo.LogConfig.Tags).To(HaveKeyWithValue("instanceGuid", "some-guid"))
 				})
+			})
+
+			Context("when desired LRP has internal routes", func() {
+				BeforeEach(func() {
+					myRouterJSON := json.RawMessage(`[{"hostname":"foo.apps.internal"},{"hostname":"bar.apps.internal"}]`)
+					desiredLRP.Routes = &models.Routes{"internal-router": &myRouterJSON}
+				})
+
+				It("adds internal routes to run info", func() {
+					runReq, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(runReq.RunInfo.InternalRoutes).To(Equal(internalroutes.InternalRoutes{
+						{Hostname: "foo.apps.internal"},
+						{Hostname: "bar.apps.internal"},
+					}))
+				})
+
 			})
 		})
 
