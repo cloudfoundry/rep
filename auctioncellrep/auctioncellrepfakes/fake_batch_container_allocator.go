@@ -54,16 +54,16 @@ func (fake *FakeBatchContainerAllocator) BatchLRPAllocationRequest(arg1 lager.Lo
 		arg3 int
 		arg4 []rep.LRP
 	}{arg1, arg2, arg3, arg4Copy})
+	stub := fake.BatchLRPAllocationRequestStub
+	fakeReturns := fake.batchLRPAllocationRequestReturns
 	fake.recordInvocation("BatchLRPAllocationRequest", []interface{}{arg1, arg2, arg3, arg4Copy})
-	batchLRPAllocationRequestStubCopy := fake.BatchLRPAllocationRequestStub
 	fake.batchLRPAllocationRequestMutex.Unlock()
-	if batchLRPAllocationRequestStubCopy != nil {
-		return batchLRPAllocationRequestStubCopy(arg1, arg2, arg3, arg4)
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.batchLRPAllocationRequestReturns
 	return fakeReturns.result1
 }
 
@@ -121,16 +121,16 @@ func (fake *FakeBatchContainerAllocator) BatchTaskAllocationRequest(arg1 lager.L
 		arg1 lager.Logger
 		arg2 []rep.Task
 	}{arg1, arg2Copy})
+	stub := fake.BatchTaskAllocationRequestStub
+	fakeReturns := fake.batchTaskAllocationRequestReturns
 	fake.recordInvocation("BatchTaskAllocationRequest", []interface{}{arg1, arg2Copy})
-	batchTaskAllocationRequestStubCopy := fake.BatchTaskAllocationRequestStub
 	fake.batchTaskAllocationRequestMutex.Unlock()
-	if batchTaskAllocationRequestStubCopy != nil {
-		return batchTaskAllocationRequestStubCopy(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.batchTaskAllocationRequestReturns
 	return fakeReturns.result1
 }
 

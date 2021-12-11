@@ -11,6 +11,7 @@ import (
 	cfhttp "code.cloudfoundry.org/cfhttp/v2"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep"
+	"code.cloudfoundry.org/routing-info/internalroutes"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -115,6 +116,137 @@ var _ = Describe("Client", func() {
 			client.State(logger)
 			client.State(logger)
 			Expect(addrs).To(HaveLen(1))
+		})
+	})
+
+	Describe("UpdateLRPInstance", func() {
+		const cellAddr = "cell.example.com"
+		var (
+			logger    = lagertest.NewTestLogger("test")
+			updateErr error
+			lrpUpdate rep.LRPUpdate
+		)
+
+		BeforeEach(func() {
+			lrpUpdate = rep.LRPUpdate{
+				InstanceGUID: "some-instance-guid",
+				ActualLRPKey: models.NewActualLRPKey("some-process-guid", 2, "test-domain"),
+				InternalRoutes: internalroutes.InternalRoutes{
+					{Hostname: "a.apps.internal"},
+					{Hostname: "b.apps.internal"},
+				},
+			}
+		})
+
+		JustBeforeEach(func() {
+			updateErr = client.UpdateLRPInstance(logger, lrpUpdate)
+		})
+
+		Context("when the request is successful", func() {
+			BeforeEach(func() {
+				fakeServer.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("PUT", "/v1/lrps/some-process-guid/instances/some-instance-guid"),
+						ghttp.RespondWith(http.StatusAccepted, ""),
+					),
+				)
+			})
+
+			It("makes the request and does not return an error", func() {
+				Expect(updateErr).NotTo(HaveOccurred())
+				Expect(fakeServer.ReceivedRequests()).To(HaveLen(1))
+			})
+
+			It("logs start and complete", func() {
+				Eventually(logger.Buffer()).Should(gbytes.Say("update-lrp.starting"))
+				Eventually(logger.Buffer()).Should(gbytes.Say("update-lrp.completed"))
+				Eventually(logger.Buffer()).Should(gbytes.Say("duration"))
+			})
+		})
+
+		Context("when the request returns 500", func() {
+			BeforeEach(func() {
+				fakeServer.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("PUT", "/v1/lrps/some-process-guid/instances/some-instance-guid"),
+						ghttp.RespondWith(http.StatusInternalServerError, ""),
+					),
+				)
+			})
+
+			It("makes the request and returns an error", func() {
+				Expect(updateErr).To(HaveOccurred())
+				Expect(updateErr.Error()).To(ContainSubstring("http error: status code 500"))
+				Expect(fakeServer.ReceivedRequests()).To(HaveLen(1))
+			})
+
+			It("logs that it failed", func() {
+				Eventually(logger.Buffer()).Should(gbytes.Say("update-lrp.failed-with-status"))
+			})
+		})
+
+		Context("when the request returns 404", func() {
+			BeforeEach(func() {
+				fakeServer.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("PUT", "/v1/lrps/some-process-guid/instances/some-instance-guid"),
+						ghttp.RespondWith(http.StatusNotFound, ""),
+					),
+				)
+			})
+
+			// We are assuming that a 404 means that the rep has not updated
+			// yet, but will roll soon.  This is for backwards compatibility.
+			It("makes the request and does not return error", func() {
+				Expect(updateErr).ToNot(HaveOccurred())
+				Expect(fakeServer.ReceivedRequests()).To(HaveLen(1))
+			})
+
+			It("logs that it failed", func() {
+				Eventually(logger.Buffer()).Should(gbytes.Say("update-lrp.failed-with-status"))
+			})
+		})
+
+		Context("when the connection fails", func() {
+			BeforeEach(func() {
+				fakeServer.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("PUT", "/v1/lrps/some-process-guid/instances/some-instance-guid"),
+						func(w http.ResponseWriter, r *http.Request) {
+							fakeServer.CloseClientConnections()
+						},
+					),
+				)
+			})
+
+			It("makes the request and returns an error", func() {
+				Expect(updateErr).To(HaveOccurred())
+				Expect(updateErr.Error()).To(ContainSubstring("EOF"))
+				Expect(fakeServer.ReceivedRequests()).To(HaveLen(1))
+			})
+		})
+
+		Context("when the connection times out", func() {
+			BeforeEach(func() {
+				fakeServer.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("PUT", "/v1/lrps/some-process-guid/instances/some-instance-guid"),
+						func(w http.ResponseWriter, r *http.Request) {
+							time.Sleep(cfHttpTimeout + 100*time.Millisecond)
+						},
+					),
+				)
+			})
+
+			It("makes the request and returns an error", func() {
+				Expect(updateErr).To(HaveOccurred())
+				Expect(updateErr.Error()).To(MatchRegexp("use of closed network connection|Client.Timeout exceeded while awaiting headers"))
+				Expect(fakeServer.ReceivedRequests()).To(HaveLen(1))
+			})
+
+			It("logs start and complete", func() {
+				Eventually(logger.Buffer()).Should(gbytes.Say("update-lrp.request-failed"))
+			})
 		})
 	})
 

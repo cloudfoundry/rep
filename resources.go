@@ -9,6 +9,7 @@ import (
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/executor/containermetrics"
+	"code.cloudfoundry.org/routing-info/internalroutes"
 )
 
 var ErrorIncompatibleRootfs = errors.New("rootfs not found")
@@ -266,6 +267,16 @@ func (lrp *LRP) Identifier() string {
 
 func (lrp *LRP) Copy() LRP {
 	return NewLRP(lrp.InstanceGUID, lrp.ActualLRPKey, lrp.Resource, lrp.PlacementConstraint)
+}
+
+type LRPUpdate struct {
+	InstanceGUID string `json:"instance_guid"`
+	models.ActualLRPKey
+	InternalRoutes internalroutes.InternalRoutes `json:"internal_routes"`
+}
+
+func NewLRPUpdate(instanceGUID string, key models.ActualLRPKey, internalRoutes internalroutes.InternalRoutes) LRPUpdate {
+	return LRPUpdate{instanceGUID, key, internalRoutes}
 }
 
 type Task struct {

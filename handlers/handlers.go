@@ -28,6 +28,7 @@ func New(
 		containerMetricsHandler := newContainerMetricsHandler(localMetricCollector, requestMetrics)
 		performHandler := newPerformHandler(localCellClient, requestMetrics)
 		resetHandler := newResetHandler(localCellClient, requestMetrics)
+		updateLrpHandler := NewUpdateLRPInstanceHandler(executorClient, requestMetrics)
 		stopLrpHandler := NewStopLRPInstanceHandler(executorClient, requestMetrics)
 		cancelTaskHandler := newCancelTaskHandler(executorClient, requestMetrics)
 
@@ -37,6 +38,7 @@ func New(
 		handlers[rep.SimResetRoute] = logWrap(resetHandler.ServeHTTP, logger)
 
 		handlers[rep.StopLRPInstanceRoute] = logWrap(stopLrpHandler.ServeHTTP, logger)
+		handlers[rep.UpdateLRPInstanceRoute] = logWrap(updateLrpHandler.ServeHTTP, logger)
 		handlers[rep.CancelTaskRoute] = logWrap(cancelTaskHandler.ServeHTTP, logger)
 	} else {
 		pingHandler := newPingHandler(requestMetrics)

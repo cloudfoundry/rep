@@ -28,16 +28,16 @@ func (fake *FakeContainerMetricsProvider) Metrics() map[string]*containermetrics
 	ret, specificReturn := fake.metricsReturnsOnCall[len(fake.metricsArgsForCall)]
 	fake.metricsArgsForCall = append(fake.metricsArgsForCall, struct {
 	}{})
+	stub := fake.MetricsStub
+	fakeReturns := fake.metricsReturns
 	fake.recordInvocation("Metrics", []interface{}{})
-	metricsStubCopy := fake.MetricsStub
 	fake.metricsMutex.Unlock()
-	if metricsStubCopy != nil {
-		return metricsStubCopy()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.metricsReturns
 	return fakeReturns.result1
 }
 

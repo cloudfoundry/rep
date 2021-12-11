@@ -20,11 +20,11 @@ func (fake *FakeEvacuatable) Evacuate() {
 	fake.evacuateMutex.Lock()
 	fake.evacuateArgsForCall = append(fake.evacuateArgsForCall, struct {
 	}{})
+	stub := fake.EvacuateStub
 	fake.recordInvocation("Evacuate", []interface{}{})
-	evacuateStubCopy := fake.EvacuateStub
 	fake.evacuateMutex.Unlock()
-	if evacuateStubCopy != nil {
-		evacuateStubCopy()
+	if stub != nil {
+		fake.EvacuateStub()
 	}
 }
 

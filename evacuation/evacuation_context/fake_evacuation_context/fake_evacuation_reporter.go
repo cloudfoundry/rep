@@ -27,16 +27,16 @@ func (fake *FakeEvacuationReporter) Evacuating() bool {
 	ret, specificReturn := fake.evacuatingReturnsOnCall[len(fake.evacuatingArgsForCall)]
 	fake.evacuatingArgsForCall = append(fake.evacuatingArgsForCall, struct {
 	}{})
+	stub := fake.EvacuatingStub
+	fakeReturns := fake.evacuatingReturns
 	fake.recordInvocation("Evacuating", []interface{}{})
-	evacuatingStubCopy := fake.EvacuatingStub
 	fake.evacuatingMutex.Unlock()
-	if evacuatingStubCopy != nil {
-		return evacuatingStubCopy()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.evacuatingReturns
 	return fakeReturns.result1
 }
 

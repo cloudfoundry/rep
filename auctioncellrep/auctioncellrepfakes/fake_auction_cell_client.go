@@ -60,16 +60,16 @@ func (fake *FakeAuctionCellClient) Perform(arg1 lager.Logger, arg2 rep.Work) (re
 		arg1 lager.Logger
 		arg2 rep.Work
 	}{arg1, arg2})
+	stub := fake.PerformStub
+	fakeReturns := fake.performReturns
 	fake.recordInvocation("Perform", []interface{}{arg1, arg2})
-	performStubCopy := fake.PerformStub
 	fake.performMutex.Unlock()
-	if performStubCopy != nil {
-		return performStubCopy(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.performReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -123,16 +123,16 @@ func (fake *FakeAuctionCellClient) Reset() error {
 	ret, specificReturn := fake.resetReturnsOnCall[len(fake.resetArgsForCall)]
 	fake.resetArgsForCall = append(fake.resetArgsForCall, struct {
 	}{})
+	stub := fake.ResetStub
+	fakeReturns := fake.resetReturns
 	fake.recordInvocation("Reset", []interface{}{})
-	resetStubCopy := fake.ResetStub
 	fake.resetMutex.Unlock()
-	if resetStubCopy != nil {
-		return resetStubCopy()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.resetReturns
 	return fakeReturns.result1
 }
 
@@ -177,16 +177,16 @@ func (fake *FakeAuctionCellClient) State(arg1 lager.Logger) (rep.CellState, bool
 	fake.stateArgsForCall = append(fake.stateArgsForCall, struct {
 		arg1 lager.Logger
 	}{arg1})
+	stub := fake.StateStub
+	fakeReturns := fake.stateReturns
 	fake.recordInvocation("State", []interface{}{arg1})
-	stateStubCopy := fake.StateStub
 	fake.stateMutex.Unlock()
-	if stateStubCopy != nil {
-		return stateStubCopy(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2, ret.result3
 	}
-	fakeReturns := fake.stateReturns
 	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
 }
 

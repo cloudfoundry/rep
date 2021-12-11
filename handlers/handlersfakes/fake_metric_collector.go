@@ -33,16 +33,16 @@ func (fake *FakeMetricCollector) Metrics(arg1 lager.Logger) (*rep.ContainerMetri
 	fake.metricsArgsForCall = append(fake.metricsArgsForCall, struct {
 		arg1 lager.Logger
 	}{arg1})
+	stub := fake.MetricsStub
+	fakeReturns := fake.metricsReturns
 	fake.recordInvocation("Metrics", []interface{}{arg1})
-	metricsStubCopy := fake.MetricsStub
 	fake.metricsMutex.Unlock()
-	if metricsStubCopy != nil {
-		return metricsStubCopy(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.metricsReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 

@@ -26,11 +26,11 @@ func (fake *FakeLRPProcessor) Process(arg1 lager.Logger, arg2 executor.Container
 		arg1 lager.Logger
 		arg2 executor.Container
 	}{arg1, arg2})
+	stub := fake.ProcessStub
 	fake.recordInvocation("Process", []interface{}{arg1, arg2})
-	processStubCopy := fake.ProcessStub
 	fake.processMutex.Unlock()
-	if processStubCopy != nil {
-		processStubCopy(arg1, arg2)
+	if stub != nil {
+		fake.ProcessStub(arg1, arg2)
 	}
 }
 
