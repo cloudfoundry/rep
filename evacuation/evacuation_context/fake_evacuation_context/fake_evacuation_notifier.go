@@ -27,16 +27,16 @@ func (fake *FakeEvacuationNotifier) EvacuateNotify() <-chan struct{} {
 	ret, specificReturn := fake.evacuateNotifyReturnsOnCall[len(fake.evacuateNotifyArgsForCall)]
 	fake.evacuateNotifyArgsForCall = append(fake.evacuateNotifyArgsForCall, struct {
 	}{})
+	stub := fake.EvacuateNotifyStub
+	fakeReturns := fake.evacuateNotifyReturns
 	fake.recordInvocation("EvacuateNotify", []interface{}{})
-	evacuateNotifyStubCopy := fake.EvacuateNotifyStub
 	fake.evacuateNotifyMutex.Unlock()
-	if evacuateNotifyStubCopy != nil {
-		return evacuateNotifyStubCopy()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.evacuateNotifyReturns
 	return fakeReturns.result1
 }
 

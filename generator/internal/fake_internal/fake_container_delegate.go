@@ -86,16 +86,16 @@ func (fake *FakeContainerDelegate) DeleteContainer(arg1 lager.Logger, arg2 strin
 		arg1 lager.Logger
 		arg2 string
 	}{arg1, arg2})
+	stub := fake.DeleteContainerStub
+	fakeReturns := fake.deleteContainerReturns
 	fake.recordInvocation("DeleteContainer", []interface{}{arg1, arg2})
-	deleteContainerStubCopy := fake.DeleteContainerStub
 	fake.deleteContainerMutex.Unlock()
-	if deleteContainerStubCopy != nil {
-		return deleteContainerStubCopy(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.deleteContainerReturns
 	return fakeReturns.result1
 }
 
@@ -149,16 +149,16 @@ func (fake *FakeContainerDelegate) FetchContainerResultFile(arg1 lager.Logger, a
 		arg2 string
 		arg3 string
 	}{arg1, arg2, arg3})
+	stub := fake.FetchContainerResultFileStub
+	fakeReturns := fake.fetchContainerResultFileReturns
 	fake.recordInvocation("FetchContainerResultFile", []interface{}{arg1, arg2, arg3})
-	fetchContainerResultFileStubCopy := fake.FetchContainerResultFileStub
 	fake.fetchContainerResultFileMutex.Unlock()
-	if fetchContainerResultFileStubCopy != nil {
-		return fetchContainerResultFileStubCopy(arg1, arg2, arg3)
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.fetchContainerResultFileReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -214,16 +214,16 @@ func (fake *FakeContainerDelegate) GetContainer(arg1 lager.Logger, arg2 string) 
 		arg1 lager.Logger
 		arg2 string
 	}{arg1, arg2})
+	stub := fake.GetContainerStub
+	fakeReturns := fake.getContainerReturns
 	fake.recordInvocation("GetContainer", []interface{}{arg1, arg2})
-	getContainerStubCopy := fake.GetContainerStub
 	fake.getContainerMutex.Unlock()
-	if getContainerStubCopy != nil {
-		return getContainerStubCopy(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.getContainerReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -279,16 +279,16 @@ func (fake *FakeContainerDelegate) RunContainer(arg1 lager.Logger, arg2 *executo
 		arg1 lager.Logger
 		arg2 *executor.RunRequest
 	}{arg1, arg2})
+	stub := fake.RunContainerStub
+	fakeReturns := fake.runContainerReturns
 	fake.recordInvocation("RunContainer", []interface{}{arg1, arg2})
-	runContainerStubCopy := fake.RunContainerStub
 	fake.runContainerMutex.Unlock()
-	if runContainerStubCopy != nil {
-		return runContainerStubCopy(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.runContainerReturns
 	return fakeReturns.result1
 }
 
@@ -341,16 +341,16 @@ func (fake *FakeContainerDelegate) StopContainer(arg1 lager.Logger, arg2 string)
 		arg1 lager.Logger
 		arg2 string
 	}{arg1, arg2})
+	stub := fake.StopContainerStub
+	fakeReturns := fake.stopContainerReturns
 	fake.recordInvocation("StopContainer", []interface{}{arg1, arg2})
-	stopContainerStubCopy := fake.StopContainerStub
 	fake.stopContainerMutex.Unlock()
-	if stopContainerStubCopy != nil {
-		return stopContainerStubCopy(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.stopContainerReturns
 	return fakeReturns.result1
 }
 

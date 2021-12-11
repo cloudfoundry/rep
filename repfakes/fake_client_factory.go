@@ -33,16 +33,16 @@ func (fake *FakeClientFactory) CreateClient(arg1 string, arg2 string) (rep.Clien
 		arg1 string
 		arg2 string
 	}{arg1, arg2})
+	stub := fake.CreateClientStub
+	fakeReturns := fake.createClientReturns
 	fake.recordInvocation("CreateClient", []interface{}{arg1, arg2})
-	createClientStubCopy := fake.CreateClientStub
 	fake.createClientMutex.Unlock()
-	if createClientStubCopy != nil {
-		return createClientStubCopy(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.createClientReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 

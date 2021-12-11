@@ -141,6 +141,7 @@ func (factory *clientFactory) CreateClient(address, url string) (Client, error) 
 type Client interface {
 	State(logger lager.Logger) (CellState, error)
 	Perform(logger lager.Logger, work Work) (Work, error)
+	UpdateLRPInstance(logger lager.Logger, update LRPUpdate) error
 	StopLRPInstance(logger lager.Logger, key models.ActualLRPKey, instanceKey models.ActualLRPInstanceKey) error
 	CancelTask(logger lager.Logger, taskGuid string) error
 	SetStateClient(stateClient *http.Client)
@@ -253,6 +254,59 @@ func (c *client) Reset() error {
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
+	return nil
+}
+
+func (c *client) UpdateLRPInstance(
+	logger lager.Logger,
+	update LRPUpdate,
+) error {
+	start := time.Now()
+	logger = logger.Session("update-lrp", lager.Data{"process-guid": update.ProcessGuid,
+		"index":         update.Index,
+		"domain":        update.Domain,
+		"instance-guid": update.InstanceGUID,
+	})
+	logger.Info("starting")
+
+	params := rata.Params{
+		"process_guid":  update.ProcessGuid,
+		"instance_guid": update.InstanceGUID,
+	}
+	body, err := json.Marshal(update)
+	if err != nil {
+		logger.Error("marshal-failed", err)
+		return err
+	}
+	req, err := c.requestGenerator.CreateRequest(UpdateLRPInstanceRoute, params, bytes.NewReader(body))
+	if err != nil {
+		logger.Error("connection-failed", err)
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		logger.Error("request-failed", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	// We are assuming that a 404 means that the rep has not updated
+	// yet, but will roll soon.  This is for backwards compatibility.
+	if resp.StatusCode == http.StatusNotFound {
+		logger.Error("failed-with-status", err, lager.Data{"status-code": resp.StatusCode, "msg": http.StatusText(resp.StatusCode)})
+		return nil
+	}
+
+	if resp.StatusCode != http.StatusAccepted {
+		err := fmt.Errorf("http error: status code %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode))
+		logger.Error("failed-with-status", err, lager.Data{"status-code": resp.StatusCode, "msg": http.StatusText(resp.StatusCode)})
+		return err
+	}
+
+	logger.Info("completed", lager.Data{"duration": time.Since(start)})
 	return nil
 }
 

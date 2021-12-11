@@ -46,16 +46,16 @@ func (fake *FakeGenerator) BatchOperations(arg1 lager.Logger) (map[string]operat
 	fake.batchOperationsArgsForCall = append(fake.batchOperationsArgsForCall, struct {
 		arg1 lager.Logger
 	}{arg1})
+	stub := fake.BatchOperationsStub
+	fakeReturns := fake.batchOperationsReturns
 	fake.recordInvocation("BatchOperations", []interface{}{arg1})
-	batchOperationsStubCopy := fake.BatchOperationsStub
 	fake.batchOperationsMutex.Unlock()
-	if batchOperationsStubCopy != nil {
-		return batchOperationsStubCopy(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.batchOperationsReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -110,16 +110,16 @@ func (fake *FakeGenerator) OperationStream(arg1 lager.Logger) (<-chan operationq
 	fake.operationStreamArgsForCall = append(fake.operationStreamArgsForCall, struct {
 		arg1 lager.Logger
 	}{arg1})
+	stub := fake.OperationStreamStub
+	fakeReturns := fake.operationStreamReturns
 	fake.recordInvocation("OperationStream", []interface{}{arg1})
-	operationStreamStubCopy := fake.OperationStreamStub
 	fake.operationStreamMutex.Unlock()
-	if operationStreamStubCopy != nil {
-		return operationStreamStubCopy(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.operationStreamReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 

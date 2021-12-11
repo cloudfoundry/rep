@@ -75,16 +75,16 @@ func (fake *FakeCellPresenceClient) CellById(arg1 lager.Logger, arg2 string) (*m
 		arg1 lager.Logger
 		arg2 string
 	}{arg1, arg2})
+	stub := fake.CellByIdStub
+	fakeReturns := fake.cellByIdReturns
 	fake.recordInvocation("CellById", []interface{}{arg1, arg2})
-	cellByIdStubCopy := fake.CellByIdStub
 	fake.cellByIdMutex.Unlock()
-	if cellByIdStubCopy != nil {
-		return cellByIdStubCopy(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.cellByIdReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -139,16 +139,16 @@ func (fake *FakeCellPresenceClient) CellEvents(arg1 lager.Logger) <-chan models.
 	fake.cellEventsArgsForCall = append(fake.cellEventsArgsForCall, struct {
 		arg1 lager.Logger
 	}{arg1})
+	stub := fake.CellEventsStub
+	fakeReturns := fake.cellEventsReturns
 	fake.recordInvocation("CellEvents", []interface{}{arg1})
-	cellEventsStubCopy := fake.CellEventsStub
 	fake.cellEventsMutex.Unlock()
-	if cellEventsStubCopy != nil {
-		return cellEventsStubCopy(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.cellEventsReturns
 	return fakeReturns.result1
 }
 
@@ -200,16 +200,16 @@ func (fake *FakeCellPresenceClient) Cells(arg1 lager.Logger) (models.CellSet, er
 	fake.cellsArgsForCall = append(fake.cellsArgsForCall, struct {
 		arg1 lager.Logger
 	}{arg1})
+	stub := fake.CellsStub
+	fakeReturns := fake.cellsReturns
 	fake.recordInvocation("Cells", []interface{}{arg1})
-	cellsStubCopy := fake.CellsStub
 	fake.cellsMutex.Unlock()
-	if cellsStubCopy != nil {
-		return cellsStubCopy(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.cellsReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -267,16 +267,16 @@ func (fake *FakeCellPresenceClient) NewCellPresenceRunner(arg1 lager.Logger, arg
 		arg3 time.Duration
 		arg4 time.Duration
 	}{arg1, arg2, arg3, arg4})
+	stub := fake.NewCellPresenceRunnerStub
+	fakeReturns := fake.newCellPresenceRunnerReturns
 	fake.recordInvocation("NewCellPresenceRunner", []interface{}{arg1, arg2, arg3, arg4})
-	newCellPresenceRunnerStubCopy := fake.NewCellPresenceRunnerStub
 	fake.newCellPresenceRunnerMutex.Unlock()
-	if newCellPresenceRunnerStubCopy != nil {
-		return newCellPresenceRunnerStubCopy(arg1, arg2, arg3, arg4)
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.newCellPresenceRunnerReturns
 	return fakeReturns.result1
 }
 

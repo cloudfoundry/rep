@@ -89,6 +89,18 @@ type FakeSimClient struct {
 	stopLRPInstanceReturnsOnCall map[int]struct {
 		result1 error
 	}
+	UpdateLRPInstanceStub        func(lager.Logger, rep.LRPUpdate) error
+	updateLRPInstanceMutex       sync.RWMutex
+	updateLRPInstanceArgsForCall []struct {
+		arg1 lager.Logger
+		arg2 rep.LRPUpdate
+	}
+	updateLRPInstanceReturns struct {
+		result1 error
+	}
+	updateLRPInstanceReturnsOnCall map[int]struct {
+		result1 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -100,16 +112,16 @@ func (fake *FakeSimClient) CancelTask(arg1 lager.Logger, arg2 string) error {
 		arg1 lager.Logger
 		arg2 string
 	}{arg1, arg2})
+	stub := fake.CancelTaskStub
+	fakeReturns := fake.cancelTaskReturns
 	fake.recordInvocation("CancelTask", []interface{}{arg1, arg2})
-	cancelTaskStubCopy := fake.CancelTaskStub
 	fake.cancelTaskMutex.Unlock()
-	if cancelTaskStubCopy != nil {
-		return cancelTaskStubCopy(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.cancelTaskReturns
 	return fakeReturns.result1
 }
 
@@ -162,16 +174,16 @@ func (fake *FakeSimClient) Perform(arg1 lager.Logger, arg2 rep.Work) (rep.Work, 
 		arg1 lager.Logger
 		arg2 rep.Work
 	}{arg1, arg2})
+	stub := fake.PerformStub
+	fakeReturns := fake.performReturns
 	fake.recordInvocation("Perform", []interface{}{arg1, arg2})
-	performStubCopy := fake.PerformStub
 	fake.performMutex.Unlock()
-	if performStubCopy != nil {
-		return performStubCopy(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.performReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -225,16 +237,16 @@ func (fake *FakeSimClient) Reset() error {
 	ret, specificReturn := fake.resetReturnsOnCall[len(fake.resetArgsForCall)]
 	fake.resetArgsForCall = append(fake.resetArgsForCall, struct {
 	}{})
+	stub := fake.ResetStub
+	fakeReturns := fake.resetReturns
 	fake.recordInvocation("Reset", []interface{}{})
-	resetStubCopy := fake.ResetStub
 	fake.resetMutex.Unlock()
-	if resetStubCopy != nil {
-		return resetStubCopy()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.resetReturns
 	return fakeReturns.result1
 }
 
@@ -278,11 +290,11 @@ func (fake *FakeSimClient) SetStateClient(arg1 *http.Client) {
 	fake.setStateClientArgsForCall = append(fake.setStateClientArgsForCall, struct {
 		arg1 *http.Client
 	}{arg1})
+	stub := fake.SetStateClientStub
 	fake.recordInvocation("SetStateClient", []interface{}{arg1})
-	setStateClientStubCopy := fake.SetStateClientStub
 	fake.setStateClientMutex.Unlock()
-	if setStateClientStubCopy != nil {
-		setStateClientStubCopy(arg1)
+	if stub != nil {
+		fake.SetStateClientStub(arg1)
 	}
 }
 
@@ -311,16 +323,16 @@ func (fake *FakeSimClient) State(arg1 lager.Logger) (rep.CellState, error) {
 	fake.stateArgsForCall = append(fake.stateArgsForCall, struct {
 		arg1 lager.Logger
 	}{arg1})
+	stub := fake.StateStub
+	fakeReturns := fake.stateReturns
 	fake.recordInvocation("State", []interface{}{arg1})
-	stateStubCopy := fake.StateStub
 	fake.stateMutex.Unlock()
-	if stateStubCopy != nil {
-		return stateStubCopy(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.stateReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -374,16 +386,16 @@ func (fake *FakeSimClient) StateClientTimeout() time.Duration {
 	ret, specificReturn := fake.stateClientTimeoutReturnsOnCall[len(fake.stateClientTimeoutArgsForCall)]
 	fake.stateClientTimeoutArgsForCall = append(fake.stateClientTimeoutArgsForCall, struct {
 	}{})
+	stub := fake.StateClientTimeoutStub
+	fakeReturns := fake.stateClientTimeoutReturns
 	fake.recordInvocation("StateClientTimeout", []interface{}{})
-	stateClientTimeoutStubCopy := fake.StateClientTimeoutStub
 	fake.stateClientTimeoutMutex.Unlock()
-	if stateClientTimeoutStubCopy != nil {
-		return stateClientTimeoutStubCopy()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.stateClientTimeoutReturns
 	return fakeReturns.result1
 }
 
@@ -430,16 +442,16 @@ func (fake *FakeSimClient) StopLRPInstance(arg1 lager.Logger, arg2 models.Actual
 		arg2 models.ActualLRPKey
 		arg3 models.ActualLRPInstanceKey
 	}{arg1, arg2, arg3})
+	stub := fake.StopLRPInstanceStub
+	fakeReturns := fake.stopLRPInstanceReturns
 	fake.recordInvocation("StopLRPInstance", []interface{}{arg1, arg2, arg3})
-	stopLRPInstanceStubCopy := fake.StopLRPInstanceStub
 	fake.stopLRPInstanceMutex.Unlock()
-	if stopLRPInstanceStubCopy != nil {
-		return stopLRPInstanceStubCopy(arg1, arg2, arg3)
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.stopLRPInstanceReturns
 	return fakeReturns.result1
 }
 
@@ -485,6 +497,68 @@ func (fake *FakeSimClient) StopLRPInstanceReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *FakeSimClient) UpdateLRPInstance(arg1 lager.Logger, arg2 rep.LRPUpdate) error {
+	fake.updateLRPInstanceMutex.Lock()
+	ret, specificReturn := fake.updateLRPInstanceReturnsOnCall[len(fake.updateLRPInstanceArgsForCall)]
+	fake.updateLRPInstanceArgsForCall = append(fake.updateLRPInstanceArgsForCall, struct {
+		arg1 lager.Logger
+		arg2 rep.LRPUpdate
+	}{arg1, arg2})
+	stub := fake.UpdateLRPInstanceStub
+	fakeReturns := fake.updateLRPInstanceReturns
+	fake.recordInvocation("UpdateLRPInstance", []interface{}{arg1, arg2})
+	fake.updateLRPInstanceMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeSimClient) UpdateLRPInstanceCallCount() int {
+	fake.updateLRPInstanceMutex.RLock()
+	defer fake.updateLRPInstanceMutex.RUnlock()
+	return len(fake.updateLRPInstanceArgsForCall)
+}
+
+func (fake *FakeSimClient) UpdateLRPInstanceCalls(stub func(lager.Logger, rep.LRPUpdate) error) {
+	fake.updateLRPInstanceMutex.Lock()
+	defer fake.updateLRPInstanceMutex.Unlock()
+	fake.UpdateLRPInstanceStub = stub
+}
+
+func (fake *FakeSimClient) UpdateLRPInstanceArgsForCall(i int) (lager.Logger, rep.LRPUpdate) {
+	fake.updateLRPInstanceMutex.RLock()
+	defer fake.updateLRPInstanceMutex.RUnlock()
+	argsForCall := fake.updateLRPInstanceArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeSimClient) UpdateLRPInstanceReturns(result1 error) {
+	fake.updateLRPInstanceMutex.Lock()
+	defer fake.updateLRPInstanceMutex.Unlock()
+	fake.UpdateLRPInstanceStub = nil
+	fake.updateLRPInstanceReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeSimClient) UpdateLRPInstanceReturnsOnCall(i int, result1 error) {
+	fake.updateLRPInstanceMutex.Lock()
+	defer fake.updateLRPInstanceMutex.Unlock()
+	fake.UpdateLRPInstanceStub = nil
+	if fake.updateLRPInstanceReturnsOnCall == nil {
+		fake.updateLRPInstanceReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.updateLRPInstanceReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *FakeSimClient) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -502,6 +576,8 @@ func (fake *FakeSimClient) Invocations() map[string][][]interface{} {
 	defer fake.stateClientTimeoutMutex.RUnlock()
 	fake.stopLRPInstanceMutex.RLock()
 	defer fake.stopLRPInstanceMutex.RUnlock()
+	fake.updateLRPInstanceMutex.RLock()
+	defer fake.updateLRPInstanceMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

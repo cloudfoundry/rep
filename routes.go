@@ -7,8 +7,9 @@ const (
 	ContainerMetricsRoute = "ContainerMetrics"
 	PerformRoute          = "PERFORM"
 
-	StopLRPInstanceRoute = "StopLRPInstance"
-	CancelTaskRoute      = "CancelTask"
+	UpdateLRPInstanceRoute = "UpdateLRPInstance"
+	StopLRPInstanceRoute   = "StopLRPInstance"
+	CancelTaskRoute        = "CancelTask"
 
 	SimResetRoute = "RESET"
 
@@ -25,6 +26,7 @@ func NewRoutes(networkAccessible bool) rata.Routes {
 			rata.Route{Path: "/container_metrics", Method: "GET", Name: ContainerMetricsRoute},
 			rata.Route{Path: "/work", Method: "POST", Name: PerformRoute},
 
+			rata.Route{Path: "/v1/lrps/:process_guid/instances/:instance_guid", Method: "PUT", Name: UpdateLRPInstanceRoute},
 			rata.Route{Path: "/v1/lrps/:process_guid/instances/:instance_guid/stop", Method: "POST", Name: StopLRPInstanceRoute},
 			rata.Route{Path: "/v1/tasks/:task_guid/cancel", Method: "POST", Name: CancelTaskRoute},
 
