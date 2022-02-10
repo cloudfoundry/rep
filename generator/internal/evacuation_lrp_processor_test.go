@@ -14,6 +14,7 @@ import (
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context/fake_evacuation_context"
 	"code.cloudfoundry.org/rep/generator/internal"
 	"code.cloudfoundry.org/rep/generator/internal/fake_internal"
+	"code.cloudfoundry.org/routing-info/internalroutes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
@@ -252,15 +253,17 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				container.InternalIP = internalIP
 				container.AdvertisePreferenceForInstanceAddress = false
 				container.Ports = []executor.PortMapping{{ContainerPort: 1357, HostPort: 8642}}
+				container.InternalRoutes = internalroutes.InternalRoutes{{Hostname: "some-internal-route.apps.internal"}, {Hostname: "some-other-internal-route"}}
 				lrpNetInfo = models.NewActualLRPNetInfo(externalIP, internalIP, models.ActualLRPNetInfo_PreferredAddressHost, models.NewPortMapping(8642, 1357))
 			})
 
 			It("evacuates the lrp", func() {
 				Expect(fakeBBS.EvacuateRunningActualLRPCallCount()).To(Equal(1))
-				_, actualLRPKey, actualLRPContainerKey, actualLRPNetInfo := fakeBBS.EvacuateRunningActualLRPArgsForCall(0)
+				_, actualLRPKey, actualLRPContainerKey, actualLRPNetInfo, internalRoutes := fakeBBS.EvacuateRunningActualLRPArgsForCall(0)
 				Expect(*actualLRPKey).To(Equal(lrpKey))
 				Expect(*actualLRPContainerKey).To(Equal(lrpInstanceKey))
 				Expect(*actualLRPNetInfo).To(Equal(lrpNetInfo))
+				Expect(internalRoutes).To(Equal([]*models.ActualLRPInternalRoute{{Hostname: "some-internal-route.apps.internal"}, {Hostname: "some-other-internal-route"}}))
 
 				Eventually(logger).Should(Say(
 					fmt.Sprintf(

@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"code.cloudfoundry.org/bbs"
+	"code.cloudfoundry.org/bbs/models"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/executor/depot/log_streamer"
@@ -107,7 +108,11 @@ func (p *evacuationLRPProcessor) processRunningContainer(logger lager.Logger, lr
 	}
 
 	logger.Info("bbs-evacuate-running-actual-lrp", lager.Data{"net_info": netInfo})
-	keepContainer, err := p.bbsClient.EvacuateRunningActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo)
+	internalRoutes := []*models.ActualLRPInternalRoute{}
+	for _, internalRoute := range lrpContainer.InternalRoutes {
+		internalRoutes = append(internalRoutes, &models.ActualLRPInternalRoute{Hostname: internalRoute.Hostname})
+	}
+	keepContainer, err := p.bbsClient.EvacuateRunningActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo, internalRoutes)
 	if keepContainer == false {
 		p.containerDelegate.DeleteContainer(logger, lrpContainer.Container.Guid)
 	} else if err != nil {
