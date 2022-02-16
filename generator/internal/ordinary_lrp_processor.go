@@ -123,7 +123,11 @@ func (p *ordinaryLRPProcessor) processRunningContainer(logger lager.Logger, lrpC
 	logger.Debug("succeeded-extracting-net-info-from-container")
 
 	logger.Info("bbs-start-actual-lrp", lager.Data{"net_info": netInfo})
-	err = p.bbsClient.StartActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo)
+	internalRoutes := []*models.ActualLRPInternalRoute{}
+	for _, internalRoute := range lrpContainer.InternalRoutes {
+		internalRoutes = append(internalRoutes, &models.ActualLRPInternalRoute{Hostname: internalRoute.Hostname})
+	}
+	err = p.bbsClient.StartActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo, internalRoutes)
 	bbsErr := models.ConvertError(err)
 	if bbsErr != nil && bbsErr.Type == models.Error_ActualLRPCannotBeStarted {
 		p.containerDelegate.StopContainer(logger, lrpContainer.Guid)
