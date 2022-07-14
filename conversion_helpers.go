@@ -242,6 +242,7 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
 		ImagePassword:                 password,
 		EnableContainerProxy:          true,
 		Sidecars:                      convertSidecars(desiredLRP.Sidecars),
+		LogRateLimitBytesPerSecond:    desiredLRP.LogRateLimitBytesPerSecond,
 	}
 
 	// No need for the envoy proxy if there are no ports.  This flag controls the
