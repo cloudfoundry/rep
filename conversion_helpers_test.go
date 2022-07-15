@@ -307,6 +307,8 @@ var _ = Describe("Resources", func() {
 						DiskMb:   6,
 					},
 				}
+
+				desiredLRP.LogRateLimitBytesPerSecond = -1
 			})
 
 			It("returns a valid run request", func() {
@@ -383,6 +385,7 @@ var _ = Describe("Resources", func() {
 							DiskMB:   6,
 						},
 					},
+					LogRateLimitBytesPerSecond: -1,
 				}))
 			})
 
