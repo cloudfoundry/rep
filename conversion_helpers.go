@@ -306,7 +306,7 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromTask(task *models.Task, 
 		ImageUsername:                 username,
 		ImagePassword:                 password,
 		EnableContainerProxy:          false,
-		LogRateLimitBytesPerSecond:    task.LogRateLimitBytesPerSecond,
+		LogRateLimitBytesPerSecond:    convertLogRateLimit(task.LogRateLimit),
 	}
 	return executor.NewRunRequest(task.TaskGuid, &runInfo, tags), nil
 }

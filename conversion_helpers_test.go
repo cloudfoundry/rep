@@ -675,7 +675,7 @@ var _ = Describe("Resources", func() {
 					"cflinuxfs3": "cflinuxfs3:/var/vcap/packages/cflinuxfs3/rootfs.tar",
 				}
 
-				task.LogRateLimitBytesPerSecond = -1
+				task.LogRateLimit = &models.LogRateLimit{BytesPerSecond: -1}
 			})
 
 			It("returns a valid run request", func() {
