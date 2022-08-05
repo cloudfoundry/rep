@@ -166,7 +166,6 @@ func (e *EvacuationCleanup) deleteRunningContainers(logger lager.Logger, contain
 			e.metronClient,
 			0,
 			-1,
-			0,
 		)
 		writeToStream(streamer, fmt.Sprintf("Cell %s reached evacuation timeout for instance %s", e.cellID, container.Guid))
 		wg.Add(1)
