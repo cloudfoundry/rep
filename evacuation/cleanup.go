@@ -157,7 +157,7 @@ func (e *EvacuationCleanup) deleteRunningContainers(logger lager.Logger, contain
 
 	var wg sync.WaitGroup
 	for _, container := range containers {
-		sourceName, tags := container.RunInfo.LogConfig.GetSourceIdAndTagsForLogging()
+		sourceName, tags := container.RunInfo.LogConfig.GetSourceNameAndTagsForLogging()
 
 		e.metronClient.SendAppLog(fmt.Sprintf("Cell %s reached evacuation timeout for instance %s", e.cellID, container.Guid), sourceName, tags)
 		wg.Add(1)

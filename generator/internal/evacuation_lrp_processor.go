@@ -93,7 +93,7 @@ func (p *evacuationLRPProcessor) processRunningContainer(logger lager.Logger, lr
 	logger.Debug("succeeded-extracting-net-info-from-container")
 
 	if _, ok := p.evacuatedContainers.LoadOrStore(lrpContainer.Guid, struct{}{}); !ok {
-		sourceName, tags := logConfig.GetSourceIdAndTagsForLogging()
+		sourceName, tags := logConfig.GetSourceNameAndTagsForLogging()
 		p.metronClient.SendAppLog(fmt.Sprintf("Cell %s requesting replacement for instance %s", p.cellID, lrpContainer.ActualLRPInstanceKey.InstanceGuid), sourceName, tags)
 	}
 
