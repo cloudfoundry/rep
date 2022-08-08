@@ -8,7 +8,6 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/executor"
-	"code.cloudfoundry.org/executor/depot/log_streamer"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/rep"
 )
@@ -37,16 +36,6 @@ func (p *evacuationLRPProcessor) Process(logger lager.Logger, container executor
 	})
 	logger.Debug("start")
 
-	streamer := log_streamer.New(
-		container.RunInfo.LogConfig.Guid,
-		container.RunInfo.LogConfig.SourceName,
-		container.RunInfo.LogConfig.Index,
-		container.RunInfo.LogConfig.Tags,
-		p.metronClient,
-		0,
-		-1,
-	)
-
 	lrpKey, err := rep.ActualLRPKeyFromTags(container.Tags)
 	if err != nil {
 		logger.Error("failed-to-generate-lrp-key", err)
@@ -69,7 +58,7 @@ func (p *evacuationLRPProcessor) Process(logger lager.Logger, container executor
 	case executor.StateCreated:
 		p.processCreatedContainer(logger, lrpContainer)
 	case executor.StateRunning:
-		p.processRunningContainer(logger, lrpContainer, streamer)
+		p.processRunningContainer(logger, lrpContainer, container.RunInfo.LogConfig)
 	case executor.StateCompleted:
 		p.processCompletedContainer(logger, lrpContainer)
 	default:
@@ -92,7 +81,7 @@ func (p *evacuationLRPProcessor) processCreatedContainer(logger lager.Logger, lr
 	p.evacuateClaimedLRPContainer(logger, lrpContainer)
 }
 
-func (p *evacuationLRPProcessor) processRunningContainer(logger lager.Logger, lrpContainer *lrpContainer, streamer log_streamer.LogStreamer) {
+func (p *evacuationLRPProcessor) processRunningContainer(logger lager.Logger, lrpContainer *lrpContainer, logConfig executor.LogConfig) {
 	logger = logger.Session("process-running-container")
 
 	logger.Debug("extracting-net-info-from-container")
@@ -104,7 +93,8 @@ func (p *evacuationLRPProcessor) processRunningContainer(logger lager.Logger, lr
 	logger.Debug("succeeded-extracting-net-info-from-container")
 
 	if _, ok := p.evacuatedContainers.LoadOrStore(lrpContainer.Guid, struct{}{}); !ok {
-		writeToStream(streamer, fmt.Sprintf("Cell %s requesting replacement for instance %s", p.cellID, lrpContainer.ActualLRPInstanceKey.InstanceGuid))
+		sourceName, tags := logConfig.GetSourceIdAndTagsForLogging()
+		p.metronClient.SendAppLog(fmt.Sprintf("Cell %s requesting replacement for instance %s", p.cellID, lrpContainer.ActualLRPInstanceKey.InstanceGuid), sourceName, tags)
 	}
 
 	logger.Info("bbs-evacuate-running-actual-lrp", lager.Data{"net_info": netInfo})
@@ -150,9 +140,4 @@ func (p *evacuationLRPProcessor) evacuateClaimedLRPContainer(logger lager.Logger
 	}
 
 	p.containerDelegate.DeleteContainer(logger, lrpContainer.Container.Guid)
-}
-
-func writeToStream(streamer log_streamer.LogStreamer, msg string) {
-	fmt.Fprintf(streamer.Stdout(), msg)
-	streamer.Flush()
 }
