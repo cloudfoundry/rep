@@ -242,6 +242,7 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
 		ImagePassword:                 password,
 		EnableContainerProxy:          true,
 		Sidecars:                      convertSidecars(desiredLRP.Sidecars),
+		LogRateLimitBytesPerSecond:    convertLogRateLimit(desiredLRP.LogRateLimit),
 	}
 
 	// No need for the envoy proxy if there are no ports.  This flag controls the
@@ -305,6 +306,7 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromTask(task *models.Task, 
 		ImageUsername:                 username,
 		ImagePassword:                 password,
 		EnableContainerProxy:          false,
+		LogRateLimitBytesPerSecond:    convertLogRateLimit(task.LogRateLimit),
 	}
 	return executor.NewRunRequest(task.TaskGuid, &runInfo, tags), nil
 }
@@ -428,6 +430,13 @@ func convertSidecars(sidecars []*models.Sidecar) []executor.Sidecar {
 	}
 
 	return es
+}
+
+func convertLogRateLimit(logRateLimit *models.LogRateLimit) int64 {
+	if logRateLimit == nil {
+		return -1
+	}
+	return logRateLimit.BytesPerSecond
 }
 
 func ConvertPortMappings(containerPorts []uint32) []executor.PortMapping {

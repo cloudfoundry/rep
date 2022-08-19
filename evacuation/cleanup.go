@@ -12,7 +12,6 @@ import (
 	"code.cloudfoundry.org/clock"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/executor"
-	"code.cloudfoundry.org/executor/depot/log_streamer"
 	"code.cloudfoundry.org/lager"
 )
 
@@ -158,16 +157,9 @@ func (e *EvacuationCleanup) deleteRunningContainers(logger lager.Logger, contain
 
 	var wg sync.WaitGroup
 	for _, container := range containers {
-		streamer := log_streamer.New(
-			container.RunInfo.LogConfig.Guid,
-			container.RunInfo.LogConfig.SourceName,
-			container.RunInfo.LogConfig.Index,
-			container.RunInfo.LogConfig.Tags,
-			e.metronClient,
-			0,
-			0,
-		)
-		writeToStream(streamer, fmt.Sprintf("Cell %s reached evacuation timeout for instance %s", e.cellID, container.Guid))
+		sourceName, tags := container.RunInfo.LogConfig.GetSourceNameAndTagsForLogging()
+
+		e.metronClient.SendAppLog(fmt.Sprintf("Cell %s reached evacuation timeout for instance %s", e.cellID, container.Guid), sourceName, tags)
 		wg.Add(1)
 		go func(logger lager.Logger, containerGuid string) {
 			defer wg.Done()
@@ -180,9 +172,4 @@ func (e *EvacuationCleanup) deleteRunningContainers(logger lager.Logger, contain
 
 	logger.Info("sent-signal-to-containers")
 	wg.Wait()
-}
-
-func writeToStream(streamer log_streamer.LogStreamer, msg string) {
-	fmt.Fprintf(streamer.Stdout(), msg)
-	streamer.Flush()
 }

@@ -383,6 +383,7 @@ var _ = Describe("Resources", func() {
 							DiskMB:   6,
 						},
 					},
+					LogRateLimitBytesPerSecond: -1,
 				}))
 			})
 
@@ -673,6 +674,8 @@ var _ = Describe("Resources", func() {
 				stackPathMap = rep.StackPathMap{
 					"cflinuxfs3": "cflinuxfs3:/var/vcap/packages/cflinuxfs3/rootfs.tar",
 				}
+
+				task.LogRateLimit = &models.LogRateLimit{BytesPerSecond: -1}
 			})
 
 			It("returns a valid run request", func() {
@@ -717,9 +720,10 @@ var _ = Describe("Resources", func() {
 					CertificateProperties: executor.CertificateProperties{
 						OrganizationalUnit: []string{"iamthelizardking", "iamthelizardqueen"},
 					},
-					ImageUsername:        "image-username",
-					ImagePassword:        "image-password",
-					EnableContainerProxy: false,
+					ImageUsername:              "image-username",
+					ImagePassword:              "image-password",
+					EnableContainerProxy:       false,
+					LogRateLimitBytesPerSecond: -1,
 				}))
 			})
 
