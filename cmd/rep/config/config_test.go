@@ -211,7 +211,6 @@ var _ = Describe("RepConfig", func() {
 				HealthCheckContainerOwnerName:      "vcap_health",
 				HealthCheckWorkPoolSize:            10,
 				HealthyMonitoringInterval:          5000000000,
-				LogRateLimitExceededReportInterval: durationjson.Duration(5 * time.Minute),
 				MaxCacheSizeInBytes:                101,
 				MaxConcurrentDownloads:             11,
 				MaxLogLinesPerSecond:               200,
