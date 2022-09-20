@@ -116,6 +116,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	sqlRunner = test_helpers.NewSQLRunner(dbName)
 	sqlProcess = ginkgomon.Invoke(sqlRunner)
 
+	// TODO: Remove after we do BBS refactor to remove consul
 	consulRunner = consulrunner.NewClusterRunner(
 		consulrunner.ClusterRunnerConfig{
 			StartingPort: 9001 + config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength,
