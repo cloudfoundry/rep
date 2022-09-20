@@ -111,7 +111,6 @@ type RepConfig struct {
 	Zone                            string                `json:"zone"`
 	ReportInterval                  durationjson.Duration `json:"report_interval,omitempty"`
 	LoggregatorConfig               loggingclient.Config  `json:"loggregator"`
-	CellRegistrationsLocketEnabled  bool                  `json:"cell_registrations_locket_enabled"`
 	debugserver.DebugServerConfig
 	executorinit.ExecutorConfig
 	lagerflags.LagerConfig
