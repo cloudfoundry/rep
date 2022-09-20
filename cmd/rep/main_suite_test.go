@@ -19,15 +19,16 @@ import (
 	"code.cloudfoundry.org/bbs/encryption"
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
-	"code.cloudfoundry.org/consuladapter/consulrunner"
 	"code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/go-loggregator/v8/rpc/loggregator_v2"
 	"code.cloudfoundry.org/inigo/helpers/portauthority"
 	"code.cloudfoundry.org/lager/lagerflags"
+	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/locket"
+	locketconfig "code.cloudfoundry.org/locket/cmd/locket/config"
+	locketrunner "code.cloudfoundry.org/locket/cmd/locket/testrunner"
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/ghttp"
@@ -41,7 +42,6 @@ var (
 	representativePath  string
 	serverPort          uint16
 	serverPortSecurable uint16
-	consulRunner        *consulrunner.ClusterRunner
 
 	bbsConfig        bbsconfig.BBSConfig
 	bbsBinPath       string
@@ -50,8 +50,12 @@ var (
 	bbsProcess       ifrit.Process
 	bbsClient        bbs.InternalClient
 	auctioneerServer *ghttp.Server
-	locketBinPath    string
 	node             int
+
+	locketAddress string
+	locketBinPath string
+	locketProcess ifrit.Process
+	locketRunner  *ginkgomon.Runner
 
 	testIngressServer *testhelpers.TestIngressServer
 
@@ -116,15 +120,9 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	sqlRunner = test_helpers.NewSQLRunner(dbName)
 	sqlProcess = ginkgomon.Invoke(sqlRunner)
 
-	consulRunner = consulrunner.NewClusterRunner(
-		consulrunner.ClusterRunnerConfig{
-			StartingPort: 9001 + config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength,
-			NumNodes:     1,
-			Scheme:       "http",
-		},
-	)
-
-	consulRunner.Start()
+	locketPort, err := portAllocator.ClaimPorts(1)
+	Expect(err).NotTo(HaveOccurred())
+	locketAddress = fmt.Sprintf("localhost:%d", locketPort)
 
 	bbsPort, err := portAllocator.ClaimPorts(2)
 	Expect(err).NotTo(HaveOccurred())
@@ -144,16 +142,12 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	auctioneerServer.AllowUnhandledRequests = true
 
 	bbsConfig = bbsconfig.BBSConfig{
-		ListenAddress:                  bbsAddress,
-		AdvertiseURL:                   bbsURL.String(),
-		AuctioneerAddress:              auctioneerServer.URL(),
-		DatabaseDriver:                 sqlRunner.DriverName(),
-		DatabaseConnectionString:       sqlRunner.ConnectionString(),
-		DetectConsulCellRegistrations:  true,
-		ConsulCluster:                  consulRunner.ConsulCluster(),
-		HealthAddress:                  healthAddress,
-		LocksLocketEnabled:             false,
-		CellRegistrationsLocketEnabled: false,
+		ListenAddress:            bbsAddress,
+		AdvertiseURL:             bbsURL.String(),
+		AuctioneerAddress:        auctioneerServer.URL(),
+		DatabaseDriver:           sqlRunner.DriverName(),
+		DatabaseConnectionString: sqlRunner.ConnectionString(),
+		HealthAddress:            healthAddress,
 		EncryptionConfig: encryption.EncryptionConfig{
 			EncryptionKeys: map[string]string{"label": "key"},
 			ActiveKeyLabel: "label",
@@ -163,35 +157,44 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		CertFile: path.Join(fixturesPath, "green-certs", "server.crt"),
 		KeyFile:  path.Join(fixturesPath, "green-certs", "server.key"),
 
-		SessionName:                     "bbs",
-		CommunicationTimeout:            durationjson.Duration(10 * time.Second),
-		RequireSSL:                      true,
-		DesiredLRPCreationTimeout:       durationjson.Duration(1 * time.Minute),
-		ExpireCompletedTaskDuration:     durationjson.Duration(2 * time.Minute),
-		ExpirePendingTaskDuration:       durationjson.Duration(30 * time.Minute),
-		EnableConsulServiceRegistration: false,
-		ConvergeRepeatInterval:          durationjson.Duration(30 * time.Second),
-		KickTaskDuration:                durationjson.Duration(30 * time.Second),
-		LockTTL:                         durationjson.Duration(locket.DefaultSessionTTL),
-		LockRetryInterval:               durationjson.Duration(locket.RetryInterval),
-		ReportInterval:                  durationjson.Duration(1 * time.Minute),
-		ConvergenceWorkers:              20,
-		UpdateWorkers:                   1000,
-		TaskCallbackWorkers:             1000,
-		MaxOpenDatabaseConnections:      200,
-		MaxIdleDatabaseConnections:      200,
-		AuctioneerRequireTLS:            false,
-		RepClientSessionCacheSize:       0,
-		RepRequireTLS:                   false,
+		UUID:                        "bbs",
+		SessionName:                 "bbs",
+		CommunicationTimeout:        durationjson.Duration(10 * time.Second),
+		RequireSSL:                  true,
+		DesiredLRPCreationTimeout:   durationjson.Duration(1 * time.Minute),
+		ExpireCompletedTaskDuration: durationjson.Duration(2 * time.Minute),
+		ExpirePendingTaskDuration:   durationjson.Duration(30 * time.Minute),
+		ConvergeRepeatInterval:      durationjson.Duration(30 * time.Second),
+		KickTaskDuration:            durationjson.Duration(30 * time.Second),
+		LockTTL:                     durationjson.Duration(locket.DefaultSessionTTL),
+		LockRetryInterval:           durationjson.Duration(locket.RetryInterval),
+		ReportInterval:              durationjson.Duration(1 * time.Minute),
+		ConvergenceWorkers:          20,
+		UpdateWorkers:               1000,
+		TaskCallbackWorkers:         1000,
+		MaxOpenDatabaseConnections:  200,
+		MaxIdleDatabaseConnections:  200,
+		AuctioneerRequireTLS:        false,
+		RepClientSessionCacheSize:   0,
+		RepRequireTLS:               false,
 		LagerConfig: lagerflags.LagerConfig{
 			LogLevel: "info",
 		},
+		ClientLocketConfig: locketrunner.ClientLocketConfig(),
 	}
+	bbsConfig.ClientLocketConfig.LocketAddress = locketAddress
 })
 
 var _ = BeforeEach(func() {
-	consulRunner.WaitUntilReady()
-	consulRunner.Reset()
+	locketRunner = locketrunner.NewLocketRunner(locketBinPath, func(cfg *locketconfig.LocketConfig) {
+		cfg.DatabaseConnectionString = sqlRunner.ConnectionString()
+		cfg.DatabaseDriver = sqlRunner.DriverName()
+		cfg.ListenAddress = locketAddress
+	})
+
+	logger := lagertest.NewTestLogger("test")
+	logger.Debug(fmt.Sprintf("bbs locket address: %s", locketAddress))
+	locketProcess = ginkgomon.Invoke(locketRunner)
 
 	bbsRunner = bbstestrunner.New(bbsBinPath, bbsConfig)
 	bbsProcess = ginkgomon.Invoke(bbsRunner)
@@ -211,16 +214,17 @@ var _ = BeforeEach(func() {
 })
 
 var _ = AfterEach(func() {
-	sqlRunner.Reset()
+	ginkgomon.Kill(locketProcess)
+	Eventually(locketProcess.Wait()).Should(Receive())
 
 	ginkgomon.Kill(bbsProcess)
+	Eventually(bbsProcess.Wait()).Should(Receive())
+
+	sqlRunner.Reset()
 })
 
 var _ = SynchronizedAfterSuite(func() {
 	ginkgomon.Kill(sqlProcess, "10s")
-	if consulRunner != nil {
-		consulRunner.Stop()
-	}
 	if runner != nil {
 		runner.KillWithFire()
 	}

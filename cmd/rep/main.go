@@ -19,7 +19,6 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/clock"
-	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/debugserver"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/executor"
@@ -41,9 +40,7 @@ import (
 	"code.cloudfoundry.org/rep/generator"
 	"code.cloudfoundry.org/rep/handlers"
 	"code.cloudfoundry.org/rep/harmonizer"
-	"code.cloudfoundry.org/rep/maintain"
 	"code.cloudfoundry.org/tlsconfig"
-	"github.com/hashicorp/consul/api"
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
@@ -105,10 +102,6 @@ func main() {
 	}
 	defer executorClient.Cleanup(logger)
 
-	consulClient := initializeConsulClient(logger, repConfig)
-
-	serviceClient := maintain.NewCellPresenceClient(consulClient, clock)
-
 	evacuatable, evacuationReporter, evacuationNotifier := evacuation_context.New()
 
 	// only one outstanding operation per container is necessary
@@ -127,7 +120,7 @@ func main() {
 	bbsClient := initializeBBSClient(logger, repConfig)
 	url := repURL(repConfig)
 	address := repAddress(logger, repConfig)
-	cellPresence := initializeCellPresence(address, serviceClient, executorClient, logger, repConfig, repConfig.PreloadedRootFS.Names(), url)
+	cellPresence := initializeCellPresence(address, executorClient, logger, repConfig, repConfig.PreloadedRootFS.Names(), url)
 	batchContainerAllocator := auctioncellrep.NewContainerAllocator(auctioncellrep.GenerateGuid, rootFSMap, executorClient)
 	auctionCellRep := auctioncellrep.New(
 		repConfig.CellID,
@@ -174,15 +167,6 @@ func main() {
 		metronClient,
 	)
 
-	_, portString, err := net.SplitHostPort(repConfig.ListenAddr)
-	if err != nil {
-		logger.Fatal("failed-invalid-server-address", err)
-	}
-	portNum, err := net.LookupPort("tcp", portString)
-	if err != nil {
-		logger.Fatal("failed-invalid-server-port", err)
-	}
-
 	bulker := harmonizer.NewBulker(
 		logger,
 		time.Duration(repConfig.PollingInterval),
@@ -203,11 +187,6 @@ func main() {
 		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
 		{"evacuator", evacuator},
 		{"request-metrics-notifier", requestMetrics},
-	}
-
-	if repConfig.EnableConsulServiceRegistration {
-		registrationRunner := initializeRegistrationRunner(logger, consulClient, repConfig, portNum, clock)
-		members = append(members, grouper.Member{"registration-runner", registrationRunner})
 	}
 
 	members = append(executorMembers, members...)
@@ -235,77 +214,53 @@ func main() {
 
 func initializeCellPresence(
 	address string,
-	serviceClient maintain.CellPresenceClient,
 	executorClient executor.Client,
 	logger lager.Logger,
 	repConfig config.RepConfig,
 	preloadedRootFSes []string,
 	repUrl string,
 ) ifrit.Runner {
-	if repConfig.CellRegistrationsLocketEnabled {
-		locketClient, err := locket.NewClient(logger, repConfig.ClientLocketConfig)
-		if err != nil {
-			logger.Fatal("failed-to-construct-locket-client", err)
-		}
-
-		guid, err := uuid.NewV4()
-		if err != nil {
-			logger.Fatal("failed-to-generate-guid", err)
-		}
-
-		resources, err := executorClient.TotalResources(logger)
-		if err != nil {
-			logger.Fatal("failed-to-get-total-resources", err)
-		}
-		cellCapacity := models.NewCellCapacity(int32(resources.MemoryMB), int32(resources.DiskMB), int32(resources.Containers))
-		cellPresence := models.NewCellPresence(repConfig.CellID, address, repUrl,
-			repConfig.Zone, cellCapacity, repConfig.SupportedProviders,
-			preloadedRootFSes, repConfig.PlacementTags, repConfig.OptionalPlacementTags)
-
-		payload, err := json.Marshal(cellPresence)
-		if err != nil {
-			logger.Fatal("failed-to-encode-cell-presence", err)
-		}
-
-		lockPayload := &locketmodels.Resource{
-			Key:      repConfig.CellID,
-			Owner:    guid.String(),
-			Value:    string(payload),
-			TypeCode: locketmodels.PRESENCE,
-			Type:     locketmodels.PresenceType,
-		}
-
-		logger.Debug("presence-payload", lager.Data{"payload": lockPayload})
-		return lock.NewPresenceRunner(
-			logger,
-			locketClient,
-			lockPayload,
-			int64(time.Duration(repConfig.LockTTL)/time.Second),
-			clock.NewClock(),
-			locket.RetryInterval,
-		)
-	} else {
-		config := maintain.Config{
-			CellID:                repConfig.CellID,
-			RepAddress:            address,
-			RepUrl:                repUrl,
-			Zone:                  repConfig.Zone,
-			RetryInterval:         time.Duration(repConfig.LockRetryInterval),
-			RootFSProviders:       repConfig.SupportedProviders,
-			PreloadedRootFSes:     preloadedRootFSes,
-			PlacementTags:         repConfig.PlacementTags,
-			OptionalPlacementTags: repConfig.OptionalPlacementTags,
-		}
-
-		return maintain.New(
-			logger,
-			config,
-			executorClient,
-			serviceClient,
-			time.Duration(repConfig.LockTTL),
-			clock.NewClock(),
-		)
+	locketClient, err := locket.NewClient(logger, repConfig.ClientLocketConfig)
+	if err != nil {
+		logger.Fatal("failed-to-construct-locket-client", err)
 	}
+
+	guid, err := uuid.NewV4()
+	if err != nil {
+		logger.Fatal("failed-to-generate-guid", err)
+	}
+
+	resources, err := executorClient.TotalResources(logger)
+	if err != nil {
+		logger.Fatal("failed-to-get-total-resources", err)
+	}
+	cellCapacity := models.NewCellCapacity(int32(resources.MemoryMB), int32(resources.DiskMB), int32(resources.Containers))
+	cellPresence := models.NewCellPresence(repConfig.CellID, address, repUrl,
+		repConfig.Zone, cellCapacity, repConfig.SupportedProviders,
+		preloadedRootFSes, repConfig.PlacementTags, repConfig.OptionalPlacementTags)
+
+	payload, err := json.Marshal(cellPresence)
+	if err != nil {
+		logger.Fatal("failed-to-encode-cell-presence", err)
+	}
+
+	lockPayload := &locketmodels.Resource{
+		Key:      repConfig.CellID,
+		Owner:    guid.String(),
+		Value:    string(payload),
+		TypeCode: locketmodels.PRESENCE,
+		Type:     locketmodels.PresenceType,
+	}
+
+	logger.Debug("presence-payload", lager.Data{"payload": lockPayload})
+	return lock.NewPresenceRunner(
+		logger,
+		locketClient,
+		lockPayload,
+		int64(time.Duration(repConfig.LockTTL)/time.Second),
+		clock.NewClock(),
+		locket.RetryInterval,
+	)
 }
 
 func initializeServer(
@@ -381,35 +336,6 @@ func initializeBBSClient(
 	return bbsClient
 }
 
-func initializeConsulClient(
-	logger lager.Logger,
-	repConfig config.RepConfig,
-) consuladapter.Client {
-	var consulClient consuladapter.Client
-
-	scheme, _, err := consuladapter.Parse(repConfig.ConsulCluster)
-	if err != nil {
-		logger.Fatal("parse-consul-cluster-failed", err)
-	}
-
-	if scheme == "https" {
-		consulClient, err = consuladapter.NewTLSClientFromUrl(
-			repConfig.ConsulCluster,
-			repConfig.ConsulCACert,
-			repConfig.ConsulClientCert,
-			repConfig.ConsulClientKey,
-		)
-	} else {
-		consulClient, err = consuladapter.NewClientFromUrl(repConfig.ConsulCluster)
-	}
-
-	if err != nil {
-		logger.Fatal("new-client-failed", err)
-	}
-
-	return consulClient
-}
-
 func repHost(cellID string) string {
 	return strings.Replace(cellID, "_", "-", -1)
 }
@@ -432,24 +358,6 @@ func repAddress(logger lager.Logger, config config.RepConfig) string {
 	listenAddress := config.ListenAddr
 	port := strings.Split(listenAddress, ":")[1]
 	return fmt.Sprintf("http://%s:%s", ip, port)
-}
-
-func initializeRegistrationRunner(
-	logger lager.Logger,
-	consulClient consuladapter.Client,
-	repConfig config.RepConfig,
-	port int,
-	clock clock.Clock,
-) ifrit.Runner {
-	registration := &api.AgentServiceRegistration{
-		Name: repBaseHostName(repConfig.AdvertiseDomain),
-		Port: port,
-		Check: &api.AgentServiceCheck{
-			TTL: "3s",
-		},
-		Tags: []string{repHost(repConfig.CellID)},
-	}
-	return locket.NewRegistrationRunner(logger, registration, consulClient, locket.RetryInterval, clock)
 }
 
 func initializeMetron(logger lager.Logger, repConfig config.RepConfig) (loggingclient.IngressClient, error) {

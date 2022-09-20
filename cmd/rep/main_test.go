@@ -31,20 +31,17 @@ import (
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/locket"
-	locketconfig "code.cloudfoundry.org/locket/cmd/locket/config"
 	locketrunner "code.cloudfoundry.org/locket/cmd/locket/testrunner"
 	locketmodels "code.cloudfoundry.org/locket/models"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
 	"code.cloudfoundry.org/rep/cmd/rep/testrunner"
 	"code.cloudfoundry.org/tlsconfig"
-	"github.com/hashicorp/consul/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/ghttp"
-	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
 
@@ -143,19 +140,18 @@ var _ = Describe("The Rep", func() {
 		metronClientKeyFile := path.Join(fixturesPath, "metron", "client.key")
 
 		repConfig = config.RepConfig{
-			PreloadedRootFS:                []config.RootFS{{Name: rootFSName, Path: rootFSPath}},
-			SupportedProviders:             []string{"docker"},
-			PlacementTags:                  []string{"test"},
-			OptionalPlacementTags:          []string{"optional_tag"},
-			CellID:                         cellID,
-			BBSAddress:                     bbsURL.String(),
-			ListenAddr:                     fmt.Sprintf("0.0.0.0:%d", serverPort),
-			ListenAddrSecurable:            fmt.Sprintf("0.0.0.0:%d", serverPortSecurable),
-			LockRetryInterval:              durationjson.Duration(1 * time.Second),
-			CaCertFile:                     caFile,
-			CertFile:                       certFile,
-			KeyFile:                        keyFile,
-			CellRegistrationsLocketEnabled: false,
+			PreloadedRootFS:       []config.RootFS{{Name: rootFSName, Path: rootFSPath}},
+			SupportedProviders:    []string{"docker"},
+			PlacementTags:         []string{"test"},
+			OptionalPlacementTags: []string{"optional_tag"},
+			CellID:                cellID,
+			BBSAddress:            bbsURL.String(),
+			ListenAddr:            fmt.Sprintf("0.0.0.0:%d", serverPort),
+			ListenAddrSecurable:   fmt.Sprintf("0.0.0.0:%d", serverPortSecurable),
+			LockRetryInterval:     durationjson.Duration(1 * time.Second),
+			CaCertFile:            caFile,
+			CertFile:              certFile,
+			KeyFile:               keyFile,
 			ExecutorConfig: executorinit.ExecutorConfig{
 				PathToTLSCACert:              caFile,
 				CachePath:                    fmt.Sprintf("%s-%d", "/tmp/cache", node),
@@ -210,7 +206,6 @@ var _ = Describe("The Rep", func() {
 			LagerConfig: lagerflags.LagerConfig{
 				LogLevel: "debug",
 			},
-			ConsulCluster:     consulRunner.ConsulCluster(),
 			PollingInterval:   durationjson.Duration(pollingInterval),
 			EvacuationTimeout: durationjson.Duration(evacuationTimeout),
 			ReportInterval:    durationjson.Duration(2 * time.Second),
@@ -222,7 +217,10 @@ var _ = Describe("The Rep", func() {
 			EvacuationPollingInterval: durationjson.Duration(10 * time.Second),
 			LockTTL:                   durationjson.Duration(locket.DefaultSessionTTL),
 			SessionName:               "rep",
+
+			ClientLocketConfig: locketrunner.ClientLocketConfig(),
 		}
+		repConfig.ClientLocketConfig.LocketAddress = locketAddress
 	})
 
 	JustBeforeEach(func() {
@@ -239,6 +237,7 @@ var _ = Describe("The Rep", func() {
 		runner.KillWithFire()
 		fakeGarden.Close()
 		close(done)
+		// ginkgomon.Kill(locketProcess)
 	})
 
 	Context("the rep doesn't start", func() {
@@ -259,7 +258,6 @@ var _ = Describe("The Rep", func() {
 
 		Context("when locket registration is enabled and locket address is not provided", func() {
 			BeforeEach(func() {
-				repConfig.CellRegistrationsLocketEnabled = true
 				repConfig.LocketAddress = ""
 			})
 
@@ -573,66 +571,40 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 		})
 
 		Describe("maintaining presence", func() {
-			Context("with consul", func() {
-				BeforeEach(func() {
-					repConfig.CellRegistrationsLocketEnabled = false
-				})
 
-				It("should maintain presence", func() {
-					Eventually(fetchCells(logger)).Should(HaveLen(1))
+			var response *locketmodels.FetchResponse
 
-					cells, err := bbsClient.Cells(logger)
-					Expect(err).NotTo(HaveOccurred())
+			It("should maintain presence", func() {
+				locketClient, err := locket.NewClient(logger, repConfig.ClientLocketConfig)
+				Expect(err).NotTo(HaveOccurred())
 
-					cellSet := models.NewCellSetFromList(cells)
-
-					cellPresence := cellSet[cellID]
-					Expect(cellPresence.CellId).To(Equal(cellID))
-					Expect(cellPresence.RepAddress).To(MatchRegexp(fmt.Sprintf(`http\:\/\/.*\:%d`, serverPort)))
-					Expect(cellPresence.PlacementTags).To(Equal([]string{"test"}))
-					Expect(cellPresence.OptionalPlacementTags).To(Equal([]string{"optional_tag"}))
-				})
+				Eventually(func() error {
+					response, err = locketClient.Fetch(context.Background(), &locketmodels.FetchRequest{Key: repConfig.CellID})
+					return err
+				}, 10*time.Second).Should(Succeed())
+				Expect(response.Resource.Key).To(Equal(repConfig.CellID))
+				Expect(response.Resource.Type).To(Equal(locketmodels.PresenceType))
+				Expect(response.Resource.TypeCode).To(Equal(locketmodels.PRESENCE))
+				value := &models.CellPresence{}
+				err = json.Unmarshal([]byte(response.Resource.Value), value)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(value.Zone).To(Equal(repConfig.Zone))
+				Expect(value.CellId).To(Equal(repConfig.CellID))
 			})
 
-			Context("with locket", func() {
-				var (
-					locketRunner  ifrit.Runner
-					locketProcess ifrit.Process
-					locketAddress string
-				)
+			Context("when it loses its presence", func() {
+				var locketClient locketmodels.LocketClient
 
-				BeforeEach(func() {
-					locketPort, err := portAllocator.ClaimPorts(1)
+				JustBeforeEach(func() {
+					var err error
+					locketClient, err = locket.NewClient(logger, repConfig.ClientLocketConfig)
 					Expect(err).NotTo(HaveOccurred())
 
-					locketAddress = fmt.Sprintf("localhost:%d", locketPort)
-					locketRunner = locketrunner.NewLocketRunner(locketBinPath, func(cfg *locketconfig.LocketConfig) {
-						cfg.ConsulCluster = consulRunner.ConsulCluster()
-						cfg.DatabaseConnectionString = sqlRunner.ConnectionString()
-						cfg.DatabaseDriver = sqlRunner.DriverName()
-						cfg.ListenAddress = locketAddress
-					})
-					locketProcess = ginkgomon.Invoke(locketRunner)
-
-					repConfig.CellRegistrationsLocketEnabled = true
-					repConfig.ClientLocketConfig = locketrunner.ClientLocketConfig()
-					repConfig.LocketAddress = locketAddress
-				})
-
-				AfterEach(func() {
-					ginkgomon.Kill(bbsProcess)
-					ginkgomon.Kill(locketProcess)
-				})
-
-				It("should maintain presence", func() {
-					locketClient, err := locket.NewClient(logger, repConfig.ClientLocketConfig)
-					Expect(err).NotTo(HaveOccurred())
-
-					var response *locketmodels.FetchResponse
 					Eventually(func() error {
 						response, err = locketClient.Fetch(context.Background(), &locketmodels.FetchRequest{Key: repConfig.CellID})
 						return err
 					}, 10*time.Second).Should(Succeed())
+
 					Expect(response.Resource.Key).To(Equal(repConfig.CellID))
 					Expect(response.Resource.Type).To(Equal(locketmodels.PresenceType))
 					Expect(response.Resource.TypeCode).To(Equal(locketmodels.PRESENCE))
@@ -643,24 +615,9 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					Expect(value.CellId).To(Equal(repConfig.CellID))
 				})
 
-				Context("when it loses its presence", func() {
-					var locketClient locketmodels.LocketClient
-
-					JustBeforeEach(func() {
-						var err error
-						locketClient, err = locket.NewClient(logger, repConfig.ClientLocketConfig)
-						Expect(err).NotTo(HaveOccurred())
-
-						Eventually(func() error {
-							_, err = locketClient.Fetch(context.Background(), &locketmodels.FetchRequest{Key: repConfig.CellID})
-							return err
-						}, 10*time.Second).Should(Succeed())
-					})
-
-					It("does not exit", func() {
-						ginkgomon.Kill(locketProcess)
-						Consistently(runner.Session, locket.RetryInterval).ShouldNot(Exit())
-					})
+				It("does not exit", func() {
+					ginkgomon.Kill(locketProcess)
+					Consistently(runner.Session, locket.RetryInterval).ShouldNot(Exit())
 				})
 			})
 		})
@@ -958,53 +915,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 				resp, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/ping", serverPort))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusOK))
-			})
-		})
-
-		Describe("ServiceRegistration", func() {
-			Context("when consul service registration is enabled", func() {
-				BeforeEach(func() {
-					repConfig.EnableConsulServiceRegistration = true
-				})
-
-				It("registers itself with consul", func() {
-					consulClient := consulRunner.NewClient()
-					services, err := consulClient.Agent().Services()
-					Expect(err).ToNot(HaveOccurred())
-
-					Expect(services).To(HaveKeyWithValue("cell",
-						&api.AgentService{
-							Service: "cell",
-							ID:      "cell",
-							Port:    int(serverPort),
-							Tags:    []string{strings.Replace(cellID, "_", "-", -1)},
-						}))
-				})
-
-				It("registers a TTL healthcheck", func() {
-					consulClient := consulRunner.NewClient()
-					checks, err := consulClient.Agent().Checks()
-					Expect(err).ToNot(HaveOccurred())
-
-					Expect(checks).To(HaveKeyWithValue("service:cell",
-						&api.AgentCheck{
-							Node:        "0",
-							CheckID:     "service:cell",
-							Name:        "Service 'cell' check",
-							Status:      "passing",
-							ServiceID:   "cell",
-							ServiceName: "cell",
-						}))
-				})
-			})
-
-			Context("when consul service registration is disabled", func() {
-				It("does not register itself with consul", func() {
-					services, err := consulRunner.NewClient().Agent().Services()
-					Expect(err).ToNot(HaveOccurred())
-
-					Expect(services).NotTo(HaveKey("cell"))
-				})
 			})
 		})
 
