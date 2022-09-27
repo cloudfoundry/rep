@@ -142,19 +142,18 @@ var _ = Describe("The Rep", func() {
 		metronClientKeyFile := path.Join(fixturesPath, "metron", "client.key")
 
 		repConfig = config.RepConfig{
-			PreloadedRootFS:                []config.RootFS{{Name: rootFSName, Path: rootFSPath}},
-			SupportedProviders:             []string{"docker"},
-			PlacementTags:                  []string{"test"},
-			OptionalPlacementTags:          []string{"optional_tag"},
-			CellID:                         cellID,
-			BBSAddress:                     bbsURL.String(),
-			ListenAddr:                     fmt.Sprintf("0.0.0.0:%d", serverPort),
-			ListenAddrSecurable:            fmt.Sprintf("0.0.0.0:%d", serverPortSecurable),
-			LockRetryInterval:              durationjson.Duration(1 * time.Second),
-			CaCertFile:                     caFile,
-			CertFile:                       certFile,
-			KeyFile:                        keyFile,
-			CellRegistrationsLocketEnabled: false,
+			PreloadedRootFS:       []config.RootFS{{Name: rootFSName, Path: rootFSPath}},
+			SupportedProviders:    []string{"docker"},
+			PlacementTags:         []string{"test"},
+			OptionalPlacementTags: []string{"optional_tag"},
+			CellID:                cellID,
+			BBSAddress:            bbsURL.String(),
+			ListenAddr:            fmt.Sprintf("0.0.0.0:%d", serverPort),
+			ListenAddrSecurable:   fmt.Sprintf("0.0.0.0:%d", serverPortSecurable),
+			LockRetryInterval:     durationjson.Duration(1 * time.Second),
+			CaCertFile:            caFile,
+			CertFile:              certFile,
+			KeyFile:               keyFile,
 			ExecutorConfig: executorinit.ExecutorConfig{
 				PathToTLSCACert:              caFile,
 				CachePath:                    fmt.Sprintf("%s-%d", "/tmp/cache", node),
@@ -220,7 +219,10 @@ var _ = Describe("The Rep", func() {
 			EvacuationPollingInterval: durationjson.Duration(10 * time.Second),
 			LockTTL:                   durationjson.Duration(locket.DefaultSessionTTL),
 			SessionName:               "rep",
+
+			ClientLocketConfig: locketrunner.ClientLocketConfig(),
 		}
+		repConfig.ClientLocketConfig.LocketAddress = locketAddress
 	})
 
 	JustBeforeEach(func() {
@@ -257,7 +259,6 @@ var _ = Describe("The Rep", func() {
 
 		Context("when locket registration is enabled and locket address is not provided", func() {
 			BeforeEach(func() {
-				repConfig.CellRegistrationsLocketEnabled = true
 				repConfig.LocketAddress = ""
 			})
 
@@ -575,6 +576,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 				locketRunner  ifrit.Runner
 				locketProcess ifrit.Process
 				locketAddress string
+				response      *locketmodels.FetchResponse
 			)
 
 			BeforeEach(func() {
@@ -589,8 +591,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 				})
 				locketProcess = ginkgomon.Invoke(locketRunner)
 
-				repConfig.CellRegistrationsLocketEnabled = true
-				repConfig.ClientLocketConfig = locketrunner.ClientLocketConfig()
 				repConfig.LocketAddress = locketAddress
 			})
 
@@ -603,7 +603,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 				locketClient, err := locket.NewClient(logger, repConfig.ClientLocketConfig)
 				Expect(err).NotTo(HaveOccurred())
 
-				var response *locketmodels.FetchResponse
 				Eventually(func() error {
 					response, err = locketClient.Fetch(context.Background(), &locketmodels.FetchRequest{Key: repConfig.CellID})
 					return err
@@ -627,9 +626,18 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(func() error {
-						_, err = locketClient.Fetch(context.Background(), &locketmodels.FetchRequest{Key: repConfig.CellID})
+						response, err = locketClient.Fetch(context.Background(), &locketmodels.FetchRequest{Key: repConfig.CellID})
 						return err
 					}, 10*time.Second).Should(Succeed())
+
+					Expect(response.Resource.Key).To(Equal(repConfig.CellID))
+					Expect(response.Resource.Type).To(Equal(locketmodels.PresenceType))
+					Expect(response.Resource.TypeCode).To(Equal(locketmodels.PRESENCE))
+					value := &models.CellPresence{}
+					err = json.Unmarshal([]byte(response.Resource.Value), value)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(value.Zone).To(Equal(repConfig.Zone))
+					Expect(value.CellId).To(Equal(repConfig.CellID))
 				})
 
 				It("does not exit", func() {
@@ -740,7 +748,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					close(blockCh)
 				})
 
-				It("does not block subsequent work from being started", func() {
+				FIt("does not block subsequent work from being started", func() {
 					createTask("task-guid-1")
 
 					// check that the first task's container create request is made
