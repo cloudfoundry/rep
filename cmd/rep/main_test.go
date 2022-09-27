@@ -31,7 +31,6 @@ import (
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/locket"
-	locketconfig "code.cloudfoundry.org/locket/cmd/locket/config"
 	locketrunner "code.cloudfoundry.org/locket/cmd/locket/testrunner"
 	locketmodels "code.cloudfoundry.org/locket/models"
 	"code.cloudfoundry.org/rep"
@@ -43,7 +42,6 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/ghttp"
-	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
 
@@ -239,6 +237,7 @@ var _ = Describe("The Rep", func() {
 		runner.KillWithFire()
 		fakeGarden.Close()
 		close(done)
+		// ginkgomon.Kill(locketProcess)
 	})
 
 	Context("the rep doesn't start", func() {
@@ -572,32 +571,8 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 		})
 
 		Describe("maintaining presence", func() {
-			var (
-				locketRunner  ifrit.Runner
-				locketProcess ifrit.Process
-				locketAddress string
-				response      *locketmodels.FetchResponse
-			)
 
-			BeforeEach(func() {
-				locketPort, err := portAllocator.ClaimPorts(1)
-				Expect(err).NotTo(HaveOccurred())
-
-				locketAddress = fmt.Sprintf("localhost:%d", locketPort)
-				locketRunner = locketrunner.NewLocketRunner(locketBinPath, func(cfg *locketconfig.LocketConfig) {
-					cfg.DatabaseConnectionString = sqlRunner.ConnectionString()
-					cfg.DatabaseDriver = sqlRunner.DriverName()
-					cfg.ListenAddress = locketAddress
-				})
-				locketProcess = ginkgomon.Invoke(locketRunner)
-
-				repConfig.LocketAddress = locketAddress
-			})
-
-			AfterEach(func() {
-				ginkgomon.Kill(bbsProcess)
-				ginkgomon.Kill(locketProcess)
-			})
+			var response *locketmodels.FetchResponse
 
 			It("should maintain presence", func() {
 				locketClient, err := locket.NewClient(logger, repConfig.ClientLocketConfig)
@@ -651,6 +626,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 			var repClient rep.Client
 
 			JustBeforeEach(func() {
+				logger.Debug(fmt.Sprintf("Rep locket address: %s", locketAddress))
 				Eventually(fetchCells(logger)).Should(HaveLen(1))
 				cells, err := bbsClient.Cells(logger)
 				cellSet := models.NewCellSetFromList(cells)

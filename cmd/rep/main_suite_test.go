@@ -24,6 +24,7 @@ import (
 	"code.cloudfoundry.org/go-loggregator/v8/rpc/loggregator_v2"
 	"code.cloudfoundry.org/inigo/helpers/portauthority"
 	"code.cloudfoundry.org/lager/lagerflags"
+	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/locket"
 	locketconfig "code.cloudfoundry.org/locket/cmd/locket/config"
 	locketrunner "code.cloudfoundry.org/locket/cmd/locket/testrunner"
@@ -192,6 +193,9 @@ var _ = BeforeEach(func() {
 		cfg.DatabaseDriver = sqlRunner.DriverName()
 		cfg.ListenAddress = locketAddress
 	})
+
+	logger := lagertest.NewTestLogger("test")
+	logger.Debug(fmt.Sprintf("bbs locket address: %s", locketAddress))
 	locketProcess = ginkgomon.Invoke(locketRunner)
 
 	bbsRunner = bbstestrunner.New(bbsBinPath, bbsConfig)
