@@ -626,7 +626,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 			var repClient rep.Client
 
 			JustBeforeEach(func() {
-				logger.Debug(fmt.Sprintf("Rep locket address: %s", locketAddress))
 				Eventually(fetchCells(logger)).Should(HaveLen(1))
 				cells, err := bbsClient.Cells(logger)
 				cellSet := models.NewCellSetFromList(cells)
@@ -724,7 +723,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					close(blockCh)
 				})
 
-				FIt("does not block subsequent work from being started", func() {
+				It("does not block subsequent work from being started", func() {
 					createTask("task-guid-1")
 
 					// check that the first task's container create request is made

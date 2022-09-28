@@ -336,7 +336,6 @@ func initializeBBSClient(
 	return bbsClient
 }
 
-
 func repHost(cellID string) string {
 	return strings.Replace(cellID, "_", "-", -1)
 }
