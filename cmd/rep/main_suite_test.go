@@ -214,8 +214,12 @@ var _ = BeforeEach(func() {
 })
 
 var _ = AfterEach(func() {
-	ginkgomon.Interrupt(locketProcess)
+	ginkgomon.Kill(locketProcess)
+	Eventually(locketProcess.Wait()).Should(Receive())
+
 	ginkgomon.Kill(bbsProcess)
+	Eventually(bbsProcess.Wait()).Should(Receive())
+
 	sqlRunner.Reset()
 })
 
