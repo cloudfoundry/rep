@@ -273,10 +273,16 @@ type LRPUpdate struct {
 	InstanceGUID string `json:"instance_guid"`
 	models.ActualLRPKey
 	InternalRoutes internalroutes.InternalRoutes `json:"internal_routes"`
+	MetricTags     map[string]string             `json:"metric_tags"`
 }
 
-func NewLRPUpdate(instanceGUID string, key models.ActualLRPKey, internalRoutes internalroutes.InternalRoutes) LRPUpdate {
-	return LRPUpdate{instanceGUID, key, internalRoutes}
+func NewLRPUpdate(instanceGUID string, key models.ActualLRPKey, internalRoutes internalroutes.InternalRoutes, metricTags map[string]string) LRPUpdate {
+	return LRPUpdate{
+		InstanceGUID:   instanceGUID,
+		ActualLRPKey:   key,
+		InternalRoutes: internalRoutes,
+		MetricTags:     metricTags,
+	}
 }
 
 type Task struct {
