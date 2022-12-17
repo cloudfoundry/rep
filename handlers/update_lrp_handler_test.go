@@ -32,6 +32,7 @@ var _ = Describe("UpdateLRPInstanceHandler", func() {
 		processGuid           string
 		instanceGuid          string
 		internalRoutes        internalroutes.InternalRoutes
+		metricTags            map[string]string
 	)
 
 	BeforeEach(func() {
@@ -52,7 +53,9 @@ var _ = Describe("UpdateLRPInstanceHandler", func() {
 			{Hostname: "a.apps.internal"},
 			{Hostname: "b.apps.internal"},
 		}
-		lrpUpdate := rep.NewLRPUpdate(instanceGuid, models.NewActualLRPKey(processGuid, 2, "test-domain"), internalRoutes)
+		metricTags = map[string]string{"some-key": "some-value"}
+		k := models.NewActualLRPKey(processGuid, 2, "test-domain")
+		lrpUpdate := rep.NewLRPUpdate(instanceGuid, k, internalRoutes, metricTags)
 		req, err = http.NewRequest("PUT", "", JSONReaderFor(lrpUpdate))
 		Expect(err).NotTo(HaveOccurred())
 	})
@@ -90,6 +93,7 @@ var _ = Describe("UpdateLRPInstanceHandler", func() {
 				_, updateReq := fakeClient.UpdateContainerArgsForCall(0)
 				Expect(updateReq.Guid).To(Equal(instanceGuid))
 				Expect(updateReq.InternalRoutes).To(Equal(internalRoutes))
+				Expect(updateReq.MetricTags).To(Equal(metricTags))
 			})
 
 			It("emits the request metrics", func() {
