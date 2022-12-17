@@ -67,6 +67,7 @@ func (h *UpdateLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	updateReq := executor.NewUpdateRequest(
 		rep.LRPContainerGuid(processGuid, instanceGuid),
 		lrpUpdate.InternalRoutes,
+		lrpUpdate.MetricTags,
 	)
 
 	deferErr = h.client.UpdateContainer(logger, &updateReq)
