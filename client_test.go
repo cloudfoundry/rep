@@ -135,6 +135,7 @@ var _ = Describe("Client", func() {
 					{Hostname: "a.apps.internal"},
 					{Hostname: "b.apps.internal"},
 				},
+				MetricTags: map[string]string{"app-name": "some-app"},
 			}
 		})
 
@@ -146,7 +147,7 @@ var _ = Describe("Client", func() {
 			BeforeEach(func() {
 				fakeServer.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("PUT", "/v1/lrps/some-process-guid/instances/some-instance-guid"),
+						ghttp.VerifyRequest("PUT", "/v2/lrps/some-process-guid/instances/some-instance-guid"),
 						ghttp.RespondWith(http.StatusAccepted, ""),
 					),
 				)
@@ -168,7 +169,7 @@ var _ = Describe("Client", func() {
 			BeforeEach(func() {
 				fakeServer.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("PUT", "/v1/lrps/some-process-guid/instances/some-instance-guid"),
+						ghttp.VerifyRequest("PUT", "/v2/lrps/some-process-guid/instances/some-instance-guid"),
 						ghttp.RespondWith(http.StatusInternalServerError, ""),
 					),
 				)
@@ -189,21 +190,87 @@ var _ = Describe("Client", func() {
 			BeforeEach(func() {
 				fakeServer.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("PUT", "/v1/lrps/some-process-guid/instances/some-instance-guid"),
+						ghttp.VerifyRequest("PUT", "/v2/lrps/some-process-guid/instances/some-instance-guid"),
 						ghttp.RespondWith(http.StatusNotFound, ""),
 					),
 				)
 			})
 
-			// We are assuming that a 404 means that the rep has not updated
-			// yet, but will roll soon.  This is for backwards compatibility.
-			It("makes the request and does not return error", func() {
-				Expect(updateErr).ToNot(HaveOccurred())
-				Expect(fakeServer.ReceivedRequests()).To(HaveLen(1))
+			Context("when the v1 request is successful", func() {
+				BeforeEach(func() {
+					fakeServer.AppendHandlers(
+						ghttp.CombineHandlers(
+							ghttp.VerifyRequest("PUT", "/v1/lrps/some-process-guid/instances/some-instance-guid"),
+							ghttp.RespondWith(http.StatusAccepted, ""),
+						),
+					)
+				})
+
+				It("logs that the v2 request failed", func() {
+					Eventually(logger.Buffer()).Should(gbytes.Say("update-lrp.failed-with-status"))
+				})
+
+				It("makes both requests and does not return an error", func() {
+					Expect(updateErr).NotTo(HaveOccurred())
+					Expect(fakeServer.ReceivedRequests()).To(HaveLen(2))
+				})
+
+				It("logs start and complete", func() {
+					Eventually(logger.Buffer()).Should(gbytes.Say("update-lrp-r0.starting"))
+					Eventually(logger.Buffer()).Should(gbytes.Say("update-lrp-r0.completed"))
+					Eventually(logger.Buffer()).Should(gbytes.Say("duration"))
+				})
 			})
 
-			It("logs that it failed", func() {
-				Eventually(logger.Buffer()).Should(gbytes.Say("update-lrp.failed-with-status"))
+			Context("when the v1 request fails", func() {
+				BeforeEach(func() {
+					fakeServer.AppendHandlers(
+						ghttp.CombineHandlers(
+							ghttp.VerifyRequest("PUT", "/v1/lrps/some-process-guid/instances/some-instance-guid"),
+							ghttp.RespondWith(http.StatusInternalServerError, ""),
+						),
+					)
+				})
+
+				It("logs that the v2 request failed", func() {
+					Eventually(logger.Buffer()).Should(gbytes.Say("update-lrp.failed-with-status"))
+				})
+
+				It("makes both requests and returns the v1 request error", func() {
+					Expect(updateErr).To(HaveOccurred())
+					Expect(updateErr.Error()).To(ContainSubstring("http error: status code 500"))
+					Expect(fakeServer.ReceivedRequests()).To(HaveLen(2))
+				})
+
+				It("logs that it fails", func() {
+					Eventually(logger.Buffer()).Should(gbytes.Say("update-lrp-r0.failed-with-status"))
+				})
+			})
+
+			Context("when the v1 request returns 404", func() {
+				BeforeEach(func() {
+					fakeServer.AppendHandlers(
+						ghttp.CombineHandlers(
+							ghttp.VerifyRequest("PUT", "/v1/lrps/some-process-guid/instances/some-instance-guid"),
+							ghttp.RespondWith(http.StatusNotFound, ""),
+						),
+					)
+				})
+
+				It("logs that the v2 request failed", func() {
+					Eventually(logger.Buffer()).Should(gbytes.Say("update-lrp.failed-with-status"))
+				})
+
+				// We are assuming that this 404 means that the rep has not updated
+				// yet, but will roll soon.  This is for backwards compatibility.
+				It("makes both requests and does not return an error", func() {
+					Expect(updateErr).ToNot(HaveOccurred())
+					Expect(fakeServer.ReceivedRequests()).To(HaveLen(2))
+				})
+
+				It("logs that it fails", func() {
+					Eventually(logger.Buffer()).Should(gbytes.Say("update-lrp-r0.failed-with-status"))
+				})
 			})
 		})
 
@@ -211,7 +278,7 @@ var _ = Describe("Client", func() {
 			BeforeEach(func() {
 				fakeServer.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("PUT", "/v1/lrps/some-process-guid/instances/some-instance-guid"),
+						ghttp.VerifyRequest("PUT", "/v2/lrps/some-process-guid/instances/some-instance-guid"),
 						func(w http.ResponseWriter, r *http.Request) {
 							fakeServer.CloseClientConnections()
 						},
@@ -230,7 +297,7 @@ var _ = Describe("Client", func() {
 			BeforeEach(func() {
 				fakeServer.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("PUT", "/v1/lrps/some-process-guid/instances/some-instance-guid"),
+						ghttp.VerifyRequest("PUT", "/v2/lrps/some-process-guid/instances/some-instance-guid"),
 						func(w http.ResponseWriter, r *http.Request) {
 							time.Sleep(cfHttpTimeout + 100*time.Millisecond)
 						},

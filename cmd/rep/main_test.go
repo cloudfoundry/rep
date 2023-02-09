@@ -864,6 +864,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 						Path: "the-path",
 						Args: []string{},
 					}),
+					MetricTags: map[string]*models.MetricTagValue{"some-tag": {Static: "some-value"}},
 				}
 				actualLRPKey := models.ActualLRPKey{
 					ProcessGuid: desiredLRP.ProcessGuid,

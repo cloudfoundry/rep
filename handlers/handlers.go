@@ -39,6 +39,7 @@ func New(
 
 		handlers[rep.StopLRPInstanceRoute] = logWrap(stopLrpHandler.ServeHTTP, logger)
 		handlers[rep.UpdateLRPInstanceRoute] = logWrap(updateLrpHandler.ServeHTTP, logger)
+		handlers[rep.UpdateLRPInstanceRoute_r0] = logWrap(updateLrpHandler.ServeHTTP, logger)
 		handlers[rep.CancelTaskRoute] = logWrap(cancelTaskHandler.ServeHTTP, logger)
 	} else {
 		pingHandler := newPingHandler(requestMetrics)

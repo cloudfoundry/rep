@@ -262,6 +262,7 @@ func (c *client) UpdateLRPInstance(
 	update LRPUpdate,
 ) error {
 	start := time.Now()
+	loggerCopy := logger
 	logger = logger.Session("update-lrp", lager.Data{"process-guid": update.ProcessGuid,
 		"index":         update.Index,
 		"domain":        update.Domain,
@@ -295,6 +296,63 @@ func (c *client) UpdateLRPInstance(
 
 	// We are assuming that a 404 means that the rep has not updated
 	// yet, but will roll soon.  This is for backwards compatibility.
+	if resp.StatusCode == http.StatusNotFound {
+		logger.Error("failed-with-status", err, lager.Data{"status-code": resp.StatusCode, "msg": http.StatusText(resp.StatusCode)})
+		// The v1 UpdateLRPInstance route is only for updating InternalRoutes
+		// on old versions of rep. This is for backwards compatibility.
+		if update.InternalRoutes != nil {
+			update.MetricTags = nil
+			return c.updateLRPInstanceRoute_r0(loggerCopy, update)
+		}
+		return nil
+	}
+
+	if resp.StatusCode != http.StatusAccepted {
+		err := fmt.Errorf("http error: status code %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode))
+		logger.Error("failed-with-status", err, lager.Data{"status-code": resp.StatusCode, "msg": http.StatusText(resp.StatusCode)})
+		return err
+	}
+
+	logger.Info("completed", lager.Data{"duration": time.Since(start)})
+	return nil
+}
+
+func (c *client) updateLRPInstanceRoute_r0(
+	logger lager.Logger,
+	update LRPUpdate) error {
+	start := time.Now()
+	logger = logger.Session("update-lrp-r0", lager.Data{"process-guid": update.ProcessGuid,
+		"index":         update.Index,
+		"domain":        update.Domain,
+		"instance-guid": update.InstanceGUID,
+	})
+	logger.Info("starting")
+
+	body, err := json.Marshal(update)
+	if err != nil {
+		logger.Error("marshal-failed", err)
+		return err
+	}
+
+	params := rata.Params{
+		"process_guid":  update.ProcessGuid,
+		"instance_guid": update.InstanceGUID,
+	}
+	req, err := c.requestGenerator.CreateRequest(UpdateLRPInstanceRoute_r0, params, bytes.NewReader(body))
+	if err != nil {
+		logger.Error("connection-failed", err)
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		logger.Error("request-failed", err)
+		return err
+	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode == http.StatusNotFound {
 		logger.Error("failed-with-status", err, lager.Data{"status-code": resp.StatusCode, "msg": http.StatusText(resp.StatusCode)})
 		return nil
