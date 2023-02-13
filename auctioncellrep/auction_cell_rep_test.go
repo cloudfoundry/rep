@@ -346,12 +346,12 @@ var _ = Describe("AuctionCellRep", func() {
 
 					Context("with different rootfs", func() {
 						BeforeEach(func() {
-							containers[0].RootFSPath = "docker://cfdiegodocker/grace"
+							containers[0].RootFSPath = "docker://cloudfoundry/grace"
 						})
 
 						It("returns the right index", func() {
 							Expect(state.LRPs).To(HaveLen(1))
-							Expect(state.LRPs[0].RootFs).To(Equal("docker://cfdiegodocker/grace"))
+							Expect(state.LRPs[0].RootFs).To(Equal("docker://cloudfoundry/grace"))
 						})
 					})
 

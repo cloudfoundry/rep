@@ -212,9 +212,9 @@ var _ = Describe("Resources", func() {
 				Expect(p).To(Equal(""))
 			})
 			It("returns the same URL and no error if the RootFS scheme is docker", func() {
-				p, err := stackPathMap.PathForRootFS("docker:///cfdiegodocker/grace")
+				p, err := stackPathMap.PathForRootFS("docker:///cloudfoundry/grace")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(p).To(Equal("docker:///cfdiegodocker/grace"))
+				Expect(p).To(Equal("docker:///cloudfoundry/grace"))
 			})
 			It("returns an error if the RootFS URL is invalid", func() {
 				_, err := stackPathMap.PathForRootFS("%x")

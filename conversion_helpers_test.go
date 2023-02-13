@@ -973,7 +973,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("doesn't convert docker rootfs URLs", func() {
-				rootFS := "docker:///cfdiegodocker/grace"
+				rootFS := "docker:///cloudfoundry/grace"
 				newRootFS, newImageLayers := rep.ConvertPreloadedRootFS(rootFS, imageLayers, layeringMode)
 				Expect(newRootFS).To(Equal(rootFS))
 				Expect(newImageLayers).To(Equal(imageLayers))
@@ -1001,7 +1001,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			It("doesn't convert docker rootfs URLs", func() {
-				rootFS := "docker:///cfdiegodocker/grace"
+				rootFS := "docker:///cloudfoundry/grace"
 				newRootFS, newImageLayers := rep.ConvertPreloadedRootFS(rootFS, imageLayers, layeringMode)
 				Expect(newRootFS).To(Equal(rootFS))
 				Expect(newImageLayers).To(Equal(imageLayers))

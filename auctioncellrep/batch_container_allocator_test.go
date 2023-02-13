@@ -239,7 +239,7 @@ var _ = Describe("ContainerAllocator", func() {
 
 			Context("when the lrp uses docker rootfs scheme", func() {
 				BeforeEach(func() {
-					validLRP.RootFs = "docker://cfdiegodocker/grace"
+					validLRP.RootFs = "docker://cloudfoundry/grace"
 				})
 
 				It("makes the container allocation request with an unchanged rootfs url", func() {
