@@ -47,6 +47,7 @@ func (consumer *EventConsumer) Run(signals <-chan os.Signal, ready chan<- struct
 				logger.Info("event-stream-closed")
 				return nil
 			}
+			logger.Info("got-operatation-in-stream")
 
 			consumer.queue.Push(op)
 
