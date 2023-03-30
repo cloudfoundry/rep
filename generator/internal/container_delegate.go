@@ -7,7 +7,7 @@ import (
 	"io"
 
 	"code.cloudfoundry.org/executor"
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 )
 
 const MAX_RESULT_SIZE = 1024 * 50

@@ -12,13 +12,13 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/executor"
 	executorfakes "code.cloudfoundry.org/executor/fakes"
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/handlers"
 	"code.cloudfoundry.org/routing-info/internalroutes"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
