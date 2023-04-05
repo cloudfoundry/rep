@@ -232,12 +232,16 @@ var _ = Describe("The Rep", func() {
 		runner.Start()
 	})
 
-	AfterEach(func(done Done) {
-		close(flushEvents)
-		runner.KillWithFire()
-		fakeGarden.Close()
-		close(done)
-		// ginkgomon.Kill(locketProcess)
+	AfterEach(func() {
+		done := make(chan interface{})
+		go func() {
+			close(flushEvents)
+			runner.KillWithFire()
+			fakeGarden.Close()
+			close(done)
+			ginkgomon.Kill(locketProcess)
+		}()
+		Eventually(done).Should(BeClosed())
 	})
 
 	Context("the rep doesn't start", func() {

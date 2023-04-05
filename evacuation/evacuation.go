@@ -74,8 +74,6 @@ func (e *Evacuator) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 		logger.Info("signaled", lager.Data{"signal": signal.String()})
 		return nil
 	}
-
-	return nil
 }
 
 func (e *Evacuator) evacuate(logger lager.Logger, doneCh chan<- struct{}) {
