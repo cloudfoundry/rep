@@ -179,7 +179,6 @@ var _ = Describe("EvacuationCleanup", func() {
 						},
 						nil,
 					)
-					fakeExecutorClient.ListContainersReturnsOnCall(3, []executor.Container{}, nil)
 				})
 				It("should delete all of the containers that are still running", func() {
 					Consistently(errCh).ShouldNot(Receive())
