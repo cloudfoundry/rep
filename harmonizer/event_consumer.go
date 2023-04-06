@@ -3,7 +3,7 @@ package harmonizer
 import (
 	"os"
 
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/operationq"
 	"code.cloudfoundry.org/rep/generator"
 )
@@ -55,6 +55,4 @@ func (consumer *EventConsumer) Run(signals <-chan os.Signal, ready chan<- struct
 			return nil
 		}
 	}
-
-	return nil
 }

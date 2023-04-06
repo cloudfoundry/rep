@@ -24,8 +24,8 @@ import (
 	"code.cloudfoundry.org/executor"
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/go-loggregator/v8/runtimeemitter"
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagerflags"
+	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager/v3/lagerflags"
 	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/locket/lock"
@@ -179,21 +179,21 @@ func main() {
 	)
 
 	members := grouper.Members{
-		{"presence", cellPresence},
-		{"http_server", httpServer},
-		{"https_server", httpsServer},
-		{"evacuation-cleanup", cleanup},
-		{"bulker", bulker},
-		{"event-consumer", harmonizer.NewEventConsumer(logger, opGenerator, queue)},
-		{"evacuator", evacuator},
-		{"request-metrics-notifier", requestMetrics},
+		{Name: "presence", Runner: cellPresence},
+		{Name: "http_server", Runner: httpServer},
+		{Name: "https_server", Runner: httpsServer},
+		{Name: "evacuation-cleanup", Runner: cleanup},
+		{Name: "bulker", Runner: bulker},
+		{Name: "event-consumer", Runner: harmonizer.NewEventConsumer(logger, opGenerator, queue)},
+		{Name: "evacuator", Runner: evacuator},
+		{Name: "request-metrics-notifier", Runner: requestMetrics},
 	}
 
 	members = append(executorMembers, members...)
 
 	if repConfig.DebugAddress != "" {
 		members = append(grouper.Members{
-			{"debug-server", debugserver.Runner(repConfig.DebugAddress, reconfigurableSink)},
+			{Name: "debug-server", Runner: debugserver.Runner(repConfig.DebugAddress, reconfigurableSink)},
 		}, members...)
 	}
 

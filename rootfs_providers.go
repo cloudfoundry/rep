@@ -128,7 +128,7 @@ func (provider FixedSetRootFSProvider) MarshalJSON() ([]byte, error) {
 
 func (provider *FixedSetRootFSProvider) UnmarshalJSON(payload []byte) error {
 	type fixed struct {
-		Set StringSet `json"set"`
+		Set StringSet `json:"set"`
 	}
 
 	var f fixed

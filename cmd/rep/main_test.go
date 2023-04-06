@@ -27,9 +27,9 @@ import (
 	"code.cloudfoundry.org/executor/initializer/configuration"
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/garden/transport"
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagerflags"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager/v3/lagerflags"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/locket"
 	locketrunner "code.cloudfoundry.org/locket/cmd/locket/testrunner"
 	locketmodels "code.cloudfoundry.org/locket/models"
@@ -37,12 +37,12 @@ import (
 	"code.cloudfoundry.org/rep/cmd/rep/config"
 	"code.cloudfoundry.org/rep/cmd/rep/testrunner"
 	"code.cloudfoundry.org/tlsconfig"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/ghttp"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 var runner *testrunner.Runner
@@ -232,12 +232,16 @@ var _ = Describe("The Rep", func() {
 		runner.Start()
 	})
 
-	AfterEach(func(done Done) {
-		close(flushEvents)
-		runner.KillWithFire()
-		fakeGarden.Close()
-		close(done)
-		// ginkgomon.Kill(locketProcess)
+	AfterEach(func() {
+		done := make(chan interface{})
+		go func() {
+			close(flushEvents)
+			runner.KillWithFire()
+			fakeGarden.Close()
+			close(done)
+			ginkgomon.Kill(locketProcess)
+		}()
+		Eventually(done).Should(BeClosed())
 	})
 
 	Context("the rep doesn't start", func() {

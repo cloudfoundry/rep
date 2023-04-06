@@ -14,14 +14,14 @@ import (
 	mfakes "code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/executor/fakes"
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/rep/evacuation"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 )
 
 var _ = Describe("EvacuationCleanup", func() {
@@ -163,36 +163,37 @@ var _ = Describe("EvacuationCleanup", func() {
 		})
 
 		Describe("deleting running containers", func() {
-			It("should delete all of the containers that are still running", func() {
-				fakeExecutorClient.ListContainersReturnsOnCall(1,
-					[]executor.Container{
-						{
-							Guid:    "container1",
-							State:   executor.StateRunning,
-							RunInfo: executor.RunInfo{LogConfig: executor.LogConfig{Guid: "log-guid-1", SourceName: "source-name-1", Index: 0}},
+			Context("When containers fail to exit initially", func() {
+				BeforeEach(func() {
+					fakeExecutorClient.ListContainersReturnsOnCall(1,
+						[]executor.Container{
+							{
+								Guid:    "container1",
+								State:   executor.StateRunning,
+								RunInfo: executor.RunInfo{LogConfig: executor.LogConfig{Guid: "log-guid-1", SourceName: "source-name-1", Index: 0}},
+							},
+							{Guid: "container2",
+								State:   executor.StateCompleted,
+								RunInfo: executor.RunInfo{LogConfig: executor.LogConfig{Guid: "log-guid-2", SourceName: "source-name-2", Index: 1}},
+							},
 						},
-						{Guid: "container2",
-							State:   executor.StateCompleted,
-							RunInfo: executor.RunInfo{LogConfig: executor.LogConfig{Guid: "log-guid-2", SourceName: "source-name-2", Index: 1}},
-						},
-					},
-					nil,
-				)
-				fakeExecutorClient.ListContainersReturnsOnCall(2, []executor.Container{}, nil)
+						nil,
+					)
+				})
+				It("should delete all of the containers that are still running", func() {
+					Consistently(errCh).ShouldNot(Receive())
+					fakeClock.Increment(time.Second * 1)
 
-				Consistently(errCh).ShouldNot(Receive())
-				fakeClock.Increment(time.Second * 1)
+					Eventually(errCh).Should(Receive(nil))
+					Expect(fakeExecutorClient.ListContainersCallCount()).To(Equal(3))
+					Expect(fakeExecutorClient.DeleteContainerCallCount()).To(Equal(2))
 
-				Eventually(errCh).Should(Receive(nil))
-				Expect(fakeExecutorClient.ListContainersCallCount()).To(Equal(3))
-				Expect(fakeExecutorClient.DeleteContainerCallCount()).To(Equal(2))
-
-				_, c1 := fakeExecutorClient.DeleteContainerArgsForCall(0)
-				_, c2 := fakeExecutorClient.DeleteContainerArgsForCall(1)
-				containers := []string{c1, c2}
-				Expect(containers).To(ConsistOf("container1", "container2"))
+					_, c1 := fakeExecutorClient.DeleteContainerArgsForCall(0)
+					_, c2 := fakeExecutorClient.DeleteContainerArgsForCall(1)
+					containers := []string{c1, c2}
+					Expect(containers).To(ConsistOf("container1", "container2"))
+				})
 			})
-
 			It("emits app logs indicating evacuation timeout", func() {
 				Eventually(fakeMetronClient.SendAppLogCallCount).Should(Equal(2))
 				msg, containerSource, tags := fakeMetronClient.SendAppLogArgsForCall(0)
