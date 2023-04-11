@@ -118,10 +118,11 @@ const (
 // just returns the same rootFS URL and list of image layers.
 //
 // In the case where all of the following are true:
-// - layeringMode == LayeringModeTwoLayer
-// - the rootfs URL has a `preloaded` scheme
-// - the list of image layers contains at least one image layer that has
-//   an `exclusive` layer type, `tgz` media type, and a `sha256` digest algorithm.
+//   - layeringMode == LayeringModeTwoLayer
+//   - the rootfs URL has a `preloaded` scheme
+//   - the list of image layers contains at least one image layer that has
+//     an `exclusive` layer type, `tgz` media type, and a `sha256` digest algorithm.
+//
 // then the rootfs URL will be converted to have a `preloaded+layer` scheme and
 // a query string that references the first image layer that matches all of those
 // restrictions. This image layer will also be removed from the list.
