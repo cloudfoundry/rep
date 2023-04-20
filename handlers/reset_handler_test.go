@@ -2,12 +2,15 @@ package handlers_test
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"code.cloudfoundry.org/rep"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("Reset", func() {
@@ -63,20 +66,31 @@ var _ = Describe("Reset", func() {
 	})
 
 	Context("when the reset fails", func() {
+		var (
+			requestIdHeader   string
+			b3RequestIdHeader string
+		)
+
 		BeforeEach(func() {
 			fakeLocalRep.ResetReturns(errors.New("boom"))
+
+			requestIdHeader = "fa89bcf8-3607-419f-a4b3-151312f5154b"
+			b3RequestIdHeader = fmt.Sprintf(`"trace-id":"%s"`, strings.Replace(requestIdHeader, "-", "", -1))
 		})
 
 		It("fails", func() {
-			status, body := Request(rep.SimResetRoute, nil, nil)
+			status, body := RequestTracing(rep.SimResetRoute, nil, nil, requestIdHeader)
 			Expect(status).To(Equal(http.StatusInternalServerError))
 			Expect(body).To(BeEmpty())
 
 			Expect(fakeLocalRep.ResetCallCount()).To(Equal(1))
+
+			Eventually(logger).Should(gbytes.Say("failed-to-reset"))
+			Eventually(logger).Should(gbytes.Say(b3RequestIdHeader))
 		})
 
 		It("emits the failed request metrics", func() {
-			Request(rep.SimResetRoute, nil, nil)
+			RequestTracing(rep.SimResetRoute, nil, nil, requestIdHeader)
 
 			Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(0))
 
@@ -84,6 +98,9 @@ var _ = Describe("Reset", func() {
 			calledRequestType, delta := fakeRequestMetrics.IncrementRequestsFailedCounterArgsForCall(0)
 			Expect(delta).To(Equal(1))
 			Expect(calledRequestType).To(Equal("Reset"))
+
+			Eventually(logger).Should(gbytes.Say("failed-to-reset"))
+			Eventually(logger).Should(gbytes.Say(b3RequestIdHeader))
 		})
 	})
 })

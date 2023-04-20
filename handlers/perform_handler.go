@@ -28,7 +28,7 @@ func (h *perform) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager
 	startMetrics(h.metrics, requestType)
 	defer stopMetrics(h.metrics, requestType, start, &deferErr)
 
-	logger = logger.Session("auction-perform-work")
+	logger = logger.Session("auction-perform-work").WithTraceInfo(r)
 	var work rep.Work
 	deferErr = json.NewDecoder(r.Body).Decode(&work)
 	if deferErr != nil {

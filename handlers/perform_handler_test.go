@@ -3,7 +3,9 @@ package handlers_test
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"code.cloudfoundry.org/lager/v3"
@@ -11,6 +13,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("Perform", func() {
@@ -18,6 +21,8 @@ var _ = Describe("Perform", func() {
 		var (
 			requestedWork, failedWork rep.Work
 			requestLatency            time.Duration
+			requestIdHeader           string
+			b3RequestIdHeader         string
 		)
 
 		BeforeEach(func() {
@@ -42,6 +47,9 @@ var _ = Describe("Perform", func() {
 			}
 
 			requestLatency = 50 * time.Millisecond
+
+			requestIdHeader = "eb89bcf8-3901-ff0f-a4b3-151312f5154b"
+			b3RequestIdHeader = fmt.Sprintf(`"trace-id":"%s"`, strings.Replace(requestIdHeader, "-", "", -1))
 		})
 
 		Context("and no perform error", func() {
@@ -60,6 +68,7 @@ var _ = Describe("Perform", func() {
 				Expect(fakeLocalRep.PerformCallCount()).To(Equal(1))
 				_, actualWork := fakeLocalRep.PerformArgsForCall(0)
 				Expect(actualWork).To(Equal(requestedWork))
+
 			})
 
 			It("emits the request metrics", func() {
@@ -97,20 +106,25 @@ var _ = Describe("Perform", func() {
 		Context("and a perform error", func() {
 			BeforeEach(func() {
 				fakeLocalRep.PerformReturns(failedWork, errors.New("kaboom"))
+				requestIdHeader = "eb89bcf8-3901-ff0f-a4b3-151312f5154b"
+				b3RequestIdHeader = fmt.Sprintf(`"trace-id":"%s"`, strings.Replace(requestIdHeader, "-", "", -1))
 			})
 
 			It("fails, returning nothing", func() {
-				status, body := Request(rep.PerformRoute, nil, JSONReaderFor(requestedWork))
+				status, body := RequestTracing(rep.PerformRoute, nil, JSONReaderFor(requestedWork), requestIdHeader)
 				Expect(status).To(Equal(http.StatusInternalServerError))
 				Expect(body).To(BeEmpty())
 
 				Expect(fakeLocalRep.PerformCallCount()).To(Equal(1))
 				_, actualWork := fakeLocalRep.PerformArgsForCall(0)
 				Expect(actualWork).To(Equal(requestedWork))
+
+				Eventually(logger).Should(gbytes.Say("failed-to-perform-work"))
+				Eventually(logger).Should(gbytes.Say(b3RequestIdHeader))
 			})
 
 			It("emits the failed request metrics", func() {
-				Request(rep.PerformRoute, nil, JSONReaderFor(requestedWork))
+				RequestTracing(rep.PerformRoute, nil, JSONReaderFor(requestedWork), requestIdHeader)
 
 				Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(0))
 
@@ -118,17 +132,31 @@ var _ = Describe("Perform", func() {
 				calledRequestType, delta := fakeRequestMetrics.IncrementRequestsFailedCounterArgsForCall(0)
 				Expect(delta).To(Equal(1))
 				Expect(calledRequestType).To(Equal("Perform"))
+
+				Eventually(logger).Should(gbytes.Say("failed-to-perform-work"))
+				Eventually(logger).Should(gbytes.Say(b3RequestIdHeader))
 			})
 		})
 	})
 
 	Context("with invalid JSON", func() {
+		var (
+			requestIdHeader   string
+			b3RequestIdHeader string
+		)
+		BeforeEach(func() {
+			requestIdHeader = "eb89bcf8-3901-ff0f-a4b3-151312f5154b"
+			b3RequestIdHeader = fmt.Sprintf(`"trace-id":"%s"`, strings.Replace(requestIdHeader, "-", "", -1))
+		})
 		It("fails", func() {
-			status, body := Request(rep.PerformRoute, nil, bytes.NewBufferString("∆"))
+			status, body := RequestTracing(rep.PerformRoute, nil, bytes.NewBufferString("∆"), requestIdHeader)
 			Expect(status).To(Equal(http.StatusBadRequest))
 			Expect(body).To(BeEmpty())
 
 			Expect(fakeLocalRep.PerformCallCount()).To(Equal(0))
+
+			Eventually(logger).Should(gbytes.Say("failed-to-unmarshal"))
+			Eventually(logger).Should(gbytes.Say(b3RequestIdHeader))
 		})
 
 		It("emits the failed request metric", func() {

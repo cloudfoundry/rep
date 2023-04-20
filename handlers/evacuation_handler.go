@@ -24,15 +24,11 @@ func newEvacuationHandler(evacuatable evacuation_context.Evacuatable, requestMet
 }
 
 func (h *evacuationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
-	var deferErr error
-	logger = logger.Session("handling-evacuation")
-
 	h.evacuatable.Evacuate()
 
-	var jsonBytes []byte
-	jsonBytes, deferErr = json.Marshal(map[string]string{"ping_path": "/ping"})
-	if deferErr != nil {
-		logger.Error("failed-to-marshal-response-payload", deferErr)
+	jsonBytes, err := json.Marshal(map[string]string{"ping_path": "/ping"})
+	if err != nil {
+		//THIS SHOULD NEVER HAPPEN
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

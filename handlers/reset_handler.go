@@ -26,7 +26,7 @@ func (h *reset) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.L
 	startMetrics(h.metrics, requestType)
 	defer stopMetrics(h.metrics, requestType, start, &deferErr)
 
-	logger = logger.Session("sim-reset")
+	logger = logger.Session("sim-reset").WithTraceInfo(r)
 
 	deferErr = h.rep.Reset()
 	if deferErr != nil {

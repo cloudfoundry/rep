@@ -28,7 +28,7 @@ func (h *state) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.L
 	startMetrics(h.metrics, requestType)
 	defer stopMetrics(h.metrics, requestType, start, &deferErr)
 
-	logger = logger.Session("auction-fetch-state")
+	logger = logger.Session("auction-fetch-state").WithTraceInfo(r)
 
 	var state rep.CellState
 	var healthy bool

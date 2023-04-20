@@ -40,7 +40,7 @@ func (h *UpdateLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	logger = logger.Session("handling-update-lrp-instance", lager.Data{
 		"process-guid":  processGuid,
 		"instance-guid": instanceGuid,
-	})
+	}).WithTraceInfo(r)
 
 	if processGuid == "" {
 		deferErr = errors.New("process_guid missing from request")

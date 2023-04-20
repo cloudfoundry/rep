@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	executorfakes "code.cloudfoundry.org/executor/fakes"
+	"code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/locket/metrics/helpers/helpersfakes"
 	"code.cloudfoundry.org/rep"
@@ -41,6 +42,7 @@ var (
 
 var _ = BeforeEach(func() {
 	logger = lagertest.NewTestLogger("handlers")
+	logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 
 	fakeLocalRep = new(auctioncellrepfakes.FakeAuctionCellClient)
 	fakeMetricCollector = new(handlersfakes.FakeMetricCollector)
@@ -76,6 +78,22 @@ func JSONReaderFor(obj interface{}) io.Reader {
 
 func Request(name string, params rata.Params, body io.Reader) (statusCode int, responseBody []byte) {
 	request, err := requestGenerator.CreateRequest(name, params, body)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	response, err := client.Do(request)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	responseBody, err = ioutil.ReadAll(response.Body)
+	response.Body.Close()
+
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	return response.StatusCode, responseBody
+}
+
+func RequestTracing(name string, params rata.Params, body io.Reader, requestIdHeader string) (statusCode int, responseBody []byte) {
+	request, err := requestGenerator.CreateRequest(name, params, body)
+	request.Header.Set(lager.RequestIdHeader, requestIdHeader)
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 	response, err := client.Do(request)

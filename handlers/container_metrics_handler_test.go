@@ -2,7 +2,9 @@ package handlers_test
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"code.cloudfoundry.org/lager/v3"
@@ -10,12 +12,15 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("ContainerMetrics", func() {
 	var (
-		containerMetrics *rep.ContainerMetricsCollection
-		requestLatency   time.Duration
+		containerMetrics  *rep.ContainerMetricsCollection
+		requestLatency    time.Duration
+		requestIdHeader   = "fa89bcf8-3607-419f-a4b3-151312f5154b"
+		b3RequestIdHeader = fmt.Sprintf(`"trace-id":"%s"`, strings.Replace(requestIdHeader, "-", "", -1))
 	)
 
 	BeforeEach(func() {
@@ -108,14 +113,15 @@ var _ = Describe("ContainerMetrics", func() {
 		It("fails", func() {
 			Expect(fakeMetricCollector.MetricsCallCount()).To(Equal(0))
 
-			status, body := Request(rep.ContainerMetricsRoute, nil, nil)
+			status, body := RequestTracing(rep.ContainerMetricsRoute, nil, nil, requestIdHeader)
 			Expect(status).To(Equal(http.StatusInternalServerError))
 			Expect(body).To(BeEmpty())
 			Expect(fakeMetricCollector.MetricsCallCount()).To(Equal(1))
+			Eventually(logger).Should(gbytes.Say(b3RequestIdHeader))
 		})
 
 		It("emits the failed request metrics", func() {
-			Request(rep.ContainerMetricsRoute, nil, nil)
+			RequestTracing(rep.ContainerMetricsRoute, nil, nil, requestIdHeader)
 
 			Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(0))
 
@@ -123,6 +129,8 @@ var _ = Describe("ContainerMetrics", func() {
 			calledRequestType, delta := fakeRequestMetrics.IncrementRequestsFailedCounterArgsForCall(0)
 			Expect(delta).To(Equal(1))
 			Expect(calledRequestType).To(Equal("ContainerMetrics"))
+			Eventually(logger).Should(gbytes.Say("failed-to-fetch-container-metrics"))
+			Eventually(logger).Should(gbytes.Say(b3RequestIdHeader))
 		})
 	})
 })
