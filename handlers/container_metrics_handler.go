@@ -32,7 +32,7 @@ func (h *containerMetrics) ServeHTTP(w http.ResponseWriter, r *http.Request, log
 	startMetrics(h.metrics, requestType)
 	defer stopMetrics(h.metrics, requestType, start, &deferErr)
 
-	logger = logger.Session("container-metrics-handler")
+	logger = logger.Session("container-metrics-handler").WithTraceInfo(r)
 
 	var metricsCollector *rep.ContainerMetricsCollection
 

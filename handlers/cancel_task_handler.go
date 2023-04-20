@@ -31,7 +31,7 @@ func (h *cancelTaskHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, lo
 	}()
 
 	taskGuid := r.FormValue(":task_guid")
-	logger = logger.Session("cancel-task", lager.Data{"instance-guid": taskGuid})
+	logger = logger.Session("cancel-task", lager.Data{"instance-guid": taskGuid}).WithTraceInfo(r)
 
 	w.WriteHeader(http.StatusAccepted)
 

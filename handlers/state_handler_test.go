@@ -2,7 +2,9 @@ package handlers_test
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"code.cloudfoundry.org/lager/v3"
@@ -10,6 +12,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("State", func() {
@@ -68,32 +71,53 @@ var _ = Describe("State", func() {
 	})
 
 	Context("when the state call is not healthy", func() {
+		var (
+			requestIdHeader   string
+			b3RequestIdHeader string
+		)
+
 		BeforeEach(func() {
 			fakeLocalRep.StateReturns(repState, false, nil)
+
+			requestIdHeader = "fa89bcf8-3607-419f-a4b3-151312f5154b"
+			b3RequestIdHeader = fmt.Sprintf(`"trace-id":"%s"`, strings.Replace(requestIdHeader, "-", "", -1))
 		})
 
 		It("returns a StatusServiceUnavailable", func() {
-			status, body := Request(rep.StateRoute, nil, nil)
+			status, body := RequestTracing(rep.StateRoute, nil, nil, requestIdHeader)
 			Expect(status).To(Equal(http.StatusServiceUnavailable))
 			Expect(body).To(MatchJSON(JSONFor(repState)))
 			Expect(fakeLocalRep.StateCallCount()).To(Equal(1))
+
+			Eventually(logger).Should(gbytes.Say("cell-not-healthy"))
+			Eventually(logger).Should(gbytes.Say(b3RequestIdHeader))
 		})
 	})
 
 	Context("when the state call fails", func() {
+		var (
+			requestIdHeader   string
+			b3RequestIdHeader string
+		)
+
 		BeforeEach(func() {
 			fakeLocalRep.StateReturns(rep.CellState{}, false, errors.New("boom"))
+
+			requestIdHeader = "fa89bcf8-3607-419f-a4b3-151312f5154b"
+			b3RequestIdHeader = fmt.Sprintf(`"trace-id":"%s"`, strings.Replace(requestIdHeader, "-", "", -1))
 		})
 
 		It("fails", func() {
-			status, body := Request(rep.StateRoute, nil, nil)
+			status, body := RequestTracing(rep.StateRoute, nil, nil, requestIdHeader)
 			Expect(status).To(Equal(http.StatusInternalServerError))
 			Expect(body).To(BeEmpty())
 			Expect(fakeLocalRep.StateCallCount()).To(Equal(1))
+			Eventually(logger).Should(gbytes.Say("failed-to-fetch-state"))
+			Eventually(logger).Should(gbytes.Say(b3RequestIdHeader))
 		})
 
 		It("emits the failed request metrics", func() {
-			Request(rep.StateRoute, nil, nil)
+			RequestTracing(rep.StateRoute, nil, nil, requestIdHeader)
 
 			Expect(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).To(Equal(0))
 
@@ -101,6 +125,9 @@ var _ = Describe("State", func() {
 			calledRequestType, delta := fakeRequestMetrics.IncrementRequestsFailedCounterArgsForCall(0)
 			Expect(delta).To(Equal(1))
 			Expect(calledRequestType).To(Equal("State"))
+
+			Eventually(logger).Should(gbytes.Say("failed-to-fetch-state"))
+			Eventually(logger).Should(gbytes.Say(b3RequestIdHeader))
 		})
 	})
 })

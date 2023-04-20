@@ -3,10 +3,12 @@ package handlers_test
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
@@ -20,6 +22,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("UpdateLRPInstanceHandler", func() {
@@ -33,6 +36,9 @@ var _ = Describe("UpdateLRPInstanceHandler", func() {
 		instanceGuid          string
 		internalRoutes        internalroutes.InternalRoutes
 		metricTags            map[string]string
+
+		requestIdHeader   string
+		b3RequestIdHeader string
 	)
 
 	BeforeEach(func() {
@@ -58,6 +64,10 @@ var _ = Describe("UpdateLRPInstanceHandler", func() {
 		lrpUpdate := rep.NewLRPUpdate(instanceGuid, k, internalRoutes, metricTags)
 		req, err = http.NewRequest("PUT", "", JSONReaderFor(lrpUpdate))
 		Expect(err).NotTo(HaveOccurred())
+
+		requestIdHeader = "fa89bde2-3607-419f-a4b3-151312f5515c"
+		req.Header.Set(lager.RequestIdHeader, requestIdHeader)
+		b3RequestIdHeader = fmt.Sprintf(`"trace-id":"%s"`, strings.Replace(requestIdHeader, "-", "", -1))
 	})
 
 	JustBeforeEach(func() {
@@ -143,6 +153,10 @@ var _ = Describe("UpdateLRPInstanceHandler", func() {
 				Expect(delta).To(Equal(1))
 				Expect(calledRequestType).To(Equal("UpdateLRPInstance"))
 			})
+
+			It("logs the event-id", func() {
+				Eventually(logger).Should(gbytes.Say(b3RequestIdHeader))
+			})
 		})
 	})
 
@@ -166,6 +180,10 @@ var _ = Describe("UpdateLRPInstanceHandler", func() {
 			calledRequestType, delta := fakeRequestMetrics.IncrementRequestsFailedCounterArgsForCall(0)
 			Expect(delta).To(Equal(1))
 			Expect(calledRequestType).To(Equal("UpdateLRPInstance"))
+		})
+
+		It("logs the event-id", func() {
+			Eventually(logger).Should(gbytes.Say(b3RequestIdHeader))
 		})
 	})
 })

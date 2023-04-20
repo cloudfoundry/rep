@@ -368,7 +368,8 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 		return work, nil
 	}
 
-	failedWork.LRPs = append(failedWork.LRPs, a.allocator.BatchLRPAllocationRequest(logger, a.enableContainerProxy, a.proxyMemoryAllocation, lrpRequests)...)
+	unallocatedLRPs := a.allocator.BatchLRPAllocationRequest(logger, a.enableContainerProxy, a.proxyMemoryAllocation, lrpRequests)
+	failedWork.LRPs = append(failedWork.LRPs, unallocatedLRPs...)
 	failedWork.Tasks = a.allocator.BatchTaskAllocationRequest(logger, work.Tasks)
 
 	return failedWork, nil

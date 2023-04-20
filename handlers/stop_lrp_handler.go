@@ -39,7 +39,7 @@ func (h *StopLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	logger = logger.Session("handling-stop-lrp-instance", lager.Data{
 		"process-guid":  processGuid,
 		"instance-guid": instanceGuid,
-	})
+	}).WithTraceInfo(r)
 
 	if processGuid == "" {
 		deferErr = errors.New("process_guid missing from request")

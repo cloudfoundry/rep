@@ -25,8 +25,8 @@ func newEvacuationHandler(evacuatable evacuation_context.Evacuatable, requestMet
 
 func (h *evacuationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager.Logger) {
 	var deferErr error
+	//TODO: Come back to this
 	logger = logger.Session("handling-evacuation")
-
 	h.evacuatable.Evacuate()
 
 	var jsonBytes []byte

@@ -2,20 +2,30 @@ package handlers_test
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/rep"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("CancelTask", func() {
-	var params map[string]string
-
+	var (
+		params            map[string]string
+		requestIdHeader   string
+		b3RequestIdHeader string
+	)
+	// var server *httptest.Server
 	BeforeEach(func() {
+		requestIdHeader = "fa89bcf8-3607-419f-a4b3-151312f5154b"
+		b3RequestIdHeader = fmt.Sprintf(`"trace-id":"%s"`, strings.Replace(requestIdHeader, "-", "", -1))
 		params = map[string]string{"task_guid": "some-guid"}
+		// server = httptest.NewServer(exportedHandler)
 	})
 
 	Context("when the container deletion succeeds", func() {
@@ -25,6 +35,7 @@ var _ = Describe("CancelTask", func() {
 
 		It("responds with Accepted status", func() {
 			status, _ := Request(rep.CancelTaskRoute, params, nil)
+
 			Expect(status).To(Equal(http.StatusAccepted))
 
 			Eventually(fakeExecutorClient.DeleteContainerCallCount).Should(Equal(1))
@@ -33,7 +44,9 @@ var _ = Describe("CancelTask", func() {
 		})
 
 		It("emits request metrics", func() {
-			Request(rep.CancelTaskRoute, params, nil)
+			RequestTracing(rep.CancelTaskRoute, params, nil, requestIdHeader)
+			Eventually(logger).Should(gbytes.Say("deleting-container"))
+			Eventually(logger).Should(gbytes.Say(b3RequestIdHeader))
 
 			Expect(fakeRequestMetrics.IncrementRequestsStartedCounterCallCount()).To(Equal(1))
 			calledRequestType, delta := fakeRequestMetrics.IncrementRequestsStartedCounterArgsForCall(0)
@@ -69,12 +82,18 @@ var _ = Describe("CancelTask", func() {
 		})
 
 		It("responds with Accepted status", func() {
-			status, _ := Request(rep.CancelTaskRoute, params, nil)
+			status, _ := RequestTracing(rep.CancelTaskRoute, params, nil, requestIdHeader)
+
 			Expect(status).To(Equal(http.StatusAccepted))
 
 			Eventually(fakeExecutorClient.DeleteContainerCallCount).Should(Equal(1))
 			_, taskGuidArg := fakeExecutorClient.DeleteContainerArgsForCall(0)
 			Expect(taskGuidArg).To(Equal("some-guid"))
+
+			Eventually(logger).Should(gbytes.Say("cancel-task"))
+			Eventually(logger).Should(gbytes.Say("deleting-container"))
+			Eventually(logger).Should(gbytes.Say("container-not-found"))
+			Eventually(logger).Should(gbytes.Say(b3RequestIdHeader))
 		})
 
 		It("emits success request metric", func() {
@@ -104,7 +123,7 @@ var _ = Describe("CancelTask", func() {
 		})
 
 		It("emits failed request metric", func() {
-			Request(rep.CancelTaskRoute, params, nil)
+			RequestTracing(rep.CancelTaskRoute, params, nil, requestIdHeader)
 
 			Consistently(fakeRequestMetrics.IncrementRequestsSucceededCounterCallCount()).Should(Equal(0))
 
@@ -112,6 +131,10 @@ var _ = Describe("CancelTask", func() {
 			calledRequestType, delta := fakeRequestMetrics.IncrementRequestsFailedCounterArgsForCall(0)
 			Expect(delta).To(Equal(1))
 			Expect(calledRequestType).To(Equal("CancelTask"))
+
+			Eventually(logger).Should(gbytes.Say("deleting-container"))
+			Eventually(logger).Should(gbytes.Say("failed-deleting-container"))
+			Eventually(logger).Should(gbytes.Say(b3RequestIdHeader))
 		})
 	})
 })

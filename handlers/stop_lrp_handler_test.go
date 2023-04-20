@@ -3,10 +3,12 @@ package handlers_test
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"time"
 
 	executorfakes "code.cloudfoundry.org/executor/fakes"
@@ -16,6 +18,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("StopLRPInstanceHandler", func() {
@@ -25,6 +28,8 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 		resp                *httptest.ResponseRecorder
 		req                 *http.Request
 		logger              *lagertest.TestLogger
+		requestIdHeader     string
+		b3RequestIdHeader   string
 	)
 
 	BeforeEach(func() {
@@ -41,6 +46,10 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 
 		req, err = http.NewRequest("POST", "", nil)
 		Expect(err).NotTo(HaveOccurred())
+
+		requestIdHeader = "fa89bde2-3607-419f-a4b3-151312f5154b"
+		req.Header.Set(lager.RequestIdHeader, requestIdHeader)
+		b3RequestIdHeader = fmt.Sprintf(`"trace-id":"%s"`, strings.Replace(requestIdHeader, "-", "", -1))
 	})
 
 	JustBeforeEach(func() {
@@ -129,6 +138,9 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 				calledRequestType, delta := fakeRequestMetrics.IncrementRequestsFailedCounterArgsForCall(0)
 				Expect(delta).To(Equal(1))
 				Expect(calledRequestType).To(Equal("StopLRPInstance"))
+
+				Eventually(logger).Should(gbytes.Say("failed-to-stop-container"))
+				Eventually(logger).Should(gbytes.Say(b3RequestIdHeader))
 			})
 		})
 	})
@@ -153,6 +165,10 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 			calledRequestType, delta := fakeRequestMetrics.IncrementRequestsFailedCounterArgsForCall(0)
 			Expect(delta).To(Equal(1))
 			Expect(calledRequestType).To(Equal("StopLRPInstance"))
+		})
+		It("logs the error with trace-id", func() {
+			Eventually(logger).Should(gbytes.Say("missing-process-guid"))
+			Eventually(logger).Should(gbytes.Say(b3RequestIdHeader))
 		})
 	})
 })
