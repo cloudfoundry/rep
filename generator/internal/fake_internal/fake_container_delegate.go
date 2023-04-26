@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"code.cloudfoundry.org/executor"
-	"code.cloudfoundry.org/lager/v3"
+	lager "code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/rep/generator/internal"
 )
 

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/bbs/trace"
 	"code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/tlsconfig"
 	"github.com/tedsuo/rata"
@@ -21,7 +22,7 @@ import (
 //go:generate counterfeiter -o repfakes/fake_client_factory.go . ClientFactory
 
 type ClientFactory interface {
-	CreateClient(address, url string) (Client, error)
+	CreateClient(address, url, traceID string) (Client, error)
 }
 
 // capture the behavior described in the comment of this story
@@ -127,13 +128,13 @@ func NewClientFactory(httpClient, stateClient *http.Client, tlsConfig *TLSConfig
 	}, nil
 }
 
-func (factory *clientFactory) CreateClient(address, url string) (Client, error) {
+func (factory *clientFactory) CreateClient(address, url, traceID string) (Client, error) {
 	urlToUse, err := factory.tlsConfig.pickURL(address, url)
 	if err != nil {
 		return nil, err
 	}
 
-	return newClient(factory.httpClient, factory.stateClient, urlToUse), nil
+	return newClient(factory.httpClient, factory.stateClient, urlToUse, traceID), nil
 }
 
 //go:generate counterfeiter -o repfakes/fake_client.go . Client
@@ -162,12 +163,16 @@ type client struct {
 	requestGenerator *rata.RequestGenerator
 }
 
-func newClient(httpClient, stateClient *http.Client, address string) Client {
+func newClient(httpClient, stateClient *http.Client, address string, traceID string) Client {
+	requestGenerator := rata.NewRequestGenerator(address, Routes)
+	if traceID != "" {
+		requestGenerator.Header.Add(trace.RequestIdHeader, traceID)
+	}
 	return &client{
 		client:           httpClient,
 		stateClient:      stateClient,
 		address:          address,
-		requestGenerator: rata.NewRequestGenerator(address, Routes),
+		requestGenerator: requestGenerator,
 	}
 }
 

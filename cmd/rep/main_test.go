@@ -650,7 +650,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 				_, p, err := net.SplitHostPort(u.Host)
 				Expect(err).NotTo(HaveOccurred())
 				u.Host = net.JoinHostPort("127.0.0.1", p) // no dns lookup in unit tests
-				repClient, err = factory.CreateClient("", u.String())
+				repClient, err = factory.CreateClient("", u.String(), "")
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -971,7 +971,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 			})
 
 			canConnectSuccessfully := func() {
-				client, err := clientFactory.CreateClient("", addr)
+				client, err := clientFactory.CreateClient("", addr, "")
 				Expect(err).NotTo(HaveOccurred())
 				_, err = client.State(logger)
 				Expect(err).NotTo(HaveOccurred())
@@ -983,7 +983,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 				})
 
 				It("cannot create a new client using the address", func() {
-					_, err := clientFactory.CreateClient("", addr)
+					_, err := clientFactory.CreateClient("", addr, "")
 					Expect(err).To(MatchError(ContainSubstring("https scheme not supported")))
 				})
 			})
