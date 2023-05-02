@@ -27,7 +27,7 @@ func newLRPContainer(lrpKey *models.ActualLRPKey, instanceKey *models.ActualLRPI
 //go:generate counterfeiter -o fake_internal/fake_lrp_processor.go lrp_processor.go LRPProcessor
 
 type LRPProcessor interface {
-	Process(lager.Logger, executor.Container)
+	Process(lager.Logger, string, executor.Container)
 }
 
 type lrpProcessor struct {
@@ -54,10 +54,10 @@ func NewLRPProcessor(
 	}
 }
 
-func (p *lrpProcessor) Process(logger lager.Logger, container executor.Container) {
+func (p *lrpProcessor) Process(logger lager.Logger, traceID string, container executor.Container) {
 	if p.evacuationReporter.Evacuating() {
-		p.evacuationProcessor.Process(logger, container)
+		p.evacuationProcessor.Process(logger, traceID, container)
 	} else {
-		p.ordinaryProcessor.Process(logger, container)
+		p.ordinaryProcessor.Process(logger, traceID, container)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"code.cloudfoundry.org/bbs/trace"
 	"code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/locket/metrics/helpers"
 	"code.cloudfoundry.org/rep"
@@ -38,7 +39,7 @@ func (h *perform) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager
 	}
 
 	var failedWork rep.Work
-	failedWork, deferErr = h.rep.Perform(logger, work)
+	failedWork, deferErr = h.rep.Perform(logger, trace.RequestIdFromRequest(r), work)
 	if deferErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		logger.Error("failed-to-perform-work", deferErr)

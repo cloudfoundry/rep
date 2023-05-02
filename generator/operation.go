@@ -13,6 +13,7 @@ import (
 // ResidualInstanceLRPOperation processes an instance ActualLRP with no matching container.
 type ResidualInstanceLRPOperation struct {
 	logger            lager.Logger
+	traceID           string
 	bbsClient         bbs.InternalClient
 	containerDelegate internal.ContainerDelegate
 	models.ActualLRPKey
@@ -20,6 +21,7 @@ type ResidualInstanceLRPOperation struct {
 }
 
 func NewResidualInstanceLRPOperation(logger lager.Logger,
+	traceID string,
 	bbsClient bbs.InternalClient,
 	containerDelegate internal.ContainerDelegate,
 	lrpKey models.ActualLRPKey,
@@ -27,6 +29,7 @@ func NewResidualInstanceLRPOperation(logger lager.Logger,
 ) *ResidualInstanceLRPOperation {
 	return &ResidualInstanceLRPOperation{
 		logger:               logger,
+		traceID:              traceID,
 		bbsClient:            bbsClient,
 		containerDelegate:    containerDelegate,
 		ActualLRPKey:         lrpKey,
@@ -52,7 +55,7 @@ func (o *ResidualInstanceLRPOperation) Execute() {
 		return
 	}
 
-	o.bbsClient.RemoveActualLRP(logger, &o.ActualLRPKey, &models.ActualLRPInstanceKey{
+	o.bbsClient.RemoveActualLRP(logger, o.traceID, &o.ActualLRPKey, &models.ActualLRPInstanceKey{
 		InstanceGuid: o.InstanceGuid,
 		CellId:       o.CellId,
 	})
@@ -61,6 +64,7 @@ func (o *ResidualInstanceLRPOperation) Execute() {
 // ResidualEvacuatingLRPOperation processes an evacuating ActualLRP with no matching container.
 type ResidualEvacuatingLRPOperation struct {
 	logger            lager.Logger
+	traceID           string
 	bbsClient         bbs.InternalClient
 	containerDelegate internal.ContainerDelegate
 	models.ActualLRPKey
@@ -68,6 +72,7 @@ type ResidualEvacuatingLRPOperation struct {
 }
 
 func NewResidualEvacuatingLRPOperation(logger lager.Logger,
+	traceID string,
 	bbsClient bbs.InternalClient,
 	containerDelegate internal.ContainerDelegate,
 	lrpKey models.ActualLRPKey,
@@ -75,6 +80,7 @@ func NewResidualEvacuatingLRPOperation(logger lager.Logger,
 ) *ResidualEvacuatingLRPOperation {
 	return &ResidualEvacuatingLRPOperation{
 		logger:               logger,
+		traceID:              traceID,
 		bbsClient:            bbsClient,
 		containerDelegate:    containerDelegate,
 		ActualLRPKey:         lrpKey,
@@ -100,12 +106,13 @@ func (o *ResidualEvacuatingLRPOperation) Execute() {
 		return
 	}
 
-	o.bbsClient.RemoveEvacuatingActualLRP(logger, &o.ActualLRPKey, &o.ActualLRPInstanceKey)
+	o.bbsClient.RemoveEvacuatingActualLRP(logger, o.traceID, &o.ActualLRPKey, &o.ActualLRPInstanceKey)
 }
 
 // ResidualJointLRPOperation processes an evacuating ActualLRP with no matching container.
 type ResidualJointLRPOperation struct {
 	logger            lager.Logger
+	traceID           string
 	bbsClient         bbs.InternalClient
 	containerDelegate internal.ContainerDelegate
 	models.ActualLRPKey
@@ -113,6 +120,7 @@ type ResidualJointLRPOperation struct {
 }
 
 func NewResidualJointLRPOperation(logger lager.Logger,
+	traceID string,
 	bbsClient bbs.InternalClient,
 	containerDelegate internal.ContainerDelegate,
 	lrpKey models.ActualLRPKey,
@@ -121,6 +129,7 @@ func NewResidualJointLRPOperation(logger lager.Logger,
 	return &ResidualJointLRPOperation{
 		bbsClient:            bbsClient,
 		logger:               logger,
+		traceID:              traceID,
 		containerDelegate:    containerDelegate,
 		ActualLRPKey:         lrpKey,
 		ActualLRPInstanceKey: instanceKey,
@@ -147,13 +156,14 @@ func (o *ResidualJointLRPOperation) Execute() {
 
 	actualLRPKey := models.NewActualLRPKey(o.ProcessGuid, int32(o.Index), o.Domain)
 	actualLRPInstanceKey := models.NewActualLRPInstanceKey(o.InstanceGuid, o.CellId)
-	o.bbsClient.RemoveActualLRP(logger, &o.ActualLRPKey, &o.ActualLRPInstanceKey)
-	o.bbsClient.RemoveEvacuatingActualLRP(logger, &actualLRPKey, &actualLRPInstanceKey)
+	o.bbsClient.RemoveActualLRP(logger, o.traceID, &o.ActualLRPKey, &o.ActualLRPInstanceKey)
+	o.bbsClient.RemoveEvacuatingActualLRP(logger, o.traceID, &actualLRPKey, &actualLRPInstanceKey)
 }
 
 // ResidualTaskOperation processes a Task with no matching container.
 type ResidualTaskOperation struct {
 	logger            lager.Logger
+	traceID           string
 	TaskGuid          string
 	CellId            string
 	bbsClient         bbs.InternalClient
@@ -162,6 +172,7 @@ type ResidualTaskOperation struct {
 
 func NewResidualTaskOperation(
 	logger lager.Logger,
+	traceID string,
 	taskGuid string,
 	cellId string,
 	bbsClient bbs.InternalClient,
@@ -169,6 +180,7 @@ func NewResidualTaskOperation(
 ) *ResidualTaskOperation {
 	return &ResidualTaskOperation{
 		logger:            logger,
+		traceID:           traceID,
 		TaskGuid:          taskGuid,
 		CellId:            cellId,
 		bbsClient:         bbsClient,
@@ -193,7 +205,7 @@ func (o *ResidualTaskOperation) Execute() {
 		return
 	}
 
-	err := o.bbsClient.CompleteTask(logger, o.TaskGuid, o.CellId, true, internal.TaskCompletionReasonMissingContainer, internal.TaskCompletionReasonMissingContainer)
+	err := o.bbsClient.CompleteTask(logger, o.traceID, o.TaskGuid, o.CellId, true, internal.TaskCompletionReasonMissingContainer, internal.TaskCompletionReasonMissingContainer)
 	if err != nil {
 		logger.Error("failed-to-complete-task", err)
 	}
@@ -203,6 +215,7 @@ func (o *ResidualTaskOperation) Execute() {
 // bbs or container operations necessary to harmonize the state of the world.
 type ContainerOperation struct {
 	logger            lager.Logger
+	traceID           string
 	lrpProcessor      internal.LRPProcessor
 	taskProcessor     internal.TaskProcessor
 	containerDelegate internal.ContainerDelegate
@@ -211,6 +224,7 @@ type ContainerOperation struct {
 
 func NewContainerOperation(
 	logger lager.Logger,
+	traceID string,
 	lrpProcessor internal.LRPProcessor,
 	taskProcessor internal.TaskProcessor,
 	containerDelegate internal.ContainerDelegate,
@@ -218,6 +232,7 @@ func NewContainerOperation(
 ) *ContainerOperation {
 	return &ContainerOperation{
 		logger:            logger,
+		traceID:           traceID,
 		lrpProcessor:      lrpProcessor,
 		taskProcessor:     taskProcessor,
 		containerDelegate: containerDelegate,
@@ -250,11 +265,11 @@ func (o *ContainerOperation) Execute() {
 
 	switch lifecycle {
 	case rep.LRPLifecycle:
-		o.lrpProcessor.Process(logger, container)
+		o.lrpProcessor.Process(logger, o.traceID, container)
 		return
 
 	case rep.TaskLifecycle:
-		o.taskProcessor.Process(logger, container)
+		o.taskProcessor.Process(logger, o.traceID, container)
 		return
 
 	default:

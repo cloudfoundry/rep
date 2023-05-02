@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"code.cloudfoundry.org/bbs/trace"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/locket/metrics/helpers"
@@ -55,7 +56,8 @@ func (h *StopLRPInstanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	deferErr = h.client.StopContainer(logger, rep.LRPContainerGuid(processGuid, instanceGuid))
+	traceID := trace.RequestIdFromRequest(r)
+	deferErr = h.client.StopContainer(logger, traceID, rep.LRPContainerGuid(processGuid, instanceGuid))
 	if deferErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		logger.Error("failed-to-stop-container", deferErr)

@@ -10,11 +10,12 @@ import (
 )
 
 type FakeAuctionCellClient struct {
-	PerformStub        func(lager.Logger, rep.Work) (rep.Work, error)
+	PerformStub        func(lager.Logger, string, rep.Work) (rep.Work, error)
 	performMutex       sync.RWMutex
 	performArgsForCall []struct {
 		arg1 lager.Logger
-		arg2 rep.Work
+		arg2 string
+		arg3 rep.Work
 	}
 	performReturns struct {
 		result1 rep.Work
@@ -53,19 +54,20 @@ type FakeAuctionCellClient struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeAuctionCellClient) Perform(arg1 lager.Logger, arg2 rep.Work) (rep.Work, error) {
+func (fake *FakeAuctionCellClient) Perform(arg1 lager.Logger, arg2 string, arg3 rep.Work) (rep.Work, error) {
 	fake.performMutex.Lock()
 	ret, specificReturn := fake.performReturnsOnCall[len(fake.performArgsForCall)]
 	fake.performArgsForCall = append(fake.performArgsForCall, struct {
 		arg1 lager.Logger
-		arg2 rep.Work
-	}{arg1, arg2})
+		arg2 string
+		arg3 rep.Work
+	}{arg1, arg2, arg3})
 	stub := fake.PerformStub
 	fakeReturns := fake.performReturns
-	fake.recordInvocation("Perform", []interface{}{arg1, arg2})
+	fake.recordInvocation("Perform", []interface{}{arg1, arg2, arg3})
 	fake.performMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2)
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -79,17 +81,17 @@ func (fake *FakeAuctionCellClient) PerformCallCount() int {
 	return len(fake.performArgsForCall)
 }
 
-func (fake *FakeAuctionCellClient) PerformCalls(stub func(lager.Logger, rep.Work) (rep.Work, error)) {
+func (fake *FakeAuctionCellClient) PerformCalls(stub func(lager.Logger, string, rep.Work) (rep.Work, error)) {
 	fake.performMutex.Lock()
 	defer fake.performMutex.Unlock()
 	fake.PerformStub = stub
 }
 
-func (fake *FakeAuctionCellClient) PerformArgsForCall(i int) (lager.Logger, rep.Work) {
+func (fake *FakeAuctionCellClient) PerformArgsForCall(i int) (lager.Logger, string, rep.Work) {
 	fake.performMutex.RLock()
 	defer fake.performMutex.RUnlock()
 	argsForCall := fake.performArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *FakeAuctionCellClient) PerformReturns(result1 rep.Work, result2 error) {

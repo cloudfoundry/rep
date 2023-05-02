@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"code.cloudfoundry.org/bbs/trace"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/locket/metrics/helpers"
@@ -38,7 +39,7 @@ func (h *cancelTaskHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, lo
 	go func() {
 		logger.Info("deleting-container")
 
-		err := h.executorClient.DeleteContainer(logger, taskGuid)
+		err := h.executorClient.DeleteContainer(logger, trace.RequestIdFromRequest(r), taskGuid)
 		switch err {
 		case nil:
 			logger.Info("succeeded-deleting-container")

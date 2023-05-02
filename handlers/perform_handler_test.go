@@ -54,19 +54,20 @@ var _ = Describe("Perform", func() {
 
 		Context("and no perform error", func() {
 			BeforeEach(func() {
-				fakeLocalRep.PerformStub = func(logger lager.Logger, work rep.Work) (rep.Work, error) {
+				fakeLocalRep.PerformStub = func(logger lager.Logger, traceID string, work rep.Work) (rep.Work, error) {
 					time.Sleep(requestLatency)
 					return failedWork, nil
 				}
 			})
 
 			It("succeeds, returning any failed work", func() {
-				status, body := Request(rep.PerformRoute, nil, JSONReaderFor(requestedWork))
+				status, body := RequestTracing(rep.PerformRoute, nil, JSONReaderFor(requestedWork), requestIdHeader)
 				Expect(status).To(Equal(http.StatusOK))
 				Expect(body).To(MatchJSON(JSONFor(failedWork)))
 
 				Expect(fakeLocalRep.PerformCallCount()).To(Equal(1))
-				_, actualWork := fakeLocalRep.PerformArgsForCall(0)
+				_, traceID, actualWork := fakeLocalRep.PerformArgsForCall(0)
+				Expect(traceID).To(Equal(requestIdHeader))
 				Expect(actualWork).To(Equal(requestedWork))
 
 			})
@@ -116,7 +117,8 @@ var _ = Describe("Perform", func() {
 				Expect(body).To(BeEmpty())
 
 				Expect(fakeLocalRep.PerformCallCount()).To(Equal(1))
-				_, actualWork := fakeLocalRep.PerformArgsForCall(0)
+				_, traceID, actualWork := fakeLocalRep.PerformArgsForCall(0)
+				Expect(traceID).To(Equal(requestIdHeader))
 				Expect(actualWork).To(Equal(requestedWork))
 
 				Eventually(logger).Should(gbytes.Say("failed-to-perform-work"))

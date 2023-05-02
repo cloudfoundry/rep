@@ -65,7 +65,9 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 		logger.Info("signalled", lager.Data{"signal": signal})
 	}
 
-	actualLRPs, err := e.bbsClient.ActualLRPs(logger, models.ActualLRPFilter{CellID: e.cellID})
+	traceID := "" // evacutaion cleanup is not originated through API
+
+	actualLRPs, err := e.bbsClient.ActualLRPs(logger, traceID, models.ActualLRPFilter{CellID: e.cellID})
 	if err != nil {
 		logger.Error("failed-fetching-actual-lrp-groups", err)
 		return err
@@ -78,7 +80,7 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 		}
 
 		strandedEvacuationCount++
-		err = e.bbsClient.RemoveEvacuatingActualLRP(logger, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
+		err = e.bbsClient.RemoveEvacuatingActualLRP(logger, traceID, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
 		if err != nil {
 			logger.Error("failed-removing-evacuating-actual-lrp", err, lager.Data{"lrp-key": actualLRP.ActualLRPKey})
 		}
@@ -98,7 +100,7 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 	checkRunningContainersTimer := e.clock.NewTicker(1 * time.Second)
 	containersSignalled := make(chan struct{})
 	containersDeleted := make(chan struct{})
-	go e.deleteRunningContainers(logger, containersSignalled)
+	go e.deleteRunningContainers(logger, traceID, containersSignalled)
 	go e.checkRunningContainers(logger, checkRunningContainersTimer.C(), containersSignalled, containersDeleted)
 
 	select {
@@ -144,7 +146,7 @@ func (e *EvacuationCleanup) checkRunningContainers(
 	}
 }
 
-func (e *EvacuationCleanup) deleteRunningContainers(logger lager.Logger, containersSignalled chan<- struct{}) {
+func (e *EvacuationCleanup) deleteRunningContainers(logger lager.Logger, traceID string, containersSignalled chan<- struct{}) {
 	defer close(containersSignalled)
 
 	containers, err := e.executorClient.ListContainers(logger)
@@ -161,13 +163,13 @@ func (e *EvacuationCleanup) deleteRunningContainers(logger lager.Logger, contain
 
 		e.metronClient.SendAppLog(fmt.Sprintf("Cell %s reached evacuation timeout for instance %s", e.cellID, container.Guid), sourceName, tags)
 		wg.Add(1)
-		go func(logger lager.Logger, containerGuid string) {
+		go func(logger lager.Logger, traceID string, containerGuid string) {
 			defer wg.Done()
-			err := e.executorClient.DeleteContainer(logger, containerGuid)
+			err := e.executorClient.DeleteContainer(logger, traceID, containerGuid)
 			if err != nil {
 				logger.Error("failed-to-delete-container", err, lager.Data{"container-guid": containerGuid})
 			}
-		}(logger, container.Guid)
+		}(logger, traceID, container.Guid)
 	}
 
 	logger.Info("sent-signal-to-containers")

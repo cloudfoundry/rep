@@ -71,6 +71,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	routineCount := 3
 	errChan := make(chan error, routineCount)
 	logger.Info("getting-containers-lrps-and-tasks")
+	traceID := "" // batch operations are not originated through API
 	go func() {
 		foundContainers, err := g.executorClient.ListContainers(logger)
 		if err != nil {
@@ -86,7 +87,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	}()
 
 	go func() {
-		lrps, err := g.bbs.ActualLRPs(logger, models.ActualLRPFilter{CellID: g.cellID})
+		lrps, err := g.bbs.ActualLRPs(logger, traceID, models.ActualLRPFilter{CellID: g.cellID})
 		if err != nil {
 			logger.Error("failed-to-retrieve-lrps", err)
 			err = fmt.Errorf("failed to retrieve lrps: %s", err.Error())
@@ -103,7 +104,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	}()
 
 	go func() {
-		foundTasks, err := g.bbs.TasksByCellID(logger, g.cellID)
+		foundTasks, err := g.bbs.TasksByCellID(logger, traceID, g.cellID)
 		if err != nil {
 			logger.Error("failed-to-retrieve-tasks", err)
 			err = fmt.Errorf("failed to retrieve tasks: %s", err.Error())
@@ -133,7 +134,8 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 
 	// create operations for processes with containers
 	for guid, _ := range containers {
-		batch[guid] = g.operationFromContainer(logger, guid)
+		// bulker batch operations are not originated with trace ID
+		batch[guid] = g.operationFromContainer(logger, traceID, guid)
 	}
 
 	// create operations for instance lrps with no containers
@@ -142,9 +144,9 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 			continue
 		}
 		if _, foundEvacuatingLRP := evacuatingLRPs[guid]; foundEvacuatingLRP {
-			batch[guid] = NewResidualJointLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
+			batch[guid] = NewResidualJointLRPOperation(logger, traceID, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
 		} else {
-			batch[guid] = NewResidualInstanceLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
+			batch[guid] = NewResidualInstanceLRPOperation(logger, traceID, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
 		}
 	}
 
@@ -152,7 +154,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	for guid, lrp := range evacuatingLRPs {
 		_, found := batch[guid]
 		if !found {
-			batch[guid] = NewResidualEvacuatingLRPOperation(logger, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
+			batch[guid] = NewResidualEvacuatingLRPOperation(logger, traceID, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
 		}
 	}
 
@@ -160,7 +162,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	for guid, _ := range tasks {
 		_, found := batch[guid]
 		if !found {
-			batch[guid] = NewResidualTaskOperation(logger, guid, g.cellID, g.bbs, g.containerDelegate)
+			batch[guid] = NewResidualTaskOperation(logger, traceID, guid, g.cellID, g.bbs, g.containerDelegate)
 		}
 	}
 
@@ -200,13 +202,13 @@ func (g *generator) OperationStream(logger lager.Logger) (<-chan operationq.Oper
 			}
 
 			container := lifecycle.Container()
-			opChan <- g.operationFromContainer(logger, container.Guid)
+			opChan <- g.operationFromContainer(logger, lifecycle.TraceID(), container.Guid)
 		}
 	}()
 
 	return opChan, nil
 }
 
-func (g *generator) operationFromContainer(logger lager.Logger, guid string) operationq.Operation {
-	return NewContainerOperation(logger, g.lrpProcessor, g.taskProcessor, g.containerDelegate, guid)
+func (g *generator) operationFromContainer(logger lager.Logger, traceID string, guid string) operationq.Operation {
+	return NewContainerOperation(logger, traceID, g.lrpProcessor, g.taskProcessor, g.containerDelegate, guid)
 }

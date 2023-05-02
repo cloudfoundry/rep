@@ -67,7 +67,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 			})
 
 			JustBeforeEach(func() {
-				processor.Process(logger, container)
+				processor.Process(logger, "some-trace-id", container)
 			})
 
 			Context("and the container is INVALID", func() {
@@ -90,7 +90,8 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 				It("claims the actualLRP in the bbs", func() {
 					Expect(bbsClient.ClaimActualLRPCallCount()).To(Equal(1))
-					_, actualLRPKey, instanceKey := bbsClient.ClaimActualLRPArgsForCall(0)
+					_, traceID, actualLRPKey, instanceKey := bbsClient.ClaimActualLRPArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualLRPKey.ProcessGuid).To(Equal(expectedLrpKey.ProcessGuid))
 					Expect(actualLRPKey.Index).To(Equal(expectedLrpKey.Index))
 					Expect(*instanceKey).To(Equal(expectedInstanceKey))
@@ -106,7 +107,8 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 					It("deletes the container", func() {
 						Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(1))
-						delegateLogger, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
+						delegateLogger, traceID, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
+						Expect(traceID).To(Equal("some-trace-id"))
 						Expect(containerGuid).To(Equal(container.Guid))
 						Expect(delegateLogger.SessionName()).To(Equal(expectedSessionName))
 					})
@@ -138,7 +140,8 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						expectedRunRequest, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(container.Guid, desiredLRP, &expectedLrpKey, &expectedInstanceKey, rep.StackPathMap{}, "")
 						Expect(err).NotTo(HaveOccurred())
 
-						delegateLogger, runRequest := containerDelegate.RunContainerArgsForCall(0)
+						delegateLogger, traceID, runRequest := containerDelegate.RunContainerArgsForCall(0)
+						Expect(traceID).To(Equal("some-trace-id"))
 						Expect(*runRequest).To(Equal(expectedRunRequest))
 						Expect(delegateLogger.SessionName()).To(Equal(expectedSessionName))
 					})
@@ -150,7 +153,8 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 						It("removes the actual LRP", func() {
 							Expect(bbsClient.RemoveActualLRPCallCount()).To(Equal(1))
-							_, actualLRPKey, instanceKey := bbsClient.RemoveActualLRPArgsForCall(0)
+							_, traceID, actualLRPKey, instanceKey := bbsClient.RemoveActualLRPArgsForCall(0)
+							Expect(traceID).To(Equal("some-trace-id"))
 
 							Expect(actualLRPKey.ProcessGuid).To(Equal(expectedLrpKey.ProcessGuid))
 							Expect(actualLRPKey.Index).To(Equal(expectedLrpKey.Index))
@@ -162,7 +166,8 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 				var itClaimsTheLRPOrDeletesTheContainer = func(expectedSessionName string) {
 					It("claims the lrp", func() {
 						Expect(bbsClient.ClaimActualLRPCallCount()).To(Equal(1))
-						_, actualLRPKey, instanceKey := bbsClient.ClaimActualLRPArgsForCall(0)
+						_, traceID, actualLRPKey, instanceKey := bbsClient.ClaimActualLRPArgsForCall(0)
+						Expect(traceID).To(Equal("some-trace-id"))
 						Expect(actualLRPKey.ProcessGuid).To(Equal(expectedLrpKey.ProcessGuid))
 						Expect(actualLRPKey.Index).To(Equal(expectedLrpKey.Index))
 						Expect(*instanceKey).To(Equal(expectedInstanceKey))
@@ -175,7 +180,8 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 						It("deletes the container", func() {
 							Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(1))
-							delegateLogger, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
+							delegateLogger, traceID, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
+							Expect(traceID).To(Equal("some-trace-id"))
 							Expect(containerGuid).To(Equal(container.Guid))
 							Expect(delegateLogger.SessionName()).To(Equal(expectedSessionName))
 						})
@@ -222,7 +228,8 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 					It("starts the lrp", func() {
 						Expect(bbsClient.StartActualLRPCallCount()).To(Equal(1))
-						_, lrpKey, instanceKey, netInfo, internalRoutes, metricTags := bbsClient.StartActualLRPArgsForCall(0)
+						_, traceID, lrpKey, instanceKey, netInfo, internalRoutes, metricTags := bbsClient.StartActualLRPArgsForCall(0)
+						Expect(traceID).To(Equal("some-trace-id"))
 						Expect(*lrpKey).To(Equal(expectedLrpKey))
 						Expect(*instanceKey).To(Equal(expectedInstanceKey))
 						Expect(*netInfo).To(Equal(expectedNetInfo))
@@ -248,7 +255,8 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 						It("stops the container", func() {
 							Expect(containerDelegate.StopContainerCallCount()).To(Equal(1))
-							delegateLogger, containerGuid := containerDelegate.StopContainerArgsForCall(0)
+							delegateLogger, traceID, containerGuid := containerDelegate.StopContainerArgsForCall(0)
+							Expect(traceID).To(Equal("some-trace-id"))
 							Expect(containerGuid).To(Equal(container.Guid))
 							Expect(delegateLogger.SessionName()).To(Equal(expectedSessionName))
 						})
@@ -279,7 +287,8 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 						It("removes the actual LRP", func() {
 							Expect(bbsClient.RemoveActualLRPCallCount()).To(Equal(1))
-							_, actualLRPKey, instanceKey := bbsClient.RemoveActualLRPArgsForCall(0)
+							_, traceID, actualLRPKey, instanceKey := bbsClient.RemoveActualLRPArgsForCall(0)
+							Expect(traceID).To(Equal("some-trace-id"))
 							Expect(actualLRPKey.ProcessGuid).To(Equal(expectedLrpKey.ProcessGuid))
 							Expect(actualLRPKey.Index).To(Equal(expectedLrpKey.Index))
 							Expect(*instanceKey).To(Equal(expectedInstanceKey))
@@ -288,7 +297,8 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						Context("when the removal succeeds", func() {
 							It("deletes the container", func() {
 								Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(1))
-								delegateLogger, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
+								delegateLogger, traceID, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
+								Expect(traceID).To(Equal("some-trace-id"))
 								Expect(containerGuid).To(Equal(container.Guid))
 								Expect(delegateLogger.SessionName()).To(Equal(expectedSessionName))
 							})
@@ -301,7 +311,8 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 							It("deletes the container", func() {
 								Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(1))
-								delegateLogger, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
+								delegateLogger, traceID, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
+								Expect(traceID).To(Equal("some-trace-id"))
 								Expect(containerGuid).To(Equal(container.Guid))
 								Expect(delegateLogger.SessionName()).To(Equal(expectedSessionName))
 							})
@@ -316,7 +327,8 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 						It("crashes the actual LRP", func() {
 							Expect(bbsClient.CrashActualLRPCallCount()).To(Equal(1))
-							_, lrpKey, instanceKey, reason := bbsClient.CrashActualLRPArgsForCall(0)
+							_, traceID, lrpKey, instanceKey, reason := bbsClient.CrashActualLRPArgsForCall(0)
+							Expect(traceID).To(Equal("some-trace-id"))
 							Expect(*lrpKey).To(Equal(expectedLrpKey))
 							Expect(*instanceKey).To(Equal(expectedInstanceKey))
 							Expect(reason).To(Equal("crashed"))
@@ -324,7 +336,8 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 						It("deletes the container", func() {
 							Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(1))
-							delegateLogger, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
+							delegateLogger, traceID, containerGuid := containerDelegate.DeleteContainerArgsForCall(0)
+							Expect(traceID).To(Equal("some-trace-id"))
 							Expect(containerGuid).To(Equal(container.Guid))
 							Expect(delegateLogger.SessionName()).To(Equal(expectedSessionName))
 						})

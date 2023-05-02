@@ -598,17 +598,19 @@ var _ = Describe("AuctionCellRep", func() {
 			fakeContainerAllocator.BatchLRPAllocationRequestReturns([]rep.LRP{unsuccessfulLRP})
 			fakeContainerAllocator.BatchTaskAllocationRequestReturns([]rep.Task{unsuccessfulTask})
 
-			cellRep.Perform(logger, rep.Work{
+			cellRep.Perform(logger, "some-trace-id", rep.Work{
 				LRPs:  []rep.LRP{successfulLRP, unsuccessfulLRP},
 				Tasks: []rep.Task{successfulTask, unsuccessfulTask},
 			})
 
 			Expect(fakeContainerAllocator.BatchLRPAllocationRequestCallCount()).To(Equal(1))
-			_, _, _, lrpRequests := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
+			_, traceID, _, _, lrpRequests := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
+			Expect(traceID).To(Equal("some-trace-id"))
 			Expect(lrpRequests).To(ConsistOf(successfulLRP, unsuccessfulLRP))
 
 			Expect(fakeContainerAllocator.BatchTaskAllocationRequestCallCount()).To(Equal(1))
-			_, taskRequests := fakeContainerAllocator.BatchTaskAllocationRequestArgsForCall(0)
+			_, traceID, taskRequests := fakeContainerAllocator.BatchTaskAllocationRequestArgsForCall(0)
+			Expect(traceID).To(Equal("some-trace-id"))
 			Expect(taskRequests).To(ConsistOf(successfulTask, unsuccessfulTask))
 		})
 
@@ -616,7 +618,7 @@ var _ = Describe("AuctionCellRep", func() {
 			fakeContainerAllocator.BatchLRPAllocationRequestReturns([]rep.LRP{unsuccessfulLRP})
 			fakeContainerAllocator.BatchTaskAllocationRequestReturns([]rep.Task{unsuccessfulTask})
 
-			failedWork, err := cellRep.Perform(logger, rep.Work{
+			failedWork, err := cellRep.Perform(logger, "some-trace-id", rep.Work{
 				LRPs:  []rep.LRP{successfulLRP, unsuccessfulLRP},
 				Tasks: []rep.Task{successfulTask, unsuccessfulTask},
 			})
@@ -650,7 +652,7 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 
 			It("returns all work it was given", func() {
-				Expect(cellRep.Perform(logger, work)).To(Equal(work))
+				Expect(cellRep.Perform(logger, "some-trace-id", work)).To(Equal(work))
 			})
 		})
 
@@ -665,7 +667,7 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 
 			It("allocates containers for the largest workloads it can run", func() {
-				failedWork, err := cellRep.Perform(logger, rep.Work{
+				failedWork, err := cellRep.Perform(logger, "some-trace-id", rep.Work{
 					LRPs:  []rep.LRP{smallestLRP, middleLRP, largestLRP},
 					Tasks: []rep.Task{},
 				})
@@ -675,7 +677,8 @@ var _ = Describe("AuctionCellRep", func() {
 
 				Expect(fakeContainerAllocator.BatchLRPAllocationRequestCallCount()).To(Equal(1))
 
-				_, proxyEnabledArg, proxyMemFootprintArg, lrpRequests := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
+				_, traceID, proxyEnabledArg, proxyMemFootprintArg, lrpRequests := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
+				Expect(traceID).To(Equal("some-trace-id"))
 				Expect(proxyEnabledArg).To(BeFalse())
 				Expect(proxyMemFootprintArg).To(Equal(12))
 				Expect(lrpRequests).To(ConsistOf(largestLRP, middleLRP))
@@ -688,7 +691,7 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 
 				It("accounts for the proxy overhead when determining which workloads to run and which to reject", func() {
-					failedWork, err := cellRep.Perform(logger, rep.Work{
+					failedWork, err := cellRep.Perform(logger, "some-trace-id", rep.Work{
 						LRPs:  []rep.LRP{smallestLRP, middleLRP, largestLRP},
 						Tasks: []rep.Task{},
 					})
@@ -698,7 +701,8 @@ var _ = Describe("AuctionCellRep", func() {
 
 					Expect(fakeContainerAllocator.BatchLRPAllocationRequestCallCount()).To(Equal(1))
 
-					_, proxyEnabledArg, proxyMemFootprintArg, lrpRequests := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
+					_, traceID, proxyEnabledArg, proxyMemFootprintArg, lrpRequests := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(proxyEnabledArg).To(BeTrue())
 					Expect(proxyMemFootprintArg).To(Equal(proxyMemoryAllocation))
 					Expect(lrpRequests).To(ConsistOf(largestLRP))
@@ -708,7 +712,7 @@ var _ = Describe("AuctionCellRep", func() {
 
 		Context("when the workload's cell ID does not match the cell's ID", func() {
 			It("rejects the workload", func() {
-				_, err := cellRep.Perform(logger, rep.Work{
+				_, err := cellRep.Perform(logger, "some-trace-id", rep.Work{
 					LRPs:   lrpAuctions,
 					CellID: "do-not-want-your-work",
 				})

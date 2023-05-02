@@ -137,16 +137,19 @@ var _ = Describe("EvacuationCleanup", func() {
 		It("removes all evacuating actual lrps associated with the cell", func() {
 			Eventually(errCh).Should(Receive(nil))
 			Expect(fakeBBSClient.ActualLRPsCallCount()).To(Equal(1))
-			_, filter := fakeBBSClient.ActualLRPsArgsForCall(0)
+			_, traceID, filter := fakeBBSClient.ActualLRPsArgsForCall(0)
+			Expect(traceID).To(BeEmpty())
 			Expect(filter).To(Equal(models.ActualLRPFilter{CellID: cellID}))
 
 			Expect(fakeBBSClient.RemoveEvacuatingActualLRPCallCount()).To(Equal(2))
 
-			_, lrpKey, lrpInstanceKey := fakeBBSClient.RemoveEvacuatingActualLRPArgsForCall(0)
+			_, traceID, lrpKey, lrpInstanceKey := fakeBBSClient.RemoveEvacuatingActualLRPArgsForCall(0)
+			Expect(traceID).To(BeEmpty())
 			Expect(*lrpKey).To(Equal(evacuatingActualLRP.ActualLRPKey))
 			Expect(*lrpInstanceKey).To(Equal(evacuatingActualLRP.ActualLRPInstanceKey))
 
-			_, lrpKey, lrpInstanceKey = fakeBBSClient.RemoveEvacuatingActualLRPArgsForCall(1)
+			_, traceID, lrpKey, lrpInstanceKey = fakeBBSClient.RemoveEvacuatingActualLRPArgsForCall(1)
+			Expect(traceID).To(BeEmpty())
 			Expect(*lrpKey).To(Equal(evacuatingActualLRPWithReplacement.ActualLRPKey))
 			Expect(*lrpInstanceKey).To(Equal(evacuatingActualLRPWithReplacement.ActualLRPInstanceKey))
 		})
@@ -188,8 +191,10 @@ var _ = Describe("EvacuationCleanup", func() {
 					Expect(fakeExecutorClient.ListContainersCallCount()).To(Equal(3))
 					Expect(fakeExecutorClient.DeleteContainerCallCount()).To(Equal(2))
 
-					_, c1 := fakeExecutorClient.DeleteContainerArgsForCall(0)
-					_, c2 := fakeExecutorClient.DeleteContainerArgsForCall(1)
+					_, traceID, c1 := fakeExecutorClient.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(BeEmpty())
+					_, traceID, c2 := fakeExecutorClient.DeleteContainerArgsForCall(1)
+					Expect(traceID).To(BeEmpty())
 					containers := []string{c1, c2}
 					Expect(containers).To(ConsistOf("container1", "container2"))
 				})
@@ -211,7 +216,7 @@ var _ = Describe("EvacuationCleanup", func() {
 
 			Describe("when DeleteContainer hangs", func() {
 				BeforeEach(func() {
-					fakeExecutorClient.DeleteContainerStub = func(lager.Logger, string) error {
+					fakeExecutorClient.DeleteContainerStub = func(lager.Logger, string, string) error {
 						time.Sleep(time.Minute)
 						return nil
 					}

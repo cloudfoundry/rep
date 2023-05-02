@@ -38,12 +38,13 @@ var _ = Describe("ContainerDelegate", func() {
 		})
 
 		JustBeforeEach(func() {
-			result = containerDelegate.RunContainer(logger, &runRequest)
+			result = containerDelegate.RunContainer(logger, "some-trace-id", &runRequest)
 		})
 
 		It("runs the container", func() {
 			Expect(executorClient.RunContainerCallCount()).To(Equal(1))
-			_, runReq := executorClient.RunContainerArgsForCall(0)
+			_, traceID, runReq := executorClient.RunContainerArgsForCall(0)
+			Expect(traceID).To(Equal("some-trace-id"))
 			Expect(*runReq).To(Equal(runRequest))
 		})
 
@@ -73,7 +74,8 @@ var _ = Describe("ContainerDelegate", func() {
 
 			It("deletes the container", func() {
 				Expect(executorClient.DeleteContainerCallCount()).To(Equal(1))
-				_, containerGuid := executorClient.DeleteContainerArgsForCall(0)
+				_, traceID, containerGuid := executorClient.DeleteContainerArgsForCall(0)
+				Expect(traceID).To(Equal("some-trace-id"))
 				Expect(containerGuid).To(Equal(expectedGuid))
 			})
 
@@ -98,12 +100,13 @@ var _ = Describe("ContainerDelegate", func() {
 		var result bool
 
 		JustBeforeEach(func() {
-			result = containerDelegate.StopContainer(logger, expectedGuid)
+			result = containerDelegate.StopContainer(logger, "some-trace-id", expectedGuid)
 		})
 
 		It("stops the container", func() {
 			Expect(executorClient.StopContainerCallCount()).To(Equal(1))
-			_, containerGuid := executorClient.StopContainerArgsForCall(0)
+			_, traceID, containerGuid := executorClient.StopContainerArgsForCall(0)
+			Expect(traceID).To(Equal("some-trace-id"))
 			Expect(containerGuid).To(Equal(expectedGuid))
 		})
 
@@ -137,12 +140,13 @@ var _ = Describe("ContainerDelegate", func() {
 		var result bool
 
 		JustBeforeEach(func() {
-			result = containerDelegate.DeleteContainer(logger, expectedGuid)
+			result = containerDelegate.DeleteContainer(logger, "some-trace-id", expectedGuid)
 		})
 
 		It("deletes the container", func() {
 			Expect(executorClient.DeleteContainerCallCount()).To(Equal(1))
-			_, containerGuid := executorClient.DeleteContainerArgsForCall(0)
+			_, traceID, containerGuid := executorClient.DeleteContainerArgsForCall(0)
+			Expect(traceID).To(Equal("some-trace-id"))
 			Expect(containerGuid).To(Equal(expectedGuid))
 		})
 

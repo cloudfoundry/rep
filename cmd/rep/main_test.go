@@ -66,7 +66,7 @@ var _ = Describe("The Rep", func() {
 
 	var getActualLRPs = func(logger lager.Logger) func() []*models.ActualLRP {
 		return func() []*models.ActualLRP {
-			actualLRPs, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{})
+			actualLRPs, err := bbsClient.ActualLRPs(logger, requestIdHeader, models.ActualLRPFilter{})
 			Expect(err).NotTo(HaveOccurred())
 			return actualLRPs
 		}
@@ -626,7 +626,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 
 			JustBeforeEach(func() {
 				Eventually(fetchCells(logger)).Should(HaveLen(1))
-				cells, err := bbsClient.Cells(logger)
+				cells, err := bbsClient.Cells(logger, requestIdHeader)
 				cellSet := models.NewCellSetFromList(cells)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -689,7 +689,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 								}),
 							},
 						}
-						err := bbsClient.DesireTask(logger, task.TaskGuid, task.Domain, task.TaskDefinition)
+						err := bbsClient.DesireTask(logger, requestIdHeader, task.TaskGuid, task.Domain, task.TaskDefinition)
 						Expect(err).NotTo(HaveOccurred())
 
 						work := rep.Work{
@@ -832,10 +832,10 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 
 			JustBeforeEach(func() {
 				task = model_helpers.NewValidTask("task-guid")
-				err := bbsClient.DesireTask(logger, task.TaskGuid, task.Domain, task.TaskDefinition)
+				err := bbsClient.DesireTask(logger, requestIdHeader, task.TaskGuid, task.Domain, task.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 
-				_, err = bbsClient.StartTask(logger, task.TaskGuid, cellID)
+				_, err = bbsClient.StartTask(logger, requestIdHeader, task.TaskGuid, cellID)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -870,12 +870,12 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					Index:       0,
 				}
 
-				err := bbsClient.DesireLRP(logger, desiredLRP)
+				err := bbsClient.DesireLRP(logger, requestIdHeader, desiredLRP)
 				Expect(err).NotTo(HaveOccurred())
 
 				instanceKey := models.NewActualLRPInstanceKey("some-instance-guid", cellID)
 
-				err = bbsClient.ClaimActualLRP(logger, &actualLRPKey, &instanceKey)
+				err = bbsClient.ClaimActualLRP(logger, requestIdHeader, &actualLRPKey, &instanceKey)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -1100,7 +1100,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 })
 
 func getTasksByState(logger lager.Logger, client bbs.InternalClient, state models.Task_State) []*models.Task {
-	tasks, err := client.Tasks(logger)
+	tasks, err := client.Tasks(logger, requestIdHeader)
 	Expect(err).NotTo(HaveOccurred())
 
 	filteredTasks := make([]*models.Task, 0)
@@ -1114,6 +1114,6 @@ func getTasksByState(logger lager.Logger, client bbs.InternalClient, state model
 
 func fetchCells(logger lager.Logger) func() ([]*models.CellPresence, error) {
 	return func() ([]*models.CellPresence, error) {
-		return bbsClient.Cells(logger)
+		return bbsClient.Cells(logger, requestIdHeader)
 	}
 }
