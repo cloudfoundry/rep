@@ -8,11 +8,12 @@ import (
 )
 
 type FakeClientFactory struct {
-	CreateClientStub        func(string, string) (rep.Client, error)
+	CreateClientStub        func(string, string, string) (rep.Client, error)
 	createClientMutex       sync.RWMutex
 	createClientArgsForCall []struct {
 		arg1 string
 		arg2 string
+		arg3 string
 	}
 	createClientReturns struct {
 		result1 rep.Client
@@ -26,19 +27,20 @@ type FakeClientFactory struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeClientFactory) CreateClient(arg1 string, arg2 string) (rep.Client, error) {
+func (fake *FakeClientFactory) CreateClient(arg1 string, arg2 string, arg3 string) (rep.Client, error) {
 	fake.createClientMutex.Lock()
 	ret, specificReturn := fake.createClientReturnsOnCall[len(fake.createClientArgsForCall)]
 	fake.createClientArgsForCall = append(fake.createClientArgsForCall, struct {
 		arg1 string
 		arg2 string
-	}{arg1, arg2})
+		arg3 string
+	}{arg1, arg2, arg3})
 	stub := fake.CreateClientStub
 	fakeReturns := fake.createClientReturns
-	fake.recordInvocation("CreateClient", []interface{}{arg1, arg2})
+	fake.recordInvocation("CreateClient", []interface{}{arg1, arg2, arg3})
 	fake.createClientMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2)
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -52,17 +54,17 @@ func (fake *FakeClientFactory) CreateClientCallCount() int {
 	return len(fake.createClientArgsForCall)
 }
 
-func (fake *FakeClientFactory) CreateClientCalls(stub func(string, string) (rep.Client, error)) {
+func (fake *FakeClientFactory) CreateClientCalls(stub func(string, string, string) (rep.Client, error)) {
 	fake.createClientMutex.Lock()
 	defer fake.createClientMutex.Unlock()
 	fake.CreateClientStub = stub
 }
 
-func (fake *FakeClientFactory) CreateClientArgsForCall(i int) (string, string) {
+func (fake *FakeClientFactory) CreateClientArgsForCall(i int) (string, string, string) {
 	fake.createClientMutex.RLock()
 	defer fake.createClientMutex.RUnlock()
 	argsForCall := fake.createClientArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *FakeClientFactory) CreateClientReturns(result1 rep.Client, result2 error) {

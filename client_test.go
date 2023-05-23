@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/bbs/trace"
 	cfhttp "code.cloudfoundry.org/cfhttp/v2"
 	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/rep"
@@ -75,6 +76,57 @@ var _ = Describe("ClientFactory", func() {
 			})
 		})
 	})
+
+	Describe("CreateClient", func() {
+		var fakeServer *ghttp.Server
+
+		BeforeEach(func() {
+			fakeServer = ghttp.NewServer()
+			var err error
+			Expect(err).NotTo(HaveOccurred())
+
+			fakeServer.RouteToHandler("GET", "/state", func(resp http.ResponseWriter, req *http.Request) {
+			})
+		})
+
+		AfterEach(func() {
+			fakeServer.Close()
+		})
+
+		Context("when trace ID is provided", func() {
+			It("returns client that adds trace ID to request", func() {
+				httpClient = cfhttp.NewClient(
+					cfhttp.WithRequestTimeout(cfHttpTimeout),
+				)
+				clientFactory, err := rep.NewClientFactory(httpClient, httpClient, nil)
+				Expect(err).NotTo(HaveOccurred())
+				client, err := clientFactory.CreateClient(fakeServer.URL(), "", "some-trace-id")
+				Expect(err).NotTo(HaveOccurred())
+				logger := lagertest.NewTestLogger("test-rep-client")
+				client.State(logger)
+
+				Expect(fakeServer.ReceivedRequests()).To(HaveLen(1))
+				Expect(fakeServer.ReceivedRequests()[0].Header.Get(trace.RequestIdHeader)).To(Equal("some-trace-id"))
+			})
+		})
+
+		Context("when trace ID is not provided", func() {
+			It("returns client that does not add trace ID to request", func() {
+				httpClient = cfhttp.NewClient(
+					cfhttp.WithRequestTimeout(cfHttpTimeout),
+				)
+				clientFactory, err := rep.NewClientFactory(httpClient, httpClient, nil)
+				Expect(err).NotTo(HaveOccurred())
+				client, err := clientFactory.CreateClient(fakeServer.URL(), "", "")
+				Expect(err).NotTo(HaveOccurred())
+				logger := lagertest.NewTestLogger("test-rep-client")
+				client.State(logger)
+
+				Expect(fakeServer.ReceivedRequests()).To(HaveLen(1))
+				Expect(fakeServer.ReceivedRequests()[0].Header.Get(trace.RequestIdHeader)).To(Equal(""))
+			})
+		})
+	})
 })
 
 var _ = Describe("Client", func() {
@@ -84,7 +136,7 @@ var _ = Describe("Client", func() {
 	BeforeEach(func() {
 		fakeServer = ghttp.NewServer()
 		var err error
-		client, err = factory.CreateClient(fakeServer.URL(), "")
+		client, err = factory.CreateClient(fakeServer.URL(), "", "")
 		Expect(err).NotTo(HaveOccurred())
 	})
 

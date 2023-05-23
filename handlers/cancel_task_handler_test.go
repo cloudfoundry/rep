@@ -34,12 +34,13 @@ var _ = Describe("CancelTask", func() {
 		})
 
 		It("responds with Accepted status", func() {
-			status, _ := Request(rep.CancelTaskRoute, params, nil)
+			status, _ := RequestTracing(rep.CancelTaskRoute, params, nil, requestIdHeader)
 
 			Expect(status).To(Equal(http.StatusAccepted))
 
 			Eventually(fakeExecutorClient.DeleteContainerCallCount).Should(Equal(1))
-			_, taskGuidArg := fakeExecutorClient.DeleteContainerArgsForCall(0)
+			_, traceID, taskGuidArg := fakeExecutorClient.DeleteContainerArgsForCall(0)
+			Expect(traceID).To(Equal(requestIdHeader))
 			Expect(taskGuidArg).To(Equal("some-guid"))
 		})
 
@@ -87,7 +88,8 @@ var _ = Describe("CancelTask", func() {
 			Expect(status).To(Equal(http.StatusAccepted))
 
 			Eventually(fakeExecutorClient.DeleteContainerCallCount).Should(Equal(1))
-			_, taskGuidArg := fakeExecutorClient.DeleteContainerArgsForCall(0)
+			_, traceID, taskGuidArg := fakeExecutorClient.DeleteContainerArgsForCall(0)
+			Expect(traceID).To(Equal(requestIdHeader))
 			Expect(taskGuidArg).To(Equal("some-guid"))
 
 			Eventually(logger).Should(gbytes.Say("cancel-task"))
@@ -114,11 +116,12 @@ var _ = Describe("CancelTask", func() {
 		})
 
 		It("responds with Accepted status", func() {
-			status, _ := Request(rep.CancelTaskRoute, params, nil)
+			status, _ := RequestTracing(rep.CancelTaskRoute, params, nil, requestIdHeader)
 			Expect(status).To(Equal(http.StatusAccepted))
 
 			Eventually(fakeExecutorClient.DeleteContainerCallCount).Should(Equal(1))
-			_, taskGuidArg := fakeExecutorClient.DeleteContainerArgsForCall(0)
+			_, traceID, taskGuidArg := fakeExecutorClient.DeleteContainerArgsForCall(0)
+			Expect(traceID).To(Equal(requestIdHeader))
 			Expect(taskGuidArg).To(Equal("some-guid"))
 		})
 

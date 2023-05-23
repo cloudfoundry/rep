@@ -92,7 +92,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 		})
 
 		JustBeforeEach(func() {
-			lrpProcessor.Process(logger, container)
+			lrpProcessor.Process(logger, "some-trace-id", container)
 		})
 
 		Context("when the container is Reserved", func() {
@@ -102,7 +102,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			It("evacuates the lrp", func() {
 				Expect(fakeBBS.EvacuateClaimedActualLRPCallCount()).To(Equal(1))
-				_, actualLRPKey, actualLRPContainerKey := fakeBBS.EvacuateClaimedActualLRPArgsForCall(0)
+				_, traceID, actualLRPKey, actualLRPContainerKey := fakeBBS.EvacuateClaimedActualLRPArgsForCall(0)
+				Expect(traceID).To(Equal("some-trace-id"))
 				Expect(*actualLRPKey).To(Equal(lrpKey))
 				Expect(*actualLRPContainerKey).To(Equal(lrpInstanceKey))
 			})
@@ -114,7 +115,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 				It("deletes the container", func() {
 					Expect(fakeContainerDelegate.DeleteContainerCallCount()).To(Equal(1))
-					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					_, traceID, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualContainerGuid).To(Equal(container.Guid))
 				})
 			})
@@ -126,7 +128,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 				It("deletes the container", func() {
 					Expect(fakeContainerDelegate.DeleteContainerCallCount()).To(Equal(1))
-					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					_, traceID, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualContainerGuid).To(Equal(container.Guid))
 				})
 			})
@@ -138,7 +141,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 				It("deletes the container", func() {
 					Expect(fakeContainerDelegate.DeleteContainerCallCount()).To(Equal(1))
-					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					_, traceID, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualContainerGuid).To(Equal(container.Guid))
 				})
 			})
@@ -151,7 +155,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			It("evacuates the lrp", func() {
 				Expect(fakeBBS.EvacuateClaimedActualLRPCallCount()).To(Equal(1))
-				_, actualLRPKey, actualLRPContainerKey := fakeBBS.EvacuateClaimedActualLRPArgsForCall(0)
+				_, traceID, actualLRPKey, actualLRPContainerKey := fakeBBS.EvacuateClaimedActualLRPArgsForCall(0)
+				Expect(traceID).To(Equal("some-trace-id"))
 				Expect(*actualLRPKey).To(Equal(lrpKey))
 				Expect(*actualLRPContainerKey).To(Equal(lrpInstanceKey))
 			})
@@ -163,7 +168,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 				It("deletes the container", func() {
 					Expect(fakeContainerDelegate.DeleteContainerCallCount()).To(Equal(1))
-					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					_, traceID, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualContainerGuid).To(Equal(container.Guid))
 				})
 			})
@@ -175,7 +181,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 				It("deletes the container", func() {
 					Expect(fakeContainerDelegate.DeleteContainerCallCount()).To(Equal(1))
-					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					_, traceID, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualContainerGuid).To(Equal(container.Guid))
 				})
 			})
@@ -187,7 +194,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 				It("deletes the container", func() {
 					Expect(fakeContainerDelegate.DeleteContainerCallCount()).To(Equal(1))
-					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					_, traceID, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualContainerGuid).To(Equal(container.Guid))
 				})
 			})
@@ -200,7 +208,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			It("evacuates the lrp", func() {
 				Expect(fakeBBS.EvacuateClaimedActualLRPCallCount()).To(Equal(1))
-				_, actualLRPKey, actualLRPContainerKey := fakeBBS.EvacuateClaimedActualLRPArgsForCall(0)
+				_, traceID, actualLRPKey, actualLRPContainerKey := fakeBBS.EvacuateClaimedActualLRPArgsForCall(0)
+				Expect(traceID).To(Equal("some-trace-id"))
 				Expect(*actualLRPKey).To(Equal(lrpKey))
 				Expect(*actualLRPContainerKey).To(Equal(lrpInstanceKey))
 			})
@@ -212,7 +221,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 				It("deletes the container", func() {
 					Expect(fakeContainerDelegate.DeleteContainerCallCount()).To(Equal(1))
-					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					_, traceID, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualContainerGuid).To(Equal(container.Guid))
 				})
 			})
@@ -224,7 +234,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 				It("deletes the container", func() {
 					Expect(fakeContainerDelegate.DeleteContainerCallCount()).To(Equal(1))
-					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					_, traceID, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualContainerGuid).To(Equal(container.Guid))
 				})
 			})
@@ -236,7 +247,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 				It("deletes the container", func() {
 					Expect(fakeContainerDelegate.DeleteContainerCallCount()).To(Equal(1))
-					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					_, traceID, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualContainerGuid).To(Equal(container.Guid))
 				})
 			})
@@ -260,7 +272,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			It("evacuates the lrp", func() {
 				Expect(fakeBBS.EvacuateRunningActualLRPCallCount()).To(Equal(1))
-				_, actualLRPKey, actualLRPContainerKey, actualLRPNetInfo, internalRoutes, metricTags := fakeBBS.EvacuateRunningActualLRPArgsForCall(0)
+				_, traceID, actualLRPKey, actualLRPContainerKey, actualLRPNetInfo, internalRoutes, metricTags := fakeBBS.EvacuateRunningActualLRPArgsForCall(0)
+				Expect(traceID).To(Equal("some-trace-id"))
 				Expect(*actualLRPKey).To(Equal(lrpKey))
 				Expect(*actualLRPContainerKey).To(Equal(lrpInstanceKey))
 				Expect(*actualLRPNetInfo).To(Equal(lrpNetInfo))
@@ -287,7 +300,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				Expect(tags["instance_id"]).To(Equal(strconv.Itoa(index)))
 				Expect(msg).To(Equal(fmt.Sprintf("Cell %s requesting replacement for instance %s", localCellID, instanceGuid)))
 
-				lrpProcessor.Process(logger, container)
+				lrpProcessor.Process(logger, "some-trace-id", container)
 				Consistently(fakeMetronClient.SendAppLogCallCount).Should(Equal(1))
 			})
 
@@ -308,7 +321,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 				It("deletes the container", func() {
 					Expect(fakeContainerDelegate.DeleteContainerCallCount()).To(Equal(1))
-					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					_, traceID, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualContainerGuid).To(Equal(container.Guid))
 				})
 			})
@@ -332,7 +346,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			It("evacuates the lrp", func() {
 				Expect(fakeBBS.EvacuateStoppedActualLRPCallCount()).To(Equal(1))
-				_, actualLRPKey, actualLRPContainerKey := fakeBBS.EvacuateStoppedActualLRPArgsForCall(0)
+				_, traceID, actualLRPKey, actualLRPContainerKey := fakeBBS.EvacuateStoppedActualLRPArgsForCall(0)
+				Expect(traceID).To(Equal("some-trace-id"))
 				Expect(*actualLRPKey).To(Equal(lrpKey))
 				Expect(*actualLRPContainerKey).To(Equal(lrpInstanceKey))
 			})
@@ -344,7 +359,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 				It("deletes the container", func() {
 					Expect(fakeContainerDelegate.DeleteContainerCallCount()).To(Equal(1))
-					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					_, traceID, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualContainerGuid).To(Equal(container.Guid))
 				})
 			})
@@ -356,7 +372,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 				It("deletes the container", func() {
 					Expect(fakeContainerDelegate.DeleteContainerCallCount()).To(Equal(1))
-					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					_, traceID, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualContainerGuid).To(Equal(container.Guid))
 				})
 			})
@@ -368,7 +385,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 				It("deletes the container", func() {
 					Expect(fakeContainerDelegate.DeleteContainerCallCount()).To(Equal(1))
-					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					_, traceID, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualContainerGuid).To(Equal(container.Guid))
 				})
 			})
@@ -383,7 +401,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			It("evacuates the lrp", func() {
 				Expect(fakeBBS.EvacuateCrashedActualLRPCallCount()).To(Equal(1))
-				_, actualLRPKey, actualLRPContainerKey, reason := fakeBBS.EvacuateCrashedActualLRPArgsForCall(0)
+				_, traceID, actualLRPKey, actualLRPContainerKey, reason := fakeBBS.EvacuateCrashedActualLRPArgsForCall(0)
+				Expect(traceID).To(Equal("some-trace-id"))
 				Expect(*actualLRPKey).To(Equal(lrpKey))
 				Expect(*actualLRPContainerKey).To(Equal(lrpInstanceKey))
 				Expect(reason).To(Equal("crashed"))
@@ -396,7 +415,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 				It("deletes the container", func() {
 					Expect(fakeContainerDelegate.DeleteContainerCallCount()).To(Equal(1))
-					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					_, traceID, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualContainerGuid).To(Equal(container.Guid))
 				})
 			})
@@ -408,7 +428,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 				It("deletes the container", func() {
 					Expect(fakeContainerDelegate.DeleteContainerCallCount()).To(Equal(1))
-					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					_, traceID, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualContainerGuid).To(Equal(container.Guid))
 				})
 			})
@@ -420,7 +441,8 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 				It("deletes the container", func() {
 					Expect(fakeContainerDelegate.DeleteContainerCallCount()).To(Equal(1))
-					_, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					_, traceID, actualContainerGuid := fakeContainerDelegate.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualContainerGuid).To(Equal(container.Guid))
 				})
 			})

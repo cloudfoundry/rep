@@ -37,6 +37,10 @@ import (
 	"google.golang.org/grpc/grpclog"
 )
 
+const (
+	requestIdHeader = "f256f938-9e14-4abd-974f-63c6138f1cca"
+)
+
 var (
 	cellID              string
 	representativePath  string

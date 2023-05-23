@@ -18,7 +18,7 @@ import (
 
 type AuctionCellClient interface {
 	State(logger lager.Logger) (rep.CellState, bool, error)
-	Perform(logger lager.Logger, work rep.Work) (rep.Work, error)
+	Perform(logger lager.Logger, traceID string, work rep.Work) (rep.Work, error)
 	Reset() error
 }
 
@@ -324,7 +324,7 @@ func containerIsStarting(container *executor.Container) bool {
 		container.State == executor.StateCreated
 }
 
-func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, error) {
+func (a *AuctionCellRep) Perform(logger lager.Logger, traceID string, work rep.Work) (rep.Work, error) {
 	var failedWork = rep.Work{}
 
 	logger = logger.Session("auction-work", lager.Data{
@@ -368,9 +368,9 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 		return work, nil
 	}
 
-	unallocatedLRPs := a.allocator.BatchLRPAllocationRequest(logger, a.enableContainerProxy, a.proxyMemoryAllocation, lrpRequests)
+	unallocatedLRPs := a.allocator.BatchLRPAllocationRequest(logger, traceID, a.enableContainerProxy, a.proxyMemoryAllocation, lrpRequests)
 	failedWork.LRPs = append(failedWork.LRPs, unallocatedLRPs...)
-	failedWork.Tasks = a.allocator.BatchTaskAllocationRequest(logger, work.Tasks)
+	failedWork.Tasks = a.allocator.BatchTaskAllocationRequest(logger, traceID, work.Tasks)
 
 	return failedWork, nil
 }

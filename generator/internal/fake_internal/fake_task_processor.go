@@ -5,32 +5,34 @@ import (
 	"sync"
 
 	"code.cloudfoundry.org/executor"
-	"code.cloudfoundry.org/lager/v3"
+	lager "code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/rep/generator/internal"
 )
 
 type FakeTaskProcessor struct {
-	ProcessStub        func(lager.Logger, executor.Container)
+	ProcessStub        func(lager.Logger, string, executor.Container)
 	processMutex       sync.RWMutex
 	processArgsForCall []struct {
 		arg1 lager.Logger
-		arg2 executor.Container
+		arg2 string
+		arg3 executor.Container
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeTaskProcessor) Process(arg1 lager.Logger, arg2 executor.Container) {
+func (fake *FakeTaskProcessor) Process(arg1 lager.Logger, arg2 string, arg3 executor.Container) {
 	fake.processMutex.Lock()
 	fake.processArgsForCall = append(fake.processArgsForCall, struct {
 		arg1 lager.Logger
-		arg2 executor.Container
-	}{arg1, arg2})
+		arg2 string
+		arg3 executor.Container
+	}{arg1, arg2, arg3})
 	stub := fake.ProcessStub
-	fake.recordInvocation("Process", []interface{}{arg1, arg2})
+	fake.recordInvocation("Process", []interface{}{arg1, arg2, arg3})
 	fake.processMutex.Unlock()
 	if stub != nil {
-		fake.ProcessStub(arg1, arg2)
+		fake.ProcessStub(arg1, arg2, arg3)
 	}
 }
 
@@ -40,17 +42,17 @@ func (fake *FakeTaskProcessor) ProcessCallCount() int {
 	return len(fake.processArgsForCall)
 }
 
-func (fake *FakeTaskProcessor) ProcessCalls(stub func(lager.Logger, executor.Container)) {
+func (fake *FakeTaskProcessor) ProcessCalls(stub func(lager.Logger, string, executor.Container)) {
 	fake.processMutex.Lock()
 	defer fake.processMutex.Unlock()
 	fake.ProcessStub = stub
 }
 
-func (fake *FakeTaskProcessor) ProcessArgsForCall(i int) (lager.Logger, executor.Container) {
+func (fake *FakeTaskProcessor) ProcessArgsForCall(i int) (lager.Logger, string, executor.Container) {
 	fake.processMutex.RLock()
 	defer fake.processMutex.RUnlock()
 	argsForCall := fake.processArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *FakeTaskProcessor) Invocations() map[string][][]interface{} {

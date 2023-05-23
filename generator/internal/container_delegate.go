@@ -20,9 +20,9 @@ var ErrResultFileTooLarge = errors.New(
 
 type ContainerDelegate interface {
 	GetContainer(logger lager.Logger, guid string) (executor.Container, bool)
-	RunContainer(logger lager.Logger, req *executor.RunRequest) bool
-	StopContainer(logger lager.Logger, guid string) bool
-	DeleteContainer(logger lager.Logger, guid string) bool
+	RunContainer(logger lager.Logger, traceID string, req *executor.RunRequest) bool
+	StopContainer(logger lager.Logger, traceID string, guid string) bool
+	DeleteContainer(logger lager.Logger, traceID string, guid string) bool
 	FetchContainerResultFile(logger lager.Logger, guid string, filename string) (string, error)
 }
 
@@ -47,21 +47,21 @@ func (d *containerDelegate) GetContainer(logger lager.Logger, guid string) (exec
 	return container, true
 }
 
-func (d *containerDelegate) RunContainer(logger lager.Logger, req *executor.RunRequest) bool {
+func (d *containerDelegate) RunContainer(logger lager.Logger, traceID string, req *executor.RunRequest) bool {
 	logger.Info("running-container")
-	err := d.client.RunContainer(logger, req)
+	err := d.client.RunContainer(logger, traceID, req)
 	if err != nil {
 		logInfoOrError(logger, "failed-running-container", err)
-		d.DeleteContainer(logger, req.Guid)
+		d.DeleteContainer(logger, traceID, req.Guid)
 		return false
 	}
 	logger.Info("succeeded-running-container")
 	return true
 }
 
-func (d *containerDelegate) StopContainer(logger lager.Logger, guid string) bool {
+func (d *containerDelegate) StopContainer(logger lager.Logger, traceID string, guid string) bool {
 	logger.Info("stopping-container")
-	err := d.client.StopContainer(logger, guid)
+	err := d.client.StopContainer(logger, traceID, guid)
 	if err != nil {
 		logInfoOrError(logger, "failed-stopping-container", err)
 		return false
@@ -70,9 +70,9 @@ func (d *containerDelegate) StopContainer(logger lager.Logger, guid string) bool
 	return true
 }
 
-func (d *containerDelegate) DeleteContainer(logger lager.Logger, guid string) bool {
+func (d *containerDelegate) DeleteContainer(logger lager.Logger, traceID string, guid string) bool {
 	logger.Info("deleting-container")
-	err := d.client.DeleteContainer(logger, guid)
+	err := d.client.DeleteContainer(logger, traceID, guid)
 	if err != nil {
 		logInfoOrError(logger, "failed-deleting-container", err)
 		return false

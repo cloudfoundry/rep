@@ -11,8 +11,8 @@ import (
 
 //go:generate counterfeiter . BatchContainerAllocator
 type BatchContainerAllocator interface {
-	BatchLRPAllocationRequest(lager.Logger, bool, int, []rep.LRP) []rep.LRP
-	BatchTaskAllocationRequest(lager.Logger, []rep.Task) []rep.Task
+	BatchLRPAllocationRequest(lager.Logger, string, bool, int, []rep.LRP) []rep.LRP
+	BatchTaskAllocationRequest(lager.Logger, string, []rep.Task) []rep.Task
 }
 
 type containerAllocator struct {
@@ -57,7 +57,7 @@ func buildTaskTags(task rep.Task) executor.Tags {
 	return tags
 }
 
-func (ca containerAllocator) BatchLRPAllocationRequest(logger lager.Logger, enableContainerProxy bool, proxyMemoryAllocation int, lrps []rep.LRP) (unallocatedLRPs []rep.LRP) {
+func (ca containerAllocator) BatchLRPAllocationRequest(logger lager.Logger, traceID string, enableContainerProxy bool, proxyMemoryAllocation int, lrps []rep.LRP) (unallocatedLRPs []rep.LRP) {
 	logger = logger.Session("lrp-allocate-instances")
 	requests := make([]executor.AllocationRequest, 0, len(lrps))
 	lrpGuidMap := make(map[string]rep.LRP, len(lrps))
@@ -94,7 +94,7 @@ func (ca containerAllocator) BatchLRPAllocationRequest(logger lager.Logger, enab
 	logger.Info("requesting-container-allocation", lager.Data{"num-requesting-allocation": len(requests)})
 	var failures []executor.AllocationFailure
 	if len(requests) > 0 {
-		failures = ca.executorClient.AllocateContainers(logger, requests)
+		failures = ca.executorClient.AllocateContainers(logger, traceID, requests)
 	}
 
 	logger.Info("succeeded-requesting-container-allocation", lager.Data{"num-failed-to-allocate": len(failures)})
@@ -109,7 +109,7 @@ func (ca containerAllocator) BatchLRPAllocationRequest(logger lager.Logger, enab
 	return unallocatedLRPs
 }
 
-func (ca containerAllocator) BatchTaskAllocationRequest(logger lager.Logger, tasks []rep.Task) (unallocatedTasks []rep.Task) {
+func (ca containerAllocator) BatchTaskAllocationRequest(logger lager.Logger, traceID string, tasks []rep.Task) (unallocatedTasks []rep.Task) {
 	logger = logger.Session("task-allocate-instances")
 
 	failedTasks := make([]rep.Task, 0)
@@ -137,7 +137,7 @@ func (ca containerAllocator) BatchTaskAllocationRequest(logger lager.Logger, tas
 	logger.Info("requesting-container-allocation", lager.Data{"num-requesting-allocation": len(requests)})
 	var failures []executor.AllocationFailure
 	if len(requests) > 0 {
-		failures = ca.executorClient.AllocateContainers(logger, requests)
+		failures = ca.executorClient.AllocateContainers(logger, traceID, requests)
 	}
 
 	for _, failure := range failures {

@@ -29,7 +29,7 @@ var _ = Describe("Operation", func() {
 			lrpKey = models.NewActualLRPKey("the-process-guid", 0, "the-domain")
 			instanceKey = models.NewActualLRPInstanceKey("the-instance-guid", "the-cell-id")
 			containerDelegate = new(fake_internal.FakeContainerDelegate)
-			residualLRPOperation = generator.NewResidualInstanceLRPOperation(logger, fakeBBS, containerDelegate, lrpKey, instanceKey)
+			residualLRPOperation = generator.NewResidualInstanceLRPOperation(logger, "some-trace-id", fakeBBS, containerDelegate, lrpKey, instanceKey)
 
 			expectedContainerGuid = rep.LRPContainerGuid(lrpKey.GetProcessGuid(), instanceKey.GetInstanceGuid())
 		})
@@ -66,8 +66,9 @@ var _ = Describe("Operation", func() {
 
 				It("removes the actualLRP", func() {
 					Expect(fakeBBS.RemoveActualLRPCallCount()).To(Equal(1))
-					_, actualLRPKey, actualInstanceKey := fakeBBS.RemoveActualLRPArgsForCall(0)
+					_, traceID, actualLRPKey, actualInstanceKey := fakeBBS.RemoveActualLRPArgsForCall(0)
 
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualLRPKey.ProcessGuid).To(Equal(lrpKey.ProcessGuid))
 					Expect(actualLRPKey.Index).To(Equal(lrpKey.Index))
 					Expect(*actualInstanceKey).To(Equal(instanceKey))
@@ -106,7 +107,7 @@ var _ = Describe("Operation", func() {
 			lrpKey = models.NewActualLRPKey("the-process-guid", 0, "the-domain")
 			instanceKey = models.NewActualLRPInstanceKey(instanceGuid, "the-cell-id")
 			containerDelegate = new(fake_internal.FakeContainerDelegate)
-			residualEvacuatingLRPOperation = generator.NewResidualEvacuatingLRPOperation(logger, fakeBBS, containerDelegate, lrpKey, instanceKey)
+			residualEvacuatingLRPOperation = generator.NewResidualEvacuatingLRPOperation(logger, "some-trace-id", fakeBBS, containerDelegate, lrpKey, instanceKey)
 
 			expectedContainerGuid = rep.LRPContainerGuid(lrpKey.GetProcessGuid(), instanceKey.GetInstanceGuid())
 		})
@@ -143,7 +144,8 @@ var _ = Describe("Operation", func() {
 
 				It("removes the actualLRP", func() {
 					Expect(fakeBBS.RemoveEvacuatingActualLRPCallCount()).To(Equal(1))
-					_, actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveEvacuatingActualLRPArgsForCall(0)
+					_, traceID, actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveEvacuatingActualLRPArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(*actualLRPKey).To(Equal(lrpKey))
 					Expect(*actualLRPContainerKey).To(Equal(instanceKey))
 				})
@@ -181,7 +183,7 @@ var _ = Describe("Operation", func() {
 			lrpKey = models.NewActualLRPKey("the-process-guid", 0, "the-domain")
 			instanceKey = models.NewActualLRPInstanceKey(instanceGuid, "the-cell-id")
 			containerDelegate = new(fake_internal.FakeContainerDelegate)
-			residualJointLRPOperation = generator.NewResidualJointLRPOperation(logger, fakeBBS, containerDelegate, lrpKey, instanceKey)
+			residualJointLRPOperation = generator.NewResidualJointLRPOperation(logger, "some-trace-id", fakeBBS, containerDelegate, lrpKey, instanceKey)
 
 			expectedContainerGuid = rep.LRPContainerGuid(lrpKey.GetProcessGuid(), instanceKey.GetInstanceGuid())
 		})
@@ -218,8 +220,9 @@ var _ = Describe("Operation", func() {
 
 				It("removes the instance actualLRP", func() {
 					Expect(fakeBBS.RemoveActualLRPCallCount()).To(Equal(1))
-					_, actualLRPKey, actualInstanceKey := fakeBBS.RemoveActualLRPArgsForCall(0)
+					_, traceID, actualLRPKey, actualInstanceKey := fakeBBS.RemoveActualLRPArgsForCall(0)
 
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualLRPKey.ProcessGuid).To(Equal(lrpKey.ProcessGuid))
 					Expect(actualLRPKey.Index).To(Equal(lrpKey.Index))
 					Expect(*actualInstanceKey).To(Equal(instanceKey))
@@ -227,7 +230,8 @@ var _ = Describe("Operation", func() {
 
 				It("removes the evacuating actualLRP", func() {
 					Expect(fakeBBS.RemoveEvacuatingActualLRPCallCount()).To(Equal(1))
-					_, actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveEvacuatingActualLRPArgsForCall(0)
+					_, traceID, actualLRPKey, actualLRPContainerKey := fakeBBS.RemoveEvacuatingActualLRPArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(*actualLRPKey).To(Equal(lrpKey))
 					Expect(*actualLRPContainerKey).To(Equal(instanceKey))
 				})
@@ -261,7 +265,7 @@ var _ = Describe("Operation", func() {
 			taskGuid = "the-task-guid"
 			cellId = "the-cell-id"
 			containerDelegate = new(fake_internal.FakeContainerDelegate)
-			residualTaskOperation = generator.NewResidualTaskOperation(logger, taskGuid, cellId, fakeBBS, containerDelegate)
+			residualTaskOperation = generator.NewResidualTaskOperation(logger, "some-trace-id", taskGuid, cellId, fakeBBS, containerDelegate)
 		})
 
 		Describe("Key", func() {
@@ -296,7 +300,8 @@ var _ = Describe("Operation", func() {
 
 				It("completes the task with failure", func() {
 					Expect(fakeBBS.CompleteTaskCallCount()).To(Equal(1))
-					_, actualTaskGuid, actualCellId, failed, actualFailureReason, _ := fakeBBS.CompleteTaskArgsForCall(0)
+					_, traceID, actualTaskGuid, actualCellId, failed, actualFailureReason, _ := fakeBBS.CompleteTaskArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(actualTaskGuid).To(Equal(taskGuid))
 					Expect(actualCellId).To(Equal(cellId))
 					Expect(failed).To(BeTrue())
@@ -344,7 +349,7 @@ var _ = Describe("Operation", func() {
 			lrpProcessor = new(fake_internal.FakeLRPProcessor)
 			taskProcessor = new(fake_internal.FakeTaskProcessor)
 			guid = "the-guid"
-			containerOperation = generator.NewContainerOperation(logger, lrpProcessor, taskProcessor, containerDelegate, guid)
+			containerOperation = generator.NewContainerOperation(logger, "some-trace-id", lrpProcessor, taskProcessor, containerDelegate, guid)
 		})
 
 		Describe("Key", func() {
@@ -409,7 +414,8 @@ var _ = Describe("Operation", func() {
 					It("farms the container out to only the lrp processor", func() {
 						Expect(lrpProcessor.ProcessCallCount()).To(Equal(1))
 						Expect(taskProcessor.ProcessCallCount()).To(Equal(0))
-						actualLogger, actualContainer := lrpProcessor.ProcessArgsForCall(0)
+						actualLogger, traceID, actualContainer := lrpProcessor.ProcessArgsForCall(0)
+						Expect(traceID).To(Equal("some-trace-id"))
 						Expect(actualLogger.SessionName()).To(Equal(sessionName))
 						Expect(actualContainer).To(Equal(container))
 					})
@@ -428,7 +434,8 @@ var _ = Describe("Operation", func() {
 					It("farms the container out to only the task processor", func() {
 						Expect(taskProcessor.ProcessCallCount()).To(Equal(1))
 						Expect(lrpProcessor.ProcessCallCount()).To(Equal(0))
-						actualLogger, actualContainer := taskProcessor.ProcessArgsForCall(0)
+						actualLogger, traceID, actualContainer := taskProcessor.ProcessArgsForCall(0)
+						Expect(traceID).To(Equal("some-trace-id"))
 						Expect(actualLogger.SessionName()).To(Equal(sessionName))
 						Expect(actualContainer).To(Equal(container))
 					})

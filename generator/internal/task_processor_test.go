@@ -55,19 +55,21 @@ var _ = Describe("TaskProcessor", func() {
 		})
 
 		JustBeforeEach(func() {
-			processor.Process(logger, container)
+			processor.Process(logger, "some-trace-id", container)
 		})
 
 		It("starts the task", func() {
 			Expect(bbsClient.StartTaskCallCount()).To(Equal(1))
-			_, guid, cellID := bbsClient.StartTaskArgsForCall(0)
+			_, traceID, guid, cellID := bbsClient.StartTaskArgsForCall(0)
+			Expect(traceID).To(Equal("some-trace-id"))
 			Expect(guid).To(Equal(taskGuid))
 			Expect(cellID).To(Equal(expectedCellID))
 		})
 
 		It("runs the container", func() {
 			Expect(containerDelegate.RunContainerCallCount()).To(Equal(1))
-			_, runReq := containerDelegate.RunContainerArgsForCall(0)
+			_, traceID, runReq := containerDelegate.RunContainerArgsForCall(0)
+			Expect(traceID).To(Equal("some-trace-id"))
 			Expect(runReq).To(Equal(&expectedRunRequest))
 		})
 
@@ -114,7 +116,8 @@ var _ = Describe("TaskProcessor", func() {
 
 			It("completes the task with failure", func() {
 				Expect(bbsClient.CompleteTaskCallCount()).To(Equal(1))
-				_, guid, cellId, failed, reason, _ := bbsClient.CompleteTaskArgsForCall(0)
+				_, traceID, guid, cellId, failed, reason, _ := bbsClient.CompleteTaskArgsForCall(0)
+				Expect(traceID).To(Equal("some-trace-id"))
 				Expect(guid).To(Equal(taskGuid))
 				Expect(cellId).To(Equal(expectedCellID))
 				Expect(failed).To(BeTrue())
@@ -134,7 +137,8 @@ var _ = Describe("TaskProcessor", func() {
 				It("deletes the container", func() {
 					Expect(containerDelegate.RunContainerCallCount()).To(Equal(0))
 					Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(1))
-					_, guid := containerDelegate.DeleteContainerArgsForCall(0)
+					_, traceID, guid := containerDelegate.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(guid).To(Equal(taskGuid))
 				})
 			})
@@ -147,7 +151,8 @@ var _ = Describe("TaskProcessor", func() {
 				It("deletes the container", func() {
 					Expect(containerDelegate.RunContainerCallCount()).To(Equal(0))
 					Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(1))
-					_, guid := containerDelegate.DeleteContainerArgsForCall(0)
+					_, traceID, guid := containerDelegate.DeleteContainerArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(guid).To(Equal(taskGuid))
 				})
 			})
@@ -222,18 +227,20 @@ var _ = Describe("TaskProcessor", func() {
 		})
 
 		JustBeforeEach(func() {
-			processor.Process(logger, container)
+			processor.Process(logger, "some-trace-id", container)
 		})
 
 		It("deletes the container", func() {
 			Expect(containerDelegate.DeleteContainerCallCount()).To(Equal(1))
-			_, guid := containerDelegate.DeleteContainerArgsForCall(0)
+			_, traceID, guid := containerDelegate.DeleteContainerArgsForCall(0)
+			Expect(traceID).To(Equal("some-trace-id"))
 			Expect(guid).To(Equal(taskGuid))
 		})
 
 		It("completes the task", func() {
 			Expect(bbsClient.CompleteTaskCallCount()).To(Equal(1))
-			_, guid, cellID, failed, failureReason, result := bbsClient.CompleteTaskArgsForCall(0)
+			_, traceID, guid, cellID, failed, failureReason, result := bbsClient.CompleteTaskArgsForCall(0)
+			Expect(traceID).To(Equal("some-trace-id"))
 			Expect(guid).To(Equal(taskGuid))
 			Expect(cellID).To(Equal(expectedCellID))
 			Expect(failed).To(Equal(true))
@@ -249,7 +256,8 @@ var _ = Describe("TaskProcessor", func() {
 
 			It("rejects the task", func() {
 				Expect(bbsClient.RejectTaskCallCount()).To(Equal(1))
-				_, guid, reason := bbsClient.RejectTaskArgsForCall(0)
+				_, traceID, guid, reason := bbsClient.RejectTaskArgsForCall(0)
+				Expect(traceID).To(Equal("some-trace-id"))
 				Expect(guid).To(Equal(taskGuid))
 				Expect(reason).To(Equal("failed really bad!!"))
 			})
@@ -263,7 +271,8 @@ var _ = Describe("TaskProcessor", func() {
 
 				It("completes the task with failure", func() {
 					Expect(bbsClient.CompleteTaskCallCount()).To(Equal(2))
-					_, guid, cellID, failed, reason, result := bbsClient.CompleteTaskArgsForCall(1)
+					_, traceID, guid, cellID, failed, reason, result := bbsClient.CompleteTaskArgsForCall(1)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(guid).To(Equal(taskGuid))
 					Expect(cellID).To(Equal(expectedCellID))
 					Expect(failed).To(Equal(true))
@@ -292,7 +301,8 @@ var _ = Describe("TaskProcessor", func() {
 				Expect(tag).To(Equal(container.Tags[rep.ResultFileTag]))
 
 				Expect(bbsClient.CompleteTaskCallCount()).To(Equal(1))
-				_, guid, cellID, failed, failureReason, result := bbsClient.CompleteTaskArgsForCall(0)
+				_, traceID, guid, cellID, failed, failureReason, result := bbsClient.CompleteTaskArgsForCall(0)
+				Expect(traceID).To(Equal("some-trace-id"))
 				Expect(guid).To(Equal(taskGuid))
 				Expect(cellID).To(Equal(expectedCellID))
 				Expect(failed).To(Equal(false))
@@ -309,7 +319,8 @@ var _ = Describe("TaskProcessor", func() {
 					Expect(containerDelegate.FetchContainerResultFileCallCount()).To(Equal(0))
 
 					Expect(bbsClient.CompleteTaskCallCount()).To(Equal(1))
-					_, guid, cellID, failed, failureReason, result := bbsClient.CompleteTaskArgsForCall(0)
+					_, traceID, guid, cellID, failed, failureReason, result := bbsClient.CompleteTaskArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(guid).To(Equal(taskGuid))
 					Expect(cellID).To(Equal(expectedCellID))
 					Expect(failed).To(Equal(false))
@@ -326,7 +337,8 @@ var _ = Describe("TaskProcessor", func() {
 				It("completes the task with failure", func() {
 					Expect(containerDelegate.FetchContainerResultFileCallCount()).To(Equal(1))
 					Expect(bbsClient.CompleteTaskCallCount()).To(Equal(1))
-					_, guid, cellID, failed, reason, result := bbsClient.CompleteTaskArgsForCall(0)
+					_, traceID, guid, cellID, failed, reason, result := bbsClient.CompleteTaskArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
 					Expect(guid).To(Equal(taskGuid))
 					Expect(cellID).To(Equal(expectedCellID))
 					Expect(failed).To(Equal(true))

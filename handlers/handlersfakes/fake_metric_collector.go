@@ -4,7 +4,7 @@ package handlersfakes
 import (
 	"sync"
 
-	"code.cloudfoundry.org/lager/v3"
+	lager "code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/handlers"
 )

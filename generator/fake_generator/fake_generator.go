@@ -4,7 +4,7 @@ package fake_generator
 import (
 	"sync"
 
-	"code.cloudfoundry.org/lager/v3"
+	lager "code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/operationq"
 	"code.cloudfoundry.org/rep/generator"
 )

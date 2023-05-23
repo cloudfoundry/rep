@@ -54,13 +54,15 @@ var _ = Describe("Generator", func() {
 
 		It("retrieves all actual lrps for its cell id", func() {
 			Expect(fakeBBS.ActualLRPsCallCount()).To(Equal(1))
-			_, actualFilter := fakeBBS.ActualLRPsArgsForCall(0)
+			_, traceID, actualFilter := fakeBBS.ActualLRPsArgsForCall(0)
+			Expect(traceID).To(BeEmpty())
 			Expect(actualFilter.CellID).To(Equal(cellID))
 		})
 
 		It("retrieves all tasks for its cell id", func() {
 			Expect(fakeBBS.TasksByCellIDCallCount()).To(Equal(1))
-			_, actualCellID := fakeBBS.TasksByCellIDArgsForCall(0)
+			_, traceID, actualCellID := fakeBBS.TasksByCellIDArgsForCall(0)
+			Expect(traceID).To(BeEmpty())
 			Expect(actualCellID).To(Equal(cellID))
 		})
 
@@ -302,7 +304,7 @@ var _ = Describe("Generator", func() {
 					})
 
 					JustBeforeEach(func() {
-						receivedEvents <- executor.NewContainerCompleteEvent(container)
+						receivedEvents <- executor.NewContainerCompleteEvent(container, "some-trace-id")
 					})
 
 					Context("when the lifecycle is LRP", func() {

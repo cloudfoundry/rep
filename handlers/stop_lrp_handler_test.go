@@ -74,7 +74,7 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 
 			BeforeEach(func() {
 				requestLatency = 50 * time.Millisecond
-				fakeClient.StopContainerStub = func(logger lager.Logger, guid string) error {
+				fakeClient.StopContainerStub = func(logger lager.Logger, traceID string, guid string) error {
 					time.Sleep(requestLatency)
 					return nil
 				}
@@ -87,7 +87,8 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 			It("eventually stops the instance", func() {
 				Eventually(fakeClient.StopContainerCallCount).Should(Equal(1))
 
-				processGuid, instanceGuid := fakeClient.StopContainerArgsForCall(0)
+				processGuid, traceID, instanceGuid := fakeClient.StopContainerArgsForCall(0)
+				Expect(traceID).To(Equal(requestIdHeader))
 				Expect(processGuid).To(Equal(processGuid))
 				Expect(instanceGuid).To(Equal(instanceGuid))
 			})

@@ -37,7 +37,7 @@ func newOrdinaryLRPProcessor(
 	}
 }
 
-func (p *ordinaryLRPProcessor) Process(logger lager.Logger, container executor.Container) {
+func (p *ordinaryLRPProcessor) Process(logger lager.Logger, traceID string, container executor.Container) {
 	logger = logger.Session("ordinary-lrp-processor", lager.Data{
 		"container-guid":  container.Guid,
 		"container-state": container.State,
@@ -62,28 +62,28 @@ func (p *ordinaryLRPProcessor) Process(logger lager.Logger, container executor.C
 	lrpContainer := newLRPContainer(lrpKey, instanceKey, container)
 	switch lrpContainer.Container.State {
 	case executor.StateReserved:
-		p.processReservedContainer(logger, lrpContainer)
+		p.processReservedContainer(logger, traceID, lrpContainer)
 	case executor.StateInitializing:
-		p.processInitializingContainer(logger, lrpContainer)
+		p.processInitializingContainer(logger, traceID, lrpContainer)
 	case executor.StateCreated:
-		p.processCreatedContainer(logger, lrpContainer)
+		p.processCreatedContainer(logger, traceID, lrpContainer)
 	case executor.StateRunning:
-		p.processRunningContainer(logger, lrpContainer)
+		p.processRunningContainer(logger, traceID, lrpContainer)
 	case executor.StateCompleted:
-		p.processCompletedContainer(logger, lrpContainer)
+		p.processCompletedContainer(logger, traceID, lrpContainer)
 	default:
-		p.processInvalidContainer(logger, lrpContainer)
+		p.processInvalidContainer(logger, traceID, lrpContainer)
 	}
 }
 
-func (p *ordinaryLRPProcessor) processReservedContainer(logger lager.Logger, lrpContainer *lrpContainer) {
+func (p *ordinaryLRPProcessor) processReservedContainer(logger lager.Logger, traceID string, lrpContainer *lrpContainer) {
 	logger = logger.Session("process-reserved-container")
-	ok := p.claimLRPContainer(logger, lrpContainer)
+	ok := p.claimLRPContainer(logger, traceID, lrpContainer)
 	if !ok {
 		return
 	}
 
-	desired, err := p.bbsClient.DesiredLRPByProcessGuid(logger, lrpContainer.ProcessGuid)
+	desired, err := p.bbsClient.DesiredLRPByProcessGuid(logger, traceID, lrpContainer.ProcessGuid)
 	if err != nil {
 		logger.Error("failed-to-fetch-desired", err)
 		return
@@ -94,24 +94,24 @@ func (p *ordinaryLRPProcessor) processReservedContainer(logger lager.Logger, lrp
 		logger.Error("failed-to-construct-run-request", err)
 		return
 	}
-	ok = p.containerDelegate.RunContainer(logger, &runReq)
+	ok = p.containerDelegate.RunContainer(logger, traceID, &runReq)
 	if !ok {
-		p.bbsClient.RemoveActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
+		p.bbsClient.RemoveActualLRP(logger, traceID, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
 		return
 	}
 }
 
-func (p *ordinaryLRPProcessor) processInitializingContainer(logger lager.Logger, lrpContainer *lrpContainer) {
+func (p *ordinaryLRPProcessor) processInitializingContainer(logger lager.Logger, traceID string, lrpContainer *lrpContainer) {
 	logger = logger.Session("process-initializing-container")
-	p.claimLRPContainer(logger, lrpContainer)
+	p.claimLRPContainer(logger, traceID, lrpContainer)
 }
 
-func (p *ordinaryLRPProcessor) processCreatedContainer(logger lager.Logger, lrpContainer *lrpContainer) {
+func (p *ordinaryLRPProcessor) processCreatedContainer(logger lager.Logger, traceID string, lrpContainer *lrpContainer) {
 	logger = logger.Session("process-created-container")
-	p.claimLRPContainer(logger, lrpContainer)
+	p.claimLRPContainer(logger, traceID, lrpContainer)
 }
 
-func (p *ordinaryLRPProcessor) processRunningContainer(logger lager.Logger, lrpContainer *lrpContainer) {
+func (p *ordinaryLRPProcessor) processRunningContainer(logger lager.Logger, traceID string, lrpContainer *lrpContainer) {
 	logger = logger.Session("process-running-container")
 
 	logger.Debug("extracting-net-info-from-container")
@@ -127,42 +127,42 @@ func (p *ordinaryLRPProcessor) processRunningContainer(logger lager.Logger, lrpC
 	for _, internalRoute := range lrpContainer.InternalRoutes {
 		internalRoutes = append(internalRoutes, &models.ActualLRPInternalRoute{Hostname: internalRoute.Hostname})
 	}
-	err = p.bbsClient.StartActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo, internalRoutes, lrpContainer.MetricsConfig.Tags)
+	err = p.bbsClient.StartActualLRP(logger, traceID, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo, internalRoutes, lrpContainer.MetricsConfig.Tags)
 	bbsErr := models.ConvertError(err)
 	if bbsErr != nil && bbsErr.Type == models.Error_ActualLRPCannotBeStarted {
-		p.containerDelegate.StopContainer(logger, lrpContainer.Guid)
+		p.containerDelegate.StopContainer(logger, traceID, lrpContainer.Guid)
 	}
 }
 
-func (p *ordinaryLRPProcessor) processCompletedContainer(logger lager.Logger, lrpContainer *lrpContainer) {
+func (p *ordinaryLRPProcessor) processCompletedContainer(logger lager.Logger, traceID string, lrpContainer *lrpContainer) {
 	logger = logger.Session("process-completed-container")
 
 	if lrpContainer.RunResult.Stopped {
-		err := p.bbsClient.RemoveActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
+		err := p.bbsClient.RemoveActualLRP(logger, traceID, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
 		if err != nil {
 			logger.Info("failed-to-remove-actual-lrp", lager.Data{"error": err})
 		}
 	} else {
-		err := p.bbsClient.CrashActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, lrpContainer.RunResult.FailureReason)
+		err := p.bbsClient.CrashActualLRP(logger, traceID, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, lrpContainer.RunResult.FailureReason)
 		if err != nil {
 			logger.Info("failed-to-crash-actual-lrp", lager.Data{"error": err})
 		}
 	}
 
-	p.containerDelegate.DeleteContainer(logger, lrpContainer.Guid)
+	p.containerDelegate.DeleteContainer(logger, traceID, lrpContainer.Guid)
 }
 
-func (p *ordinaryLRPProcessor) processInvalidContainer(logger lager.Logger, lrpContainer *lrpContainer) {
+func (p *ordinaryLRPProcessor) processInvalidContainer(logger lager.Logger, traceID string, lrpContainer *lrpContainer) {
 	logger = logger.Session("process-invalid-container")
 	logger.Error("not-processing-container-in-invalid-state", nil)
 }
 
-func (p *ordinaryLRPProcessor) claimLRPContainer(logger lager.Logger, lrpContainer *lrpContainer) bool {
-	err := p.bbsClient.ClaimActualLRP(logger, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
+func (p *ordinaryLRPProcessor) claimLRPContainer(logger lager.Logger, traceID string, lrpContainer *lrpContainer) bool {
+	err := p.bbsClient.ClaimActualLRP(logger, traceID, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
 	bbsErr := models.ConvertError(err)
 	if err != nil {
 		if bbsErr.Type == models.Error_ActualLRPCannotBeClaimed {
-			p.containerDelegate.DeleteContainer(logger, lrpContainer.Guid)
+			p.containerDelegate.DeleteContainer(logger, traceID, lrpContainer.Guid)
 		}
 		return false
 	}
