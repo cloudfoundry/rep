@@ -224,17 +224,19 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						container.Ports = []executor.PortMapping{{ContainerPort: 8080, HostPort: 61999}}
 						container.InternalRoutes = internalroutes.InternalRoutes{{Hostname: "some-internal-route.apps.internal"}, {Hostname: "some-other-internal-route"}}
 						container.MetricsConfig.Tags = map[string]string{"app_name": "some-application"}
+						container.Routable = true
 					})
 
 					It("starts the lrp", func() {
 						Expect(bbsClient.StartActualLRPCallCount()).To(Equal(1))
-						_, traceID, lrpKey, instanceKey, netInfo, internalRoutes, metricTags := bbsClient.StartActualLRPArgsForCall(0)
+						_, traceID, lrpKey, instanceKey, netInfo, internalRoutes, metricTags, routable := bbsClient.StartActualLRPArgsForCall(0)
 						Expect(traceID).To(Equal("some-trace-id"))
 						Expect(*lrpKey).To(Equal(expectedLrpKey))
 						Expect(*instanceKey).To(Equal(expectedInstanceKey))
 						Expect(*netInfo).To(Equal(expectedNetInfo))
 						Expect(internalRoutes).To(Equal([]*models.ActualLRPInternalRoute{{Hostname: "some-internal-route.apps.internal"}, {Hostname: "some-other-internal-route"}}))
 						Expect(metricTags).To(Equal(map[string]string{"app_name": "some-application"}))
+						Expect(routable).To(Equal(true))
 
 						Eventually(logger).Should(Say(
 							fmt.Sprintf(
