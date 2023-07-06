@@ -268,17 +268,19 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				container.InternalRoutes = internalroutes.InternalRoutes{{Hostname: "some-internal-route.apps.internal"}, {Hostname: "some-other-internal-route"}}
 				lrpNetInfo = models.NewActualLRPNetInfo(externalIP, internalIP, models.ActualLRPNetInfo_PreferredAddressHost, models.NewPortMapping(8642, 1357))
 				container.MetricsConfig.Tags = map[string]string{"app_name": "some-application"}
+				container.Routable = true
 			})
 
 			It("evacuates the lrp", func() {
 				Expect(fakeBBS.EvacuateRunningActualLRPCallCount()).To(Equal(1))
-				_, traceID, actualLRPKey, actualLRPContainerKey, actualLRPNetInfo, internalRoutes, metricTags := fakeBBS.EvacuateRunningActualLRPArgsForCall(0)
+				_, traceID, actualLRPKey, actualLRPContainerKey, actualLRPNetInfo, internalRoutes, metricTags, routable := fakeBBS.EvacuateRunningActualLRPArgsForCall(0)
 				Expect(traceID).To(Equal("some-trace-id"))
 				Expect(*actualLRPKey).To(Equal(lrpKey))
 				Expect(*actualLRPContainerKey).To(Equal(lrpInstanceKey))
 				Expect(*actualLRPNetInfo).To(Equal(lrpNetInfo))
 				Expect(internalRoutes).To(Equal([]*models.ActualLRPInternalRoute{{Hostname: "some-internal-route.apps.internal"}, {Hostname: "some-other-internal-route"}}))
 				Expect(metricTags).To(Equal(map[string]string{"app_name": "some-application"}))
+				Expect(routable).To(Equal(true))
 
 				Eventually(logger).Should(Say(
 					fmt.Sprintf(
