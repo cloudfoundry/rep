@@ -58,6 +58,8 @@ var _ = Describe("ContainerMetrics", func() {
 		Expect(body).To(ContainSubstring(`disk_quota_bytes`))
 		Expect(body).To(ContainSubstring(`memory_usage_bytes`))
 		Expect(body).To(ContainSubstring(`memory_quota_bytes`))
+		Expect(body).To(ContainSubstring(`rx_bytes`))
+		Expect(body).To(ContainSubstring(`tx_bytes`))
 		Expect(body).To(ContainSubstring(`task_guid`))
 		Expect(body).To(ContainSubstring(`metric_guid`))
 		Expect(body).To(ContainSubstring(`cpu_usage_fraction`))
@@ -65,6 +67,8 @@ var _ = Describe("ContainerMetrics", func() {
 		Expect(body).To(ContainSubstring(`disk_quota_bytes`))
 		Expect(body).To(ContainSubstring(`memory_usage_bytes`))
 		Expect(body).To(ContainSubstring(`memory_quota_bytes`))
+		Expect(body).To(ContainSubstring(`rx_bytes`))
+		Expect(body).To(ContainSubstring(`tx_bytes`))
 	})
 
 	It("it returns whatever the container_metrics call returns", func() {
