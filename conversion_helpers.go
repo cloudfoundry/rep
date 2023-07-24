@@ -234,6 +234,7 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
 			{Name: "INSTANCE_INDEX", Value: strconv.Itoa(int(lrpKey.Index))},
 			{Name: "CF_INSTANCE_GUID", Value: lrpInstanceKey.InstanceGuid},
 			{Name: "CF_INSTANCE_INDEX", Value: strconv.Itoa(int(lrpKey.Index))},
+			{Name: "CF_APP_GUID", Value: desiredLRP.LogGuid},
 		}, executor.EnvironmentVariablesFromModel(desiredLRP.EnvironmentVariables)...),
 		TrustedSystemCertificatesPath: desiredLRP.TrustedSystemCertificatesPath,
 		VolumeMounts:                  mounts,
