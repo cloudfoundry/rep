@@ -55,28 +55,6 @@ var _ = Describe("ContainerMetrics", func() {
 	It("has the right field names", func() {
 		status, body := Request(rep.ContainerMetricsRoute, nil, nil)
 		Expect(status).To(Equal(http.StatusOK))
-<<<<<<< Updated upstream
-		Expect(body).To(ContainSubstring(`process_guid`))
-		Expect(body).To(ContainSubstring(`instance_guid`))
-		Expect(body).To(ContainSubstring(`index`))
-		Expect(body).To(ContainSubstring(`metric_guid`))
-		Expect(body).To(ContainSubstring(`cpu_usage_fraction`))
-		Expect(body).To(ContainSubstring(`disk_usage_bytes`))
-		Expect(body).To(ContainSubstring(`disk_quota_bytes`))
-		Expect(body).To(ContainSubstring(`memory_usage_bytes`))
-		Expect(body).To(ContainSubstring(`memory_quota_bytes`))
-		Expect(body).To(ContainSubstring(`rx_bytes`))
-		Expect(body).To(ContainSubstring(`tx_bytes`))
-		Expect(body).To(ContainSubstring(`task_guid`))
-		Expect(body).To(ContainSubstring(`metric_guid`))
-		Expect(body).To(ContainSubstring(`cpu_usage_fraction`))
-		Expect(body).To(ContainSubstring(`disk_usage_bytes`))
-		Expect(body).To(ContainSubstring(`disk_quota_bytes`))
-		Expect(body).To(ContainSubstring(`memory_usage_bytes`))
-		Expect(body).To(ContainSubstring(`memory_quota_bytes`))
-		Expect(body).To(ContainSubstring(`rx_bytes`))
-		Expect(body).To(ContainSubstring(`tx_bytes`))
-=======
 
 		// part of the response up to "tasks"
 		lrps := strings.Split(string(body), "tasks")[0]
@@ -104,7 +82,6 @@ var _ = Describe("ContainerMetrics", func() {
 		Expect(tasks).To(ContainSubstring(`memory_quota_bytes`))
 		Expect(tasks).ToNot(ContainSubstring(`rx_bytes`))
 		Expect(tasks).ToNot(ContainSubstring(`tx_bytes`))
->>>>>>> Stashed changes
 	})
 
 	It("it returns whatever the container_metrics call returns", func() {
