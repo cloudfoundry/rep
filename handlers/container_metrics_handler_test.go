@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"code.cloudfoundry.org/executor/containermetrics"
 	"errors"
 	"fmt"
 	"net/http"
@@ -24,12 +25,17 @@ var _ = Describe("ContainerMetrics", func() {
 	)
 
 	BeforeEach(func() {
+		one := uint64(1)
 		containerMetrics = &rep.ContainerMetricsCollection{
 			CellID: "some-cell-id",
 			LRPs: []rep.LRPMetric{
 				{
 					ProcessGUID:  "some-process-guid",
 					InstanceGUID: "some-instance-guid",
+					CachedContainerMetrics: containermetrics.CachedContainerMetrics{
+						RxBytes: &one,
+						TxBytes: &one,
+					},
 				},
 			},
 			Tasks: []rep.TaskMetric{
@@ -49,6 +55,7 @@ var _ = Describe("ContainerMetrics", func() {
 	It("has the right field names", func() {
 		status, body := Request(rep.ContainerMetricsRoute, nil, nil)
 		Expect(status).To(Equal(http.StatusOK))
+<<<<<<< Updated upstream
 		Expect(body).To(ContainSubstring(`process_guid`))
 		Expect(body).To(ContainSubstring(`instance_guid`))
 		Expect(body).To(ContainSubstring(`index`))
@@ -69,6 +76,35 @@ var _ = Describe("ContainerMetrics", func() {
 		Expect(body).To(ContainSubstring(`memory_quota_bytes`))
 		Expect(body).To(ContainSubstring(`rx_bytes`))
 		Expect(body).To(ContainSubstring(`tx_bytes`))
+=======
+
+		// part of the response up to "tasks"
+		lrps := strings.Split(string(body), "tasks")[0]
+		// part of the response after "tasks"
+		tasks := strings.Split(string(body), "tasks")[1]
+
+		Expect(lrps).To(ContainSubstring(`process_guid`))
+		Expect(lrps).To(ContainSubstring(`instance_guid`))
+		Expect(lrps).To(ContainSubstring(`index`))
+		Expect(lrps).To(ContainSubstring(`metric_guid`))
+		Expect(lrps).To(ContainSubstring(`cpu_usage_fraction`))
+		Expect(lrps).To(ContainSubstring(`disk_usage_bytes`))
+		Expect(lrps).To(ContainSubstring(`disk_quota_bytes`))
+		Expect(lrps).To(ContainSubstring(`memory_usage_bytes`))
+		Expect(lrps).To(ContainSubstring(`memory_quota_bytes`))
+		Expect(lrps).To(ContainSubstring(`rx_bytes`))
+		Expect(lrps).To(ContainSubstring(`tx_bytes`))
+
+		Expect(tasks).To(ContainSubstring(`task_guid`))
+		Expect(tasks).To(ContainSubstring(`metric_guid`))
+		Expect(tasks).To(ContainSubstring(`cpu_usage_fraction`))
+		Expect(tasks).To(ContainSubstring(`disk_usage_bytes`))
+		Expect(tasks).To(ContainSubstring(`disk_quota_bytes`))
+		Expect(tasks).To(ContainSubstring(`memory_usage_bytes`))
+		Expect(tasks).To(ContainSubstring(`memory_quota_bytes`))
+		Expect(tasks).ToNot(ContainSubstring(`rx_bytes`))
+		Expect(tasks).ToNot(ContainSubstring(`tx_bytes`))
+>>>>>>> Stashed changes
 	})
 
 	It("it returns whatever the container_metrics call returns", func() {
