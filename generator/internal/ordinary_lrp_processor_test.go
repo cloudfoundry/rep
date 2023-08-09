@@ -240,7 +240,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 						Eventually(logger).Should(Say(
 							fmt.Sprintf(
-								`"net_info":\{"address":"%s","ports":\[\{"container_port":%d,"host_port":%d\}\],"instance_address":"%s","preferred_address":"%s"\}`,
+								`"net_info":\{"address":"%s","ports":\[\{"container_port":%d,"host_port":%d,"container_tls_proxy_port":0,"host_tls_proxy_port":0\}\],"instance_address":"%s","preferred_address":"%s"\}`,
 								expectedNetInfo.Address,
 								expectedNetInfo.Ports[0].ContainerPort,
 								expectedNetInfo.Ports[0].HostPort,
