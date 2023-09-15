@@ -84,7 +84,7 @@ func (ca containerAllocator) BatchLRPAllocationRequest(logger lager.Logger, trac
 		containerGuid := rep.LRPContainerGuid(lrp.ProcessGuid, instanceGuid)
 
 		lrpGuidMap[containerGuid] = lrp
-		requests = append(requests, executor.NewAllocationRequest(containerGuid, &resource, buildLRPTags(lrp, instanceGuid)))
+		requests = append(requests, executor.NewAllocationRequest(containerGuid, &resource, true, buildLRPTags(lrp, instanceGuid)))
 	}
 
 	if len(unallocatedLRPs) > 0 {
@@ -126,7 +126,7 @@ func (ca containerAllocator) BatchTaskAllocationRequest(logger lager.Logger, tra
 
 		tags := buildTaskTags(task)
 		resource := executor.NewResource(int(task.MemoryMB), int(task.DiskMB), int(task.MaxPids))
-		requests = append(requests, executor.NewAllocationRequest(task.TaskGuid, &resource, tags))
+		requests = append(requests, executor.NewAllocationRequest(task.TaskGuid, &resource, false, tags))
 	}
 
 	if len(failedTasks) > 0 {
