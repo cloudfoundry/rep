@@ -309,6 +309,7 @@ var _ = Describe("ContainerAllocator", func() {
 				allocationRequest := executor.NewAllocationRequest(
 					task1.TaskGuid,
 					&resource,
+					false,
 					tags,
 				)
 				allocationFailure := executor.NewAllocationFailure(&allocationRequest, commonErr.Error())
@@ -428,6 +429,7 @@ func allocationRequestFromLRP(lrp rep.LRP) executor.AllocationRequest {
 	return executor.NewAllocationRequest(
 		lrp.InstanceGUID,
 		&resource,
+		true,
 		executor.Tags{
 			rep.LifecycleTag:     rep.LRPLifecycle,
 			rep.DomainTag:        lrp.Domain,
@@ -445,6 +447,7 @@ func allocationRequestFromTask(task rep.Task, placementTags, volumeDrivers strin
 	return executor.NewAllocationRequest(
 		task.TaskGuid,
 		&resource,
+		false,
 		executor.Tags{
 			rep.LifecycleTag:     rep.TaskLifecycle,
 			rep.DomainTag:        task.Domain,
