@@ -2,7 +2,6 @@ package rep_test
 
 import (
 	"net/http"
-	"os"
 	"path"
 	"strings"
 	"time"
@@ -28,7 +27,7 @@ var _ = Describe("ClientFactory", func() {
 	)
 
 	BeforeEach(func() {
-		fixturePath = path.Join(os.Getenv("DIEGO_RELEASE_DIR"), "src/code.cloudfoundry.org/rep/cmd/rep/fixtures")
+		fixturePath = path.Join("cmd", "rep", "fixtures")
 		certFile = path.Join(fixturePath, "blue-certs/client.crt")
 		keyFile = path.Join(fixturePath, "blue-certs/client.key")
 		caCertFile = path.Join(fixturePath, "blue-certs/server-ca.crt")

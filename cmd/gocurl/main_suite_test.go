@@ -2,8 +2,6 @@ package main_test
 
 import (
 	"encoding/json"
-	"os"
-	"path"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -41,7 +39,7 @@ var _ = SynchronizedAfterSuite(func() {
 
 var _ = BeforeEach(func() {
 	apiServer = ghttp.NewUnstartedServer()
-	fixturesPath = path.Join(os.Getenv("DIEGO_RELEASE_DIR"), "src/code.cloudfoundry.org/rep/cmd/gocurl/fixtures")
+	fixturesPath = "fixtures"
 })
 
 var _ = AfterEach(func() {

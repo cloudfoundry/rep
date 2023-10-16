@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -70,7 +69,7 @@ var (
 	sqlRunner     sqlrunner.SQLRunner
 	portAllocator portauthority.PortAllocator
 
-	fixturesPath = path.Join(os.Getenv("DIEGO_RELEASE_DIR"), "src/code.cloudfoundry.org/rep/cmd/rep/fixtures")
+	fixturesPath = "fixtures"
 )
 
 func TestRep(t *testing.T) {
@@ -139,7 +138,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		Host:   bbsAddress,
 	}
 
-	fixturesPath := path.Join(os.Getenv("DIEGO_RELEASE_DIR"), "src/code.cloudfoundry.org/rep/cmd/rep/fixtures")
+	fixturesPath := "fixtures"
 
 	auctioneerServer = ghttp.NewServer()
 	auctioneerServer.UnhandledRequestStatusCode = http.StatusAccepted
