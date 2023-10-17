@@ -91,7 +91,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 }, func(pathsByte []byte) {
 
 	node = GinkgoParallelProcess()
-	startPort := 1050 * node
+	startPort := 1060 * node
 	portRange := 1000
 	endPort := startPort + portRange
 
