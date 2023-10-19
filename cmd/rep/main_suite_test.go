@@ -118,7 +118,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	serverPortSecurable, err = portAllocator.ClaimPorts(1)
 	Expect(err).NotTo(HaveOccurred())
 
-	dbName := fmt.Sprintf("diego_%d", GinkgoParallelProcess())
+	dbName := fmt.Sprintf("diego_rep_%d", GinkgoParallelProcess())
 
 	sqlRunner = test_helpers.NewSQLRunner(dbName)
 	sqlProcess = ginkgomon.Invoke(sqlRunner)
