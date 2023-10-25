@@ -148,6 +148,7 @@ func main() {
 
 	opGenerator := generator.New(
 		repConfig.CellID,
+		repConfig.Zone,
 		rootFSMap,
 		repConfig.LayeringMode,
 		bbsClient,

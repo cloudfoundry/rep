@@ -29,6 +29,7 @@ type Generator interface {
 
 type generator struct {
 	cellID            string
+	availabilityZone  string
 	bbs               bbs.InternalClient
 	executorClient    executor.Client
 	lrpProcessor      internal.LRPProcessor
@@ -38,6 +39,7 @@ type generator struct {
 
 func New(
 	cellID string,
+	availabilityZone string,
 	stackPathMap rep.StackPathMap,
 	layeringMode string,
 	bbs bbs.InternalClient,
@@ -46,7 +48,7 @@ func New(
 	evacuationReporter evacuation_context.EvacuationReporter,
 ) Generator {
 	containerDelegate := internal.NewContainerDelegate(executorClient)
-	lrpProcessor := internal.NewLRPProcessor(bbs, containerDelegate, metronClient, cellID, stackPathMap, layeringMode, evacuationReporter)
+	lrpProcessor := internal.NewLRPProcessor(bbs, containerDelegate, metronClient, cellID, availabilityZone, stackPathMap, layeringMode, evacuationReporter)
 	taskProcessor := internal.NewTaskProcessor(bbs, containerDelegate, cellID, stackPathMap, layeringMode)
 
 	return &generator{

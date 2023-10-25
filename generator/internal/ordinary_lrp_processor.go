@@ -13,6 +13,7 @@ type ordinaryLRPProcessor struct {
 	bbsClient                  bbs.InternalClient
 	containerDelegate          ContainerDelegate
 	cellID                     string
+	availabilityZone           string
 	stackPathMap               rep.StackPathMap
 	layeringMode               string
 	runRequestConversionHelper rep.RunRequestConversionHelper
@@ -22,6 +23,7 @@ func newOrdinaryLRPProcessor(
 	bbsClient bbs.InternalClient,
 	containerDelegate ContainerDelegate,
 	cellID string,
+	availabilityZone string,
 	stackPathMap rep.StackPathMap,
 	layeringMode string,
 ) LRPProcessor {
@@ -31,6 +33,7 @@ func newOrdinaryLRPProcessor(
 		bbsClient:                  bbsClient,
 		containerDelegate:          containerDelegate,
 		cellID:                     cellID,
+		availabilityZone:           availabilityZone,
 		stackPathMap:               stackPathMap,
 		layeringMode:               layeringMode,
 		runRequestConversionHelper: runRequestConversionHelper,
@@ -127,7 +130,7 @@ func (p *ordinaryLRPProcessor) processRunningContainer(logger lager.Logger, trac
 	for _, internalRoute := range lrpContainer.InternalRoutes {
 		internalRoutes = append(internalRoutes, &models.ActualLRPInternalRoute{Hostname: internalRoute.Hostname})
 	}
-	err = p.bbsClient.StartActualLRP(logger, traceID, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo, internalRoutes, lrpContainer.MetricsConfig.Tags, lrpContainer.Routable)
+	err = p.bbsClient.StartActualLRP(logger, traceID, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo, internalRoutes, lrpContainer.MetricsConfig.Tags, lrpContainer.Routable, p.availabilityZone)
 	bbsErr := models.ConvertError(err)
 	if bbsErr != nil && bbsErr.Type == models.Error_ActualLRPCannotBeStarted {
 		p.containerDelegate.StopContainer(logger, traceID, lrpContainer.Guid)

@@ -22,7 +22,10 @@ import (
 )
 
 var _ = Describe("OrdinaryLRPProcessor", func() {
-	const expectedCellID = "cell-id"
+	const (
+		expectedCellID           = "cell-id"
+		expectedAvailabilityZone = "some-zone"
+	)
 
 	var (
 		processor          internal.LRPProcessor
@@ -37,7 +40,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 		containerDelegate = new(fake_internal.FakeContainerDelegate)
 		evacuationReporter = &fake_evacuation_context.FakeEvacuationReporter{}
 		evacuationReporter.EvacuatingReturns(false)
-		processor = internal.NewLRPProcessor(bbsClient, containerDelegate, nil, expectedCellID, rep.StackPathMap{}, "", evacuationReporter)
+		processor = internal.NewLRPProcessor(bbsClient, containerDelegate, nil, expectedCellID, expectedAvailabilityZone, rep.StackPathMap{}, "", evacuationReporter)
 		logger = lagertest.NewTestLogger("test")
 	})
 
@@ -229,7 +232,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 
 					It("starts the lrp", func() {
 						Expect(bbsClient.StartActualLRPCallCount()).To(Equal(1))
-						_, traceID, lrpKey, instanceKey, netInfo, internalRoutes, metricTags, routable := bbsClient.StartActualLRPArgsForCall(0)
+						_, traceID, lrpKey, instanceKey, netInfo, internalRoutes, metricTags, routable, availabilityZone := bbsClient.StartActualLRPArgsForCall(0)
 						Expect(traceID).To(Equal("some-trace-id"))
 						Expect(*lrpKey).To(Equal(expectedLrpKey))
 						Expect(*instanceKey).To(Equal(expectedInstanceKey))
@@ -237,6 +240,7 @@ var _ = Describe("OrdinaryLRPProcessor", func() {
 						Expect(internalRoutes).To(Equal([]*models.ActualLRPInternalRoute{{Hostname: "some-internal-route.apps.internal"}, {Hostname: "some-other-internal-route"}}))
 						Expect(metricTags).To(Equal(map[string]string{"app_name": "some-application"}))
 						Expect(routable).To(Equal(true))
+						Expect(availabilityZone).To(Equal(expectedAvailabilityZone))
 
 						Eventually(logger).Should(Say(
 							fmt.Sprintf(

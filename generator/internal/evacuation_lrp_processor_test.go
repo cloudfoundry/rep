@@ -23,7 +23,8 @@ import (
 var _ = Describe("EvacuationLrpProcessor", func() {
 	Describe("Process", func() {
 		const (
-			localCellID = "cell-α"
+			localCellID           = "cell-α"
+			localAvailabilityZone = "some-zone"
 		)
 
 		var (
@@ -57,7 +58,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			fakeMetronClient = new(mfakes.FakeIngressClient)
 
-			lrpProcessor = internal.NewLRPProcessor(fakeBBS, fakeContainerDelegate, fakeMetronClient, localCellID, rep.StackPathMap{}, "", fakeEvacuationReporter)
+			lrpProcessor = internal.NewLRPProcessor(fakeBBS, fakeContainerDelegate, fakeMetronClient, localCellID, localAvailabilityZone, rep.StackPathMap{}, "", fakeEvacuationReporter)
 
 			processGuid = "process-guid"
 			desiredLRP = models.DesiredLRP{
@@ -273,7 +274,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 
 			It("evacuates the lrp", func() {
 				Expect(fakeBBS.EvacuateRunningActualLRPCallCount()).To(Equal(1))
-				_, traceID, actualLRPKey, actualLRPContainerKey, actualLRPNetInfo, internalRoutes, metricTags, routable := fakeBBS.EvacuateRunningActualLRPArgsForCall(0)
+				_, traceID, actualLRPKey, actualLRPContainerKey, actualLRPNetInfo, internalRoutes, metricTags, routable, availabilityZone := fakeBBS.EvacuateRunningActualLRPArgsForCall(0)
 				Expect(traceID).To(Equal("some-trace-id"))
 				Expect(*actualLRPKey).To(Equal(lrpKey))
 				Expect(*actualLRPContainerKey).To(Equal(lrpInstanceKey))
@@ -281,6 +282,7 @@ var _ = Describe("EvacuationLrpProcessor", func() {
 				Expect(internalRoutes).To(Equal([]*models.ActualLRPInternalRoute{{Hostname: "some-internal-route.apps.internal"}, {Hostname: "some-other-internal-route"}}))
 				Expect(metricTags).To(Equal(map[string]string{"app_name": "some-application"}))
 				Expect(routable).To(Equal(true))
+				Expect(availabilityZone).To(Equal(localAvailabilityZone))
 
 				Eventually(logger).Should(Say(
 					fmt.Sprintf(

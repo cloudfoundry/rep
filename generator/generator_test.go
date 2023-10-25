@@ -24,6 +24,7 @@ func (BogusEvent) EventType() executor.EventType {
 var _ = Describe("Generator", func() {
 	var (
 		cellID             string
+		availabilityZone   string
 		fakeExecutorClient *efakes.FakeClient
 
 		opGenerator generator.Generator
@@ -31,9 +32,10 @@ var _ = Describe("Generator", func() {
 
 	BeforeEach(func() {
 		cellID = "some-cell-id"
+		availabilityZone = "some-zone"
 		fakeExecutorClient = new(efakes.FakeClient)
 		fakeEvacuationReporter := &fake_evacuation_context.FakeEvacuationReporter{}
-		opGenerator = generator.New(cellID, rep.StackPathMap{}, "", fakeBBS, fakeExecutorClient, nil, fakeEvacuationReporter)
+		opGenerator = generator.New(cellID, availabilityZone, rep.StackPathMap{}, "", fakeBBS, fakeExecutorClient, nil, fakeEvacuationReporter)
 	})
 
 	Describe("BatchOperations", func() {
