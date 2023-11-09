@@ -41,12 +41,13 @@ func NewLRPProcessor(
 	containerDelegate ContainerDelegate,
 	metronClient loggingclient.IngressClient,
 	cellID string,
+	availabilityZone string,
 	stackPathMap rep.StackPathMap,
 	layeringMode string,
 	evacuationReporter evacuation_context.EvacuationReporter,
 ) LRPProcessor {
-	ordinaryProcessor := newOrdinaryLRPProcessor(bbsClient, containerDelegate, cellID, stackPathMap, layeringMode)
-	evacuationProcessor := newEvacuationLRPProcessor(bbsClient, containerDelegate, metronClient, cellID)
+	ordinaryProcessor := newOrdinaryLRPProcessor(bbsClient, containerDelegate, cellID, availabilityZone, stackPathMap, layeringMode)
+	evacuationProcessor := newEvacuationLRPProcessor(bbsClient, containerDelegate, metronClient, cellID, availabilityZone)
 	return &lrpProcessor{
 		evacuationReporter:  evacuationReporter,
 		ordinaryProcessor:   ordinaryProcessor,

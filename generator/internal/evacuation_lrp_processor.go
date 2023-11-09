@@ -17,15 +17,17 @@ type evacuationLRPProcessor struct {
 	containerDelegate   ContainerDelegate
 	metronClient        loggingclient.IngressClient
 	cellID              string
+	availabilityZone    string
 	evacuatedContainers sync.Map
 }
 
-func newEvacuationLRPProcessor(bbsClient bbs.InternalClient, containerDelegate ContainerDelegate, metronClient loggingclient.IngressClient, cellID string) LRPProcessor {
+func newEvacuationLRPProcessor(bbsClient bbs.InternalClient, containerDelegate ContainerDelegate, metronClient loggingclient.IngressClient, cellID string, availabilityZone string) LRPProcessor {
 	return &evacuationLRPProcessor{
 		bbsClient:         bbsClient,
 		containerDelegate: containerDelegate,
 		metronClient:      metronClient,
 		cellID:            cellID,
+		availabilityZone:  availabilityZone,
 	}
 }
 
@@ -102,7 +104,7 @@ func (p *evacuationLRPProcessor) processRunningContainer(logger lager.Logger, tr
 	for _, internalRoute := range lrpContainer.InternalRoutes {
 		internalRoutes = append(internalRoutes, &models.ActualLRPInternalRoute{Hostname: internalRoute.Hostname})
 	}
-	keepContainer, err := p.bbsClient.EvacuateRunningActualLRP(logger, traceID, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo, internalRoutes, lrpContainer.MetricsConfig.Tags, lrpContainer.Routable)
+	keepContainer, err := p.bbsClient.EvacuateRunningActualLRP(logger, traceID, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo, internalRoutes, lrpContainer.MetricsConfig.Tags, lrpContainer.Routable, p.availabilityZone)
 	if keepContainer == false {
 		p.containerDelegate.DeleteContainer(logger, traceID, lrpContainer.Container.Guid)
 	} else if err != nil {
