@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -70,7 +69,7 @@ var (
 	sqlRunner     sqlrunner.SQLRunner
 	portAllocator portauthority.PortAllocator
 
-	fixturesPath = path.Join(os.Getenv("DIEGO_RELEASE_DIR"), "src/code.cloudfoundry.org/rep/cmd/rep/fixtures")
+	fixturesPath = "fixtures"
 )
 
 func TestRep(t *testing.T) {
@@ -92,7 +91,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 }, func(pathsByte []byte) {
 
 	node = GinkgoParallelProcess()
-	startPort := 1050 * node
+	startPort := 1060 * node
 	portRange := 1000
 	endPort := startPort + portRange
 
@@ -119,7 +118,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	serverPortSecurable, err = portAllocator.ClaimPorts(1)
 	Expect(err).NotTo(HaveOccurred())
 
-	dbName := fmt.Sprintf("diego_%d", GinkgoParallelProcess())
+	dbName := fmt.Sprintf("diego_rep_%d", GinkgoParallelProcess())
 
 	sqlRunner = test_helpers.NewSQLRunner(dbName)
 	sqlProcess = ginkgomon.Invoke(sqlRunner)
@@ -139,7 +138,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		Host:   bbsAddress,
 	}
 
-	fixturesPath := path.Join(os.Getenv("DIEGO_RELEASE_DIR"), "src/code.cloudfoundry.org/rep/cmd/rep/fixtures")
+	fixturesPath := "fixtures"
 
 	auctioneerServer = ghttp.NewServer()
 	auctioneerServer.UnhandledRequestStatusCode = http.StatusAccepted

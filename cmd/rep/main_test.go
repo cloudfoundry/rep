@@ -73,7 +73,7 @@ var _ = Describe("The Rep", func() {
 	}
 
 	BeforeEach(func() {
-		basePath = path.Join(os.Getenv("DIEGO_RELEASE_DIR"), "src/code.cloudfoundry.org/rep/cmd/rep/fixtures")
+		basePath = "fixtures"
 		caFile = path.Join(basePath, "green-certs", "server-ca.crt")
 		certFile = path.Join(basePath, "green-certs", "server.crt")
 		keyFile = path.Join(basePath, "green-certs", "server.key")
