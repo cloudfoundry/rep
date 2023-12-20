@@ -186,7 +186,7 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
 		return executor.RunRequest{}, err
 	}
 
-	metricTags, err := models.ConvertMetricTags(desiredLRP.MetricTags, map[models.MetricTagValue_DynamicValue]interface{}{
+	metricTags, err := models.ConvertMetricTags(desiredLRP.MetricTags, map[models.MetricTagValue_DynamicValue]any{
 		models.MetricTagDynamicValueIndex:        lrpKey.Index,
 		models.MetricTagDynamicValueInstanceGuid: lrpInstanceKey.InstanceGuid,
 	})
@@ -276,6 +276,11 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromTask(task *models.Task, 
 		return executor.RunRequest{}, err
 	}
 
+	metricTags, err := models.ConvertMetricTags(task.MetricTags, map[models.MetricTagValue_DynamicValue]any{})
+	if err != nil {
+		return executor.RunRequest{}, err
+	}
+
 	username, password, err := rrch.convertCredentials(rootFSPath, task.ImageUsername, task.ImagePassword)
 	if err != nil {
 		return executor.RunRequest{}, err
@@ -291,9 +296,11 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromTask(task *models.Task, 
 		LogConfig: executor.LogConfig{
 			Guid:       task.LogGuid,
 			SourceName: task.LogSource,
+			Tags:       metricTags,
 		},
 		MetricsConfig: executor.MetricsConfig{
 			Guid: task.MetricsGuid,
+			Tags: metricTags,
 		},
 		CachedDependencies:            ConvertCachedDependencies(cachedDependencies),
 		Action:                        task.Action,

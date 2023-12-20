@@ -627,7 +627,7 @@ var _ = Describe("Resources", func() {
 					Expect(runReq.RunInfo.LogConfig.Tags).To(HaveKeyWithValue("tag1", "foo"))
 				})
 
-				It("populates tags with dynamic values according its enum value ", func() {
+				It("populates tags with dynamic values according to its enum value", func() {
 					runReq, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(runReq.RunInfo.MetricsConfig.Tags).To(HaveKeyWithValue("index", "9"))
@@ -696,9 +696,15 @@ var _ = Describe("Resources", func() {
 					LogConfig: executor.LogConfig{
 						Guid:       task.LogGuid,
 						SourceName: task.LogSource,
+						Tags: map[string]string{
+							"source_id": "some-metrics-guid",
+						},
 					},
 					MetricsConfig: executor.MetricsConfig{
 						Guid: task.MetricsGuid,
+						Tags: map[string]string{
+							"source_id": "some-metrics-guid",
+						},
 					},
 					Action:                        task.Action,
 					Env:                           executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
@@ -725,6 +731,16 @@ var _ = Describe("Resources", func() {
 					EnableContainerProxy:       false,
 					LogRateLimitBytesPerSecond: -1,
 				}))
+			})
+
+			Context("when the task tags contain dynamic fields not applicable to tasks", func() {
+				BeforeEach(func() {
+					task.MetricTags["index"] = &models.MetricTagValue{Dynamic: models.MetricTagDynamicValueIndex}
+				})
+				It("errors", func() {
+					_, err := runRequestConversionHelper.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
+					Expect(err).To(HaveOccurred())
+				})
 			})
 
 			Context("when the network is nil", func() {
