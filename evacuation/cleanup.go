@@ -60,10 +60,8 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 
 	close(ready)
 
-	select {
-	case signal := <-signals:
-		logger.Info("signalled", lager.Data{"signal": signal})
-	}
+	signal := <-signals
+	logger.Info("signalled", lager.Data{"signal": signal})
 
 	traceID := "" // evacutaion cleanup is not originated through API
 
