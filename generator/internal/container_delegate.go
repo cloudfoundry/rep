@@ -2,7 +2,6 @@ package internal
 
 import (
 	"archive/tar"
-	"errors"
 	"fmt"
 	"io"
 
@@ -12,9 +11,7 @@ import (
 
 const MAX_RESULT_SIZE = 1024 * 50
 
-var ErrResultFileTooLarge = errors.New(
-	fmt.Sprintf("result file is too large (over %d bytes)", MAX_RESULT_SIZE),
-)
+var ErrResultFileTooLarge = fmt.Errorf("result file is too large (over %d bytes)", MAX_RESULT_SIZE)
 
 //go:generate counterfeiter -o fake_internal/fake_container_delegate.go container_delegate.go ContainerDelegate
 
