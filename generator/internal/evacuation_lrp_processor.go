@@ -105,7 +105,7 @@ func (p *evacuationLRPProcessor) processRunningContainer(logger lager.Logger, tr
 		internalRoutes = append(internalRoutes, &models.ActualLRPInternalRoute{Hostname: internalRoute.Hostname})
 	}
 	keepContainer, err := p.bbsClient.EvacuateRunningActualLRP(logger, traceID, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey, netInfo, internalRoutes, lrpContainer.MetricsConfig.Tags, lrpContainer.Routable, p.availabilityZone)
-	if keepContainer == false {
+	if !keepContainer {
 		p.containerDelegate.DeleteContainer(logger, traceID, lrpContainer.Container.Guid)
 	} else if err != nil {
 		logger.Error("failed-to-evacuate-running-actual-lrp", err, lager.Data{"lrp-key": lrpContainer.ActualLRPKey})
