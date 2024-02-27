@@ -109,7 +109,7 @@ func (i InsufficientResourcesError) Error() string {
 	}
 
 	keys := []string{}
-	for key, _ := range i.Problems {
+	for key := range i.Problems {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)

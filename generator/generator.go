@@ -135,7 +135,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	batch := make(map[string]operationq.Operation)
 
 	// create operations for processes with containers
-	for guid, _ := range containers {
+	for guid := range containers {
 		// bulker batch operations are not originated with trace ID
 		batch[guid] = g.operationFromContainer(logger, traceID, guid)
 	}
@@ -161,7 +161,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	}
 
 	// create operations for tasks with no containers
-	for guid, _ := range tasks {
+	for guid := range tasks {
 		_, found := batch[guid]
 		if !found {
 			batch[guid] = NewResidualTaskOperation(logger, traceID, guid, g.cellID, g.bbs, g.containerDelegate)
