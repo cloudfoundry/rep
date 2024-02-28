@@ -84,7 +84,7 @@ func rootFSProviders(preloaded rep.StackPathMap, arbitrary []string) rep.RootFSP
 	}
 
 	stacks := make([]string, 0, len(preloaded))
-	for stack, _ := range preloaded {
+	for stack := range preloaded {
 		stacks = append(stacks, stack)
 	}
 	rootFSProviders[models.PreloadedRootFSScheme] = rep.NewFixedSetRootFSProvider(stacks...)
