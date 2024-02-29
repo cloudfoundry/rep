@@ -29,7 +29,6 @@ type Generator interface {
 
 type generator struct {
 	cellID            string
-	availabilityZone  string
 	bbs               bbs.InternalClient
 	executorClient    executor.Client
 	lrpProcessor      internal.LRPProcessor
