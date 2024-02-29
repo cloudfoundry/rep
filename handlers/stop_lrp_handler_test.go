@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -148,7 +148,7 @@ var _ = Describe("StopLRPInstanceHandler", func() {
 
 	Context("when the request is invalid", func() {
 		BeforeEach(func() {
-			req.Body = ioutil.NopCloser(bytes.NewBufferString("foo"))
+			req.Body = io.NopCloser(bytes.NewBufferString("foo"))
 		})
 
 		It("responds with 400 Bad Request", func() {

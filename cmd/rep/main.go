@@ -8,7 +8,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -372,7 +371,7 @@ func initializeMetron(logger lager.Logger, repConfig config.RepConfig) (loggingc
 }
 
 func verifyCertificate(serverCertFile string) error {
-	certBytes, err := ioutil.ReadFile(serverCertFile)
+	certBytes, err := os.ReadFile(serverCertFile)
 	if err != nil {
 		return err
 	}
