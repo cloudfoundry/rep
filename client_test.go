@@ -171,7 +171,6 @@ var _ = Describe("Client", func() {
 	})
 
 	Describe("UpdateLRPInstance", func() {
-		const cellAddr = "cell.example.com"
 		var (
 			logger    = lagertest.NewTestLogger("test")
 			updateErr error
@@ -369,7 +368,6 @@ var _ = Describe("Client", func() {
 	})
 
 	Describe("StopLRPInstance", func() {
-		const cellAddr = "cell.example.com"
 		var (
 			logger    = lagertest.NewTestLogger("test")
 			stopErr   error
@@ -470,7 +468,6 @@ var _ = Describe("Client", func() {
 	})
 
 	Describe("CancelTask", func() {
-		const cellAddr = "cell.example.com"
 		var (
 			logger    = lagertest.NewTestLogger("test")
 			cancelErr error

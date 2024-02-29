@@ -341,10 +341,6 @@ func repHost(cellID string) string {
 	return strings.Replace(cellID, "_", "-", -1)
 }
 
-func repBaseHostName(advertiseDomain string) string {
-	return strings.Split(advertiseDomain, ".")[0]
-}
-
 func repURL(config config.RepConfig) string {
 	port := strings.Split(config.ListenAddrSecurable, ":")[1]
 	return fmt.Sprintf("https://%s.%s:%s", repHost(config.CellID), config.AdvertiseDomain, port)
