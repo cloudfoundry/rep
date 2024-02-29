@@ -2,7 +2,6 @@ package testrunner
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"time"
@@ -33,7 +32,7 @@ func (r *Runner) Start() {
 		panic("starting more than one rep!!!")
 	}
 
-	f, err := ioutil.TempFile("", "rep")
+	f, err := os.CreateTemp("", "rep")
 	Expect(err).NotTo(HaveOccurred())
 
 	defer f.Close()

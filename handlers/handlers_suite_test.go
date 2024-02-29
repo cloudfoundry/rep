@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -83,7 +82,7 @@ func Request(name string, params rata.Params, body io.Reader) (statusCode int, r
 	response, err := client.Do(request)
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
-	responseBody, err = ioutil.ReadAll(response.Body)
+	responseBody, err = io.ReadAll(response.Body)
 	response.Body.Close()
 
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
@@ -99,7 +98,7 @@ func RequestTracing(name string, params rata.Params, body io.Reader, requestIdHe
 	response, err := client.Do(request)
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
-	responseBody, err = ioutil.ReadAll(response.Body)
+	responseBody, err = io.ReadAll(response.Body)
 	response.Body.Close()
 
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())

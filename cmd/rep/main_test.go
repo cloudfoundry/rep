@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -386,7 +386,7 @@ var _ = Describe("The Rep", func() {
 			fakeGarden.RouteToHandler("POST", "/containers",
 				ghttp.CombineHandlers(
 					func(w http.ResponseWriter, req *http.Request) {
-						body, err := ioutil.ReadAll(req.Body)
+						body, err := io.ReadAll(req.Body)
 						req.Body.Close()
 						Expect(err).ShouldNot(HaveOccurred())
 						createRequestReceived <- string(body)
@@ -430,7 +430,7 @@ var _ = Describe("The Rep", func() {
 			fakeGarden.RouteToHandler("POST", "/containers",
 				ghttp.CombineHandlers(
 					func(w http.ResponseWriter, req *http.Request) {
-						body, err := ioutil.ReadAll(req.Body)
+						body, err := io.ReadAll(req.Body)
 						req.Body.Close()
 						Expect(err).ShouldNot(HaveOccurred())
 						createRequestReceived <- string(body)
@@ -480,7 +480,7 @@ var _ = Describe("The Rep", func() {
 
 			BeforeEach(func() {
 				var err error
-				certFile, err = ioutil.TempFile("", "")
+				certFile, err = os.CreateTemp("", "")
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -530,7 +530,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 36hwbfc1Gh/8nKgFeLmPOlBfKncjTjL2FvBNap6a8tVHXO9FvQ==
 -----END CERTIFICATE-----`)
 
-					err := ioutil.WriteFile(certFile.Name(), fileContents, os.ModePerm)
+					err := os.WriteFile(certFile.Name(), fileContents, os.ModePerm)
 					Expect(err).NotTo(HaveOccurred())
 					repConfig.PathToCACertsForDownloads = certFile.Name()
 				})
@@ -666,7 +666,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 
 					respondWithSuccessToCreateContainer = false
 					fakeGarden.RouteToHandler("POST", "/containers", func(rw http.ResponseWriter, req *http.Request) {
-						body, err := ioutil.ReadAll(req.Body)
+						body, err := io.ReadAll(req.Body)
 						Expect(err).NotTo(HaveOccurred())
 						if !strings.Contains(string(body), "check") && !strings.Contains(string(body), "rootfs-c") {
 							<-blockCh

@@ -2,7 +2,7 @@ package main_test
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -99,7 +99,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	portAllocator, err = portauthority.New(startPort, endPort)
 	Expect(err).NotTo(HaveOccurred())
 
-	grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
+	grpclog.SetLogger(log.New(io.Discard, "", 0))
 
 	// tests here are fairly Eventually driven which tends to flake out under
 	// load (for insignificant reasons); bump the default a bit higher than the
