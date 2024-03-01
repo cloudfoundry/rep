@@ -99,7 +99,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	portAllocator, err = portauthority.New(startPort, endPort)
 	Expect(err).NotTo(HaveOccurred())
 
-	grpclog.SetLogger(log.New(io.Discard, "", 0))
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, io.Discard))
 
 	// tests here are fairly Eventually driven which tends to flake out under
 	// load (for insignificant reasons); bump the default a bit higher than the
