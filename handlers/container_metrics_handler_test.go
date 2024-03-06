@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/executor/containermetrics"
-
 	"code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/rep"
 
