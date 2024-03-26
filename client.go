@@ -142,8 +142,8 @@ func (factory *clientFactory) CreateClient(address, url, traceID string) (Client
 type Client interface {
 	State(logger lager.Logger) (CellState, error)
 	Perform(logger lager.Logger, work Work) (Work, error)
-	UpdateLRPInstance(logger lager.Logger, update LRPUpdate) error
-	StopLRPInstance(logger lager.Logger, key models.ActualLRPKey, instanceKey models.ActualLRPInstanceKey) error
+	UpdateLRPInstance(logger lager.Logger, update *LRPUpdate) error
+	StopLRPInstance(logger lager.Logger, key *models.ActualLRPKey, instanceKey *models.ActualLRPInstanceKey) error
 	CancelTask(logger lager.Logger, taskGuid string) error
 	SetStateClient(stateClient *http.Client)
 	StateClientTimeout() time.Duration
@@ -264,7 +264,7 @@ func (c *client) Reset() error {
 
 func (c *client) UpdateLRPInstance(
 	logger lager.Logger,
-	update LRPUpdate,
+	update *LRPUpdate,
 ) error {
 	start := time.Now()
 	loggerCopy := logger
@@ -324,7 +324,7 @@ func (c *client) UpdateLRPInstance(
 
 func (c *client) updateLRPInstanceRoute_r0(
 	logger lager.Logger,
-	update LRPUpdate) error {
+	update *LRPUpdate) error {
 	start := time.Now()
 	logger = logger.Session("update-lrp-r0", lager.Data{"process-guid": update.ProcessGuid,
 		"index":         update.Index,
@@ -375,8 +375,8 @@ func (c *client) updateLRPInstanceRoute_r0(
 
 func (c *client) StopLRPInstance(
 	logger lager.Logger,
-	key models.ActualLRPKey,
-	instanceKey models.ActualLRPInstanceKey,
+	key *models.ActualLRPKey,
+	instanceKey *models.ActualLRPInstanceKey,
 ) error {
 	start := time.Now()
 	logger = logger.Session("stop-lrp", lager.Data{"process-guid": key.ProcessGuid,
@@ -441,8 +441,8 @@ func (c *client) CancelTask(logger lager.Logger, taskGuid string) error {
 }
 
 func stopParamsFromLRP(
-	key models.ActualLRPKey,
-	instanceKey models.ActualLRPInstanceKey,
+	key *models.ActualLRPKey,
+	instanceKey *models.ActualLRPInstanceKey,
 ) rata.Params {
 	return rata.Params{
 		"process_guid":  key.ProcessGuid,

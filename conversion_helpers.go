@@ -90,9 +90,9 @@ func ActualLRPNetInfoFromContainer(container executor.Container) (*models.Actual
 		))
 	}
 
-	preferredAddress := models.ActualLRPNetInfo_PreferredAddressHost
+	preferredAddress := models.ActualLRPNetInfo_HOST
 	if container.AdvertisePreferenceForInstanceAddress {
-		preferredAddress = models.ActualLRPNetInfo_PreferredAddressInstance
+		preferredAddress = models.ActualLRPNetInfo_INSTANCE
 	}
 
 	actualLRPNetInfo := models.NewActualLRPNetInfo(container.ExternalIP, container.InternalIP, preferredAddress, ports...)
@@ -137,9 +137,9 @@ func ConvertPreloadedRootFS(rootFS string, imageLayers []*models.ImageLayer, lay
 	newImageLayers := []*models.ImageLayer{}
 	var newRootFS string
 	for _, v := range imageLayers {
-		isExclusiveLayer := v.GetLayerType() == models.LayerTypeExclusive
-		isMediaTypeTgz := v.GetMediaType() == models.MediaTypeTgz
-		isSha256 := v.GetDigestAlgorithm() == models.DigestAlgorithmSha256
+		isExclusiveLayer := v.GetLayerType() == models.ImageLayer_EXCLUSIVE
+		isMediaTypeTgz := v.GetMediaType() == models.ImageLayer_TGZ
+		isSha256 := v.GetDigestAlgorithm() == models.ImageLayer_SHA256
 		suitableLayer := isExclusiveLayer && isMediaTypeTgz && isSha256
 		if suitableLayer && newRootFS == "" {
 			rootFSArray := strings.Split(rootFS, ":")
@@ -171,8 +171,8 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
 	stackPathMap StackPathMap,
 	layeringMode string,
 ) (executor.RunRequest, error) {
-	desiredLRPCopy := *desiredLRP
-	desiredLRP = &desiredLRPCopy
+	desiredLRPCopy := desiredLRP.Copy()
+	desiredLRP = desiredLRPCopy
 	desiredLRP.RootFs, desiredLRP.ImageLayers = ConvertPreloadedRootFS(desiredLRP.RootFs, desiredLRP.ImageLayers, layeringMode)
 	desiredLRP = desiredLRP.VersionDownTo(format.V2)
 
@@ -187,8 +187,8 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
 	}
 
 	metricTags, err := models.ConvertMetricTags(desiredLRP.MetricTags, map[models.MetricTagValue_DynamicValue]any{
-		models.MetricTagDynamicValueIndex:        lrpKey.Index,
-		models.MetricTagDynamicValueInstanceGuid: lrpInstanceKey.InstanceGuid,
+		models.MetricTagValue_INDEX:         lrpKey.Index,
+		models.MetricTagValue_INSTANCE_GUID: lrpInstanceKey.InstanceGuid,
 	})
 	if err != nil {
 		return executor.RunRequest{}, err
@@ -199,7 +199,7 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
 		return executor.RunRequest{}, err
 	}
 
-	internalRoutes, err := internalroutes.InternalRoutesFromRoutingInfo(*desiredLRP.Routes)
+	internalRoutes, err := internalroutes.InternalRoutesFromRoutingInfo(*desiredLRP.Routes.ToRoutes())
 	if err != nil {
 		return executor.RunRequest{}, err
 	}
@@ -259,62 +259,62 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
 }
 
 func (rrch RunRequestConversionHelper) NewRunRequestFromTask(task *models.Task, stackPathMap StackPathMap, layeringMode string) (executor.RunRequest, error) {
-	taskDefinitionCopy := *task.TaskDefinition
-	taskCopy := *task
-	task = &taskCopy
-	task.TaskDefinition = &taskDefinitionCopy
-	task.RootFs, task.ImageLayers = ConvertPreloadedRootFS(task.RootFs, task.ImageLayers, layeringMode)
+	taskDefinitionCopy := task.TaskDefinition.Copy()
+	taskCopy := task.Copy()
+	task = taskCopy
+	task.TaskDefinition = taskDefinitionCopy
+	task.TaskDefinition.RootFs, task.TaskDefinition.ImageLayers = ConvertPreloadedRootFS(task.TaskDefinition.RootFs, task.TaskDefinition.ImageLayers, layeringMode)
 	cachedDependencies, setupAction := convertImageLayers(task.TaskDefinition)
 
-	mounts, err := convertVolumeMounts(task.VolumeMounts)
+	mounts, err := convertVolumeMounts(task.TaskDefinition.VolumeMounts)
 	if err != nil {
 		return executor.RunRequest{}, err
 	}
 
-	rootFSPath, err := stackPathMap.PathForRootFS(task.RootFs)
+	rootFSPath, err := stackPathMap.PathForRootFS(task.TaskDefinition.RootFs)
 	if err != nil {
 		return executor.RunRequest{}, err
 	}
 
-	metricTags, err := models.ConvertMetricTags(task.MetricTags, map[models.MetricTagValue_DynamicValue]any{})
+	metricTags, err := models.ConvertMetricTags(task.TaskDefinition.MetricTags, map[models.MetricTagValue_DynamicValue]any{})
 	if err != nil {
 		return executor.RunRequest{}, err
 	}
 
-	username, password, err := rrch.convertCredentials(rootFSPath, task.ImageUsername, task.ImagePassword)
+	username, password, err := rrch.convertCredentials(rootFSPath, task.TaskDefinition.ImageUsername, task.TaskDefinition.ImagePassword)
 	if err != nil {
 		return executor.RunRequest{}, err
 	}
 
 	tags := executor.Tags{
-		ResultFileTag: task.ResultFile,
+		ResultFileTag: task.TaskDefinition.ResultFile,
 	}
 	runInfo := executor.RunInfo{
 		RootFSPath: rootFSPath,
-		CPUWeight:  uint(task.CpuWeight),
-		Privileged: task.Privileged,
+		CPUWeight:  uint(task.TaskDefinition.CpuWeight),
+		Privileged: task.TaskDefinition.Privileged,
 		LogConfig: executor.LogConfig{
-			Guid:       task.LogGuid,
-			SourceName: task.LogSource,
+			Guid:       task.TaskDefinition.LogGuid,
+			SourceName: task.TaskDefinition.LogSource,
 			Tags:       metricTags,
 		},
 		MetricsConfig: executor.MetricsConfig{
-			Guid: task.MetricsGuid,
+			Guid: task.TaskDefinition.MetricsGuid,
 			Tags: metricTags,
 		},
 		CachedDependencies:            ConvertCachedDependencies(cachedDependencies),
-		Action:                        task.Action,
+		Action:                        task.TaskDefinition.Action,
 		Setup:                         setupAction,
-		Env:                           executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
-		EgressRules:                   task.EgressRules,
-		TrustedSystemCertificatesPath: task.TrustedSystemCertificatesPath,
+		Env:                           executor.EnvironmentVariablesFromModel(task.TaskDefinition.EnvironmentVariables),
+		EgressRules:                   task.TaskDefinition.EgressRules,
+		TrustedSystemCertificatesPath: task.TaskDefinition.TrustedSystemCertificatesPath,
 		VolumeMounts:                  mounts,
-		Network:                       convertNetwork(task.Network),
-		CertificateProperties:         convertCertificateProperties(task.CertificateProperties),
+		Network:                       convertNetwork(task.TaskDefinition.Network),
+		CertificateProperties:         convertCertificateProperties(task.TaskDefinition.CertificateProperties),
 		ImageUsername:                 username,
 		ImagePassword:                 password,
 		EnableContainerProxy:          false,
-		LogRateLimitBytesPerSecond:    convertLogRateLimit(task.LogRateLimit),
+		LogRateLimitBytesPerSecond:    convertLogRateLimit(task.TaskDefinition.LogRateLimit),
 	}
 	return executor.NewRunRequest(task.TaskGuid, &runInfo, tags), nil
 }

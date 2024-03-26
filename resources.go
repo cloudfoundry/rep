@@ -251,13 +251,13 @@ func (p *PlacementConstraint) Valid() bool {
 
 type LRP struct {
 	InstanceGUID string `json:"instance_guid"`
-	models.ActualLRPKey
+	*models.ActualLRPKey
 	PlacementConstraint
 	Resource
 	State string `json:"state"`
 }
 
-func NewLRP(instanceGUID string, key models.ActualLRPKey, res Resource, pc PlacementConstraint) LRP {
+func NewLRP(instanceGUID string, key *models.ActualLRPKey, res Resource, pc PlacementConstraint) LRP {
 	return LRP{instanceGUID, key, pc, res, ""}
 }
 
@@ -271,12 +271,12 @@ func (lrp *LRP) Copy() LRP {
 
 type LRPUpdate struct {
 	InstanceGUID string `json:"instance_guid"`
-	models.ActualLRPKey
+	*models.ActualLRPKey
 	InternalRoutes internalroutes.InternalRoutes `json:"internal_routes"`
 	MetricTags     map[string]string             `json:"metric_tags"`
 }
 
-func NewLRPUpdate(instanceGUID string, key models.ActualLRPKey, internalRoutes internalroutes.InternalRoutes, metricTags map[string]string) LRPUpdate {
+func NewLRPUpdate(instanceGUID string, key *models.ActualLRPKey, internalRoutes internalroutes.InternalRoutes, metricTags map[string]string) LRPUpdate {
 	return LRPUpdate{
 		InstanceGUID:   instanceGUID,
 		ActualLRPKey:   key,

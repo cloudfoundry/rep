@@ -66,12 +66,12 @@ type FakeClient struct {
 	stateClientTimeoutReturnsOnCall map[int]struct {
 		result1 time.Duration
 	}
-	StopLRPInstanceStub        func(lager.Logger, models.ActualLRPKey, models.ActualLRPInstanceKey) error
+	StopLRPInstanceStub        func(lager.Logger, *models.ActualLRPKey, *models.ActualLRPInstanceKey) error
 	stopLRPInstanceMutex       sync.RWMutex
 	stopLRPInstanceArgsForCall []struct {
 		arg1 lager.Logger
-		arg2 models.ActualLRPKey
-		arg3 models.ActualLRPInstanceKey
+		arg2 *models.ActualLRPKey
+		arg3 *models.ActualLRPInstanceKey
 	}
 	stopLRPInstanceReturns struct {
 		result1 error
@@ -79,11 +79,11 @@ type FakeClient struct {
 	stopLRPInstanceReturnsOnCall map[int]struct {
 		result1 error
 	}
-	UpdateLRPInstanceStub        func(lager.Logger, rep.LRPUpdate) error
+	UpdateLRPInstanceStub        func(lager.Logger, *rep.LRPUpdate) error
 	updateLRPInstanceMutex       sync.RWMutex
 	updateLRPInstanceArgsForCall []struct {
 		arg1 lager.Logger
-		arg2 rep.LRPUpdate
+		arg2 *rep.LRPUpdate
 	}
 	updateLRPInstanceReturns struct {
 		result1 error
@@ -371,13 +371,13 @@ func (fake *FakeClient) StateClientTimeoutReturnsOnCall(i int, result1 time.Dura
 	}{result1}
 }
 
-func (fake *FakeClient) StopLRPInstance(arg1 lager.Logger, arg2 models.ActualLRPKey, arg3 models.ActualLRPInstanceKey) error {
+func (fake *FakeClient) StopLRPInstance(arg1 lager.Logger, arg2 *models.ActualLRPKey, arg3 *models.ActualLRPInstanceKey) error {
 	fake.stopLRPInstanceMutex.Lock()
 	ret, specificReturn := fake.stopLRPInstanceReturnsOnCall[len(fake.stopLRPInstanceArgsForCall)]
 	fake.stopLRPInstanceArgsForCall = append(fake.stopLRPInstanceArgsForCall, struct {
 		arg1 lager.Logger
-		arg2 models.ActualLRPKey
-		arg3 models.ActualLRPInstanceKey
+		arg2 *models.ActualLRPKey
+		arg3 *models.ActualLRPInstanceKey
 	}{arg1, arg2, arg3})
 	stub := fake.StopLRPInstanceStub
 	fakeReturns := fake.stopLRPInstanceReturns
@@ -398,13 +398,13 @@ func (fake *FakeClient) StopLRPInstanceCallCount() int {
 	return len(fake.stopLRPInstanceArgsForCall)
 }
 
-func (fake *FakeClient) StopLRPInstanceCalls(stub func(lager.Logger, models.ActualLRPKey, models.ActualLRPInstanceKey) error) {
+func (fake *FakeClient) StopLRPInstanceCalls(stub func(lager.Logger, *models.ActualLRPKey, *models.ActualLRPInstanceKey) error) {
 	fake.stopLRPInstanceMutex.Lock()
 	defer fake.stopLRPInstanceMutex.Unlock()
 	fake.StopLRPInstanceStub = stub
 }
 
-func (fake *FakeClient) StopLRPInstanceArgsForCall(i int) (lager.Logger, models.ActualLRPKey, models.ActualLRPInstanceKey) {
+func (fake *FakeClient) StopLRPInstanceArgsForCall(i int) (lager.Logger, *models.ActualLRPKey, *models.ActualLRPInstanceKey) {
 	fake.stopLRPInstanceMutex.RLock()
 	defer fake.stopLRPInstanceMutex.RUnlock()
 	argsForCall := fake.stopLRPInstanceArgsForCall[i]
@@ -434,12 +434,12 @@ func (fake *FakeClient) StopLRPInstanceReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeClient) UpdateLRPInstance(arg1 lager.Logger, arg2 rep.LRPUpdate) error {
+func (fake *FakeClient) UpdateLRPInstance(arg1 lager.Logger, arg2 *rep.LRPUpdate) error {
 	fake.updateLRPInstanceMutex.Lock()
 	ret, specificReturn := fake.updateLRPInstanceReturnsOnCall[len(fake.updateLRPInstanceArgsForCall)]
 	fake.updateLRPInstanceArgsForCall = append(fake.updateLRPInstanceArgsForCall, struct {
 		arg1 lager.Logger
-		arg2 rep.LRPUpdate
+		arg2 *rep.LRPUpdate
 	}{arg1, arg2})
 	stub := fake.UpdateLRPInstanceStub
 	fakeReturns := fake.updateLRPInstanceReturns
@@ -460,13 +460,13 @@ func (fake *FakeClient) UpdateLRPInstanceCallCount() int {
 	return len(fake.updateLRPInstanceArgsForCall)
 }
 
-func (fake *FakeClient) UpdateLRPInstanceCalls(stub func(lager.Logger, rep.LRPUpdate) error) {
+func (fake *FakeClient) UpdateLRPInstanceCalls(stub func(lager.Logger, *rep.LRPUpdate) error) {
 	fake.updateLRPInstanceMutex.Lock()
 	defer fake.updateLRPInstanceMutex.Unlock()
 	fake.UpdateLRPInstanceStub = stub
 }
 
-func (fake *FakeClient) UpdateLRPInstanceArgsForCall(i int) (lager.Logger, rep.LRPUpdate) {
+func (fake *FakeClient) UpdateLRPInstanceArgsForCall(i int) (lager.Logger, *rep.LRPUpdate) {
 	fake.updateLRPInstanceMutex.RLock()
 	defer fake.updateLRPInstanceMutex.RUnlock()
 	argsForCall := fake.updateLRPInstanceArgsForCall[i]

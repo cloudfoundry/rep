@@ -178,9 +178,10 @@ var _ = Describe("Client", func() {
 		)
 
 		BeforeEach(func() {
+			actualLRPKey := models.NewActualLRPKey("some-process-guid", 2, "test-domain")
 			lrpUpdate = rep.LRPUpdate{
 				InstanceGUID: "some-instance-guid",
-				ActualLRPKey: models.NewActualLRPKey("some-process-guid", 2, "test-domain"),
+				ActualLRPKey: &actualLRPKey,
 				InternalRoutes: internalroutes.InternalRoutes{
 					{Hostname: "a.apps.internal"},
 					{Hostname: "b.apps.internal"},
@@ -190,7 +191,7 @@ var _ = Describe("Client", func() {
 		})
 
 		JustBeforeEach(func() {
-			updateErr = client.UpdateLRPInstance(logger, lrpUpdate)
+			updateErr = client.UpdateLRPInstance(logger, &lrpUpdate)
 		})
 
 		Context("when the request is successful", func() {
@@ -369,16 +370,18 @@ var _ = Describe("Client", func() {
 
 	Describe("StopLRPInstance", func() {
 		var (
-			logger    = lagertest.NewTestLogger("test")
-			stopErr   error
-			actualLRP = models.ActualLRP{
-				ActualLRPKey:         models.NewActualLRPKey("some-process-guid", 2, "test-domain"),
-				ActualLRPInstanceKey: models.NewActualLRPInstanceKey("some-instance-guid", "some-cell-id"),
+			logger               = lagertest.NewTestLogger("test")
+			stopErr              error
+			actualLRPKey         = models.NewActualLRPKey("some-process-guid", 2, "test-domain")
+			actualLRPInstanceKey = models.NewActualLRPInstanceKey("some-instance-guid", "some-cell-id")
+			actualLRP            = models.ActualLRP{
+				ActualLrpKey:         &actualLRPKey,
+				ActualLrpInstanceKey: &actualLRPInstanceKey,
 			}
 		)
 
 		JustBeforeEach(func() {
-			stopErr = client.StopLRPInstance(logger, actualLRP.ActualLRPKey, actualLRP.ActualLRPInstanceKey)
+			stopErr = client.StopLRPInstance(logger, actualLRP.ActualLrpKey, actualLRP.ActualLrpInstanceKey)
 		})
 
 		Context("when the request is successful", func() {

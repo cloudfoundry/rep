@@ -241,7 +241,7 @@ func buildLRP(instanceGuid,
 	state string,
 ) *rep.LRP {
 	lrpKey := models.NewActualLRPKey(guid, int32(index), domain)
-	lrp := rep.NewLRP(instanceGuid, lrpKey, rep.NewResource(memoryMB, diskMB, maxPids), rep.PlacementConstraint{RootFs: rootFS,
+	lrp := rep.NewLRP(instanceGuid, &lrpKey, rep.NewResource(memoryMB, diskMB, maxPids), rep.PlacementConstraint{RootFs: rootFS,
 		PlacementTags: placementTags,
 		VolumeDrivers: volumeDrivers,
 	})
