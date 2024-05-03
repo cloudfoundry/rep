@@ -78,10 +78,6 @@ func (e *EvacuationCleanup) Run(signals <-chan os.Signal, ready chan<- struct{})
 		}
 
 		strandedEvacuationCount++
-		err = e.bbsClient.RemoveEvacuatingActualLRP(logger, traceID, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey)
-		if err != nil {
-			logger.Error("failed-removing-evacuating-actual-lrp", err, lager.Data{"lrp-key": actualLRP.ActualLRPKey})
-		}
 	}
 
 	err = e.metronClient.SendMetric(strandedEvacuatingActualLRPsMetric, strandedEvacuationCount)
