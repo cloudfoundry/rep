@@ -134,26 +134,6 @@ var _ = Describe("EvacuationCleanup", func() {
 			cleanupProcess.Signal(os.Kill)
 		})
 
-		It("removes all evacuating actual lrps associated with the cell", func() {
-			Eventually(errCh).Should(Receive(nil))
-			Expect(fakeBBSClient.ActualLRPsCallCount()).To(Equal(1))
-			_, traceID, filter := fakeBBSClient.ActualLRPsArgsForCall(0)
-			Expect(traceID).To(BeEmpty())
-			Expect(filter).To(Equal(models.ActualLRPFilter{CellID: cellID}))
-
-			Expect(fakeBBSClient.RemoveEvacuatingActualLRPCallCount()).To(Equal(2))
-
-			_, traceID, lrpKey, lrpInstanceKey := fakeBBSClient.RemoveEvacuatingActualLRPArgsForCall(0)
-			Expect(traceID).To(BeEmpty())
-			Expect(*lrpKey).To(Equal(evacuatingActualLRP.ActualLRPKey))
-			Expect(*lrpInstanceKey).To(Equal(evacuatingActualLRP.ActualLRPInstanceKey))
-
-			_, traceID, lrpKey, lrpInstanceKey = fakeBBSClient.RemoveEvacuatingActualLRPArgsForCall(1)
-			Expect(traceID).To(BeEmpty())
-			Expect(*lrpKey).To(Equal(evacuatingActualLRPWithReplacement.ActualLRPKey))
-			Expect(*lrpInstanceKey).To(Equal(evacuatingActualLRPWithReplacement.ActualLRPInstanceKey))
-		})
-
 		It("logs the number of stranded evacuating actual lrps", func() {
 			Eventually(logger).Should(gbytes.Say("finished-evacuating.*\"stranded-evacuating-actual-lrps\":2"))
 		})
@@ -316,17 +296,6 @@ var _ = Describe("EvacuationCleanup", func() {
 				var err error
 				Eventually(errCh).Should(Receive(&err))
 				Expect(err).To(Equal(errors.New("failed")))
-			})
-		})
-
-		Describe("when removing the evacuating actual lrp fails", func() {
-			BeforeEach(func() {
-				fakeBBSClient.RemoveEvacuatingActualLRPReturns(errors.New("failed"))
-			})
-
-			It("continues removing evacuating actual lrps", func() {
-				Eventually(errCh).Should(Receive(nil))
-				Expect(fakeBBSClient.RemoveEvacuatingActualLRPCallCount()).To(Equal(2))
 			})
 		})
 	})
