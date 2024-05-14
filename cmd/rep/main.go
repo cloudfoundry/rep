@@ -16,7 +16,6 @@ import (
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
-	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/debugserver"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
@@ -70,9 +69,6 @@ func main() {
 	if *zoneOverride != "" {
 		repConfig.Zone = *zoneOverride
 	}
-
-	// We need to keep this here since dockerdriver still uses cfhttp v1
-	cfhttp.Initialize(time.Duration(repConfig.CommunicationTimeout))
 
 	clock := clock.NewClock()
 	logger, reconfigurableSink := lagerflags.NewFromConfig(repConfig.SessionName, repConfig.LagerConfig)
