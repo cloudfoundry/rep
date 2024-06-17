@@ -511,6 +511,19 @@ var _ = Describe("Resources", func() {
 				})
 			})
 
+			Context("when the LRP's CpuWeight is 0", func() {
+				BeforeEach(func() {
+					desiredLRP.CpuWeight = 0
+				})
+
+				It("sets the runInfo's CPUWeight to 1, because 0 is invalid per the spec", func() {
+					runReq, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(runReq.RunInfo.CPUWeight).To(Equal(uint(1)))
+				})
+			})
+
 			Context("when the lrp has V3 declarative Resources", func() {
 				var (
 					origSetup *models.Action
