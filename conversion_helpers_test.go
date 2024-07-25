@@ -384,6 +384,7 @@ var _ = Describe("Resources", func() {
 						},
 					},
 					LogRateLimitBytesPerSecond: -1,
+					ServiceBindingFiles:        []executor.ServiceBindingFiles{{Name: "/redis/username", Value: "redis_user"}},
 				}))
 			})
 
