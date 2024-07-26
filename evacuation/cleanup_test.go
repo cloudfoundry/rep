@@ -139,7 +139,7 @@ var _ = Describe("EvacuationCleanup", func() {
 		})
 
 		It("emits a metric for the number of stranded evacuating actual lrps", func() {
-			Eventually(errCh).Should(Receive(nil))
+			Eventually(errCh).ShouldNot(Receive())
 			metric, value, _ := fakeMetronClient.SendMetricArgsForCall(0)
 			Expect(metric).To(Equal("StrandedEvacuatingActualLRPs"))
 			Expect(value).To(BeEquivalentTo(2))
@@ -167,7 +167,7 @@ var _ = Describe("EvacuationCleanup", func() {
 					Consistently(errCh).ShouldNot(Receive())
 					fakeClock.Increment(time.Second * 1)
 
-					Eventually(errCh).Should(Receive(nil))
+					Eventually(errCh).ShouldNot(Receive())
 					Expect(fakeExecutorClient.ListContainersCallCount()).To(Equal(3))
 					Expect(fakeExecutorClient.DeleteContainerCallCount()).To(Equal(2))
 
