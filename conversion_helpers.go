@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"strconv"
 	"strings"
@@ -206,7 +207,7 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
 
 	runInfo := executor.RunInfo{
 		RootFSPath:     rootFSPath,
-		CPUWeight:      uint(desiredLRP.CpuWeight),
+		CPUWeight:      uint(math.Max(float64(desiredLRP.CpuWeight), 1.0)),
 		Ports:          ConvertPortMappings(desiredLRP.Ports),
 		InternalRoutes: internalRoutes,
 		LogConfig: executor.LogConfig{
