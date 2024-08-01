@@ -518,7 +518,7 @@ var _ = Describe("Resources", func() {
 				})
 
 				It("sets the runInfo's CPUWeight to 1, because 0 is invalid per the spec", func() {
-					runReq, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
+					runReq, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLrpKey, &actualLRP.ActualLrpInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(runReq.RunInfo.CPUWeight).To(Equal(uint(1)))
