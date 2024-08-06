@@ -35,6 +35,7 @@ const (
 var (
 	ErrContainerMissingTags = errors.New("container is missing tags")
 	ErrInvalidProcessIndex  = errors.New("container does not have a valid process index")
+	ErrIntergerOverflow     = errors.New("integer overflow")
 )
 
 func ActualLRPKeyFromTags(tags executor.Tags) (*models.ActualLRPKey, error) {
@@ -47,9 +48,13 @@ func ActualLRPKeyFromTags(tags executor.Tags) (*models.ActualLRPKey, error) {
 		return &models.ActualLRPKey{}, ErrInvalidProcessIndex
 	}
 
+	if processIndex > math.MaxInt32 {
+		return &models.ActualLRPKey{}, ErrIntergerOverflow
+	}
+
 	actualLRPKey := models.NewActualLRPKey(
 		tags[ProcessGuidTag],
-		int32(processIndex),
+		int32(processIndex), //#nosec G109 -- Checked for integer overflow above
 		tags[DomainTag],
 	)
 
