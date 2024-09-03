@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"strconv"
 
@@ -83,6 +84,16 @@ var _ = Describe("Resources", func() {
 
 				It("reports the index is invalid when constructing ActualLRPKey", func() {
 					Expect(keyConversionErr).To(MatchError(rep.ErrInvalidProcessIndex))
+				})
+			})
+
+			Context("when the tag's process index overflows", func() {
+				BeforeEach(func() {
+					tags[rep.ProcessIndexTag] = fmt.Sprint(math.MaxInt32 + 1)
+				})
+
+				It("reports an integer overflow", func() {
+					Expect(keyConversionErr).To(MatchError(rep.ErrIntergerOverflow))
 				})
 			})
 		})
@@ -526,9 +537,7 @@ var _ = Describe("Resources", func() {
 			})
 
 			Context("when the lrp has V3 declarative Resources", func() {
-				var (
-					origSetup *models.Action
-				)
+				var origSetup *models.Action
 
 				BeforeEach(func() {
 					desiredLRP.CachedDependencies = nil
@@ -665,7 +674,6 @@ var _ = Describe("Resources", func() {
 						{Hostname: "bar.apps.internal"},
 					}))
 				})
-
 			})
 		})
 
@@ -952,14 +960,14 @@ var _ = Describe("Resources", func() {
 		var imageLayers []*models.ImageLayer
 		BeforeEach(func() {
 			imageLayers = []*models.ImageLayer{
-				&models.ImageLayer{
+				{
 					Name:            "bpal-tgz",
 					Url:             "http://file-server.service.cf.internal:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
 					DestinationPath: "/tmp/lifecycle",
 					LayerType:       models.ImageLayer_LayerTypeShared,
 					MediaType:       models.ImageLayer_MediaTypeTgz,
 				},
-				&models.ImageLayer{
+				{
 					Name:            "bpal-tar",
 					Url:             "http://file-server.internal/buildpack_app_lifecycle/b.tar",
 					DestinationPath: "/tmp/lifecycle2",
@@ -969,7 +977,7 @@ var _ = Describe("Resources", func() {
 					LayerType:       models.ImageLayer_LayerTypeExclusive,
 					MediaType:       models.ImageLayer_MediaTypeTar,
 				},
-				&models.ImageLayer{
+				{
 					Name:            "droplet",
 					Url:             "https://droplet.com/download",
 					DigestAlgorithm: models.ImageLayer_DigestAlgorithmSha256,
@@ -978,7 +986,7 @@ var _ = Describe("Resources", func() {
 					LayerType:       models.ImageLayer_LayerTypeExclusive,
 					MediaType:       models.ImageLayer_MediaTypeTgz,
 				},
-				&models.ImageLayer{
+				{
 					Name:            "ruby_buildpack",
 					Url:             "https://blobstore.internal/ruby_buildpack.zip",
 					DestinationPath: "/tmp/buildpacks/ruby_buildpack",
