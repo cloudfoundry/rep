@@ -155,7 +155,10 @@ func (e *EvacuationCleanup) deleteRunningContainers(logger lager.Logger, traceID
 	for _, container := range containers {
 		sourceName, tags := container.RunInfo.LogConfig.GetSourceNameAndTagsForLogging()
 
-		e.metronClient.SendAppLog(fmt.Sprintf("Cell %s reached evacuation timeout for instance %s", e.cellID, container.Guid), sourceName, tags)
+		metricError := e.metronClient.SendAppLog(fmt.Sprintf("Cell %s reached evacuation timeout for instance %s", e.cellID, container.Guid), sourceName, tags)
+		if metricError != nil {
+			logger.Debug("failed-sending-app-log-for-instance-evacuation-timeout", lager.Data{"error": metricError})
+		}
 		wg.Add(1)
 		go func(logger lager.Logger, traceID string, containerGuid string) {
 			defer wg.Done()
