@@ -36,5 +36,6 @@ func (h *evacuationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, lo
 	w.Header().Set("Content-Length", strconv.Itoa(len(jsonBytes)))
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
+	// #nosec G104 - ignore errors when writing HTTP responses so we don't spam our logs during a DoS
 	w.Write(jsonBytes)
 }

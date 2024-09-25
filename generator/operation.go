@@ -55,6 +55,7 @@ func (o *ResidualInstanceLRPOperation) Execute() {
 		return
 	}
 
+	// #nosec  G104 - ignore errors cleaning up the ResidualLRP because it doesn't actually exist, just want to clear resources
 	o.bbsClient.RemoveActualLRP(logger, o.traceID, &o.ActualLRPKey, &models.ActualLRPInstanceKey{
 		InstanceGuid: o.InstanceGuid,
 		CellId:       o.CellId,
@@ -106,6 +107,7 @@ func (o *ResidualEvacuatingLRPOperation) Execute() {
 		return
 	}
 
+	// #nosec  G104 - ignore errors cleaning up the ResidualLRP because it doesn't actually exist, just want to clear resources
 	o.bbsClient.RemoveEvacuatingActualLRP(logger, o.traceID, &o.ActualLRPKey, &o.ActualLRPInstanceKey)
 }
 
@@ -156,7 +158,10 @@ func (o *ResidualJointLRPOperation) Execute() {
 
 	actualLRPKey := models.NewActualLRPKey(o.ProcessGuid, int32(o.Index), o.Domain)
 	actualLRPInstanceKey := models.NewActualLRPInstanceKey(o.InstanceGuid, o.CellId)
+
+	// #nosec  G104 - ignore errors cleaning up the ResidualLRP because it doesn't actually exist, just want to clear resources
 	o.bbsClient.RemoveActualLRP(logger, o.traceID, &o.ActualLRPKey, &o.ActualLRPInstanceKey)
+	// #nosec  G104 - ignore errors cleaning up the ResidualLRP because it doesn't actually exist, just want to clear resources
 	o.bbsClient.RemoveEvacuatingActualLRP(logger, o.traceID, &actualLRPKey, &actualLRPInstanceKey)
 }
 
