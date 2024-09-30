@@ -17,10 +17,5 @@ Please report all issues and feature requests in [cloudfoundry/diego-release](ht
 
 
 ## Run Tests
-
-1. First setup your [GOPATH and install the necessary dependencies](https://github.com/cloudfoundry/diego-release/blob/develop/CONTRIBUTING.md#initial-setup) for running tests.
-1. Setup a MySQL server or a postgres server. [Please follow these instructions.](https://github.com/cloudfoundry/diego-release/blob/develop/CONTRIBUTING.md#running-the-sql-unit-tests)
-1. Run the tests from the root directory of the rep repo:
-```
-SQL_FLAVOR=mysql ginkgo -r -p -race
-```
+See the instructions in [the Diego Release contributing guide](https://github.com/cloudfoundry/diego-release/blob/develop/.github/CONTRIBUTING.md#running-tests)
+for how to run all tests
