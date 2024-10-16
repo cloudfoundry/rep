@@ -46,5 +46,6 @@ func (h *perform) ServeHTTP(w http.ResponseWriter, r *http.Request, logger lager
 		return
 	}
 
+	// #nosec G104 - ignore errors when writing HTTP responses so we don't spam our logs during a DoS
 	json.NewEncoder(w).Encode(failedWork)
 }

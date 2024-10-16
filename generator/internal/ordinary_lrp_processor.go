@@ -99,6 +99,7 @@ func (p *ordinaryLRPProcessor) processReservedContainer(logger lager.Logger, tra
 	}
 	ok = p.containerDelegate.RunContainer(logger, traceID, &runReq)
 	if !ok {
+		// #nosec G104 - ignore errors cleaning up the failed container
 		p.bbsClient.RemoveActualLRP(logger, traceID, lrpContainer.ActualLRPKey, lrpContainer.ActualLRPInstanceKey)
 		return
 	}
