@@ -94,9 +94,7 @@ var _ = Describe("EvacuationCleanup", func() {
 	})
 
 	Context("when the process is signalled", func() {
-		var (
-			evacuatingActualLRP, evacuatingActualLRPWithReplacement *models.ActualLRP
-		)
+		var evacuatingActualLRP, evacuatingActualLRPWithReplacement *models.ActualLRP
 
 		BeforeEach(func() {
 			evacuatingActualLRP = model_helpers.NewValidEvacuatingActualLRP("evacuating-process-guid", 0)
@@ -120,7 +118,8 @@ var _ = Describe("EvacuationCleanup", func() {
 						State:   executor.StateRunning,
 						RunInfo: executor.RunInfo{LogConfig: executor.LogConfig{Guid: "log-guid-1", SourceName: "source-name-1", Index: 0}},
 					},
-					{Guid: "container2",
+					{
+						Guid:    "container2",
 						State:   executor.StateRunning,
 						RunInfo: executor.RunInfo{LogConfig: executor.LogConfig{Guid: "log-guid-2", SourceName: "source-name-2", Index: 1}},
 					},
@@ -139,7 +138,8 @@ var _ = Describe("EvacuationCleanup", func() {
 		})
 
 		It("emits a metric for the number of stranded evacuating actual lrps", func() {
-			Eventually(errCh).Should(Receive(nil))
+			var nilObject interface{}
+			Eventually(errCh).Should(Receive(&nilObject))
 			metric, value, _ := fakeMetronClient.SendMetricArgsForCall(0)
 			Expect(metric).To(Equal("StrandedEvacuatingActualLRPs"))
 			Expect(value).To(BeEquivalentTo(2))
@@ -155,7 +155,8 @@ var _ = Describe("EvacuationCleanup", func() {
 								State:   executor.StateRunning,
 								RunInfo: executor.RunInfo{LogConfig: executor.LogConfig{Guid: "log-guid-1", SourceName: "source-name-1", Index: 0}},
 							},
-							{Guid: "container2",
+							{
+								Guid:    "container2",
 								State:   executor.StateCompleted,
 								RunInfo: executor.RunInfo{LogConfig: executor.LogConfig{Guid: "log-guid-2", SourceName: "source-name-2", Index: 1}},
 							},
@@ -167,7 +168,8 @@ var _ = Describe("EvacuationCleanup", func() {
 					Consistently(errCh).ShouldNot(Receive())
 					fakeClock.Increment(time.Second * 1)
 
-					Eventually(errCh).Should(Receive(nil))
+					var nilObject interface{}
+					Eventually(errCh).Should(Receive(&nilObject))
 					Expect(fakeExecutorClient.ListContainersCallCount()).To(Equal(3))
 					Expect(fakeExecutorClient.DeleteContainerCallCount()).To(Equal(2))
 

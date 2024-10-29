@@ -96,7 +96,10 @@ func (p *evacuationLRPProcessor) processRunningContainer(logger lager.Logger, tr
 
 	if _, ok := p.evacuatedContainers.LoadOrStore(lrpContainer.Guid, struct{}{}); !ok {
 		sourceName, tags := logConfig.GetSourceNameAndTagsForLogging()
-		p.metronClient.SendAppLog(fmt.Sprintf("Cell %s requesting replacement for instance %s", p.cellID, lrpContainer.ActualLRPInstanceKey.InstanceGuid), sourceName, tags)
+		metricError := p.metronClient.SendAppLog(fmt.Sprintf("Cell %s requesting replacement for instance %s", p.cellID, lrpContainer.ActualLRPInstanceKey.InstanceGuid), sourceName, tags)
+		if metricError != nil {
+			logger.Debug("failed-sending-app-log-about-replacement-for-instance-request", lager.Data{"error": metricError})
+		}
 	}
 
 	logger.Info("bbs-evacuate-running-actual-lrp", lager.Data{"net_info": netInfo})

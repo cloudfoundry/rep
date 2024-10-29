@@ -306,7 +306,11 @@ func startTLSServer(addr string, handler http.Handler, tlsConfig *tls.Config) if
 		}
 		listener = tls.NewListener(listener, tlsConfig)
 		close(ready)
-		go http.Serve(listener, handler)
+		server := &http.Server{
+			Handler:           handler,
+			ReadHeaderTimeout: 5 * time.Second,
+		}
+		go server.Serve(listener)
 		<-signals
 		return listener.Close()
 	})
