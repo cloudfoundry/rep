@@ -245,7 +245,7 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
 		EnableContainerProxy:          true,
 		Sidecars:                      convertSidecars(desiredLRP.Sidecars),
 		LogRateLimitBytesPerSecond:    convertLogRateLimit(desiredLRP.LogRateLimit),
-		ServiceBindingFiles:           executor.FilesBasedServiceBindingFromModel(desiredLRP.ServiceBindingFiles),
+		VolumeMountedFiles:            executor.VolumeMountedFilesFromModel(desiredLRP.VolumeMountedFiles),
 	}
 
 	// No need for the envoy proxy if there are no ports.  This flag controls the
