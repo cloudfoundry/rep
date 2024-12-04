@@ -322,6 +322,7 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromTask(task *models.Task, 
 		ImagePassword:                 password,
 		EnableContainerProxy:          false,
 		LogRateLimitBytesPerSecond:    convertLogRateLimit(task.LogRateLimit),
+		VolumeMountedFiles:            executor.VolumeMountedFilesFromModel(task.VolumeMountedFiles),
 	}
 	return executor.NewRunRequest(task.TaskGuid, &runInfo, tags), nil
 }

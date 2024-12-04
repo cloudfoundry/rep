@@ -952,6 +952,24 @@ var _ = Describe("Resources", func() {
 						}))
 					})
 				})
+
+				Context("when volumeMountedFiles are present", func() {
+					BeforeEach(func() {
+						task.VolumeMountedFiles = []*models.File{{
+							Path:    "/tmp/some/path",
+							Content: "file content",
+						}}
+					})
+
+					It("allowing task to uses volumeMountedFiles", func() {
+						runReq, err := runRequestConversionHelper.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeTwoLayer)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(runReq.VolumeMountedFiles[0]).To(ConsistOf(models.File{
+							Path:    "/tmp/some/path",
+							Content: "file content",
+						}))
+					})
+				})
 			})
 		})
 	})
