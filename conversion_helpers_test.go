@@ -395,6 +395,7 @@ var _ = Describe("Resources", func() {
 						},
 					},
 					LogRateLimitBytesPerSecond: -1,
+					VolumeMountedFiles:         []executor.VolumeMountedFiles{{Path: "/redis/username", Content: "redis_user"}},
 				}))
 			})
 
@@ -948,6 +949,24 @@ var _ = Describe("Resources", func() {
 							LogSource:         "",
 							ChecksumAlgorithm: "sha256",
 							ChecksumValue:     "some-sha256",
+						}))
+					})
+				})
+
+				Context("when volumeMountedFiles are present", func() {
+					BeforeEach(func() {
+						task.VolumeMountedFiles = []*models.File{{
+							Path:    "/tmp/some/path",
+							Content: "file content",
+						}}
+					})
+
+					It("allowing task to uses volumeMountedFiles", func() {
+						runReq, err := runRequestConversionHelper.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeTwoLayer)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(runReq.VolumeMountedFiles[0]).To(ConsistOf(models.File{
+							Path:    "/tmp/some/path",
+							Content: "file content",
 						}))
 					})
 				})
