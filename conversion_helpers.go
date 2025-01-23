@@ -205,7 +205,7 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
 		return executor.RunRequest{}, err
 	}
 
-	internalRoutes, err := internalroutes.InternalRoutesFromRoutingInfo(*desiredLRP.Routes)
+	internalRoutes, err := internalroutes.InternalRoutesFromRoutingInfo(desiredLRP.Routes)
 	if err != nil {
 		return executor.RunRequest{}, err
 	}
