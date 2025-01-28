@@ -64,7 +64,7 @@ var _ = Describe("The Rep", func() {
 		flushEvents chan struct{}
 	)
 
-	var getActualLRPs = func(logger lager.Logger) func() []*models.ActualLRP {
+	getActualLRPs := func(logger lager.Logger) func() []*models.ActualLRP {
 		return func() []*models.ActualLRP {
 			actualLRPs, err := bbsClient.ActualLRPs(logger, requestIdHeader, models.ActualLRPFilter{})
 			Expect(err).NotTo(HaveOccurred())
@@ -451,13 +451,13 @@ var _ = Describe("The Rep", func() {
 
 		Context("when there are multiple rootfses", func() {
 			BeforeEach(func() {
-				repConfig.PreloadedRootFS = append([]config.RootFS{{
+				repConfig.PreloadedRootFS = append(repConfig.PreloadedRootFS, config.RootFS{
 					Name: "another",
 					Path: "/path/to/another/rootfs",
-				}}, repConfig.PreloadedRootFS...)
+				})
 			})
 
-			It("uses the first rootfs", func() {
+			It("uses the last rootfs", func() {
 				Eventually(createRequestReceived).Should(Receive(And(
 					ContainSubstring(`check-`),
 					ContainSubstring(`/rootfs`),
@@ -570,7 +570,6 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 		})
 
 		Describe("maintaining presence", func() {
-
 			var response *locketmodels.FetchResponse
 
 			It("should maintain presence", func() {
@@ -748,9 +747,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 				})
 
 				Context("when an lrp is requested", func() {
-					var (
-						placementTags, volumeDrivers []string
-					)
+					var placementTags, volumeDrivers []string
 
 					BeforeEach(func() {
 						placementTags = []string{"pg-1"}
@@ -1056,9 +1053,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 			})
 
 			Context("while the healthcheck container is being created", func() {
-				var (
-					blockCh chan struct{}
-				)
+				var blockCh chan struct{}
 
 				BeforeEach(func() {
 					blockCh = make(chan struct{})
