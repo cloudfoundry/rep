@@ -458,9 +458,11 @@ var _ = Describe("The Rep", func() {
 			})
 
 			It("uses the last rootfs", func() {
+        Expect(repConfig.PreloadedRootFS).To(HaveLen(2))
+        fmt.Println(createRequestReceived)
 				Eventually(createRequestReceived).Should(Receive(And(
 					ContainSubstring(`check-`),
-					ContainSubstring(`/rootfs`),
+          ContainSubstring(`"rootfs":"/path/to/another/rootfs"`),
 				)))
 			})
 		})
