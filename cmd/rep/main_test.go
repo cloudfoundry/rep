@@ -452,15 +452,16 @@ var _ = Describe("The Rep", func() {
 		Context("when there are multiple rootfses", func() {
 			BeforeEach(func() {
 				repConfig.PreloadedRootFS = append([]config.RootFS{{
-					Name: "another",
-					Path: "/path/to/another/rootfs",
+					Name: "sidecar",
+					Path: "/path/to/sidecar/rootfs",
 				}}, repConfig.PreloadedRootFS...)
+        repConfig.SidecarRootFS = config.RootFS{Name: "sidecar", Path: "/path/to/sidecar/rootfs"}
 			})
 
-			It("uses the first rootfs", func() {
+			It("uses the specified rootfs", func() {
 				Eventually(createRequestReceived).Should(Receive(And(
 					ContainSubstring(`check-`),
-					ContainSubstring(`/rootfs`),
+					ContainSubstring(`/path/to/sidecar/rootfs`),
 				)))
 			})
 		})
