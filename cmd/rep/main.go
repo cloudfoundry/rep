@@ -90,7 +90,7 @@ func main() {
 
 	rootFSMap := repConfig.PreloadedRootFS.StackPathMap()
 
-	sidecarFSPath := config.SidecarRootFSPath(repConfig.SidecarRootFS, repConfig.PreloadedRootFS)
+	sidecarFSPath := config.SidecarRootFSPath(repConfig.SidecarRootFSPath, repConfig.PreloadedRootFS)
 
 	executorClient, containerMetricsProvider, executorMembers, err := executorinit.Initialize(logger, repConfig.ExecutorConfig, repConfig.CellID, repConfig.Zone, rootFSMap, sidecarFSPath, metronClient, clock)
 	if err != nil {

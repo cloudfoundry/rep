@@ -66,11 +66,11 @@ func (rootFSes RootFSes) StackPathMap() rep.StackPathMap {
 	return m
 }
 
-func SidecarRootFSPath(sidecarFS RootFS, rootFSes RootFSes) string {
-	if sidecarFS == (RootFS{}) || sidecarFS.Path == "" {
+func SidecarRootFSPath(sidecarFS string, rootFSes RootFSes) string {
+	if sidecarFS == "" {
 		return rootFSes[0].Path
 	}
-	return sidecarFS.Path
+	return sidecarFS
 }
 
 func (m RootFSes) MarshalJSON() (b []byte, err error) {
@@ -104,7 +104,7 @@ type RepConfig struct {
 	PlacementTags             []string              `json:"placement_tags"`
 	PollingInterval           durationjson.Duration `json:"polling_interval,omitempty"`
 	PreloadedRootFS           RootFSes              `json:"preloaded_root_fs"`
-	SidecarRootFS             RootFS                `json:"sidecar_root_fs"`
+	SidecarRootFSPath         string                `json:"sidecar_root_fs"`
 	ServerCertFile            string                `json:"server_cert_file"` // DEPRECATED. Kept around for dusts compatability
 	ServerKeyFile             string                `json:"server_key_file"`  // DEPRECATED. Kept around for dusts compatability
 	CertFile                  string                `json:"cert_file"`

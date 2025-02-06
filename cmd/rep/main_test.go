@@ -455,7 +455,7 @@ var _ = Describe("The Rep", func() {
 					Name: "sidecar",
 					Path: "/path/to/sidecar/rootfs",
 				}}, repConfig.PreloadedRootFS...)
-        repConfig.SidecarRootFS = config.RootFS{Name: "sidecar", Path: "/path/to/sidecar/rootfs"}
+        repConfig.SidecarRootFSPath = "/path/to/sidecar/rootfs"
 			})
 
 			It("uses the specified rootfs", func() {
