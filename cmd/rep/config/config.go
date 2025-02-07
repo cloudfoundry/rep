@@ -66,13 +66,6 @@ func (rootFSes RootFSes) StackPathMap() rep.StackPathMap {
 	return m
 }
 
-func SidecarRootFSPath(sidecarFS string, rootFSes RootFSes) string {
-	if sidecarFS == "" {
-		return rootFSes[0].Path
-	}
-	return sidecarFS
-}
-
 func (m RootFSes) MarshalJSON() (b []byte, err error) {
 	arr := make([]string, len(m))
 	for i, rootFS := range m {
