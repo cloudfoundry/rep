@@ -251,6 +251,7 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
 		EnableContainerProxy:          true,
 		Sidecars:                      convertSidecars(desiredLRP.Sidecars),
 		LogRateLimitBytesPerSecond:    convertLogRateLimit(desiredLRP.LogRateLimit),
+		VolumeMountedFiles:            executor.VolumeMountedFilesFromModel(desiredLRP.VolumeMountedFiles),
 	}
 
 	// No need for the envoy proxy if there are no ports.  This flag controls the
@@ -322,6 +323,7 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromTask(task *models.Task, 
 		ImagePassword:                 password,
 		EnableContainerProxy:          false,
 		LogRateLimitBytesPerSecond:    convertLogRateLimit(task.TaskDefinition.LogRateLimit),
+		VolumeMountedFiles:            executor.VolumeMountedFilesFromModel(task.TaskDefinition.VolumeMountedFiles),
 	}
 	return executor.NewRunRequest(task.TaskGuid, &runInfo, tags), nil
 }

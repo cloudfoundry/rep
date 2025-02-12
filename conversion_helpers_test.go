@@ -283,15 +283,18 @@ var _ = Describe("Resources", func() {
 
 		Describe("NewRunRequestFromDesiredLRP", func() {
 			var (
-				containerGuid string
-				desiredLRP    *models.DesiredLRP
-				actualLRP     *models.ActualLRP
-				stackPathMap  rep.StackPathMap
+				containerGuid      string
+				desiredLRP         *models.DesiredLRP
+				desiredLRPNoVolume *models.DesiredLRP
+				actualLRP          *models.ActualLRP
+				stackPathMap       rep.StackPathMap
+				runInfo            executor.RunInfo
 			)
 
 			BeforeEach(func() {
 				containerGuid = "the-container-guid"
 				desiredLRP = model_helpers.NewValidDesiredLRP("the-process-guid")
+				desiredLRPNoVolume = model_helpers.NewValidDesiredLRPWithNoVolumeMountedFiles("the-process-guid")
 				desiredLRP.Ports = []uint32{8080}
 				// This is a lazy way to prevent old tests from failing.  The tests
 				// happily ignored ImageLayer that used to be returned from
@@ -318,13 +321,13 @@ var _ = Describe("Resources", func() {
 						DiskMb:   6,
 					},
 				}
-			})
 
-			It("returns a valid run request", func() {
-				runReq, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLrpKey, &actualLRP.ActualLrpInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(runReq.Tags).To(Equal(executor.Tags{}))
-				Expect(runReq.RunInfo).To(test_helpers.DeepEqual(executor.RunInfo{
+				desiredLRPNoVolume.Ports = desiredLRP.Ports
+				desiredLRPNoVolume.ImageLayers = nil
+				desiredLRPNoVolume.RootFs = desiredLRP.RootFs
+				desiredLRPNoVolume.Sidecars = desiredLRP.Sidecars
+
+				runInfo = executor.RunInfo{
 					RootFSPath: stackPathMap["cflinuxfs3"],
 					CPUWeight:  uint(desiredLRP.CpuWeight),
 					Ports:      rep.ConvertPortMappings(desiredLRP.Ports),
@@ -396,7 +399,28 @@ var _ = Describe("Resources", func() {
 						},
 					},
 					LogRateLimitBytesPerSecond: -1,
-				}))
+					VolumeMountedFiles:         []executor.VolumeMountedFiles{{Path: "/redis/username", Content: "redis_user"}},
+				}
+			})
+
+			It("returns a valid run request", func() {
+				runReq, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLrpKey, &actualLRP.ActualLrpInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.Tags).To(Equal(executor.Tags{}))
+
+				Expect(runReq.RunInfo).To(test_helpers.DeepEqual(runInfo))
+
+			})
+
+			It("return a valid run request with no volume mounted files", func() {
+				runReqNoVolume, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRPNoVolume, &actualLRP.ActualLrpKey, &actualLRP.ActualLrpInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(runReqNoVolume.Tags).To(Equal(executor.Tags{}))
+
+				runInfo.VolumeMountedFiles = []executor.VolumeMountedFiles{}
+				Expect(runReqNoVolume.RunInfo).To(test_helpers.DeepEqual(runInfo))
+
 			})
 
 			Context("when the network is nil", func() {
@@ -681,6 +705,7 @@ var _ = Describe("Resources", func() {
 			var (
 				task         *models.Task
 				stackPathMap rep.StackPathMap
+				runInfo      executor.RunInfo
 			)
 
 			BeforeEach(func() {
@@ -692,22 +717,17 @@ var _ = Describe("Resources", func() {
 				// explicitly for V2 conversion in a context below
 				task.TaskDefinition.ImageLayers = nil
 				task.TaskDefinition.RootFs = "preloaded:cflinuxfs3"
+				task.TaskDefinition.VolumeMountedFiles = []*models.File{
+					{Path: "/redis/username", Content: "username"},
+				}
 
 				stackPathMap = rep.StackPathMap{
 					"cflinuxfs3": "cflinuxfs3:/var/vcap/packages/cflinuxfs3/rootfs.tar",
 				}
 
 				task.TaskDefinition.LogRateLimit = &models.LogRateLimit{BytesPerSecond: -1}
-			})
 
-			It("returns a valid run request", func() {
-				runReq, err := runRequestConversionHelper.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(runReq.Tags).To(Equal(executor.Tags{
-					rep.ResultFileTag: task.TaskDefinition.ResultFile,
-				}))
-
-				Expect(runReq.RunInfo).To(Equal(executor.RunInfo{
+				runInfo = executor.RunInfo{
 					RootFSPath: stackPathMap["cflinuxfs3"],
 					CPUWeight:  uint(task.TaskDefinition.CpuWeight),
 					Privileged: task.TaskDefinition.Privileged,
@@ -752,7 +772,32 @@ var _ = Describe("Resources", func() {
 					ImagePassword:              "image-password",
 					EnableContainerProxy:       false,
 					LogRateLimitBytesPerSecond: -1,
+					VolumeMountedFiles:         []executor.VolumeMountedFiles{{Path: "/redis/username", Content: "username"}},
+				}
+			})
+
+			It("returns a valid run request", func() {
+				runReq, err := runRequestConversionHelper.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.Tags).To(Equal(executor.Tags{
+					rep.ResultFileTag: task.TaskDefinition.ResultFile,
 				}))
+
+				Expect(runReq.RunInfo).To(Equal(runInfo))
+			})
+
+			It("returns a valid run request with no volume mounted files", func() {
+				task.TaskDefinition.VolumeMountedFiles = []*models.File{}
+				runReq, err := runRequestConversionHelper.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(runReq.Tags).To(Equal(executor.Tags{
+					rep.ResultFileTag: task.TaskDefinition.ResultFile,
+				}))
+
+				runInfo.VolumeMountedFiles = []executor.VolumeMountedFiles{}
+
+				Expect(runReq.RunInfo).To(Equal(runInfo))
 			})
 
 			Context("when the task tags contain dynamic fields not applicable to tasks", func() {
