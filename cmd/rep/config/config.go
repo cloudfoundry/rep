@@ -58,6 +58,14 @@ func (rootFSes RootFSes) Names() []string {
 	return names
 }
 
+func (rootFSes RootFSes) Paths() []string {
+	paths := make([]string, len(rootFSes))
+	for i, rootFS := range rootFSes {
+		paths[i] = rootFS.Path
+	}
+	return paths
+}
+
 func (rootFSes RootFSes) StackPathMap() rep.StackPathMap {
 	m := make(rep.StackPathMap)
 	for _, rootFS := range rootFSes {

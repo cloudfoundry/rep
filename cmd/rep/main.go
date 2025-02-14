@@ -89,8 +89,9 @@ func main() {
 	}
 
 	rootFSMap := repConfig.PreloadedRootFS.StackPathMap()
+	rootFSes := repConfig.PreloadedRootFS.Paths()
 
-	executorClient, containerMetricsProvider, executorMembers, err := executorinit.Initialize(logger, repConfig.ExecutorConfig, repConfig.CellID, repConfig.Zone, rootFSMap, metronClient, clock)
+	executorClient, containerMetricsProvider, executorMembers, err := executorinit.Initialize(logger, repConfig.ExecutorConfig, repConfig.CellID, repConfig.Zone, rootFSes, metronClient, clock)
 	if err != nil {
 		logger.Error("failed-to-initialize-executor", err)
 		os.Exit(1)
@@ -135,7 +136,7 @@ func main() {
 	)
 
 	requestTypes := []string{
-		"State", "ContainerMetrics", "Perform", "Reset", "UpdateLRPInstance", "StopLRPInstance", "CancelTask", //over https only
+		"State", "ContainerMetrics", "Perform", "Reset", "UpdateLRPInstance", "StopLRPInstance", "CancelTask", // over https only
 	}
 	requestMetrics := helpers.NewRequestMetricsNotifier(logger, clock, metronClient, time.Duration(repConfig.ReportInterval), requestTypes)
 	httpServer := initializeServer(auctionCellRep, executorClient, evacuatable, requestMetrics, logger, repConfig, false)
@@ -271,7 +272,6 @@ func initializeServer(
 	handlers := handlers.New(auctionCellRep, auctionCellRep, executorClient, evacuatable, requestMetrics, logger, networkAccessible)
 	routes := rep.NewRoutes(networkAccessible)
 	router, err := rata.NewRouter(routes, handlers)
-
 	if err != nil {
 		logger.Fatal("failed-to-construct-router", err)
 	}
