@@ -464,6 +464,23 @@ var _ = Describe("The Rep", func() {
 				)))
 			})
 		})
+
+		Context("when there is an explixitly specified rootfs path", func() {
+			BeforeEach(func() {
+				repConfig.PreloadedRootFS = append(repConfig.PreloadedRootFS, config.RootFS{
+					Name: "another",
+					Path: "/path/to/another/rootfs",
+				})
+				repConfig.SidecarRootFSPath = "/path/to/another/rootfs"
+			})
+
+			It("uses the specified rootfs path", func() {
+				Eventually(createRequestReceived).Should(Receive(And(
+					ContainSubstring(`check-`),
+					ContainSubstring(`/path/to/another/rootfs`),
+				)))
+			})
+		})
 	})
 
 	Context("when Garden is available", func() {
