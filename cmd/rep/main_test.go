@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -418,6 +419,45 @@ var _ = Describe("The Rep", func() {
 				),
 			))
 		})
+
+		Context("when there are extra rootfses", func() {
+			var extraRootfs, rootfsTar string
+			BeforeEach(func() {
+				var err error
+				extraRootfs, err = os.MkdirTemp("", "extra-rootfs-dir-*")
+				Expect(err).NotTo(HaveOccurred())
+				rootfsTar = filepath.Join(extraRootfs, "special-rootfs.tar")
+				file, err := os.Create(rootfsTar)
+				Expect(err).NotTo(HaveOccurred())
+				defer file.Close()
+
+				repConfig.ExtraRootfsDir = extraRootfs
+			})
+
+			AfterEach(func() {
+				Expect(os.RemoveAll(extraRootfs)).To(Succeed())
+			})
+
+			It("creates containers with the correct rootfses", func() {
+				var createRequest1, createRequest2, createRequest3 string
+				Eventually(createRequestReceived).Should(Receive(&createRequest1))
+				Eventually(createRequestReceived).Should(Receive(&createRequest2))
+				Eventually(createRequestReceived).Should(Receive(&createRequest3))
+				Expect([]string{createRequest1, createRequest2, createRequest3}).To(ConsistOf(
+					And(
+						ContainSubstring(`rootfs-c`),
+						ContainSubstring(`"image":{"uri":"/path/to/another/rootfs"}`),
+					),
+					And(
+						ContainSubstring(`rootfs-c`),
+						ContainSubstring(`"image":{"uri":"/path/to/rootfs"}`),
+					),
+					And(
+						ContainSubstring(`rootfs-c`),
+						ContainSubstring(fmt.Sprintf(`"image":{"uri":"%s"}`, rootfsTar)),
+					)))
+			})
+		})
 	})
 
 	Describe("RootFS for garden healthcheck", func() {
@@ -455,6 +495,36 @@ var _ = Describe("The Rep", func() {
 					Name: "another",
 					Path: "/path/to/another/rootfs",
 				}}, repConfig.PreloadedRootFS...)
+			})
+
+			It("uses the first rootfs", func() {
+				Eventually(createRequestReceived).Should(Receive(And(
+					ContainSubstring(`check-`),
+					ContainSubstring(`/rootfs`),
+				)))
+			})
+		})
+
+		Context("when there are extra rootfses", func() {
+			var extraRootfs, rootfsTar string
+			BeforeEach(func() {
+				var err error
+				extraRootfs, err = os.MkdirTemp("", "extra-rootfs-dir-*")
+				Expect(err).NotTo(HaveOccurred())
+				rootfsTar = filepath.Join(extraRootfs, "special-rootfs.tar")
+				file, err := os.Create(rootfsTar)
+				Expect(err).NotTo(HaveOccurred())
+				defer file.Close()
+
+				repConfig.ExtraRootfsDir = extraRootfs
+				repConfig.PreloadedRootFS = append([]config.RootFS{{
+					Name: "another",
+					Path: "/path/to/another/rootfs",
+				}}, repConfig.PreloadedRootFS...)
+			})
+
+			AfterEach(func() {
+				Expect(os.RemoveAll(extraRootfs)).To(Succeed())
 			})
 
 			It("uses the first rootfs", func() {

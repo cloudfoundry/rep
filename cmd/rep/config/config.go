@@ -88,6 +88,7 @@ type RepConfig struct {
 	CommunicationTimeout      durationjson.Duration `json:"communication_timeout,omitempty"`
 	EvacuationPollingInterval durationjson.Duration `json:"evacuation_polling_interval,omitempty"`
 	EvacuationTimeout         durationjson.Duration `json:"evacuation_timeout,omitempty"`
+	ExtraRootfsDir            string                `json:"extra_root_fs_dir"`
 	LayeringMode              string                `json:"layering_mode,omitempty"`
 	ListenAddr                string                `json:"listen_addr,omitempty"`
 	ListenAddrSecurable       string                `json:"listen_addr_securable,omitempty"`
