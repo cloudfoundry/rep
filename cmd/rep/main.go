@@ -8,9 +8,11 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -90,6 +92,28 @@ func main() {
 
 	rootFSMap := repConfig.PreloadedRootFS.StackPathMap()
 	sidecarRootFSPath := repConfig.SidecarRootFSPath
+
+	if sidecarRootFSPath == "" {
+		for _, rootFSPath := range rootFSMap {
+			sidecarRootFSPath = rootFSPath
+			break
+		}
+	}
+
+	walkDirErr := filepath.WalkDir(repConfig.ExtraRootfsDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		ext := filepath.Ext(path)
+		if strings.EqualFold(ext, ".tar") {
+			key := strings.TrimSuffix(filepath.Base(path), ext)
+			rootFSMap[key] = path
+		}
+		return nil
+	})
+	if walkDirErr != nil {
+		logger.Debug("missing-extra-rootfs", lager.Data{"error": walkDirErr})
+	}
 
 	executorClient, containerMetricsProvider, executorMembers, err := executorinit.Initialize(logger, repConfig.ExecutorConfig, repConfig.CellID, repConfig.Zone, rootFSMap, sidecarRootFSPath, metronClient, clock)
 	if err != nil {
