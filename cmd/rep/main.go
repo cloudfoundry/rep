@@ -245,7 +245,7 @@ func initializeCellPresence(
 		Key:      repConfig.CellID,
 		Owner:    guid.String(),
 		Value:    string(payload),
-		TypeCode: locketmodels.TypeCode_PRESENCE,
+		TypeCode: locketmodels.PRESENCE,
 		Type:     locketmodels.PresenceType,
 	}
 
