@@ -377,10 +377,13 @@ var _ = Describe("The Rep", func() {
 		})
 	})
 
-	Describe("creates containers to retrieve the sizes of the configured preloaded rootfses", func() {
+	Describe("creates containers to retrieve the sizes of the configured preloaded rootfses on linux", func() {
 		var createRequestReceived chan string
 
 		BeforeEach(func() {
+			if runtime.GOOS == "windows" {
+				Skip("Skipping preloaded fs on windows")
+			}
 			fakeGarden.Start()
 			respondWithSuccessToCreateContainer = false
 			createRequestReceived = make(chan string)
