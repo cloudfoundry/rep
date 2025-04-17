@@ -98,7 +98,7 @@ var _ = Describe("TaskProcessor", func() {
 
 		Context("when creating the run request fails", func() {
 			BeforeEach(func() {
-				task.RootFs = "% s"
+				task.TaskDefinition.RootFs = "% s"
 			})
 
 			It("does not run the container", func() {
