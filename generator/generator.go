@@ -96,9 +96,9 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 
 		for _, lrp := range lrps {
 			if lrp.GetPresence() == models.ActualLRP_Evacuating {
-				evacuatingLRPs[lrp.GetInstanceGuid()] = *lrp
+				evacuatingLRPs[lrp.ActualLrpInstanceKey.InstanceGuid] = *lrp
 			} else {
-				instanceLRPs[lrp.GetInstanceGuid()] = *lrp
+				instanceLRPs[lrp.ActualLrpInstanceKey.InstanceGuid] = *lrp
 			}
 		}
 		errChan <- err
@@ -145,9 +145,9 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 			continue
 		}
 		if _, foundEvacuatingLRP := evacuatingLRPs[guid]; foundEvacuatingLRP {
-			batch[guid] = NewResidualJointLRPOperation(logger, traceID, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
+			batch[guid] = NewResidualJointLRPOperation(logger, traceID, g.bbs, g.containerDelegate, lrp.ActualLrpKey, lrp.ActualLrpInstanceKey)
 		} else {
-			batch[guid] = NewResidualInstanceLRPOperation(logger, traceID, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
+			batch[guid] = NewResidualInstanceLRPOperation(logger, traceID, g.bbs, g.containerDelegate, lrp.ActualLrpKey, lrp.ActualLrpInstanceKey)
 		}
 	}
 
@@ -155,7 +155,7 @@ func (g *generator) BatchOperations(logger lager.Logger) (map[string]operationq.
 	for guid, lrp := range evacuatingLRPs {
 		_, found := batch[guid]
 		if !found {
-			batch[guid] = NewResidualEvacuatingLRPOperation(logger, traceID, g.bbs, g.containerDelegate, lrp.ActualLRPKey, lrp.ActualLRPInstanceKey)
+			batch[guid] = NewResidualEvacuatingLRPOperation(logger, traceID, g.bbs, g.containerDelegate, lrp.ActualLrpKey, lrp.ActualLrpInstanceKey)
 		}
 	}
 
