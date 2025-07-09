@@ -36,7 +36,6 @@ var _ = Describe("AuctionCellRep", func() {
 		commonErr      error
 
 		placementTags, optionalPlacementTags []string
-		enableContainerProxy                 bool
 		proxyMemoryAllocation                int
 
 		fakeContainerAllocator *fakes.FakeBatchContainerAllocator
@@ -52,7 +51,6 @@ var _ = Describe("AuctionCellRep", func() {
 		linuxRootFSURL = models.PreloadedRootFS(linuxStack)
 
 		commonErr = errors.New("Failed to fetch")
-		enableContainerProxy = false
 		proxyMemoryAllocation = 12
 		client.HealthyReturns(true)
 	})
@@ -71,7 +69,6 @@ var _ = Describe("AuctionCellRep", func() {
 			placementTags,
 			optionalPlacementTags,
 			proxyMemoryAllocation,
-			enableContainerProxy,
 			fakeContainerAllocator,
 		)
 	})
@@ -449,20 +446,14 @@ var _ = Describe("AuctionCellRep", func() {
 			}))
 
 			Expect(state.VolumeDrivers).To(ConsistOf(volumeDrivers))
-			Expect(state.ProxyMemoryAllocationMB).To(Equal(0))
+
 		})
 
-		Context("when enableContainerProxy is true", func() {
-			BeforeEach(func() {
-				enableContainerProxy = true
-			})
+		It("returns a state with a proxyMemoryAllocation greater than 0", func() {
+			state, _, err := cellRep.State(logger)
+			Expect(err).NotTo(HaveOccurred())
 
-			It("returns a state with a proxyMemoryAllocation greater than 0", func() {
-				state, _, err := cellRep.State(logger)
-				Expect(err).NotTo(HaveOccurred())
-
-				Expect(state.ProxyMemoryAllocationMB).To(Equal(proxyMemoryAllocation))
-			})
+			Expect(state.ProxyMemoryAllocationMB).To(Equal(proxyMemoryAllocation))
 		})
 
 		Context("when the cell is not healthy", func() {
@@ -604,7 +595,7 @@ var _ = Describe("AuctionCellRep", func() {
 			})
 
 			Expect(fakeContainerAllocator.BatchLRPAllocationRequestCallCount()).To(Equal(1))
-			_, traceID, _, _, lrpRequests := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
+			_, traceID, _, lrpRequests := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
 			Expect(traceID).To(Equal("some-trace-id"))
 			Expect(lrpRequests).To(ConsistOf(successfulLRP, unsuccessfulLRP))
 
@@ -664,6 +655,7 @@ var _ = Describe("AuctionCellRep", func() {
 				largestLRP = rep.LRP{Resource: rep.Resource{MemoryMB: 6144}}
 				middleLRP = rep.LRP{Resource: rep.Resource{MemoryMB: int32(remainingCellMemory) - largestLRP.MemoryMB}}
 				smallestLRP = rep.LRP{Resource: rep.Resource{MemoryMB: 1}}
+				proxyMemoryAllocation = remainingCellMemory - int(largestLRP.MemoryMB)
 			})
 
 			It("allocates containers for the largest workloads it can run", func() {
@@ -673,41 +665,33 @@ var _ = Describe("AuctionCellRep", func() {
 				})
 
 				Expect(err).NotTo(HaveOccurred())
-				Expect(failedWork.LRPs).To(ConsistOf(smallestLRP))
+				Expect(failedWork.LRPs).To(ConsistOf(smallestLRP, middleLRP))
 
 				Expect(fakeContainerAllocator.BatchLRPAllocationRequestCallCount()).To(Equal(1))
 
-				_, traceID, proxyEnabledArg, proxyMemFootprintArg, lrpRequests := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
+				_, traceID, proxyMemFootprintArg, lrpRequests := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
 				Expect(traceID).To(Equal("some-trace-id"))
-				Expect(proxyEnabledArg).To(BeFalse())
-				Expect(proxyMemFootprintArg).To(Equal(12))
-				Expect(lrpRequests).To(ConsistOf(largestLRP, middleLRP))
+				Expect(proxyMemFootprintArg).To(Equal(2048))
+				Expect(lrpRequests).To(ConsistOf(largestLRP))
 			})
 
-			Context("when envoy needs to be placed in the container", func() {
-				BeforeEach(func() {
-					enableContainerProxy = true
-					proxyMemoryAllocation = remainingCellMemory - int(largestLRP.MemoryMB)
+			It("accounts for the proxy overhead when determining which workloads to run and which to reject", func() {
+				failedWork, err := cellRep.Perform(logger, "some-trace-id", rep.Work{
+					LRPs:  []rep.LRP{smallestLRP, middleLRP, largestLRP},
+					Tasks: []rep.Task{},
 				})
 
-				It("accounts for the proxy overhead when determining which workloads to run and which to reject", func() {
-					failedWork, err := cellRep.Perform(logger, "some-trace-id", rep.Work{
-						LRPs:  []rep.LRP{smallestLRP, middleLRP, largestLRP},
-						Tasks: []rep.Task{},
-					})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(failedWork.LRPs).To(ConsistOf(smallestLRP, middleLRP))
 
-					Expect(err).NotTo(HaveOccurred())
-					Expect(failedWork.LRPs).To(ConsistOf(smallestLRP, middleLRP))
+				Expect(fakeContainerAllocator.BatchLRPAllocationRequestCallCount()).To(Equal(1))
 
-					Expect(fakeContainerAllocator.BatchLRPAllocationRequestCallCount()).To(Equal(1))
-
-					_, traceID, proxyEnabledArg, proxyMemFootprintArg, lrpRequests := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
-					Expect(traceID).To(Equal("some-trace-id"))
-					Expect(proxyEnabledArg).To(BeTrue())
-					Expect(proxyMemFootprintArg).To(Equal(proxyMemoryAllocation))
-					Expect(lrpRequests).To(ConsistOf(largestLRP))
-				})
+				_, traceID, proxyMemFootprintArg, lrpRequests := fakeContainerAllocator.BatchLRPAllocationRequestArgsForCall(0)
+				Expect(traceID).To(Equal("some-trace-id"))
+				Expect(proxyMemFootprintArg).To(Equal(proxyMemoryAllocation))
+				Expect(lrpRequests).To(ConsistOf(largestLRP))
 			})
+
 		})
 
 		Context("when the workload's cell ID does not match the cell's ID", func() {

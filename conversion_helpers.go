@@ -247,18 +247,9 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
 		CertificateProperties:         convertCertificateProperties(desiredLRP.CertificateProperties),
 		ImageUsername:                 username,
 		ImagePassword:                 password,
-		EnableContainerProxy:          true,
 		Sidecars:                      convertSidecars(desiredLRP.Sidecars),
 		LogRateLimitBytesPerSecond:    convertLogRateLimit(desiredLRP.LogRateLimit),
 		VolumeMountedFiles:            executor.VolumeMountedFilesFromModel(desiredLRP.VolumeMountedFiles),
-	}
-
-	// No need for the envoy proxy if there are no ports.  This flag controls the
-	// step transformation (either prevent or include a run_step to run envoy) as
-	// well as the proxy config handler to avoid generate the config
-	// unecessarily.
-	if len(runInfo.Ports) == 0 {
-		runInfo.EnableContainerProxy = false
 	}
 
 	tags := executor.Tags{}
@@ -320,7 +311,6 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromTask(task *models.Task, 
 		CertificateProperties:         convertCertificateProperties(task.CertificateProperties),
 		ImageUsername:                 username,
 		ImagePassword:                 password,
-		EnableContainerProxy:          false,
 		LogRateLimitBytesPerSecond:    convertLogRateLimit(task.LogRateLimit),
 		VolumeMountedFiles:            executor.VolumeMountedFilesFromModel(task.VolumeMountedFiles),
 	}

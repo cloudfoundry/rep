@@ -38,7 +38,6 @@ type AuctionCellRep struct {
 	evacuationReporter       evacuation_context.EvacuationReporter
 	placementTags            []string
 	optionalPlacementTags    []string
-	enableContainerProxy     bool
 	proxyMemoryAllocation    int
 	allocator                BatchContainerAllocator
 }
@@ -56,7 +55,6 @@ func New(
 	placementTags []string,
 	optionalPlacementTags []string,
 	proxyMemoryAllocation int,
-	enableContainerProxy bool,
 	allocator BatchContainerAllocator,
 ) *AuctionCellRep {
 	return &AuctionCellRep{
@@ -71,7 +69,6 @@ func New(
 		evacuationReporter:       evacuationReporter,
 		placementTags:            placementTags,
 		optionalPlacementTags:    optionalPlacementTags,
-		enableContainerProxy:     enableContainerProxy,
 		proxyMemoryAllocation:    proxyMemoryAllocation,
 		allocator:                allocator,
 	}
@@ -214,11 +211,7 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, bool, error)
 		}
 	}
 
-	allocatedProxyMemory := 0
-	if a.enableContainerProxy {
-		allocatedProxyMemory = a.proxyMemoryAllocation
-	}
-
+	allocatedProxyMemory := a.proxyMemoryAllocation
 	state := rep.NewCellState(
 		a.cellID,
 		a.cellIndex,
@@ -353,9 +346,9 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, traceID string, work rep.W
 
 	for _, lrp := range work.LRPs {
 		requiredMemory := lrp.MemoryMB
-		if a.enableContainerProxy {
-			requiredMemory += int32(a.proxyMemoryAllocation)
-		}
+
+		requiredMemory += int32(a.proxyMemoryAllocation)
+
 		if requiredMemory <= remainingMemory {
 			remainingMemory -= requiredMemory
 			lrpRequests = append(lrpRequests, lrp)
@@ -368,7 +361,7 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, traceID string, work rep.W
 		return work, nil
 	}
 
-	unallocatedLRPs := a.allocator.BatchLRPAllocationRequest(logger, traceID, a.enableContainerProxy, a.proxyMemoryAllocation, lrpRequests)
+	unallocatedLRPs := a.allocator.BatchLRPAllocationRequest(logger, traceID, a.proxyMemoryAllocation, lrpRequests)
 	failedWork.LRPs = append(failedWork.LRPs, unallocatedLRPs...)
 	failedWork.Tasks = a.allocator.BatchTaskAllocationRequest(logger, traceID, work.Tasks)
 

@@ -155,7 +155,6 @@ func main() {
 		repConfig.PlacementTags,
 		repConfig.OptionalPlacementTags,
 		repConfig.ProxyMemoryAllocationMB,
-		repConfig.EnableContainerProxy,
 		batchContainerAllocator,
 	)
 
