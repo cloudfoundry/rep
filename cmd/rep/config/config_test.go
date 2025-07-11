@@ -176,7 +176,6 @@ var _ = Describe("RepConfig", func() {
 				DeleteWorkPoolSize:                 10,
 				DiskMB:                             "20000",
 				DeclarativeHealthcheckPath:         "/var/vcap/packages/healthcheck",
-				EnableContainerProxy:               true,
 				ContainerProxyADSServers:           []string{"10.0.0.2:15010", "10.0.0.3:15010"},
 				EnableUnproxiedPortMappings:        true,
 				EnvoyConfigRefreshDelay:            durationjson.Duration(time.Second),

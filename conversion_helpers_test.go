@@ -382,9 +382,8 @@ var _ = Describe("Resources", func() {
 					CertificateProperties: executor.CertificateProperties{
 						OrganizationalUnit: []string{"iamthelizardking", "iamthelizardqueen"},
 					},
-					ImageUsername:        "image-username",
-					ImagePassword:        "image-password",
-					EnableContainerProxy: true,
+					ImageUsername: "image-username",
+					ImagePassword: "image-password",
 					Sidecars: []executor.Sidecar{
 						{
 							Action:   desiredLRP.Sidecars[0].Action,
@@ -457,33 +456,16 @@ var _ = Describe("Resources", func() {
 				})
 			})
 
-			It("enables the envoy proxy", func() {
-				runReq, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(runReq.EnableContainerProxy).To(BeTrue())
-			})
-
 			Context("when the LRP doesn't have any exposed ports", func() {
 				BeforeEach(func() {
 					desiredLRP.Ports = nil
 				})
 
-				It("disables the envoy proxy", func() {
-					runReq, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(runReq.EnableContainerProxy).To(BeFalse())
-				})
 			})
 
 			Context("when the rootfs is preloaded+layer", func() {
 				BeforeEach(func() {
 					desiredLRP.RootFs = "preloaded+layer:cflinuxfs3?layer=http://file-server/layer.tgz&layer_digest=some-digest&layer_path=/path/in/container"
-				})
-
-				It("enables the envoy proxy", func() {
-					runReq, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(runReq.EnableContainerProxy).To(BeTrue())
 				})
 
 				It("uses TotalDiskLimit as the disk scope", func() {
@@ -495,12 +477,6 @@ var _ = Describe("Resources", func() {
 			Context("when the rootfs is not preloaded", func() {
 				BeforeEach(func() {
 					desiredLRP.RootFs = "docker://cloudfoundry/test"
-				})
-
-				It("enables the envoy proxy", func() {
-					runReq, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(runReq.EnableContainerProxy).To(BeTrue())
 				})
 
 				It("uses TotalDiskLimit as the disk scope", func() {
@@ -769,7 +745,6 @@ var _ = Describe("Resources", func() {
 					},
 					ImageUsername:              "image-username",
 					ImagePassword:              "image-password",
-					EnableContainerProxy:       false,
 					LogRateLimitBytesPerSecond: -1,
 					VolumeMountedFiles:         []executor.VolumeMountedFiles{{Path: "/redis/username", Content: "username"}},
 				}
@@ -833,21 +808,9 @@ var _ = Describe("Resources", func() {
 				})
 			})
 
-			It("disables the envoy proxy", func() {
-				runReq, err := runRequestConversionHelper.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(runReq.EnableContainerProxy).To(BeFalse())
-			})
-
 			Context("when the rootfs is not preloaded", func() {
 				BeforeEach(func() {
 					task.RootFs = "docker://cloudfoundry/test"
-				})
-
-				It("disables the envoy proxy", func() {
-					runReq, err := runRequestConversionHelper.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(runReq.EnableContainerProxy).To(BeFalse())
 				})
 
 				It("uses TotalDiskLimit as the disk scope", func() {

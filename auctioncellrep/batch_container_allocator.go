@@ -11,7 +11,7 @@ import (
 
 //go:generate counterfeiter . BatchContainerAllocator
 type BatchContainerAllocator interface {
-	BatchLRPAllocationRequest(lager.Logger, string, bool, int, []rep.LRP) []rep.LRP
+	BatchLRPAllocationRequest(lager.Logger, string, int, []rep.LRP) []rep.LRP
 	BatchTaskAllocationRequest(lager.Logger, string, []rep.Task) []rep.Task
 }
 
@@ -57,7 +57,7 @@ func buildTaskTags(task rep.Task) executor.Tags {
 	return tags
 }
 
-func (ca containerAllocator) BatchLRPAllocationRequest(logger lager.Logger, traceID string, enableContainerProxy bool, proxyMemoryAllocation int, lrps []rep.LRP) (unallocatedLRPs []rep.LRP) {
+func (ca containerAllocator) BatchLRPAllocationRequest(logger lager.Logger, traceID string, proxyMemoryAllocation int, lrps []rep.LRP) (unallocatedLRPs []rep.LRP) {
 	logger = logger.Session("lrp-allocate-instances")
 	requests := make([]executor.AllocationRequest, 0, len(lrps))
 	lrpGuidMap := make(map[string]rep.LRP, len(lrps))
@@ -76,7 +76,7 @@ func (ca containerAllocator) BatchLRPAllocationRequest(logger lager.Logger, trac
 		}
 
 		memoryMB := int(lrp.MemoryMB)
-		if memoryMB > 0 && enableContainerProxy {
+		if memoryMB > 0 {
 			memoryMB += proxyMemoryAllocation
 		}
 

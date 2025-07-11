@@ -10,14 +10,13 @@ import (
 )
 
 type FakeBatchContainerAllocator struct {
-	BatchLRPAllocationRequestStub        func(lager.Logger, string, bool, int, []rep.LRP) []rep.LRP
+	BatchLRPAllocationRequestStub        func(lager.Logger, string, int, []rep.LRP) []rep.LRP
 	batchLRPAllocationRequestMutex       sync.RWMutex
 	batchLRPAllocationRequestArgsForCall []struct {
 		arg1 lager.Logger
 		arg2 string
-		arg3 bool
-		arg4 int
-		arg5 []rep.LRP
+		arg3 int
+		arg4 []rep.LRP
 	}
 	batchLRPAllocationRequestReturns struct {
 		result1 []rep.LRP
@@ -42,27 +41,26 @@ type FakeBatchContainerAllocator struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeBatchContainerAllocator) BatchLRPAllocationRequest(arg1 lager.Logger, arg2 string, arg3 bool, arg4 int, arg5 []rep.LRP) []rep.LRP {
-	var arg5Copy []rep.LRP
-	if arg5 != nil {
-		arg5Copy = make([]rep.LRP, len(arg5))
-		copy(arg5Copy, arg5)
+func (fake *FakeBatchContainerAllocator) BatchLRPAllocationRequest(arg1 lager.Logger, arg2 string, arg3 int, arg4 []rep.LRP) []rep.LRP {
+	var arg4Copy []rep.LRP
+	if arg4 != nil {
+		arg4Copy = make([]rep.LRP, len(arg4))
+		copy(arg4Copy, arg4)
 	}
 	fake.batchLRPAllocationRequestMutex.Lock()
 	ret, specificReturn := fake.batchLRPAllocationRequestReturnsOnCall[len(fake.batchLRPAllocationRequestArgsForCall)]
 	fake.batchLRPAllocationRequestArgsForCall = append(fake.batchLRPAllocationRequestArgsForCall, struct {
 		arg1 lager.Logger
 		arg2 string
-		arg3 bool
-		arg4 int
-		arg5 []rep.LRP
-	}{arg1, arg2, arg3, arg4, arg5Copy})
+		arg3 int
+		arg4 []rep.LRP
+	}{arg1, arg2, arg3, arg4Copy})
 	stub := fake.BatchLRPAllocationRequestStub
 	fakeReturns := fake.batchLRPAllocationRequestReturns
-	fake.recordInvocation("BatchLRPAllocationRequest", []interface{}{arg1, arg2, arg3, arg4, arg5Copy})
+	fake.recordInvocation("BatchLRPAllocationRequest", []interface{}{arg1, arg2, arg3, arg4Copy})
 	fake.batchLRPAllocationRequestMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2, arg3, arg4, arg5)
+		return stub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1
@@ -76,17 +74,17 @@ func (fake *FakeBatchContainerAllocator) BatchLRPAllocationRequestCallCount() in
 	return len(fake.batchLRPAllocationRequestArgsForCall)
 }
 
-func (fake *FakeBatchContainerAllocator) BatchLRPAllocationRequestCalls(stub func(lager.Logger, string, bool, int, []rep.LRP) []rep.LRP) {
+func (fake *FakeBatchContainerAllocator) BatchLRPAllocationRequestCalls(stub func(lager.Logger, string, int, []rep.LRP) []rep.LRP) {
 	fake.batchLRPAllocationRequestMutex.Lock()
 	defer fake.batchLRPAllocationRequestMutex.Unlock()
 	fake.BatchLRPAllocationRequestStub = stub
 }
 
-func (fake *FakeBatchContainerAllocator) BatchLRPAllocationRequestArgsForCall(i int) (lager.Logger, string, bool, int, []rep.LRP) {
+func (fake *FakeBatchContainerAllocator) BatchLRPAllocationRequestArgsForCall(i int) (lager.Logger, string, int, []rep.LRP) {
 	fake.batchLRPAllocationRequestMutex.RLock()
 	defer fake.batchLRPAllocationRequestMutex.RUnlock()
 	argsForCall := fake.batchLRPAllocationRequestArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *FakeBatchContainerAllocator) BatchLRPAllocationRequestReturns(result1 []rep.LRP) {
