@@ -765,6 +765,8 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 						ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]string{"handle": "healthcheck-container"}).ServeHTTP(rw, req)
 					})
 
+					fakeGarden.AllowUnhandledRequests = true
+
 					createTask = func(taskGuid string) {
 						task := &models.Task{
 							TaskGuid: taskGuid,
