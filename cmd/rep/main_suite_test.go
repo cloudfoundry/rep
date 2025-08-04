@@ -124,7 +124,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	locketPort, err := portAllocator.ClaimPorts(1)
 	Expect(err).NotTo(HaveOccurred())
-	locketAddress = fmt.Sprintf("localhost:%d", locketPort)
+	locketAddress = fmt.Sprintf("127.0.0.1:%d", locketPort)
 
 	bbsPort, err := portAllocator.ClaimPorts(2)
 	Expect(err).NotTo(HaveOccurred())
