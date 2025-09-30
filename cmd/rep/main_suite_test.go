@@ -17,6 +17,7 @@ import (
 	"code.cloudfoundry.org/bbs/encryption"
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/go-loggregator/v9/rpc/loggregator_v2"
@@ -181,25 +182,17 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		LagerConfig: lagerflags.LagerConfig{
 			LogLevel: "info",
 		},
+		LoggregatorConfig: loggingclient.Config{
+			CACertPath: "fixtures/metron/CA.crt",
+			CertPath:   "fixtures/metron/metron.crt",
+			KeyPath:    "fixtures/metron/metron.key",
+		},
 		ClientLocketConfig: locketrunner.ClientLocketConfig(),
 	}
 	bbsConfig.ClientLocketConfig.LocketAddress = locketAddress
 })
 
 var _ = BeforeEach(func() {
-	locketRunner = locketrunner.NewLocketRunner(locketBinPath, func(cfg *locketconfig.LocketConfig) {
-		cfg.DatabaseConnectionString = sqlRunner.ConnectionString()
-		cfg.DatabaseDriver = sqlRunner.DriverName()
-		cfg.ListenAddress = locketAddress
-	})
-
-	logger := lagertest.NewTestLogger("test")
-	logger.Debug(fmt.Sprintf("bbs locket address: %s", locketAddress))
-	locketProcess = ginkgomon.Invoke(locketRunner)
-
-	bbsRunner = bbstestrunner.New(bbsBinPath, bbsConfig)
-	bbsProcess = ginkgomon.Invoke(bbsRunner)
-
 	metronCAFile := path.Join(fixturesPath, "metron", "CA.crt")
 	metronServerCertFile := path.Join(fixturesPath, "metron", "metron.crt")
 	metronServerKeyFile := path.Join(fixturesPath, "metron", "metron.key")
@@ -212,6 +205,26 @@ var _ = BeforeEach(func() {
 	receiversChan := testIngressServer.Receivers()
 
 	testMetricsChan, signalMetricsChan = testhelpers.TestMetricChan(receiversChan)
+	port, err := testIngressServer.Port()
+	Expect(err).NotTo(HaveOccurred())
+
+	locketRunner = locketrunner.NewLocketRunner(locketBinPath, func(cfg *locketconfig.LocketConfig) {
+		cfg.DatabaseConnectionString = sqlRunner.ConnectionString()
+		cfg.DatabaseDriver = sqlRunner.DriverName()
+		cfg.ListenAddress = locketAddress
+		cfg.LoggregatorConfig.APIPort = port
+		cfg.LoggregatorConfig.CACertPath = metronCAFile
+		cfg.LoggregatorConfig.CertPath = metronServerCertFile
+		cfg.LoggregatorConfig.KeyPath = metronServerKeyFile
+
+	})
+	bbsConfig.LoggregatorConfig.APIPort = port
+	logger := lagertest.NewTestLogger("test")
+	logger.Debug(fmt.Sprintf("bbs locket address: %s", locketAddress))
+	locketProcess = ginkgomon.Invoke(locketRunner)
+
+	bbsRunner = bbstestrunner.New(bbsBinPath, bbsConfig)
+	bbsProcess = ginkgomon.Invoke(bbsRunner)
 })
 
 var _ = AfterEach(func() {
