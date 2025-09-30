@@ -45,6 +45,7 @@ var _ = Describe("RepConfig", func() {
 			"enable_legacy_api_endpoints": true,
 			"evacuation_polling_interval" : "13s",
 			"evacuation_timeout" : "12s",
+			"enable_container_proxy": true,
 			"container_proxy_ads_addresses": ["10.0.0.2:15010", "10.0.0.3:15010"],
 			"enable_unproxied_port_mappings": true,
 			"envoy_config_refresh_delay": "1s",
@@ -79,7 +80,6 @@ var _ = Describe("RepConfig", func() {
 			"locket_client_key_file": "locket-client-key",
 			"log_level": "debug",
 			"loggregator": {
-				"loggregator_use_v2_api": true,
 				"loggregator_api_port": 1234,
 				"loggregator_ca_path": "ca-path",
 				"loggregator_cert_path": "cert-path",
@@ -175,6 +175,7 @@ var _ = Describe("RepConfig", func() {
 				DeleteWorkPoolSize:                 10,
 				DiskMB:                             "20000",
 				DeclarativeHealthcheckPath:         "/var/vcap/packages/healthcheck",
+				EnableContainerProxy:               true,
 				ContainerProxyADSServers:           []string{"10.0.0.2:15010", "10.0.0.3:15010"},
 				EnableUnproxiedPortMappings:        true,
 				EnvoyConfigRefreshDelay:            durationjson.Duration(time.Second),
@@ -230,7 +231,6 @@ var _ = Describe("RepConfig", func() {
 			Zone:                  "test-zone",
 			ReportInterval:        durationjson.Duration(2 * time.Minute),
 			LoggregatorConfig: loggingclient.Config{
-				UseV2API:      true,
 				APIPort:       1234,
 				CACertPath:    "ca-path",
 				CertPath:      "cert-path",
