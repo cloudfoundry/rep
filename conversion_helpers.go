@@ -182,7 +182,7 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
 	desiredLRP.RootFs, desiredLRP.ImageLayers = ConvertPreloadedRootFS(desiredLRP.RootFs, desiredLRP.ImageLayers, layeringMode)
 	desiredLRP = desiredLRP.VersionDownTo(format.V2)
 
-	mounts, err := convertVolumeMounts(desiredLRP.VolumeMounts)
+	mounts, err := convertVolumeMounts(desiredLRP.VolumeMounts, lrpKey)
 	if err != nil {
 		return executor.RunRequest{}, err
 	}
@@ -273,7 +273,7 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromTask(task *models.Task, 
 	task.RootFs, task.ImageLayers = ConvertPreloadedRootFS(task.RootFs, task.ImageLayers, layeringMode)
 	cachedDependencies, setupAction := convertImageLayers(task.TaskDefinition)
 
-	mounts, err := convertVolumeMounts(task.VolumeMounts)
+	mounts, err := convertVolumeMounts(task.VolumeMounts, nil)
 	if err != nil {
 		return executor.RunRequest{}, err
 	}
@@ -374,11 +374,11 @@ func (rrch RunRequestConversionHelper) convertCredentials(rootFS string, usernam
 	return username, password, nil
 }
 
-func convertVolumeMounts(volumeMounts []*models.VolumeMount) ([]executor.VolumeMount, error) {
+func convertVolumeMounts(volumeMounts []*models.VolumeMount, lrpKey *models.ActualLRPKey) ([]executor.VolumeMount, error) {
 	execMnts := make([]executor.VolumeMount, len(volumeMounts))
 	for i := range volumeMounts {
 		var err error
-		execMnts[i], err = convertVolumeMount(volumeMounts[i])
+		execMnts[i], err = convertVolumeMount(volumeMounts[i], lrpKey)
 		if err != nil {
 			return nil, err
 		}
@@ -386,14 +386,43 @@ func convertVolumeMounts(volumeMounts []*models.VolumeMount) ([]executor.VolumeM
 	return execMnts, nil
 }
 
-func convertVolumeMount(volumeMnt *models.VolumeMount) (executor.VolumeMount, error) {
+func convertVolumeMount(volumeMnt *models.VolumeMount, lrpKey *models.ActualLRPKey) (executor.VolumeMount, error) {
 	var config map[string]interface{}
 
-	if len(volumeMnt.Shared.MountConfig) > 0 {
-		err := json.Unmarshal([]byte(volumeMnt.Shared.MountConfig), &config)
-		if err != nil {
-			return executor.VolumeMount{}, err
+	var volumeId string
+	if volumeMnt.Shared != nil {
+		volumeId = volumeMnt.Shared.VolumeId
+
+		if len(volumeMnt.Shared.MountConfig) > 0 {
+			err := json.Unmarshal([]byte(volumeMnt.Shared.MountConfig), &config)
+			if err != nil {
+				return executor.VolumeMount{}, err
+			}
 		}
+	} else if volumeMnt.Dedicated != nil {
+		if lrpKey != nil {
+			volumeId = fmt.Sprintf("%s-%d", volumeMnt.Dedicated.MounterId, lrpKey.Index)
+		} else {
+			volumeId = volumeMnt.Dedicated.MounterId
+		}
+
+		var mountConfig map[string]interface{}
+		if len(volumeMnt.Dedicated.MountConfig) > 0 {
+			err := json.Unmarshal([]byte(volumeMnt.Dedicated.MountConfig), &mountConfig)
+			if err != nil {
+				return executor.VolumeMount{}, err
+			}
+		}
+
+		var deviceConfig map[string]interface{}
+		if len(volumeMnt.Dedicated.DeviceConfig) > 0 {
+			err := json.Unmarshal([]byte(volumeMnt.Dedicated.DeviceConfig), &deviceConfig)
+			if err != nil {
+				return executor.VolumeMount{}, err
+			}
+		}
+
+		config = map[string]interface{}{"mount_config": mountConfig, "device_config": deviceConfig, "source": volumeId}
 	}
 
 	var mode executor.BindMountMode
@@ -408,7 +437,7 @@ func convertVolumeMount(volumeMnt *models.VolumeMount) (executor.VolumeMount, er
 
 	return executor.VolumeMount{
 		Driver:        volumeMnt.Driver,
-		VolumeId:      volumeMnt.Shared.VolumeId,
+		VolumeId:      volumeId,
 		ContainerPath: volumeMnt.ContainerDir,
 		Mode:          mode,
 		Config:        config,

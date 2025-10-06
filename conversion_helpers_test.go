@@ -457,6 +457,37 @@ var _ = Describe("Resources", func() {
 				})
 			})
 
+			Context("when a volumeMount is dedicated", func() {
+				BeforeEach(func() {
+					desiredLRP.VolumeMounts[0] = &models.VolumeMount{
+						Dedicated: &models.DedicatedDevice{
+							MounterId:    "my-mounter-id",
+							MountConfig:  `{"foo":"bar"}`,
+							DeviceConfig: `{"baz":"qux"}`,
+						},
+						Driver:       "my-driver",
+						ContainerDir: "/mnt/mypath",
+						Mode:         "r",
+					}
+				})
+
+				It("returns a dedicated volume mount", func() {
+					runReq, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(runReq.VolumeMounts).To(ConsistOf(executor.VolumeMount{
+						Driver:        "my-driver",
+						VolumeId:      "my-mounter-id-9",
+						ContainerPath: "/mnt/mypath",
+						Config: map[string]interface{}{
+							"mount_config":  map[string]interface{}{"foo": "bar"},
+							"device_config": map[string]interface{}{"baz": "qux"},
+							"source":        "my-mounter-id-9",
+						},
+						Mode: executor.BindMountModeRO,
+					}))
+				})
+			})
+
 			It("enables the envoy proxy", func() {
 				runReq, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 				Expect(err).NotTo(HaveOccurred())
