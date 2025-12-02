@@ -552,6 +552,116 @@ var _ = Describe("The Rep", func() {
 					ContainSubstring(`/path/to/another/rootfs`),
 				)))
 			})
+
+			Context("when SidecarRootFS is set", func() {
+				BeforeEach(func() {
+					repConfig.PreloadedRootFS = append(repConfig.PreloadedRootFS, config.RootFS{
+						Name: "another",
+						Path: "/path/to/another/rootfs",
+					})
+					repConfig.SidecarRootFSPath = "/path/to/another/rootfs"
+					repConfig.SidecarRootFS = "the-rootfs"
+				})
+
+				It("uses the specified rootfs path", func() {
+					Eventually(createRequestReceived).Should(Receive(And(
+						ContainSubstring(`check-`),
+						ContainSubstring(`/path/to/another/rootfs`),
+					)))
+				})
+			})
+		})
+
+		Context("when SidecarRootFS is set", func() {
+			Context("when there is a matching rootfs only in preloadedRootFS", func() {
+				BeforeEach(func() {
+					repConfig.PreloadedRootFS = append(repConfig.PreloadedRootFS, config.RootFS{
+						Name: "meow-fs",
+						Path: "/path/to/meow/rootfs",
+					})
+					repConfig.SidecarRootFS = "meow-fs"
+				})
+
+				It("uses the matching rootfs from preloadedRootFS", func() {
+					Eventually(createRequestReceived).Should(Receive(And(
+						ContainSubstring(`check-`),
+						ContainSubstring(`/path/to/meow/rootfs`),
+					)))
+				})
+			})
+
+			Context("when there is a matching rootfs only in ExtraRootFS", func() {
+				var extraRootfs, rootfsTar string
+				BeforeEach(func() {
+					var err error
+					extraRootfs, err = os.MkdirTemp("", "extra-rootfs-dir-*")
+					Expect(err).NotTo(HaveOccurred())
+					rootfsTar = filepath.Join(extraRootfs, "meow-fs.tar")
+					file, err := os.Create(rootfsTar)
+					Expect(err).NotTo(HaveOccurred())
+					defer file.Close()
+
+					repConfig.ExtraRootfsDir = extraRootfs
+					repConfig.SidecarRootFS = "meow-fs"
+				})
+
+				AfterEach(func() {
+					Expect(os.RemoveAll(extraRootfs)).To(Succeed())
+				})
+
+				It("uses the matching rootfs from extraRootFS", func() {
+					Eventually(createRequestReceived).Should(Receive(And(
+						ContainSubstring(`check-`),
+						ContainSubstring(`extra-rootfs-dir`),
+						ContainSubstring(`meow-fs`),
+					)))
+				})
+			})
+
+			Context("when there is a matching rootfs in both preloadedRootFS and ExtraRootFS", func() {
+				var extraRootfs, rootfsTar string
+				BeforeEach(func() {
+					repConfig.PreloadedRootFS = append(repConfig.PreloadedRootFS, config.RootFS{
+						Name: "meow-fs",
+						Path: "/path/to/meow/rootfs",
+					})
+
+					var err error
+					extraRootfs, err = os.MkdirTemp("", "extra-rootfs-dir-*")
+					Expect(err).NotTo(HaveOccurred())
+					rootfsTar = filepath.Join(extraRootfs, "meow-fs.tar")
+					file, err := os.Create(rootfsTar)
+					Expect(err).NotTo(HaveOccurred())
+					defer file.Close()
+
+					repConfig.ExtraRootfsDir = extraRootfs
+					repConfig.SidecarRootFS = "meow-fs"
+				})
+
+				AfterEach(func() {
+					Expect(os.RemoveAll(extraRootfs)).To(Succeed())
+				})
+
+				It("uses the matching rootfs from extraRootFS", func() {
+					Eventually(createRequestReceived).Should(Receive(And(
+						ContainSubstring(`check-`),
+						ContainSubstring(`extra-rootfs-dir`),
+						ContainSubstring(`meow-fs`),
+					)))
+				})
+			})
+
+			Context("when there is no matching rootfs", func() {
+				BeforeEach(func() {
+					repConfig.SidecarRootFS = "meow-fs"
+				})
+
+				It("errors", func() {
+					Eventually(runner.Session).Should(Exit(1))
+					Expect(runner.Session).To(gbytes.Say("failed-to-find-matching-sidecar-rootfs"))
+				})
+			})
+
 		})
 	})
 
