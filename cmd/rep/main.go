@@ -92,8 +92,9 @@ func main() {
 
 	rootFSMap := repConfig.PreloadedRootFS.StackPathMap()
 	sidecarRootFSPath := repConfig.SidecarRootFSPath
+	sidecarRootFS := repConfig.SidecarRootFS
 
-	if sidecarRootFSPath == "" {
+	if sidecarRootFSPath == "" && sidecarRootFS == "" {
 		for _, rootFSPath := range rootFSMap {
 			sidecarRootFSPath = rootFSPath
 			break
@@ -113,6 +114,15 @@ func main() {
 	})
 	if walkDirErr != nil {
 		logger.Debug("missing-extra-rootfs", lager.Data{"error": walkDirErr})
+	}
+
+	if sidecarRootFSPath == "" && sidecarRootFS != "" {
+		path, ok := rootFSMap[sidecarRootFS]
+		if !ok {
+			logger.Error("failed-to-find-matching-sidecar-rootfs", nil, lager.Data{"rootfs": sidecarRootFS})
+			os.Exit(1)
+		}
+		sidecarRootFSPath = path
 	}
 
 	executorClient, containerMetricsProvider, executorMembers, err := executorinit.Initialize(logger, repConfig.ExecutorConfig, repConfig.CellID, repConfig.Zone, rootFSMap, sidecarRootFSPath, metronClient, clock)
