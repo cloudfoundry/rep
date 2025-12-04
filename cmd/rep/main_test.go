@@ -553,7 +553,7 @@ var _ = Describe("The Rep", func() {
 				)))
 			})
 
-			Context("when SidecarRootFS is set", func() {
+			Context("when both SidecarRootFSPath and SidecarRootFS are set", func() {
 				BeforeEach(func() {
 					repConfig.PreloadedRootFS = append(repConfig.PreloadedRootFS, config.RootFS{
 						Name: "another",
@@ -572,7 +572,7 @@ var _ = Describe("The Rep", func() {
 			})
 		})
 
-		Context("when SidecarRootFS is set", func() {
+		Context("when SidecarRootFS is set and SidecarRootFSPath is empty", func() {
 			Context("when there is a matching rootfs only in preloadedRootFS", func() {
 				BeforeEach(func() {
 					repConfig.PreloadedRootFS = append(repConfig.PreloadedRootFS, config.RootFS{
