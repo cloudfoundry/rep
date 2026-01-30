@@ -17,6 +17,7 @@ import (
 	"code.cloudfoundry.org/bbs/encryption"
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/bbs/test_helpers/sqlrunner"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/go-loggregator/v9/rpc/loggregator_v2"
@@ -64,9 +65,10 @@ var (
 	testMetricsChan   chan *loggregator_v2.Envelope
 	signalMetricsChan chan struct{}
 
-	sqlProcess    ifrit.Process
-	sqlRunner     sqlrunner.SQLRunner
-	portAllocator portauthority.PortAllocator
+	sqlProcess                                              ifrit.Process
+	sqlRunner                                               sqlrunner.SQLRunner
+	portAllocator                                           portauthority.PortAllocator
+	metronCAFile, metronServerCertFile, metronServerKeyFile string
 
 	fixturesPath = "fixtures"
 )
@@ -124,7 +126,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	locketPort, err := portAllocator.ClaimPorts(1)
 	Expect(err).NotTo(HaveOccurred())
-	locketAddress = fmt.Sprintf("localhost:%d", locketPort)
+	locketAddress = fmt.Sprintf("127.0.0.1:%d", locketPort)
 
 	bbsPort, err := portAllocator.ClaimPorts(2)
 	Expect(err).NotTo(HaveOccurred())
@@ -136,8 +138,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		Scheme: "https",
 		Host:   bbsAddress,
 	}
-
-	fixturesPath := "fixtures"
 
 	auctioneerServer = ghttp.NewServer()
 	auctioneerServer.UnhandledRequestStatusCode = http.StatusAccepted
@@ -168,6 +168,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		ExpirePendingTaskDuration:   durationjson.Duration(30 * time.Minute),
 		ConvergeRepeatInterval:      durationjson.Duration(30 * time.Second),
 		KickTaskDuration:            durationjson.Duration(30 * time.Second),
+		DBConnectionTimeout:         durationjson.Duration(30 * time.Second),
 		LockTTL:                     durationjson.Duration(locket.DefaultSessionTTL),
 		LockRetryInterval:           durationjson.Duration(locket.RetryInterval),
 		ReportInterval:              durationjson.Duration(1 * time.Minute),
@@ -181,37 +182,46 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		LagerConfig: lagerflags.LagerConfig{
 			LogLevel: "info",
 		},
+		LoggregatorConfig: loggingclient.Config{
+			CACertPath: path.Join(fixturesPath, "metron", "CA.crt"),
+			CertPath:   path.Join(fixturesPath, "metron", "client.crt"),
+			KeyPath:    path.Join(fixturesPath, "metron", "client.key"),
+		},
 		ClientLocketConfig: locketrunner.ClientLocketConfig(),
 	}
 	bbsConfig.ClientLocketConfig.LocketAddress = locketAddress
 })
 
 var _ = BeforeEach(func() {
+
+	var err error
+	metronCAFile = path.Join(fixturesPath, "metron", "CA.crt")
+	metronServerCertFile = path.Join(fixturesPath, "metron", "metron.crt")
+	metronServerKeyFile = path.Join(fixturesPath, "metron", "metron.key")
+	testIngressServer, err = testhelpers.NewTestIngressServer(metronServerCertFile, metronServerKeyFile, metronCAFile)
+	Expect(err).NotTo(HaveOccurred())
+	receiversChan := testIngressServer.Receivers()
+	testIngressServer.Start()
+
+	testMetricsChan, signalMetricsChan = testhelpers.TestMetricChan(receiversChan)
+
 	locketRunner = locketrunner.NewLocketRunner(locketBinPath, func(cfg *locketconfig.LocketConfig) {
 		cfg.DatabaseConnectionString = sqlRunner.ConnectionString()
 		cfg.DatabaseDriver = sqlRunner.DriverName()
 		cfg.ListenAddress = locketAddress
-	})
+		cfg.LoggregatorConfig.APIPort, _ = testIngressServer.Port()
+		cfg.LoggregatorConfig.CACertPath = metronCAFile
+		cfg.LoggregatorConfig.CertPath = metronServerCertFile
+		cfg.LoggregatorConfig.KeyPath = metronServerKeyFile
 
+	})
+	bbsConfig.LoggregatorConfig.APIPort, _ = testIngressServer.Port()
 	logger := lagertest.NewTestLogger("test")
 	logger.Debug(fmt.Sprintf("bbs locket address: %s", locketAddress))
 	locketProcess = ginkgomon.Invoke(locketRunner)
 
 	bbsRunner = bbstestrunner.New(bbsBinPath, bbsConfig)
 	bbsProcess = ginkgomon.Invoke(bbsRunner)
-
-	metronCAFile := path.Join(fixturesPath, "metron", "CA.crt")
-	metronServerCertFile := path.Join(fixturesPath, "metron", "metron.crt")
-	metronServerKeyFile := path.Join(fixturesPath, "metron", "metron.key")
-
-	var err error
-	testIngressServer, err = testhelpers.NewTestIngressServer(metronServerCertFile, metronServerKeyFile, metronCAFile)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(testIngressServer.Start()).To(Succeed())
-
-	receiversChan := testIngressServer.Receivers()
-
-	testMetricsChan, signalMetricsChan = testhelpers.TestMetricChan(receiversChan)
 })
 
 var _ = AfterEach(func() {
@@ -220,7 +230,8 @@ var _ = AfterEach(func() {
 
 	ginkgomon.Kill(bbsProcess)
 	Eventually(bbsProcess.Wait()).Should(Receive())
-
+	testIngressServer.Stop()
+	close(signalMetricsChan)
 	sqlRunner.Reset()
 })
 
