@@ -236,6 +236,17 @@ var _ = Describe("Resources", func() {
 				Expect(*lrpNetInfo).To(Equal(expectedNetInfo))
 			})
 
+			Context("when the container has an IPv6 address", func() {
+				BeforeEach(func() {
+					container.InternalIPv6 = "fd00::1"
+				})
+
+				It("includes the IPv6 address in the net info", func() {
+					Expect(netInfoConversionErr).NotTo(HaveOccurred())
+					Expect(lrpNetInfo.InstanceIpv6Address).To(Equal("fd00::1"))
+				})
+			})
+
 			Context("when advertisePreferenceForInstanceAddress set to false", func() {
 				BeforeEach(func() {
 					container.AdvertisePreferenceForInstanceAddress = false
