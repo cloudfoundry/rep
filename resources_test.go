@@ -1,7 +1,10 @@
 package rep_test
 
 import (
+	"archive/tar"
+	"bytes"
 	"fmt"
+	"os"
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/rep"
@@ -225,6 +228,48 @@ var _ = Describe("Resources", func() {
 				Expect(err).To(MatchError(rep.ErrPreloadedRootFSNotFound))
 			})
 		})
+
+		Describe("StackVersionList", func() {
+			It("returns an empty list when the map is empty", func() {
+				m := rep.StackPathMap{}
+				Expect(m.StackVersionList()).To(Equal([]string{}))
+			})
+
+			It("returns only the stack name when version is empty", func() {
+				m := rep.StackPathMap{
+					"cflinuxfs3": "/nonexistent/path/to/rootfs.tar",
+				}
+				list := m.StackVersionList()
+				Expect(list).To(HaveLen(1))
+				Expect(list[0]).To(Equal("cflinuxfs3"))
+			})
+
+			It("returns name@version when version is non-empty", func() {
+				tarPath := createTarWithVersion("1.2.3")
+				defer os.Remove(tarPath)
+
+				m := rep.StackPathMap{
+					"cflinuxfs3": tarPath,
+				}
+				list := m.StackVersionList()
+				Expect(list).To(HaveLen(1))
+				Expect(list[0]).To(Equal("cflinuxfs3@1.2.3"))
+			})
+
+			It("returns mixed name and name@version for multiple stacks", func() {
+				tarPath := createTarWithVersion("2.0.0")
+				defer os.Remove(tarPath)
+
+				m := rep.StackPathMap{
+					"with-version":    tarPath,
+					"without-version": "/nonexistent/path.tar",
+				}
+				list := m.StackVersionList()
+				Expect(list).To(HaveLen(2))
+				Expect(list).To(ContainElement("with-version@2.0.0"))
+				Expect(list).To(ContainElement("without-version"))
+			})
+		})
 	})
 })
 
@@ -252,4 +297,28 @@ func buildLRP(instanceGuid,
 func buildTask(taskGuid, domain, rootFS string, memoryMB, diskMB, maxPids int32, placementTags, volumeDrivers []string, state models.Task_State, failed bool) *rep.Task {
 	task := rep.NewTask(taskGuid, domain, rep.NewResource(memoryMB, diskMB, maxPids), rep.PlacementConstraint{RootFs: rootFS, VolumeDrivers: volumeDrivers})
 	return &task
+}
+
+func createTarWithVersion(version string) string {
+	tmpDir := GinkgoT().TempDir()
+	tmpFile, err := os.CreateTemp(tmpDir, "stack-*.tar")
+	Expect(err).NotTo(HaveOccurred())
+	tarPath := tmpFile.Name()
+	Expect(tmpFile.Close()).To(Succeed())
+
+	buf := new(bytes.Buffer)
+	tarWriter := tar.NewWriter(buf)
+
+	// Match loadVersionFromPath: header.Name after TrimPrefix(., ".") must equal rep.StackVersionFile ("/etc/stack-version")
+	Expect(tarWriter.WriteHeader(&tar.Header{
+		Name: rep.StackVersionFile,
+		Size: int64(len(version)),
+		Mode: 0644,
+	})).To(Succeed())
+	_, err = tarWriter.Write([]byte(version))
+	Expect(err).NotTo(HaveOccurred())
+	Expect(tarWriter.Close()).To(Succeed())
+
+	Expect(os.WriteFile(tarPath, buf.Bytes(), 0644)).To(Succeed())
+	return tarPath
 }
