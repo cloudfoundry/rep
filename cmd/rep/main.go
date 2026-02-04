@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"io/fs"
+	"maps"
 	"net"
 	"net/http"
 	"os"
@@ -101,6 +102,8 @@ func main() {
 		}
 	}
 
+	preloadedRootFSes := rep.StackPathMap(maps.Clone(rootFSMap))
+	extraRootFSes := make(rep.StackPathMap)
 	walkDirErr := filepath.WalkDir(repConfig.ExtraRootfsDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -109,6 +112,8 @@ func main() {
 		if strings.EqualFold(ext, ".tar") {
 			key := strings.TrimSuffix(filepath.Base(path), ext)
 			rootFSMap[key] = path
+			delete(preloadedRootFSes, key)
+			extraRootFSes[key] = path
 		}
 		return nil
 	})
@@ -124,6 +129,9 @@ func main() {
 		}
 		sidecarRootFSPath = path
 	}
+
+	preloadedRootFSesWithVersions := rep.StackPathMap(preloadedRootFSes).StackVersionList()
+	extraRootFSesWithVersions := extraRootFSes.StackVersionList()
 
 	executorClient, containerMetricsProvider, executorMembers, err := executorinit.Initialize(logger, repConfig.ExecutorConfig, repConfig.CellID, repConfig.Zone, rootFSMap, sidecarRootFSPath, metronClient, clock)
 	if err != nil {
@@ -150,7 +158,7 @@ func main() {
 	bbsClient := initializeBBSClient(logger, repConfig)
 	url := repURL(repConfig)
 	address := repAddress(logger, repConfig)
-	cellPresence := initializeCellPresence(address, executorClient, logger, repConfig, repConfig.PreloadedRootFS.Names(), url)
+	cellPresence := initializeCellPresence(address, executorClient, logger, repConfig, preloadedRootFSesWithVersions, extraRootFSesWithVersions, url)
 	batchContainerAllocator := auctioncellrep.NewContainerAllocator(auctioncellrep.GenerateGuid, rootFSMap, executorClient)
 	auctionCellRep := auctioncellrep.New(
 		repConfig.CellID,
@@ -248,7 +256,8 @@ func initializeCellPresence(
 	executorClient executor.Client,
 	logger lager.Logger,
 	repConfig config.RepConfig,
-	preloadedRootFSes []string,
+	preloadedRootFSesWithVersions []string,
+	extraRootFSesWithVersions []string,
 	repUrl string,
 ) ifrit.Runner {
 	locketClient, err := locket.NewClient(logger, repConfig.ClientLocketConfig)
@@ -268,7 +277,7 @@ func initializeCellPresence(
 	cellCapacity := models.NewCellCapacity(int32(resources.MemoryMB), int32(resources.DiskMB), int32(resources.Containers))
 	cellPresence := models.NewCellPresence(repConfig.CellID, address, repUrl,
 		repConfig.Zone, cellCapacity, repConfig.SupportedProviders,
-		preloadedRootFSes, repConfig.PlacementTags, repConfig.OptionalPlacementTags)
+		preloadedRootFSesWithVersions, extraRootFSesWithVersions, repConfig.PlacementTags, repConfig.OptionalPlacementTags)
 
 	payload, err := json.Marshal(cellPresence)
 	if err != nil {
