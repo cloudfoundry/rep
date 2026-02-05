@@ -1,9 +1,13 @@
 package rep
 
 import (
+	"archive/tar"
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
 
@@ -13,6 +17,8 @@ import (
 )
 
 var ErrorIncompatibleRootfs = errors.New("rootfs not found")
+
+const StackVersionFile = "/etc/stack-version"
 
 type CellState struct {
 	RepURL                  string `json:"rep_url"`
@@ -351,6 +357,19 @@ func (m StackPathMap) PathForRootFS(rootFS string) (string, error) {
 	return rootFS, nil
 }
 
+func (m StackPathMap) StackVersionList() []string {
+	stackVersions := []string{}
+	for name, path := range m {
+		version := loadVersionFromPath(path)
+		if version != "" {
+			stackVersions = append(stackVersions, fmt.Sprintf("%s@%s", name, version))
+		} else {
+			stackVersions = append(stackVersions, name)
+		}
+	}
+	return stackVersions
+}
+
 //go:generate counterfeiter -o auctioncellrep/auctioncellrepfakes/fake_container_metrics_provider.go . ContainerMetricsProvider
 type ContainerMetricsProvider interface {
 	Metrics() map[string]*containermetrics.CachedContainerMetrics
@@ -372,4 +391,34 @@ type LRPMetric struct {
 type TaskMetric struct {
 	TaskGUID string `json:"task_guid"`
 	containermetrics.CachedContainerMetrics
+}
+
+func loadVersionFromPath(path string) string {
+	file, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer file.Close()
+
+	tarReader := tar.NewReader(file)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+
+		if header == nil {
+			continue
+		}
+
+		if strings.TrimPrefix(header.Name, ".") == StackVersionFile {
+			buf := new(bytes.Buffer)
+			if _, err := io.Copy(buf, tarReader); err != nil {
+				return ""
+			}
+			return strings.TrimSpace(buf.String())
+		}
+	}
+
+	return ""
 }
