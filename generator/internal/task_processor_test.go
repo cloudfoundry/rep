@@ -347,5 +347,53 @@ var _ = Describe("TaskProcessor", func() {
 				})
 			})
 		})
+
+		Context("when the container run fails with a result file", func() {
+			BeforeEach(func() {
+				container.RunResult = executor.ContainerRunResult{
+					Failed:        true,
+					FailureReason: "container failed for some reason",
+				}
+				container.Tags = executor.Tags{
+					rep.ResultFileTag: "some-result-file",
+				}
+			})
+
+			Context("and fetching the result file succeeds", func() {
+				BeforeEach(func() {
+					containerDelegate.FetchContainerResultFileReturns("the result before failure", nil)
+				})
+
+				It("completes the task with the failure reason and the result", func() {
+					Expect(containerDelegate.FetchContainerResultFileCallCount()).To(Equal(1))
+					Expect(bbsClient.CompleteTaskCallCount()).To(Equal(1))
+					_, traceID, guid, cellID, failed, reason, result := bbsClient.CompleteTaskArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
+					Expect(guid).To(Equal(taskGuid))
+					Expect(cellID).To(Equal(expectedCellID))
+					Expect(failed).To(Equal(true))
+					Expect(reason).To(Equal("container failed for some reason"))
+					Expect(result).To(Equal("the result before failure"))
+				})
+			})
+
+			Context("and fetching the result file fails", func() {
+				BeforeEach(func() {
+					containerDelegate.FetchContainerResultFileReturns("", errors.New("some error"))
+				})
+
+				It("completes the task with the original failure reason", func() {
+					Expect(containerDelegate.FetchContainerResultFileCallCount()).To(Equal(1))
+					Expect(bbsClient.CompleteTaskCallCount()).To(Equal(1))
+					_, traceID, guid, cellID, failed, reason, result := bbsClient.CompleteTaskArgsForCall(0)
+					Expect(traceID).To(Equal("some-trace-id"))
+					Expect(guid).To(Equal(taskGuid))
+					Expect(cellID).To(Equal(expectedCellID))
+					Expect(failed).To(Equal(true))
+					Expect(reason).To(Equal("container failed for some reason"))
+					Expect(result).To(Equal(""))
+				})
+			})
+		})
 	})
 })
