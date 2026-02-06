@@ -141,15 +141,17 @@ func (p *taskProcessor) completeTask(logger lager.Logger, traceID string, contai
 	}
 
 	resultFile := container.Tags[rep.ResultFileTag]
-	if !container.RunResult.Failed && resultFile != "" {
+	if resultFile != "" {
 		result, err = p.containerDelegate.FetchContainerResultFile(logger, container.Guid, resultFile)
-		if err != nil {
+		if err != nil && !container.RunResult.Failed {
 			err = p.bbsClient.CompleteTask(logger, traceID, container.Guid, p.cellID, true, TaskCompletionReasonFailedToFetchResult, "")
 			if err != nil {
 				logger.Error("failed-completing-task", err)
 			}
 			return
 		}
+	} else {
+		logger.Info("no result file tag found")
 	}
 
 	logger.Info("completing-task")
