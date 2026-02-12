@@ -143,9 +143,9 @@ func ConvertPreloadedRootFS(rootFS string, imageLayers []*models.ImageLayer, lay
 	newImageLayers := []*models.ImageLayer{}
 	var newRootFS string
 	for _, v := range imageLayers {
-		isExclusiveLayer := v.GetLayerType() == models.LayerTypeExclusive
-		isMediaTypeTgz := v.GetMediaType() == models.MediaTypeTgz
-		isSha256 := v.GetDigestAlgorithm() == models.DigestAlgorithmSha256
+		isExclusiveLayer := v.GetLayerType() == models.ImageLayer_LayerTypeExclusive
+		isMediaTypeTgz := v.GetMediaType() == models.ImageLayer_MediaTypeTgz
+		isSha256 := v.GetDigestAlgorithm() == models.ImageLayer_DigestAlgorithmSha256
 		suitableLayer := isExclusiveLayer && isMediaTypeTgz && isSha256
 		if suitableLayer && newRootFS == "" {
 			rootFSArray := strings.Split(rootFS, ":")
@@ -193,8 +193,8 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
 	}
 
 	metricTags, err := models.ConvertMetricTags(desiredLRP.MetricTags, map[models.MetricTagValue_DynamicValue]any{
-		models.MetricTagDynamicValueIndex:        lrpKey.Index,
-		models.MetricTagDynamicValueInstanceGuid: lrpInstanceKey.InstanceGuid,
+		models.MetricTagValue_MetricTagDynamicValueIndex:        lrpKey.Index,
+		models.MetricTagValue_MetricTagDynamicValueInstanceGuid: lrpInstanceKey.InstanceGuid,
 	})
 	if err != nil {
 		return executor.RunRequest{}, err
@@ -205,7 +205,7 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
 		return executor.RunRequest{}, err
 	}
 
-	internalRoutes, err := internalroutes.InternalRoutesFromRoutingInfo(*desiredLRP.Routes)
+	internalRoutes, err := internalroutes.InternalRoutesFromRoutingInfo(desiredLRP.Routes)
 	if err != nil {
 		return executor.RunRequest{}, err
 	}
@@ -223,6 +223,7 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
 		},
 
 		MetricsConfig: executor.MetricsConfig{
+			//lint:ignore SA1019 - testing deprecated functionality
 			Guid:  desiredLRP.MetricsGuid,
 			Index: int(lrpKey.Index),
 			Tags:  metricTags,
@@ -270,59 +271,59 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromTask(task *models.Task, 
 	taskCopy := *task
 	task = &taskCopy
 	task.TaskDefinition = &taskDefinitionCopy
-	task.RootFs, task.ImageLayers = ConvertPreloadedRootFS(task.RootFs, task.ImageLayers, layeringMode)
+	task.TaskDefinition.RootFs, task.TaskDefinition.ImageLayers = ConvertPreloadedRootFS(task.TaskDefinition.RootFs, task.TaskDefinition.ImageLayers, layeringMode)
 	cachedDependencies, setupAction := convertImageLayers(task.TaskDefinition)
 
-	mounts, err := convertVolumeMounts(task.VolumeMounts)
+	mounts, err := convertVolumeMounts(task.TaskDefinition.VolumeMounts)
 	if err != nil {
 		return executor.RunRequest{}, err
 	}
 
-	rootFSPath, err := stackPathMap.PathForRootFS(task.RootFs)
+	rootFSPath, err := stackPathMap.PathForRootFS(task.TaskDefinition.RootFs)
 	if err != nil {
 		return executor.RunRequest{}, err
 	}
 
-	metricTags, err := models.ConvertMetricTags(task.MetricTags, map[models.MetricTagValue_DynamicValue]any{})
+	metricTags, err := models.ConvertMetricTags(task.TaskDefinition.MetricTags, map[models.MetricTagValue_DynamicValue]any{})
 	if err != nil {
 		return executor.RunRequest{}, err
 	}
 
-	username, password, err := rrch.convertCredentials(rootFSPath, task.ImageUsername, task.ImagePassword)
+	username, password, err := rrch.convertCredentials(rootFSPath, task.TaskDefinition.ImageUsername, task.TaskDefinition.ImagePassword)
 	if err != nil {
 		return executor.RunRequest{}, err
 	}
 
 	tags := executor.Tags{
-		ResultFileTag: task.ResultFile,
+		ResultFileTag: task.TaskDefinition.ResultFile,
 	}
 	runInfo := executor.RunInfo{
 		RootFSPath: rootFSPath,
-		CPUWeight:  uint(task.CpuWeight),
-		Privileged: task.Privileged,
+		CPUWeight:  uint(task.TaskDefinition.CpuWeight),
+		Privileged: task.TaskDefinition.Privileged,
 		LogConfig: executor.LogConfig{
-			Guid:       task.LogGuid,
-			SourceName: task.LogSource,
+			Guid:       task.TaskDefinition.LogGuid,
+			SourceName: task.TaskDefinition.LogSource,
 			Tags:       metricTags,
 		},
 		MetricsConfig: executor.MetricsConfig{
-			Guid: task.MetricsGuid,
+			Guid: task.TaskDefinition.MetricsGuid,
 			Tags: metricTags,
 		},
 		CachedDependencies:            ConvertCachedDependencies(cachedDependencies),
-		Action:                        task.Action,
+		Action:                        task.TaskDefinition.Action,
 		Setup:                         setupAction,
-		Env:                           executor.EnvironmentVariablesFromModel(task.EnvironmentVariables),
-		EgressRules:                   task.EgressRules,
-		TrustedSystemCertificatesPath: task.TrustedSystemCertificatesPath,
+		Env:                           executor.EnvironmentVariablesFromModel(task.TaskDefinition.EnvironmentVariables),
+		EgressRules:                   task.TaskDefinition.EgressRules,
+		TrustedSystemCertificatesPath: task.TaskDefinition.TrustedSystemCertificatesPath,
 		VolumeMounts:                  mounts,
-		Network:                       convertNetwork(task.Network),
-		CertificateProperties:         convertCertificateProperties(task.CertificateProperties),
+		Network:                       convertNetwork(task.TaskDefinition.Network),
+		CertificateProperties:         convertCertificateProperties(task.TaskDefinition.CertificateProperties),
 		ImageUsername:                 username,
 		ImagePassword:                 password,
 		EnableContainerProxy:          false,
-		LogRateLimitBytesPerSecond:    convertLogRateLimit(task.LogRateLimit),
-		VolumeMountedFiles:            executor.VolumeMountedFilesFromModel(task.VolumeMountedFiles),
+		LogRateLimitBytesPerSecond:    convertLogRateLimit(task.TaskDefinition.LogRateLimit),
+		VolumeMountedFiles:            executor.VolumeMountedFilesFromModel(task.TaskDefinition.VolumeMountedFiles),
 	}
 	return executor.NewRunRequest(task.TaskGuid, &runInfo, tags), nil
 }
@@ -351,6 +352,7 @@ func convertImageLayers(t *models.TaskDefinition) ([]*models.CachedDependency, *
 	layers := models.ImageLayers(t.ImageLayers)
 
 	cachedDependencies := append(layers.ToCachedDependencies(), t.CachedDependencies...)
+	//lint:ignore SA1019 - testing deprecated functionality
 	action := layers.ToDownloadActions(t.LegacyDownloadUser, nil)
 
 	return cachedDependencies, action
