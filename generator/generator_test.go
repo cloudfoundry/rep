@@ -96,14 +96,14 @@ var _ = Describe("Generator", func() {
 
 				actualLRPKey := models.ActualLRPKey{ProcessGuid: processGuid}
 
-				containerOnlyLRP := models.ActualLRP{ActualLRPKey: actualLRPKey, ActualLRPInstanceKey: models.NewActualLRPInstanceKey(instanceGuidContainerForInstanceLRP, cellID)}
-				instanceOnlyLRP := models.ActualLRP{ActualLRPKey: actualLRPKey, ActualLRPInstanceKey: models.NewActualLRPInstanceKey(instanceGuidInstanceLRPOnly, cellID)}
+				containerOnlyLRP := models.ActualLRP{ActualLrpKey: actualLRPKey, ActualLrpInstanceKey: models.NewActualLRPInstanceKey(instanceGuidContainerForInstanceLRP, cellID)}
+				instanceOnlyLRP := models.ActualLRP{ActualLrpKey: actualLRPKey, ActualLrpInstanceKey: models.NewActualLRPInstanceKey(instanceGuidInstanceLRPOnly, cellID)}
 
-				containerForEvacuatingLRP := models.ActualLRP{ActualLRPKey: actualLRPKey, ActualLRPInstanceKey: models.NewActualLRPInstanceKey(instanceGuidContainerForEvacuatingLRP, cellID), Presence: models.ActualLRP_Evacuating}
-				evacuatingOnlyLRP := models.ActualLRP{ActualLRPKey: actualLRPKey, ActualLRPInstanceKey: models.NewActualLRPInstanceKey(instanceGuidEvacuatingLRPOnly, cellID), Presence: models.ActualLRP_Evacuating}
+				containerForEvacuatingLRP := models.ActualLRP{ActualLrpKey: actualLRPKey, ActualLrpInstanceKey: models.NewActualLRPInstanceKey(instanceGuidContainerForEvacuatingLRP, cellID), Presence: models.ActualLRP_Evacuating}
+				evacuatingOnlyLRP := models.ActualLRP{ActualLrpKey: actualLRPKey, ActualLrpInstanceKey: models.NewActualLRPInstanceKey(instanceGuidEvacuatingLRPOnly, cellID), Presence: models.ActualLRP_Evacuating}
 
-				instanceAndEvacuatingLRP1 := models.ActualLRP{ActualLRPKey: actualLRPKey, ActualLRPInstanceKey: models.NewActualLRPInstanceKey(instanceGuidInstanceAndEvacuatingLRPsOnly, cellID)}
-				instanceAndEvacuatingLRP2 := models.ActualLRP{ActualLRPKey: actualLRPKey, ActualLRPInstanceKey: models.NewActualLRPInstanceKey(instanceGuidInstanceAndEvacuatingLRPsOnly, cellID), Presence: models.ActualLRP_Evacuating}
+				instanceAndEvacuatingLRP1 := models.ActualLRP{ActualLrpKey: actualLRPKey, ActualLrpInstanceKey: models.NewActualLRPInstanceKey(instanceGuidInstanceAndEvacuatingLRPsOnly, cellID)}
+				instanceAndEvacuatingLRP2 := models.ActualLRP{ActualLrpKey: actualLRPKey, ActualLrpInstanceKey: models.NewActualLRPInstanceKey(instanceGuidInstanceAndEvacuatingLRPsOnly, cellID), Presence: models.ActualLRP_Evacuating}
 
 				lrps := []*models.ActualLRP{
 					&containerOnlyLRP,

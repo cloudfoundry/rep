@@ -372,13 +372,13 @@ var _ = Describe("Client", func() {
 			logger    = lagertest.NewTestLogger("test")
 			stopErr   error
 			actualLRP = models.ActualLRP{
-				ActualLRPKey:         models.NewActualLRPKey("some-process-guid", 2, "test-domain"),
-				ActualLRPInstanceKey: models.NewActualLRPInstanceKey("some-instance-guid", "some-cell-id"),
+				ActualLrpKey:         models.NewActualLRPKey("some-process-guid", 2, "test-domain"),
+				ActualLrpInstanceKey: models.NewActualLRPInstanceKey("some-instance-guid", "some-cell-id"),
 			}
 		)
 
 		JustBeforeEach(func() {
-			stopErr = client.StopLRPInstance(logger, actualLRP.ActualLRPKey, actualLRP.ActualLRPInstanceKey)
+			stopErr = client.StopLRPInstance(logger, actualLRP.ActualLrpKey, actualLRP.ActualLrpInstanceKey)
 		})
 
 		Context("when the request is successful", func() {
