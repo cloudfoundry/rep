@@ -497,6 +497,28 @@ var _ = Describe("Resources", func() {
 						Mode: executor.BindMountModeRO,
 					}))
 				})
+
+				Context("when MountConfig is invalid JSON", func() {
+					BeforeEach(func() {
+						desiredLRP.VolumeMounts[0].Dedicated.MountConfig = "{{"
+					})
+
+					It("returns an error", func() {
+						_, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
+						Expect(err).To(HaveOccurred())
+					})
+				})
+
+				Context("when DeviceConfig is invalid JSON", func() {
+					BeforeEach(func() {
+						desiredLRP.VolumeMounts[0].Dedicated.DeviceConfig = "{{"
+					})
+
+					It("returns an error", func() {
+						_, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
+						Expect(err).To(HaveOccurred())
+					})
+				})
 			})
 
 			It("enables the envoy proxy", func() {
