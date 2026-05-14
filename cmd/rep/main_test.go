@@ -768,6 +768,61 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 			})
 		})
 
+		Describe("RepURL configuration", func() {
+			Context("when RepURL is configured in config", func() {
+				BeforeEach(func() {
+					repConfig.RepURL = "https://custom-override.example.com:9876"
+				})
+
+				It("should use the configured RepURL in cell presence", func() {
+					locketClient, err := locket.NewClient(logger, repConfig.ClientLocketConfig)
+					Expect(err).NotTo(HaveOccurred())
+
+					var response *locketmodels.FetchResponse
+					Eventually(func() error {
+						response, err = locketClient.Fetch(context.Background(), &locketmodels.FetchRequest{Key: repConfig.CellID})
+						return err
+					}, 10*time.Second).Should(Succeed())
+
+					value := &models.CellPresence{}
+					err = json.Unmarshal([]byte(response.Resource.Value), value)
+					Expect(err).NotTo(HaveOccurred())
+					
+					Expect(value.RepUrl).To(Equal("https://custom-override.example.com:9876"))
+					Expect(value.CellId).To(Equal(repConfig.CellID))
+					Expect(value.Zone).To(Equal(repConfig.Zone))
+				})
+			})
+
+			Context("when RepURL is not configured (default behavior)", func() {
+				It("should construct RepURL from CellID, AdvertiseDomain, and port", func() {
+					locketClient, err := locket.NewClient(logger, repConfig.ClientLocketConfig)
+					Expect(err).NotTo(HaveOccurred())
+
+					var response *locketmodels.FetchResponse
+					Eventually(func() error {
+						response, err = locketClient.Fetch(context.Background(), &locketmodels.FetchRequest{Key: repConfig.CellID})
+						return err
+					}, 10*time.Second).Should(Succeed())
+
+					value := &models.CellPresence{}
+					err = json.Unmarshal([]byte(response.Resource.Value), value)
+					Expect(err).NotTo(HaveOccurred())
+					
+					// Expected format: https://{repHost(CellID)}.{AdvertiseDomain}:{port}
+					// repHost converts underscores to hyphens
+					expectedURL := fmt.Sprintf("https://%s.%s:%d", 
+						strings.Replace(repConfig.CellID, "_", "-", -1),
+						repConfig.AdvertiseDomain, 
+						serverPortSecurable)
+					
+					Expect(value.RepUrl).To(Equal(expectedURL))
+					Expect(value.CellId).To(Equal(repConfig.CellID))
+					Expect(value.Zone).To(Equal(repConfig.Zone))
+				})
+			})
+		})
+
 		Describe("maintaining presence", func() {
 
 			var response *locketmodels.FetchResponse

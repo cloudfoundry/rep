@@ -105,6 +105,7 @@ var _ = Describe("RepConfig", func() {
 			"post_setup_user": "post_setup_user",
 			"preloaded_root_fs": ["test:value", "test2:value2"],
 			"read_work_pool_size": 15,
+			"rep_url": "https://custom-rep-url:8443",
 			"reserved_expiration_time": "10s",
 			"sidecar_root_fs_path": "/var/vcap/packages/cflinuxfs4/rootfs.tar",
 			"sidecar_root_fs": "cflinuxfs4",
@@ -227,6 +228,7 @@ var _ = Describe("RepConfig", func() {
 			PlacementTags:         []string{"tag1", "tag2"},
 			PollingInterval:       durationjson.Duration(10 * time.Second),
 			PreloadedRootFS:       []config.RootFS{{"test", "value"}, {"test2", "value2"}},
+			RepURL:                "https://custom-rep-url:8443",
 			ExtraRootfsDir:        "/var/vcap/data/rootfses",
 			SidecarRootFSPath:     "/var/vcap/packages/cflinuxfs4/rootfs.tar",
 			SidecarRootFS:         "cflinuxfs4",
@@ -276,6 +278,47 @@ var _ = Describe("RepConfig", func() {
 				_, err := config.NewRepConfig(configFilePath)
 				Expect(err).To(HaveOccurred())
 			})
+		})
+	})
+
+	Context("when rep_url is not provided in config", func() {
+		BeforeEach(func() {
+			configData = `{
+				"advertise_domain": "test-domain",
+				"bbs_address": "1.1.1.1:9091",
+				"ca_cert_file": "/tmp/ca_cert",
+				"cell_id" : "cell_z1/10",
+				"listen_addr_securable": "0.0.0.0:8081",
+				"preloaded_root_fs": ["test:value"],
+				"supported_providers": ["provider1"]
+			}`
+		})
+
+		It("parses config without rep_url field", func() {
+			repConfig, err := config.NewRepConfig(configFilePath)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(repConfig.RepURL).To(BeEmpty())
+		})
+	})
+
+	Context("when rep_url is empty in config", func() {
+		BeforeEach(func() {
+			configData = `{
+				"advertise_domain": "test-domain",
+				"bbs_address": "1.1.1.1:9091",
+				"ca_cert_file": "/tmp/ca_cert",
+				"cell_id" : "cell_z1/10",
+				"listen_addr_securable": "0.0.0.0:8081",
+				"preloaded_root_fs": ["test:value"],
+				"rep_url": "",
+				"supported_providers": ["provider1"]
+			}`
+		})
+
+		It("parses config with empty rep_url field", func() {
+			repConfig, err := config.NewRepConfig(configFilePath)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(repConfig.RepURL).To(BeEmpty())
 		})
 	})
 })

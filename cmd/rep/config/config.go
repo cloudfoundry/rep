@@ -98,6 +98,7 @@ type RepConfig struct {
 	PlacementTags             []string              `json:"placement_tags"`
 	PollingInterval           durationjson.Duration `json:"polling_interval,omitempty"`
 	PreloadedRootFS           RootFSes              `json:"preloaded_root_fs"`
+	RepURL                    string                `json:"rep_url,omitempty"`
 	SidecarRootFSPath         string                `json:"sidecar_root_fs_path"`
 	SidecarRootFS             string                `json:"sidecar_root_fs"`
 	ServerCertFile            string                `json:"server_cert_file"` // DEPRECATED. Kept around for dusts compatability
