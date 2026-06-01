@@ -787,7 +787,7 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					value := &models.CellPresence{}
 					err = json.Unmarshal([]byte(response.Resource.Value), value)
 					Expect(err).NotTo(HaveOccurred())
-					
+
 					Expect(value.RepUrl).To(Equal("https://custom-override.example.com:9876"))
 					Expect(value.CellId).To(Equal(repConfig.CellID))
 					Expect(value.Zone).To(Equal(repConfig.Zone))
@@ -808,14 +808,14 @@ dYbCU/DMZjsv+Pt9flhj7ELLo+WKHyI767hJSq9A7IT3GzFt8iGiEAt1qj2yS0DX
 					value := &models.CellPresence{}
 					err = json.Unmarshal([]byte(response.Resource.Value), value)
 					Expect(err).NotTo(HaveOccurred())
-					
+
 					// Expected format: https://{repHost(CellID)}.{AdvertiseDomain}:{port}
 					// repHost converts underscores to hyphens
-					expectedURL := fmt.Sprintf("https://%s.%s:%d", 
+					expectedURL := fmt.Sprintf("https://%s.%s:%d",
 						strings.Replace(repConfig.CellID, "_", "-", -1),
-						repConfig.AdvertiseDomain, 
+						repConfig.AdvertiseDomain,
 						serverPortSecurable)
-					
+
 					Expect(value.RepUrl).To(Equal(expectedURL))
 					Expect(value.CellId).To(Equal(repConfig.CellID))
 					Expect(value.Zone).To(Equal(repConfig.Zone))
