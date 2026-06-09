@@ -37,6 +37,7 @@ import (
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/auctioncellrep"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
+	"code.cloudfoundry.org/rep/diskcheck"
 	"code.cloudfoundry.org/rep/evacuation"
 	"code.cloudfoundry.org/rep/evacuation/evacuation_context"
 	"code.cloudfoundry.org/rep/generator"
@@ -249,6 +250,29 @@ func main() {
 	}
 
 	members = append(executorMembers, members...)
+
+	if len(repConfig.DiskHealthCheckPaths) > 0 {
+		diskInterval := time.Duration(repConfig.DiskHealthCheckInterval)
+		if diskInterval <= 0 {
+			diskInterval = 15 * time.Second
+			logger.Info("disk-health-check-interval-defaulted", lager.Data{"interval": diskInterval.String()})
+		}
+		diskFailureThreshold := repConfig.DiskHealthCheckFailureThreshold
+		if diskFailureThreshold <= 0 {
+			diskFailureThreshold = 3
+		}
+		diskCheckRunner := diskcheck.NewRunner(
+			logger,
+			clock,
+			repConfig.DiskHealthCheckPaths,
+			diskInterval,
+			diskFailureThreshold,
+			executorClient,
+			evacuatable,
+			diskcheck.IsReadOnly,
+		)
+		members = append(members, grouper.Member{Name: "disk-check", Runner: diskCheckRunner})
+	}
 
 	if repConfig.DebugAddress != "" {
 		members = append(grouper.Members{
