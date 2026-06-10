@@ -13,31 +13,6 @@ import (
 	"code.cloudfoundry.org/executor/containermetrics"
 )
 
-// Scheduling and placement types moved to code.cloudfoundry.org/bbs/models.
-// These aliases maintain backward compatibility.
-
-var ErrorIncompatibleRootfs = bbsmodels.ErrorIncompatibleRootfs
-
-const StackVersionFile = bbsmodels.StackVersionFile
-
-type Resource             = bbsmodels.Resource
-type Resources            = bbsmodels.Resources
-type PlacementConstraint  = bbsmodels.PlacementConstraint
-type LRP                  = bbsmodels.SchedulingLRP
-type LRPUpdate            = bbsmodels.LRPUpdate
-type Task                 = bbsmodels.SchedulingTask
-type Work                 = bbsmodels.Work
-type CellState            = bbsmodels.CellState
-type InsufficientResourcesError = bbsmodels.InsufficientResourcesError
-
-var NewResource            = bbsmodels.NewResource
-var NewResources           = bbsmodels.NewResources
-var NewPlacementConstraint = bbsmodels.NewPlacementConstraint
-var NewLRP                 = bbsmodels.NewSchedulingLRP
-var NewLRPUpdate           = bbsmodels.NewLRPUpdate
-var NewTask                = bbsmodels.NewSchedulingTask
-var NewCellState           = bbsmodels.NewCellState
-
 // StackPathMap maps aliases to rootFS paths on the system.
 type StackPathMap map[string]string
 

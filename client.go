@@ -19,10 +19,6 @@ import (
 	"github.com/tedsuo/rata"
 )
 
-// ClientFactory is the rep client factory interface.
-// Also available as code.cloudfoundry.org/bbs/models.RepClientFactory.
-type ClientFactory = models.RepClientFactory
-
 // capture the behavior described in the comment of this story
 // https://www.pivotaltracker.com/story/show/130664747/comments/152863773
 type TLSConfig struct {
@@ -134,17 +130,6 @@ func (factory *clientFactory) CreateClient(address, url, traceID string) (Client
 
 	return newClient(factory.httpClient, factory.stateClient, urlToUse, traceID), nil
 }
-
-// Client is the rep client interface.
-// Also available as code.cloudfoundry.org/bbs/models.RepClient.
-//
-//go:generate counterfeiter -o repfakes/fake_client.go . Client
-type Client = models.RepClient
-
-// SimClient extends Client with simulation capabilities.
-//
-//go:generate counterfeiter -o repfakes/fake_sim_client.go . SimClient
-type SimClient = models.RepSimClient
 
 type client struct {
 	client           *http.Client
