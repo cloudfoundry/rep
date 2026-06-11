@@ -321,7 +321,8 @@ func initializeCellPresence(
 	cellCapacity := models.NewCellCapacity(int32(resources.MemoryMB), int32(resources.DiskMB), int32(resources.Containers))
 	cellPresence := models.NewCellPresence(repConfig.CellID, address, repUrl,
 		repConfig.Zone, cellCapacity, repConfig.SupportedProviders,
-		preloadedRootFSesWithVersions, extraRootFSesWithVersions, repConfig.PlacementTags, repConfig.OptionalPlacementTags)
+		preloadedRootFSesWithVersions, extraRootFSesWithVersions, repConfig.PlacementTags, repConfig.OptionalPlacementTags,
+		repConfig.CellAnnotations)
 
 	payload, err := json.Marshal(cellPresence)
 	if err != nil {
