@@ -31,7 +31,7 @@ type Runner struct {
 // pass diskcheck.IsReadOnly for production use. failureThreshold controls how
 // many consecutive periodic-check failures must occur before evacuation is
 // triggered; the startup check is always immediate regardless of this value.
-// Values <= 0 are treated as 1.
+// Values <= 0 are treated as 3.
 func NewRunner(
 	logger lager.Logger,
 	clk clock.Clock,
@@ -43,7 +43,7 @@ func NewRunner(
 	checkPath func(string) (bool, error),
 ) *Runner {
 	if failureThreshold <= 0 {
-		failureThreshold = 1
+		failureThreshold = 3
 	}
 	return &Runner{
 		logger:           logger.Session("disk-check"),
