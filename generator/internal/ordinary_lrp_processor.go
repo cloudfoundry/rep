@@ -5,6 +5,7 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/ecrhelper"
 	"code.cloudfoundry.org/executor"
+	"code.cloudfoundry.org/gcrhelper"
 	"code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/rep"
 )
@@ -27,7 +28,10 @@ func newOrdinaryLRPProcessor(
 	stackPathMap rep.StackPathMap,
 	layeringMode string,
 ) LRPProcessor {
-	runRequestConversionHelper := rep.RunRequestConversionHelper{ECRHelper: ecrhelper.NewECRHelper()}
+	runRequestConversionHelper := rep.RunRequestConversionHelper{
+		ECRHelper: ecrhelper.NewECRHelper(),
+		GCRHelper: gcrhelper.NewGCRHelper(),
+	}
 
 	return &ordinaryLRPProcessor{
 		bbsClient:                  bbsClient,

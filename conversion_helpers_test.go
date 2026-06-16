@@ -13,6 +13,7 @@ import (
 	"code.cloudfoundry.org/bbs/test_helpers"
 	fakeecrhelper "code.cloudfoundry.org/ecrhelper/fakes"
 	"code.cloudfoundry.org/executor"
+	fakegcrhelper "code.cloudfoundry.org/gcrhelper/fakes"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/routing-info/internalroutes"
 	. "github.com/onsi/ginkgo/v2"
@@ -283,12 +284,15 @@ var _ = Describe("Resources", func() {
 		var (
 			runRequestConversionHelper rep.RunRequestConversionHelper
 			fakeECRHelper              *fakeecrhelper.FakeECRHelper
+			fakeGCRHelper              *fakegcrhelper.FakeGCRHelper
 		)
 
 		BeforeEach(func() {
 			fakeECRHelper = &fakeecrhelper.FakeECRHelper{}
+			fakeGCRHelper = &fakegcrhelper.FakeGCRHelper{}
 			runRequestConversionHelper = rep.RunRequestConversionHelper{
 				ECRHelper: fakeECRHelper,
+				GCRHelper: fakeGCRHelper,
 			}
 		})
 
@@ -570,6 +574,50 @@ var _ = Describe("Resources", func() {
 				It("uses TotalDiskLimit as the disk scope", func() {
 					_, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+
+			Context("when the rootfs is a GCR/Artifact Registry repo URL and no credentials are stored", func() {
+				BeforeEach(func() {
+					desiredLRP.ImageUsername = ""
+					desiredLRP.ImagePassword = ""
+					fakeGCRHelper.IsGCRRepoReturns(true, nil)
+					fakeGCRHelper.GetGCRCredentialsReturns("oauth2accesstoken", "some-fresh-token", nil)
+				})
+
+				It("uses the metadata-server token", func() {
+					runReq, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(runReq.ImageUsername).To(Equal("oauth2accesstoken"))
+					Expect(runReq.ImagePassword).To(Equal("some-fresh-token"))
+				})
+
+				Context("when checking for GCR repo fails", func() {
+					BeforeEach(func() {
+						fakeGCRHelper.IsGCRRepoReturns(false, errors.New("disaster"))
+					})
+
+					It("returns an error", func() {
+						_, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
+						Expect(err).To(HaveOccurred())
+					})
+				})
+
+			})
+
+			Context("when the rootfs is a GCR/Artifact Registry repo URL but credentials are stored", func() {
+				BeforeEach(func() {
+					desiredLRP.ImageUsername = "_json_key"
+					desiredLRP.ImagePassword = `{"type":"service_account"}`
+				})
+
+				It("passes through the stored credentials without checking GCR", func() {
+					runReq, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(runReq.ImageUsername).To(Equal("_json_key"))
+					Expect(runReq.ImagePassword).To(Equal(`{"type":"service_account"}`))
+					Expect(fakeGCRHelper.IsGCRRepoCallCount()).To(Equal(0))
+					Expect(fakeGCRHelper.GetGCRCredentialsCallCount()).To(Equal(0))
 				})
 			})
 
@@ -917,6 +965,52 @@ var _ = Describe("Resources", func() {
 				It("uses TotalDiskLimit as the disk scope", func() {
 					_, err := runRequestConversionHelper.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
 					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+
+			Context("when the rootfs is a GCR/Artifact Registry repo URL and no credentials are stored", func() {
+				BeforeEach(func() {
+					task.RootFs = "docker://europe-west3-docker.pkg.dev/my-project/my-repo/my-image:latest"
+					task.ImageUsername = ""
+					task.ImagePassword = ""
+					fakeGCRHelper.IsGCRRepoReturns(true, nil)
+					fakeGCRHelper.GetGCRCredentialsReturns("oauth2accesstoken", "some-fresh-token", nil)
+				})
+
+				It("uses the metadata-server token", func() {
+					runReq, err := runRequestConversionHelper.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(runReq.ImageUsername).To(Equal("oauth2accesstoken"))
+					Expect(runReq.ImagePassword).To(Equal("some-fresh-token"))
+				})
+
+				Context("when checking for GCR repo fails", func() {
+					BeforeEach(func() {
+						fakeGCRHelper.IsGCRRepoReturns(false, errors.New("disaster"))
+					})
+
+					It("returns an error", func() {
+						_, err := runRequestConversionHelper.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
+						Expect(err).To(HaveOccurred())
+					})
+				})
+
+			})
+
+			Context("when the rootfs is a GCR/Artifact Registry repo URL but credentials are stored", func() {
+				BeforeEach(func() {
+					task.RootFs = "docker://europe-west3-docker.pkg.dev/my-project/my-repo/my-image:latest"
+					task.ImageUsername = "_json_key"
+					task.ImagePassword = `{"type":"service_account"}`
+				})
+
+				It("passes through the stored credentials without checking GCR", func() {
+					runReq, err := runRequestConversionHelper.NewRunRequestFromTask(task, stackPathMap, rep.LayeringModeSingleLayer)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(runReq.ImageUsername).To(Equal("_json_key"))
+					Expect(runReq.ImagePassword).To(Equal(`{"type":"service_account"}`))
+					Expect(fakeGCRHelper.IsGCRRepoCallCount()).To(Equal(0))
+					Expect(fakeGCRHelper.GetGCRCredentialsCallCount()).To(Equal(0))
 				})
 			})
 

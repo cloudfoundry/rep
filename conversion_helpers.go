@@ -13,6 +13,7 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/ecrhelper"
 	"code.cloudfoundry.org/executor"
+	"code.cloudfoundry.org/gcrhelper"
 	"code.cloudfoundry.org/routing-info/internalroutes"
 )
 
@@ -167,6 +168,7 @@ func ConvertPreloadedRootFS(rootFS string, imageLayers []*models.ImageLayer, lay
 
 type RunRequestConversionHelper struct {
 	ECRHelper ecrhelper.ECRHelper
+	GCRHelper gcrhelper.GCRHelper
 }
 
 func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
@@ -357,6 +359,17 @@ func convertImageLayers(t *models.TaskDefinition) ([]*models.CachedDependency, *
 }
 
 func (rrch RunRequestConversionHelper) convertCredentials(rootFS string, username string, password string) (string, string, error) {
+	if username == "" && password == "" {
+		isGCRRepo, err := rrch.GCRHelper.IsGCRRepo(rootFS)
+		if err != nil {
+			return "", "", err
+		}
+
+		if isGCRRepo {
+			return rrch.GCRHelper.GetGCRCredentials()
+		}
+	}
+
 	isECRRepo, err := rrch.ECRHelper.IsECRRepo(rootFS)
 	if err != nil {
 		return "", "", err

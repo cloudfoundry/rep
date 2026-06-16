@@ -5,6 +5,7 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/ecrhelper"
 	"code.cloudfoundry.org/executor"
+	"code.cloudfoundry.org/gcrhelper"
 	"code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/rep"
 )
@@ -30,7 +31,10 @@ type taskProcessor struct {
 }
 
 func NewTaskProcessor(bbs bbs.InternalClient, containerDelegate ContainerDelegate, cellID string, stackPathMap rep.StackPathMap, layeringMode string) TaskProcessor {
-	runRequestConversionHelper := rep.RunRequestConversionHelper{ECRHelper: ecrhelper.NewECRHelper()}
+	runRequestConversionHelper := rep.RunRequestConversionHelper{
+		ECRHelper: ecrhelper.NewECRHelper(),
+		GCRHelper: gcrhelper.NewGCRHelper(),
+	}
 
 	return &taskProcessor{
 		bbsClient:                  bbs,
