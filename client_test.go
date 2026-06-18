@@ -11,7 +11,6 @@ import (
 	cfhttp "code.cloudfoundry.org/cfhttp/v2"
 	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/rep"
-	"code.cloudfoundry.org/routing-info/internalroutes"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -181,7 +180,7 @@ var _ = Describe("Client", func() {
 			lrpUpdate = rep.LRPUpdate{
 				InstanceGUID: "some-instance-guid",
 				ActualLRPKey: models.NewActualLRPKey("some-process-guid", 2, "test-domain"),
-				InternalRoutes: internalroutes.InternalRoutes{
+				InternalRoutes: rep.InternalRoutes{
 					{Hostname: "a.apps.internal"},
 					{Hostname: "b.apps.internal"},
 				},

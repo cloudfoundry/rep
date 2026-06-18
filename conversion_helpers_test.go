@@ -14,7 +14,6 @@ import (
 	fakeecrhelper "code.cloudfoundry.org/ecrhelper/fakes"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/rep"
-	"code.cloudfoundry.org/routing-info/internalroutes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -756,7 +755,7 @@ var _ = Describe("Resources", func() {
 				It("adds internal routes to run info", func() {
 					runReq, err := runRequestConversionHelper.NewRunRequestFromDesiredLRP(containerGuid, desiredLRP, &actualLRP.ActualLRPKey, &actualLRP.ActualLRPInstanceKey, stackPathMap, rep.LayeringModeSingleLayer)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(runReq.RunInfo.InternalRoutes).To(Equal(internalroutes.InternalRoutes{
+					Expect(runReq.RunInfo.InternalRoutes).To(Equal(rep.InternalRoutes{
 						{Hostname: "foo.apps.internal"},
 						{Hostname: "bar.apps.internal"},
 					}))

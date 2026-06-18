@@ -60,9 +60,10 @@ func NewRunner(
 // Run implements ifrit.Runner.
 //
 // Sequence:
-//  1. Check all paths immediately. Any failure here triggers evacuation at
-//     once — a disk already read-only at startup is a real problem, not a
-//     transient glitch.
+//  1. Check all paths immediately in a goroutine. Any failure triggers
+//     evacuation at once — a disk already read-only at startup is a real
+//     problem, not a transient glitch. A signal received while the startup
+//     check is in progress returns nil immediately.
 //  2. If startup check passes, signal ready.
 //  3. Tick at interval. On each tick check all paths.
 //  4. If a tick check fails, increment consecutiveFailures. When
@@ -73,8 +74,17 @@ func (r *Runner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	logger := r.logger.Session("run")
 	logger.Info("starting")
 
-	if r.pathsUnhealthy(logger) {
-		return r.triggerFailureAndWait(logger, signals)
+	startupDone := make(chan bool, 1)
+	go func() { startupDone <- r.pathsUnhealthy(logger) }()
+
+	select {
+	case <-signals:
+		logger.Info("signalled-during-startup")
+		return nil
+	case unhealthy := <-startupDone:
+		if unhealthy {
+			return r.triggerFailureAndWait(logger, signals)
+		}
 	}
 
 	close(ready)

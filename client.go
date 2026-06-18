@@ -19,11 +19,11 @@ import (
 	"github.com/tedsuo/rata"
 )
 
+// ClientFactory is the rep client factory interface.
+// Also available as code.cloudfoundry.org/bbs/models.RepClientFactory.
+//
 //go:generate counterfeiter -o repfakes/fake_client_factory.go . ClientFactory
-
-type ClientFactory interface {
-	CreateClient(address, url, traceID string) (Client, error)
-}
+type ClientFactory = models.RepClientFactory
 
 // capture the behavior described in the comment of this story
 // https://www.pivotaltracker.com/story/show/130664747/comments/152863773
@@ -137,24 +137,17 @@ func (factory *clientFactory) CreateClient(address, url, traceID string) (Client
 	return newClient(factory.httpClient, factory.stateClient, urlToUse, traceID), nil
 }
 
+// Client is the rep client interface.
+// Also available as code.cloudfoundry.org/bbs/models.RepClient.
+//
 //go:generate counterfeiter -o repfakes/fake_client.go . Client
+type Client = models.RepClient
 
-type Client interface {
-	State(logger lager.Logger) (CellState, error)
-	Perform(logger lager.Logger, work Work) (Work, error)
-	UpdateLRPInstance(logger lager.Logger, update LRPUpdate) error
-	StopLRPInstance(logger lager.Logger, key models.ActualLRPKey, instanceKey models.ActualLRPInstanceKey) error
-	CancelTask(logger lager.Logger, taskGuid string) error
-	SetStateClient(stateClient *http.Client)
-	StateClientTimeout() time.Duration
-}
-
+// SimClient extends Client with simulation capabilities.
+// Also available as code.cloudfoundry.org/bbs/models.RepSimClient.
+//
 //go:generate counterfeiter -o repfakes/fake_sim_client.go . SimClient
-
-type SimClient interface {
-	Client
-	Reset() error
-}
+type SimClient = models.RepSimClient
 
 type client struct {
 	client           *http.Client

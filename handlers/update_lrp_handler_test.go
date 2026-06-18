@@ -18,7 +18,6 @@ import (
 	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/rep/handlers"
-	"code.cloudfoundry.org/routing-info/internalroutes"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -34,7 +33,7 @@ var _ = Describe("UpdateLRPInstanceHandler", func() {
 		logger                *lagertest.TestLogger
 		processGuid           string
 		instanceGuid          string
-		internalRoutes        internalroutes.InternalRoutes
+		internalRoutes        rep.InternalRoutes
 		metricTags            map[string]string
 
 		requestIdHeader   string
@@ -55,7 +54,7 @@ var _ = Describe("UpdateLRPInstanceHandler", func() {
 
 		processGuid = "process-guid"
 		instanceGuid = "instance-guid"
-		internalRoutes = internalroutes.InternalRoutes{
+		internalRoutes = rep.InternalRoutes{
 			{Hostname: "a.apps.internal"},
 			{Hostname: "b.apps.internal"},
 		}

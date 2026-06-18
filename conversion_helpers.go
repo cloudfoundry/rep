@@ -13,7 +13,6 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/ecrhelper"
 	"code.cloudfoundry.org/executor"
-	"code.cloudfoundry.org/routing-info/internalroutes"
 )
 
 const (
@@ -205,7 +204,7 @@ func (rrch RunRequestConversionHelper) NewRunRequestFromDesiredLRP(
 		return executor.RunRequest{}, err
 	}
 
-	internalRoutes, err := internalroutes.InternalRoutesFromRoutingInfo(*desiredLRP.Routes)
+	internalRoutes, err := models.InternalRoutesFromRoutingInfo(*desiredLRP.Routes)
 	if err != nil {
 		return executor.RunRequest{}, err
 	}
