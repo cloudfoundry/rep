@@ -3,6 +3,7 @@ package main_test
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -230,6 +231,15 @@ var _ = AfterEach(func() {
 
 	ginkgomon.Kill(bbsProcess)
 	Eventually(bbsProcess.Wait()).Should(Receive())
+
+	Eventually(func() error {
+		l, err := net.Listen("tcp", bbsConfig.HealthAddress)
+		if err != nil {
+			return err
+		}
+		return l.Close()
+	}, 10*time.Second, 100*time.Millisecond).Should(Succeed())
+
 	testIngressServer.Stop()
 	close(signalMetricsChan)
 	sqlRunner.Reset()

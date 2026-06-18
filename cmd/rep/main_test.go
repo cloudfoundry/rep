@@ -95,8 +95,8 @@ var _ = Describe("The Rep", func() {
 		bbsClient, err = bbs.NewClient(bbsURL.String(), caFile, clientCertFile, clientKeyFile, 0, 0)
 		Expect(err).NotTo(HaveOccurred())
 
-		Eventually(getActualLRPs(logger)).Should(BeEmpty())
 		flushEvents = make(chan struct{})
+		Eventually(getActualLRPs(logger)).Should(BeEmpty())
 		fakeGarden = ghttp.NewUnstartedServer()
 		// these tests only look for the start of a sequence of requests
 		fakeGarden.AllowUnhandledRequests = false
